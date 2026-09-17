@@ -1,0 +1,40 @@
+import { EnvValidationError, parseEnv } from "./env";
+
+function validEnv(overrides: Record<string, string | undefined> = {}) {
+  return {
+    NODE_ENV: "test",
+    APP_URL: "http://localhost:3000",
+    APP_NAME: "Gieo Chữ",
+    APP_SHORT_NAME: "Gieo",
+    APP_SLOGAN: "Gieo Chữ – Nơi người dạy gieo chữ và chia sẻ học liệu.",
+    DATABASE_URL: "postgresql://user:pass@localhost:5432/gieochu",
+    DIRECT_URL: "postgresql://user:pass@localhost:5432/gieochu",
+    JWT_ACCESS_SECRET: "a".repeat(32),
+    JWT_ISSUER: "gieochu",
+    JWT_AUDIENCE: "gieochu-web",
+    PAYMENT_ENCRYPTION_KEY: "b".repeat(32),
+    S3_ENDPOINT: "http://localhost:9000",
+    S3_ACCESS_KEY_ID: "minio",
+    S3_SECRET_ACCESS_KEY: "minio123",
+    S3_BUCKET_PRIVATE: "gieochu-private",
+    S3_BUCKET_PUBLIC: "gieochu-public",
+    EMAIL_FROM: "Gieo Chữ <no-reply@gieochu.net>",
+    ...overrides,
+  };
+}
+
+describe("M0 env schema", () => {
+  it("accepts a fully valid configuration and fills defaults", () => {
+    const env = parseEnv(validEnv());
+    expect(env.APP_NAME).toBe("Gieo Chữ");
+    expect(env.TZ_DISPLAY).toBe("Asia/Ho_Chi_Minh");
+    expect(env.TRIAL_DAYS).toBe(14);
+    expect(env.GRACE_DAYS).toBe(7);
+    expect(env.DEFAULT_DOWNLOAD_LIMIT).toBe(5);
+  });
+
+  it("throws EnvValidationError when a required variable is missing", () => {
+    const withoutDatabaseUrl = validEnv({ DATABASE_URL: undefined });
+    expect(() => parseEnv(withoutDatabaseUrl)).toThrow(EnvValidationError);
+  });
+});

@@ -1,0 +1,15 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# Allow postinstall build scripts for packages with native binaries (Prisma
+# engines, argon2) and dev-only native optimizers.
+onlyBuiltDependencies:
+  - "@prisma/client"
+  - "@prisma/engines"
+  - argon2
+  - esbuild
+  - prisma
+  - "@parcel/watcher"
+  - unrs-resolver
+

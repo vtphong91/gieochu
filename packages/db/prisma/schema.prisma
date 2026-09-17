@@ -1,0 +1,87 @@
+// Gieo Chữ — Prisma schema
+// Grows module by module per docs/GIEOCHU_PROMPT_MVP_PHASE1.md §10.
+// M0: only the models needed to seed a working foundation (system admin,
+// sample plans, CMS home page). M1 adds UserProfile/RefreshToken/
+// VerificationToken; later modules add the tenant/product/order graph.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+// Prisma 7: connection URLs live in prisma.config.ts (CLI/migrate uses
+// DIRECT_URL), not here. The app's runtime PrismaClient gets its own adapter
+// built from DATABASE_URL in src/client.ts — see docs/DECISIONS.md ADR-003.
+datasource db {
+  provider = "postgresql"
+}
+
+enum SystemRole {
+  USER
+  SYSTEM_ADMIN
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  LOCKED
+}
+
+/// §5.1 Layer System — USERS
+model User {
+  id                 String     @id @default(cuid(2))
+  email              String     @unique
+  passwordHash       String
+  systemRole         SystemRole @default(USER)
+  status             UserStatus @default(PENDING)
+  emailVerifiedAt    DateTime?
+  profileCompletedAt DateTime?
+  lastLoginAt        DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  @@map("users")
+}
+
+enum PlanInterval {
+  MONTH
+  YEAR
+}
+
+/// §5.1 Layer System — PLANS (subscription plans System admin manages)
+model Plan {
+  id            String       @id @default(cuid(2))
+  code          String       @unique
+  name          String
+  priceVnd      Int
+  interval      PlanInterval
+  intervalCount Int          @default(1)
+  maxProducts   Int
+  storageMb     Int
+  maxFileMb     Int
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@map("plans")
+}
+
+enum CmsPageStatus {
+  DRAFT
+  PUBLISHED
+}
+
+/// §5.1 Layer System — cms_pages (marketing content blocks)
+model CmsPage {
+  id             String        @id @default(cuid(2))
+  slug           String        @unique
+  title          String
+  blocks         Json
+  status         CmsPageStatus @default(DRAFT)
+  seoTitle       String?
+  seoDescription String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@map("cms_pages")
+}

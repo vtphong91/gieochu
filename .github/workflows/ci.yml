@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      APP_URL: http://localhost:3000
+      APP_NAME: "Gieo Chữ"
+      APP_SHORT_NAME: "Gieo"
+      APP_SLOGAN: "Gieo Chữ – Nơi người dạy gieo chữ và chia sẻ học liệu."
+      DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.TEST_DIRECT_URL }}
+      JWT_ACCESS_SECRET: ${{ secrets.TEST_JWT_ACCESS_SECRET }}
+      JWT_ISSUER: gieochu
+      JWT_AUDIENCE: gieochu-web
+      PAYMENT_ENCRYPTION_KEY: ${{ secrets.TEST_PAYMENT_ENCRYPTION_KEY }}
+      S3_ENDPOINT: http://localhost:9000
+      S3_ACCESS_KEY_ID: minioadmin
+      S3_SECRET_ACCESS_KEY: minioadmin
+      S3_BUCKET_PRIVATE: gieochu-private
+      S3_BUCKET_PUBLIC: gieochu-public
+      EMAIL_FROM: "Gieo Chữ <no-reply@gieochu.net>"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests (Jest)
+        run: pnpm test:unit
+
+      - name: Integration tests (Vitest)
+        run: pnpm test:integration
+
+      - name: Verify test counts against docs §9
+        run: pnpm test:count

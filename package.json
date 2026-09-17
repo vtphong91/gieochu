@@ -1,0 +1,26 @@
+{
+  "name": "gieochu",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=20.9"
+  },
+  "packageManager": "pnpm@10.15.1",
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:unit": "turbo run test:unit",
+    "test:integration": "turbo run test:integration",
+    "test:count": "node scripts/count-tests.mjs",
+    "db:migrate": "pnpm --filter @gieochu/db exec prisma migrate deploy",
+    "db:seed": "pnpm --filter @gieochu/db exec prisma db seed",
+    "worker": "pnpm --filter @gieochu/web run worker"
+  },
+  "devDependencies": {
+    "turbo": "2.10.13",
+    "typescript": "5.9.3"
+  }
+}
