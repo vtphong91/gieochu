@@ -1,4 +1,12 @@
-// Placeholder package scaffold. Implemented in M11 — Email và Background
-// Jobs (EmailSender adapter: Resend in prod, SMTP → Mailpit in dev).
-// See docs/GIEOCHU_PROMPT_MVP_PHASE1.md §"M11 — Email và Background Jobs".
-export {};
+export {
+  createEmailSenderFromEnv,
+  createResendSender,
+  createSmtpSender,
+} from "./sender";
+export type { EmailEnv, EmailMessage, EmailSender } from "./sender";
+
+export { renderVerifyEmailTemplate } from "./templates/verify-email";
+export type { RenderedEmail, VerifyEmailTemplateData } from "./templates/verify-email";
+
+export { renderResetPasswordEmailTemplate } from "./templates/reset-password";
+export type { ResetPasswordTemplateData } from "./templates/reset-password";

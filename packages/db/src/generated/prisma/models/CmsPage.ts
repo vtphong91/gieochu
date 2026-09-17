@@ -391,10 +391,6 @@ export type EnumCmsPageStatusFieldUpdateOperationsInput = {
   set?: $Enums.CmsPageStatus
 }
 
-export type NullableStringFieldUpdateOperationsInput = {
-  set?: string | null
-}
-
 
 
 export type CmsPageSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{

@@ -47,6 +47,25 @@ export { Prisma }
  */
 export type User = Prisma.UserModel
 /**
+ * Model UserProfile
+ * §5.1 Layer System — USER_PROFILES. Created at registration with just
+ * fullName + consentAt; phone/occupation/province start null and are filled
+ * in during the mandatory profile-completion step (isProfileComplete()
+ * checks all four — see packages/auth/src/profile.ts).
+ */
+export type UserProfile = Prisma.UserProfileModel
+/**
+ * Model RefreshToken
+ * §5.1 Layer System — REFRESH_TOKENS (rotated on every use; reuse of a
+ * replaced token revokes the whole familyId — see M1 sequence diagram).
+ */
+export type RefreshToken = Prisma.RefreshTokenModel
+/**
+ * Model VerificationToken
+ * §5.1 Layer System — VERIFICATION_TOKENS (email activation + password reset)
+ */
+export type VerificationToken = Prisma.VerificationTokenModel
+/**
  * Model Plan
  * §5.1 Layer System — PLANS (subscription plans System admin manages)
  */

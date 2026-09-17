@@ -26,6 +26,14 @@ export const UserStatus = {
 export type UserStatus = (typeof UserStatus)[keyof typeof UserStatus]
 
 
+export const VerificationTokenType = {
+  EMAIL_VERIFY: 'EMAIL_VERIFY',
+  PASSWORD_RESET: 'PASSWORD_RESET'
+} as const
+
+export type VerificationTokenType = (typeof VerificationTokenType)[keyof typeof VerificationTokenType]
+
+
 export const PlanInterval = {
   MONTH: 'MONTH',
   YEAR: 'YEAR'

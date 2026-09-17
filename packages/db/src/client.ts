@@ -1,6 +1,6 @@
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { getEnv } from "@gieochu/config";
-import { PrismaClient } from "./generated/prisma/client.js";
+import { PrismaClient } from "./generated/prisma/client";
 
 let client: PrismaClient | undefined;
 

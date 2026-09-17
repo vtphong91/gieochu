@@ -13,7 +13,7 @@ M0 → M1 (kèm khung email M11) → M4 → M2 (phần cơ bản) → M7 → M3 
 | # | Module | Trạng thái | File chính | Test (unit/integration) |
 |---|---|---|---|---|
 | M0 | Nền móng dự án | ✅ Xong (bản đầu) | monorepo root, `packages/config`, `packages/core`, `packages/db` (schema tối thiểu), `docker/`, `apps/web` (shell) | 4 / 0 |
-| M1 | Xác thực và định danh | ⬜ Chưa làm | `packages/auth`, `apps/web/app/(auth)`, mở rộng schema User | 16 / 8 |
+| M1 | Xác thực và định danh | ✅ Xong | `packages/auth`, `packages/email`, `packages/jobs`, `apps/web/app/(auth)`, `apps/web/app/account`, `apps/web/lib` | 16 / 8 |
 | M4 | Tenant Workspace và Storefront | ⬜ Chưa làm | `apps/web/app/[tenantSlug]`, `apps/web/app/studio` | 6 / 5 |
 | M2 | System Admin (cơ bản) | ⬜ Chưa làm | `apps/web/app/admin` | 4 / 4 |
 | M7 | Cấu hình Tenant Payment | ⬜ Chưa làm | `packages/payments` | 10 / 4 |
@@ -23,7 +23,7 @@ M0 → M1 (kèm khung email M11) → M4 → M2 (phần cơ bản) → M7 → M3 
 | M8 | Checkout và Đơn hàng | ⬜ Chưa làm | order service, webhooks | 10 / 8 |
 | M9 | Thư viện, Tải xuống, Share link | ⬜ Chưa làm | download API, `/s/[token]` | 7 / 5 |
 | M10 | Social Feed và Đánh giá | ⬜ Chưa làm | posts/comments/reviews | 4 / 3 |
-| M11 | Email và Background Jobs | ⬜ Chưa làm (khung sẽ thêm cùng M1) | `packages/jobs`, `packages/email` | 0 / 0 (tính trong module khác) |
+| M11 | Email và Background Jobs | 🟡 Khung đã có (cùng M1) — job/worker còn lại thêm khi có nghiệp vụ tương ứng | `packages/jobs`, `packages/email`, `apps/web/worker.ts` | 0 / 0 (tính trong module khác) |
 | M12 | Audit Log, Thống kê, Báo cáo vi phạm | ⬜ Chưa làm | audit + stats + reports | 0 / 2 |
 | | **Tổng** | | | **91 / 50** |
 
@@ -62,11 +62,38 @@ M0 → M1 (kèm khung email M11) → M4 → M2 (phần cơ bản) → M7 → M3 
 - CI GitHub Actions chưa chạy thật (chưa có remote git repo / chưa push).
 - Chưa test `docker compose up` (MinIO/Mailpit) thật trong phiên này.
 
+## M1 — Việc đã làm (xem docs/modules/M1.md để có sơ đồ và danh sách test đầy đủ)
+
+- `packages/auth` triển khai đầy đủ (mật khẩu, JWT access token, refresh/verification token, RBAC, chuẩn hoá
+  email, kiểm tra hồ sơ) — 16/16 unit test.
+- `packages/db`: thêm `UserProfile`, `RefreshToken`, `VerificationToken` (migration `20260917120846_m1_auth`,
+  chạy thật trên Neon — dùng `DATABASE_URL`/`DIRECT_URL` thật người dùng cung cấp).
+- `packages/email` + `packages/jobs`: khung M11 tối thiểu đủ cho M1 (SMTP/Resend sender, pg-boss queue qua
+  `DIRECT_URL` — ADR-007), `apps/web/worker.ts` xử lý job `email.send`.
+- 9 API route xác thực + trang `/register /login /verify-email /forgot-password /reset-password
+  /account/profile /account/security /account/library` (stub).
+- 8/8 integration test chạy thật trên Neon (không mock DB), gọi route handler trực tiếp — xem ADR-009.
+- Đã `git init`, push lên `https://github.com/vtphong91/gieochu`.
+
+**Đã xác minh chạy được trong phiên này:** `pnpm lint/typecheck/test/build` xanh toàn bộ; `pnpm dev` +
+`curl` xác nhận luồng đăng ký thật (job vào `pgboss.job`) và redirect gate hồ sơ (307 → `/login?next=...`)
+hoạt động đúng trên server thật.
+
+**Chưa làm/chưa xác minh:**
+
+- Chưa chạy `docker compose up` / `pnpm worker` thật để xác nhận email thực sự tới Mailpit.
+- `TEST_DATABASE_URL` riêng cho integration test chưa có (ADR-009) — đang dùng chung DB dev, tự dọn dữ liệu.
+- Avatar upload (nhắc ở mục M1 "đổi avatar") chưa làm — phụ thuộc `packages/storage` (M5).
+- Audit log cho các sự kiện M1 (`AUTH_LOGIN`, `AUTH_REFRESH_REUSE`, ...) chưa ghi — bảng `audit_logs` thuộc
+  M12, sẽ nối lại khi làm M12.
+
 ## Câu hỏi còn mở (đã chọn phương án an toàn, xem ADR tương ứng)
 
 - ID strategy: cuid2 (ADR-001).
 - `downloadLimit=0` nghĩa là không giới hạn (ADR — sẽ ghi ở M5).
 - Local dev DB: khuyến nghị dùng Neon branch miễn phí thay vì Postgres container, vì `@prisma/adapter-neon`
   cần giao thức Neon serverless (ADR-004).
+- `UserProfile` tạo một phần lúc đăng ký, hoàn thiện dần sau (ADR-008).
+- Integration test dùng chung Neon DB với dev, chưa có `TEST_DATABASE_URL` riêng (ADR-009).
 - Chưa hỏi người dùng các quyết định ảnh hưởng tiền/bảo mật/dữ liệu cá nhân — sẽ dừng lại đúng lúc theo mục
   0.6 khi gặp.

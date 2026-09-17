@@ -55,3 +55,44 @@
 - **Quyết định:** Đặt `logger.ts` trong `packages/core` cùng `errors.ts`.
 - **Lý do:** `core` đã là nơi chứa tiện ích dùng chung không phụ thuộc DB (theo mô tả ở mục 4.4: "pricing,
   order FSM, slug, code"); tạo thêm package riêng chỉ cho logger là over-engineering ở giai đoạn này.
+
+## ADR-007 — `pg-boss` kết nối qua `DIRECT_URL`, không qua pooler
+
+- **Bối cảnh:** `pg-boss` (M11 khung, dùng từ M1 để gửi email kích hoạt/reset) cần một kết nối Postgres ổn
+  định; kết nối pooled của Neon đi qua PgBouncer ở chế độ transaction, không đảm bảo hành vi cấp phiên mà
+  `pg-boss` có thể cần (LISTEN/NOTIFY, prepared statement, v.v.).
+- **Quyết định:** `packages/jobs` nhận connection string do caller truyền vào; `apps/web` luôn truyền
+  `DIRECT_URL` (không phải `DATABASE_URL`) khi tạo job queue, cả trong route handler lẫn `worker.ts`.
+- **Lý do:** An toàn, đơn giản nhất — tránh lỗi khó tái hiện do pooler transaction-mode; `DIRECT_URL` vốn đã có
+  sẵn cho CLI/migrate (ADR-003) nên không cần thêm biến môi trường mới.
+
+## ADR-008 — `UserProfile` được tạo một phần ngay khi đăng ký, hoàn thiện dần sau
+
+- **Bối cảnh:** Mục "M1" liệt kê đăng ký thu thập "họ tên" cùng lúc với "đồng ý điều khoản", nhưng ERD §5.1
+  đặt `consentAt` trong bảng `UserProfile` cùng với `phone`, `occupation`, `province` — những trường chỉ được
+  thu thập sau, ở bước hoàn thiện hồ sơ bắt buộc. Hai đoạn đặc tả này mâu thuẫn nếu `UserProfile` yêu cầu đủ 4
+  trường ngay từ đầu.
+- **Quyết định:** `UserProfile.fullName` và `consentAt` bắt buộc, tạo ngay lúc đăng ký (transaction cùng
+  `User`). `phone`, `occupation`, `province` để `String?` (nullable), null lúc đăng ký, được điền ở
+  `/account/profile?complete=1`. `isProfileComplete()` (`packages/auth/src/profile.ts`) kiểm tra đủ cả 4
+  trường non-blank — không đổi hành vi gate `/account/*`, `/studio/*`, checkout.
+- **Lý do:** Giữ đúng nghĩa đen của đặc tả (đăng ký thu "họ tên" + "đồng ý điều khoản") mà không phá vỡ yêu
+  cầu hồ sơ bắt buộc đủ 4 trường; đây là quyết định về cấu trúc dữ liệu, không ảnh hưởng tiền/bảo mật/dữ liệu
+  cá nhân theo hướng bất lợi (dữ liệu cá nhân vẫn được thu thập, chỉ tách làm hai bước).
+
+## ADR-009 — Integration test (Vitest) dùng chung Neon DB với dev, không có `TEST_DATABASE_URL` riêng
+
+- **Bối cảnh:** Mục 9 khuyến nghị "DB test riêng cho test, Neon branch hoặc Postgres container", nhưng tạo
+  Neon branch mới cần thao tác qua Neon Console/API mà phiên làm việc này không có quyền tự động hoá.
+- **Quyết định:** M1 integration test chạy trực tiếp trên `DATABASE_URL`/`DIRECT_URL` hiện có (cùng DB với
+  seed/dev). Mỗi test tự sinh email duy nhất (tiền tố theo timestamp + random) và tự dọn dẹp user đã tạo ở
+  `afterAll`. `fileParallelism: false` trong `vitest.config.ts` để tránh xung đột giữa các file test chạy
+  song song.
+- **Lý do:** Đơn giản nhất trong điều kiện hiện tại; không có rủi ro tiền/bảo mật (dữ liệu test là dữ liệu
+  tổng hợp do chính test tạo ra và tự xoá). Khi có quyền tạo Neon branch, nên tách `TEST_DATABASE_URL` riêng —
+  ghi vào `docs/BACKLOG.md`.
+- **Cách gọi route handler:** Test import trực tiếp hàm `POST`/`GET` từ file `route.ts` và gọi với
+  `NextRequest` dựng tay (theo mục 9: "gọi route handler trực tiếp hoặc qua fetch tới server test"), tránh
+  phải chạy cả một Next server thật trong lúc test. Với trang Server Component có `redirect()`
+  (`/account/library`), test gọi thẳng hàm guard trong `lib/page-guards.ts`, mock `next/headers` để cấp cookie
+  giả, và bắt lỗi `NEXT_REDIRECT` mà `redirect()` ném ra thay vì render cả trang.

@@ -40,7 +40,68 @@ model User {
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
 
+  profile            UserProfile?
+  refreshTokens      RefreshToken[]
+  verificationTokens VerificationToken[]
+
   @@map("users")
+}
+
+/// §5.1 Layer System — USER_PROFILES. Created at registration with just
+/// fullName + consentAt; phone/occupation/province start null and are filled
+/// in during the mandatory profile-completion step (isProfileComplete()
+/// checks all four — see packages/auth/src/profile.ts).
+model UserProfile {
+  userId     String   @id
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName   String
+  phone      String?
+  avatarKey  String?
+  occupation String?
+  province   String?
+  consentAt  DateTime
+
+  @@map("user_profiles")
+}
+
+/// §5.1 Layer System — REFRESH_TOKENS (rotated on every use; reuse of a
+/// replaced token revokes the whole familyId — see M1 sequence diagram).
+model RefreshToken {
+  id           String    @id @default(cuid(2))
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyId     String
+  tokenHash    String    @unique
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?
+  userAgent    String?
+  ip           String?
+  createdAt    DateTime  @default(now())
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
+}
+
+enum VerificationTokenType {
+  EMAIL_VERIFY
+  PASSWORD_RESET
+}
+
+/// §5.1 Layer System — VERIFICATION_TOKENS (email activation + password reset)
+model VerificationToken {
+  id        String                @id @default(cuid(2))
+  userId    String
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      VerificationTokenType
+  tokenHash String                @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime              @default(now())
+
+  @@index([userId, type])
+  @@map("verification_tokens")
 }
 
 enum PlanInterval {

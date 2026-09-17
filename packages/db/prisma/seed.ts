@@ -1,6 +1,10 @@
-import "dotenv/config";
+import { config as loadEnv } from "dotenv";
+import { fileURLToPath } from "node:url";
 import * as argon2 from "argon2";
-import { getPrismaClient } from "../src/client.js";
+import { getPrismaClient } from "../src/client";
+
+// Monorepo has a single root .env, not one per package (see prisma.config.ts).
+loadEnv({ path: fileURLToPath(new URL("../../../.env", import.meta.url)) });
 
 const SEED_ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? "admin@gieochu.net";
 const SEED_ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? "ChangeMe123!";
