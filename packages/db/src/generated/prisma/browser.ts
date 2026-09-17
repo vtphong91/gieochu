@@ -51,3 +51,37 @@ export type Plan = Prisma.PlanModel
  * §5.1 Layer System — cms_pages (marketing content blocks)
  */
 export type CmsPage = Prisma.CmsPageModel
+/**
+ * Model Subscription
+ * §5.1 Layer System — SUBSCRIPTIONS. Minimal shape forward-declared here so
+ * M4 onboarding can open a TRIALING row; M3 — Subscription và Platform
+ * Billing adds invoices, the sweep job, and the rest of the state machine.
+ */
+export type Subscription = Prisma.SubscriptionModel
+/**
+ * Model Tenant
+ * §5.2 Layer Tenant — TENANTS. Each row is an L2 root; tenant-scoped child
+ * tables (tenant_members, products, ...) carry tenant_id and are protected
+ * by RLS policies (packages/db/prisma/migrations/*_rls_m4/) enforced
+ * through withTenant/withPublic/withCustomer/withSystemJob (packages/db/src/rls.ts).
+ */
+export type Tenant = Prisma.TenantModel
+/**
+ * Model TenantMember
+ * §5.2 — TENANT_MEMBERS. MVP only ever creates OWNER rows (§2.2: staff with
+ * fine-grained permissions is out of scope, schema is ready for later).
+ */
+export type TenantMember = Prisma.TenantMemberModel
+/**
+ * Model TenantSlugHistory
+ * §4.3 — used to 301-redirect an old slug (changed at most once/30 days) to
+ * the tenant's current one.
+ */
+export type TenantSlugHistory = Prisma.TenantSlugHistoryModel
+/**
+ * Model Product
+ * §5.2 — PRODUCTS. Minimal shape forward-declared so the M4 storefront can
+ * filter by status; M5 — Sản phẩm và File tài liệu adds price, files,
+ * description, and the rest.
+ */
+export type Product = Prisma.ProductModel

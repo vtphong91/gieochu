@@ -47,3 +47,18 @@ hoá đơn điện tử, đa tiền tệ, partition/backup/giám sát vận hàn
   (`SECURITY WARNING: ... 'require' ... treated as aliases for 'verify-full'`) — vô hại ở bản hiện tại, nhưng
   nên cân nhắc đổi sang `sslmode=verify-full` hoặc `uselibpqcompat=true` trong connection string trước khi
   `pg`/`pg-connection-string` lên major version mới.
+
+## Phát sinh trong lúc dựng M4
+
+- **Live-suggestion slug khi trùng**: đặc tả gợi ý UX "Trùng → gợi ý slug-2, slug-3" ngay trên form; hiện tại
+  `createTenantForUser` chỉ từ chối (409) khi trùng, chưa có API kiểm tra khả dụng theo thời gian thực để form
+  hiển thị gợi ý trước khi submit. Nếu cần, thêm route/action `checkSlugAvailability`.
+- **`ALTER DEFAULT PRIVILEGES` chỉ áp dụng cho bảng do `neondb_owner` tạo**: nếu sau này có người/role khác
+  chạy migration, cần chạy lại `packages/db/scripts/setup-app-role.mts` (an toàn, idempotent) để đảm bảo
+  `gieochu_app` vẫn có quyền trên bảng/schema mới.
+- **Dashboard tenant chỉ có placeholder**: doanh thu/đơn chờ/sản phẩm bán chạy/đánh giá mới hiện hiển thị "—"
+  vì Order (M8), Review (M10) chưa tồn tại — nối số liệu thật khi các module đó xong.
+- **Bug đã sửa ngay trong phiên (không để lại BACKLOG, ghi lại để nhớ)**: `requireTenantMember` từng query
+  `tenant_members` không qua `withTenant`, khiến RLS lọc rỗng ngay cả với owner hợp lệ — chỉ phát hiện được
+  nhờ bật RLS thật (ADR-010) thay vì tin tưởng WHERE clause. Bài học: mọi truy vấn bảng L2 mới thêm, kể cả
+  trong test, đều phải đi qua `withTenant/withCustomer/withPublic/withSystemJob`.

@@ -14,7 +14,7 @@ M0 → M1 (kèm khung email M11) → M4 → M2 (phần cơ bản) → M7 → M3 
 |---|---|---|---|---|
 | M0 | Nền móng dự án | ✅ Xong (bản đầu) | monorepo root, `packages/config`, `packages/core`, `packages/db` (schema tối thiểu), `docker/`, `apps/web` (shell) | 4 / 0 |
 | M1 | Xác thực và định danh | ✅ Xong | `packages/auth`, `packages/email`, `packages/jobs`, `apps/web/app/(auth)`, `apps/web/app/account`, `apps/web/lib` | 16 / 8 |
-| M4 | Tenant Workspace và Storefront | ⬜ Chưa làm | `apps/web/app/[tenantSlug]`, `apps/web/app/studio` | 6 / 5 |
+| M4 | Tenant Workspace và Storefront | ✅ Xong | `apps/web/app/[tenantSlug]`, `apps/web/app/studio`, `packages/db/src/rls.ts` | 6 / 5 |
 | M2 | System Admin (cơ bản) | ⬜ Chưa làm | `apps/web/app/admin` | 4 / 4 |
 | M7 | Cấu hình Tenant Payment | ⬜ Chưa làm | `packages/payments` | 10 / 4 |
 | M3 | Subscription và Platform Billing | ⬜ Chưa làm | billing service + jobs | 10 / 5 |
@@ -87,6 +87,30 @@ hoạt động đúng trên server thật.
 - Audit log cho các sự kiện M1 (`AUTH_LOGIN`, `AUTH_REFRESH_REUSE`, ...) chưa ghi — bảng `audit_logs` thuộc
   M12, sẽ nối lại khi làm M12.
 
+## M4 — Việc đã làm (xem docs/modules/M4.md để có sơ đồ và danh sách test đầy đủ)
+
+- Schema: `Tenant`, `TenantMember`, `TenantSlugHistory`, `Subscription` (tối thiểu — forward-declare M3),
+  `Product` (tối thiểu — forward-declare M5). Migration `20260917232857_m4_tenant` +
+  `20260917232925_rls_m4` (RLS thủ công cho `products`/`tenant_members`).
+- **Phát hiện quan trọng**: role Neon mặc định `neondb_owner` có `BYPASSRLS`, khiến RLS vô hiệu với kết nối
+  app. Đã dừng lại hỏi người dùng (mục 0.6, ảnh hưởng bảo mật) → tạo role `gieochu_app` riêng, không
+  bypass RLS. Tách `PRISMA_MIGRATE_URL` (owner, CLI) khỏi `DATABASE_URL`/`DIRECT_URL` (app role). Xem
+  ADR-010.
+- `packages/db/src/rls.ts`: `withTenant/withCustomer/withPublic/withSystemJob` — dùng thật, không chỉ khai
+  báo. Việc bật RLS thật đã bắt được 2 bug thật (insert tenant_member lúc onboarding thiếu scope;
+  `requireTenantMember` từng tự chặn nhầm owner hợp lệ) — sửa ngay trong phiên này.
+- `packages/core/src/tenant/*`: slug, order-code-prefix, branding, access-policy, membership — 6/6 unit test.
+- Trang `/studio` (onboarding), `/studio/[tenantSlug]` (dashboard), `/studio/[tenantSlug]/settings`
+  (thương hiệu + đổi slug), `/[tenantSlug]` (storefront công khai) — 5/5 integration test chạy thật trên
+  Neon với RLS thật.
+
+**Đã xác minh chạy được trong phiên này:** `pnpm lint/typecheck/test/build` xanh toàn bộ (26/91 unit,
+13/50 integration cộng dồn); `pnpm dev` + `curl` xác nhận `/studio` chưa đăng nhập → 307, slug không tồn
+tại → 404, storefront tenant thật render đúng.
+
+**Chưa làm/chưa xác minh:** UI onboarding/settings qua trình duyệt thật (chỉ qua curl + test gọi thẳng
+hàm); `docker compose up` cho MinIO/Mailpit vẫn chưa test trong phiên này.
+
 ## Câu hỏi còn mở (đã chọn phương án an toàn, xem ADR tương ứng)
 
 - ID strategy: cuid2 (ADR-001).
@@ -95,5 +119,7 @@ hoạt động đúng trên server thật.
   cần giao thức Neon serverless (ADR-004).
 - `UserProfile` tạo một phần lúc đăng ký, hoàn thiện dần sau (ADR-008).
 - Integration test dùng chung Neon DB với dev, chưa có `TEST_DATABASE_URL` riêng (ADR-009).
+- App kết nối DB bằng role `gieochu_app` riêng (không phải owner Neon) để RLS có hiệu lực thật; CLI/migrate
+  dùng `PRISMA_MIGRATE_URL` riêng (ADR-010).
 - Chưa hỏi người dùng các quyết định ảnh hưởng tiền/bảo mật/dữ liệu cá nhân — sẽ dừng lại đúng lúc theo mục
   0.6 khi gặp.

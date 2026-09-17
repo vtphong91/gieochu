@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 
@@ -63,9 +64,9 @@ function VerifyEmailContent() {
       {status === "success" ? (
         <p className="mt-4 text-green-700">
           Kích hoạt thành công! Bạn có thể{" "}
-          <a href="/login" className="text-[var(--color-primary)]">
+          <Link href="/login" className="text-[var(--color-primary)]">
             đăng nhập
-          </a>
+          </Link>
           .
         </p>
       ) : null}

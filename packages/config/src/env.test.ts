@@ -9,6 +9,7 @@ function validEnv(overrides: Record<string, string | undefined> = {}) {
     APP_SLOGAN: "Gieo Chữ – Nơi người dạy gieo chữ và chia sẻ học liệu.",
     DATABASE_URL: "postgresql://user:pass@localhost:5432/gieochu",
     DIRECT_URL: "postgresql://user:pass@localhost:5432/gieochu",
+    PRISMA_MIGRATE_URL: "postgresql://owner:pass@localhost:5432/gieochu",
     JWT_ACCESS_SECRET: "a".repeat(32),
     JWT_ISSUER: "gieochu",
     JWT_AUDIENCE: "gieochu-web",

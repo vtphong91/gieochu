@@ -6,15 +6,18 @@ import { defineConfig, env } from "prisma/config";
 loadEnv({ path: fileURLToPath(new URL("../../.env", import.meta.url)) });
 
 /**
- * CLI/migrate operations (generate, migrate, studio, db seed) connect directly
- * to Postgres via DIRECT_URL. The application at runtime instead uses
- * DATABASE_URL (pooled, "-pooler" host) through @prisma/adapter-neon — see
- * src/client.ts. Verified against https://www.prisma.io/docs/orm/overview/databases/neon
+ * CLI/migrate operations (generate, migrate, studio, db seed) need DDL
+ * rights (CREATE/ALTER TABLE), so they connect as the Neon owner role via
+ * PRISMA_MIGRATE_URL — never as the restricted runtime role. The app itself
+ * uses DATABASE_URL (pooled) / DIRECT_URL (pg-boss) as the "gieochu_app"
+ * role, which has DML-only privileges and, critically, no BYPASSRLS — see
+ * docs/DECISIONS.md ADR-010 and packages/db/scripts/setup-app-role.mts.
+ * Neon setup verified against https://www.prisma.io/docs/orm/overview/databases/neon
  */
 export default defineConfig({
   schema: "prisma/schema.prisma",
   datasource: {
-    url: env("DIRECT_URL"),
+    url: env("PRISMA_MIGRATE_URL"),
   },
   migrations: {
     seed: "tsx prisma/seed.ts",

@@ -20,8 +20,9 @@ Xem [docs/PLAN.md](docs/PLAN.md) cho thứ tự module và trạng thái hiện 
 | `pnpm test:unit` | Jest trong `packages/*` |
 | `pnpm test:integration` | Vitest trong `apps/web/tests/integration` |
 | `pnpm test:count` | Đếm số test case, đối chiếu 91 unit / 50 integration (mục 9) |
-| `pnpm db:migrate` | `prisma migrate deploy` (dùng `DIRECT_URL`) |
-| `pnpm db:seed` | `prisma db seed` |
+| `pnpm db:migrate` | `prisma migrate deploy` (dùng `PRISMA_MIGRATE_URL`, role owner) |
+| `pnpm db:seed` | `prisma db seed` (dùng `DATABASE_URL`, role `gieochu_app`) |
+| `pnpm --filter @gieochu/db run setup-app-role` | Tạo/cập nhật role Postgres `gieochu_app` (chạy 1 lần/môi trường Neon mới) |
 | `docker compose -f docker/docker-compose.yml up` | MinIO + Mailpit (+ `--profile local-db` để có Postgres local) |
 
 Trước `pnpm dev`/test lần đầu: copy `.env.example` → `.env`, điền đủ biến (mục 11). Env thiếu biến bắt buộc sẽ
@@ -37,9 +38,12 @@ Xem sơ đồ đầy đủ ở `docs/GIEOCHU_PROMPT_MVP_PHASE1.md` §4.4. Tóm t
   `requireRole()` lại — không tin proxy.
 - `packages/config` — env schema (zod, fail-fast), brand strings (`brand.ts`), ESLint preset dùng chung.
 - `packages/core` — `AppError` + mã lỗi, logger (`pino`, có redact), sau này thêm pricing engine, order FSM.
-- `packages/db` — Prisma schema, `prisma.config.ts` (CLI dùng `DIRECT_URL`), client chạy qua
-  `@prisma/adapter-neon` (dùng `DATABASE_URL` pooled), seed script. RLS helpers `withTenant/withCustomer/
-  withPublic/withSystemJob` sẽ thêm khi có bảng L2 đầu tiên (M4).
+- `packages/db` — Prisma schema, `prisma.config.ts` (CLI dùng `PRISMA_MIGRATE_URL`, role owner — cần quyền DDL),
+  client chạy qua `@prisma/adapter-neon` (dùng `DATABASE_URL` pooled, role `gieochu_app`), seed script. RLS
+  helpers `withTenant/withCustomer/withPublic/withSystemJob` (`src/rls.ts`, từ M4) — **bắt buộc** dùng cho mọi
+  bảng L2 (có `tenantId`); `getPrismaClient()` trực tiếp chỉ dành cho bảng L1 (users, tokens, plans...).
+  **Quan trọng:** app kết nối bằng role `gieochu_app` (tạo qua `packages/db/scripts/setup-app-role.mts`), **không
+  phải** role owner Neon mặc định — role owner có `BYPASSRLS` nên RLS vô hiệu nếu dùng nó (xem ADR-010).
 - `packages/auth`, `packages/payments`, `packages/storage`, `packages/email`, `packages/jobs` — skeleton hiện
   tại, mỗi package có comment ghi rõ sẽ triển khai ở module nào (xem source).
 - `docker/docker-compose.yml` — MinIO (+ tạo bucket), Mailpit, Postgres 16 (`profile: local-db`, tuỳ chọn).

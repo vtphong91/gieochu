@@ -56,7 +56,12 @@ export const ModelName = {
   RefreshToken: 'RefreshToken',
   VerificationToken: 'VerificationToken',
   Plan: 'Plan',
-  CmsPage: 'CmsPage'
+  CmsPage: 'CmsPage',
+  Subscription: 'Subscription',
+  Tenant: 'Tenant',
+  TenantMember: 'TenantMember',
+  TenantSlugHistory: 'TenantSlugHistory',
+  Product: 'Product'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -166,6 +171,73 @@ export const CmsPageScalarFieldEnum = {
 export type CmsPageScalarFieldEnum = (typeof CmsPageScalarFieldEnum)[keyof typeof CmsPageScalarFieldEnum]
 
 
+export const SubscriptionScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  planId: 'planId',
+  status: 'status',
+  currentPeriodStart: 'currentPeriodStart',
+  currentPeriodEnd: 'currentPeriodEnd',
+  graceEndsAt: 'graceEndsAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SubscriptionScalarFieldEnum = (typeof SubscriptionScalarFieldEnum)[keyof typeof SubscriptionScalarFieldEnum]
+
+
+export const TenantScalarFieldEnum = {
+  id: 'id',
+  slug: 'slug',
+  ownerId: 'ownerId',
+  name: 'name',
+  bio: 'bio',
+  logoKey: 'logoKey',
+  coverKey: 'coverKey',
+  branding: 'branding',
+  orderCodePrefix: 'orderCodePrefix',
+  status: 'status',
+  storageUsedBytes: 'storageUsedBytes',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type TenantScalarFieldEnum = (typeof TenantScalarFieldEnum)[keyof typeof TenantScalarFieldEnum]
+
+
+export const TenantMemberScalarFieldEnum = {
+  tenantId: 'tenantId',
+  userId: 'userId',
+  role: 'role',
+  joinedAt: 'joinedAt'
+} as const
+
+export type TenantMemberScalarFieldEnum = (typeof TenantMemberScalarFieldEnum)[keyof typeof TenantMemberScalarFieldEnum]
+
+
+export const TenantSlugHistoryScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  oldSlug: 'oldSlug',
+  changedAt: 'changedAt'
+} as const
+
+export type TenantSlugHistoryScalarFieldEnum = (typeof TenantSlugHistoryScalarFieldEnum)[keyof typeof TenantSlugHistoryScalarFieldEnum]
+
+
+export const ProductScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  slug: 'slug',
+  title: 'title',
+  status: 'status',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ProductScalarFieldEnum = (typeof ProductScalarFieldEnum)[keyof typeof ProductScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -179,6 +251,14 @@ export const JsonNullValueInput = {
 } as const
 
 export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
+
+
+export const NullableJsonNullValueInput = {
+  DbNull: DbNull,
+  JsonNull: JsonNull
+} as const
+
+export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
 
 
 export const QueryMode = {

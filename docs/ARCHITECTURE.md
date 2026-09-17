@@ -56,10 +56,12 @@ flowchart TB
     PAY <--> SEPAY & MOMO
 ```
 
-**Trạng thái hiện tại (sau M1):** `PX` (proxy.ts + gate hồ sơ qua `lib/page-guards.ts`), `MKT` (shell tối
-giản), `AUTH` (đầy đủ: mật khẩu, JWT, RBAC), `CORE` (errors + logger), `DB` (User/UserProfile/RefreshToken/
-VerificationToken/Plan/CmsPage), `MAIL` (SMTP/Resend sender + template), `JOBS` (pg-boss, queue `email.send`)
-đã có. `PAY`, `STO` và các bảng L2 (tenant/product/order) còn là skeleton chờ module tương ứng (xem
+**Trạng thái hiện tại (sau M4):** `PX` (proxy.ts + gate hồ sơ qua `lib/page-guards.ts`), `STF` (storefront
+công khai `/[tenantSlug]`), `STU` (`/studio`, `/studio/[tenantSlug]`, settings), `AUTH` (đầy đủ: mật khẩu,
+JWT, RBAC), `CORE` (errors, logger, slug/branding/access-policy/membership), `DB` (User/.../Tenant/
+TenantMember/TenantSlugHistory/Subscription-tối-thiểu/Product-tối-thiểu + RLS helpers `withTenant/
+withCustomer/withPublic/withSystemJob` — **có hiệu lực thật**, xem ADR-010), `MAIL`, `JOBS` đã có. `PAY`, `STO`
+và phần lớn bảng L2 (product đầy đủ, order, coupon...) còn là skeleton/tối thiểu chờ module tương ứng (xem
 `docs/PLAN.md`).
 
 ## Ranh giới dữ liệu theo layer
@@ -127,7 +129,7 @@ flowchart TD
 **Quy tắc bất biến:** `proxy.ts` chỉ chuyển hướng và gắn header. Mọi route handler / server action / server
 component nhạy cảm tự xác thực và phân quyền lại — không tin proxy đã lọc đủ.
 
-## Cấu trúc thư mục (thực tế sau M1)
+## Cấu trúc thư mục (thực tế sau M4)
 
 ```
 .
@@ -135,24 +137,29 @@ component nhạy cảm tự xác thực và phân quyền lại — không tin p
 │   └── web/                       # Next.js App Router
 │       ├── app/
 │       │   ├── (auth)/             # register, login, verify-email, forgot-password, reset-password
-│       │   ├── account/            # profile, security, library (stub) — admin/, studio/, [tenantSlug]/ sau
+│       │   ├── account/            # profile, security, library (stub) — admin/ sau (M2)
+│       │   ├── studio/             # onboarding (/studio), dashboard + settings (/studio/[tenantSlug]/*)
+│       │   ├── [tenantSlug]/       # storefront công khai
 │       │   ├── api/
 │       │   │   ├── auth/           # register, login, refresh, logout, verify-email, resend-verification,
 │       │   │   │                   # forgot-password, reset-password
 │       │   │   └── me/
 │       │   └── layout.tsx, page.tsx (marketing shell)
-│       ├── lib/                    # cookies, session, page-guards, rate-limit, jobs, jwt-context, duration
+│       ├── lib/                    # cookies, session, page-guards, tenant, create-tenant, storefront,
+│       │                           # rate-limit, jobs, jwt-context, duration
 │       ├── proxy.ts
 │       ├── worker.ts               # pg-boss worker: xử lý job email.send (khung M11)
-│       ├── tests/integration/      # Vitest — auth.test.ts (8 test)
+│       ├── tests/integration/      # Vitest — auth.test.ts (8), tenant.test.ts (5)
 │       ├── next.config.ts          # CSP/security headers
 │       └── vitest.config.ts
 ├── packages/
 │   ├── auth/        # password, JWT access token, refresh/verification token, RBAC (M1)
-│   ├── core/         # errors.ts, logger.ts (M0); pricing/order-FSM thêm ở M6/M8
+│   ├── core/         # errors, logger (M0); tenant/ slug-branding-access-membership (M4); pricing/order-FSM ở M6/M8
 │   ├── payments/    # skeleton — M7
-│   ├── db/          # schema.prisma (User/UserProfile/RefreshToken/VerificationToken/Plan/CmsPage),
-│   │                # prisma.config.ts, client.ts, seed.ts, prisma/migrations/
+│   ├── db/          # schema.prisma (User/.../Tenant/TenantMember/TenantSlugHistory/Subscription-tối-thiểu/
+│   │                # Product-tối-thiểu/Plan/CmsPage), prisma.config.ts, client.ts, rls.ts (withTenant/
+│   │                # withCustomer/withPublic/withSystemJob), seed.ts, prisma/migrations/,
+│   │                # scripts/setup-app-role.mts (tạo role Postgres riêng cho app — ADR-010)
 │   ├── storage/     # skeleton — M5
 │   ├── email/       # EmailSender (SMTP/Resend) + template kích hoạt/reset mật khẩu (khung M11, M1 dùng)
 │   ├── jobs/        # pg-boss queue wrapper (khung M11, M1 dùng)
@@ -166,7 +173,8 @@ component nhạy cảm tự xác thực và phân quyền lại — không tin p
 │   ├── BACKLOG.md
 │   └── modules/
 │       ├── M0.md
-│       └── M1.md
+│       ├── M1.md
+│       └── M4.md
 ├── scripts/count-tests.mjs
 ├── CLAUDE.md
 └── turbo.json

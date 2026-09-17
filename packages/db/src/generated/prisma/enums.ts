@@ -48,3 +48,41 @@ export const CmsPageStatus = {
 } as const
 
 export type CmsPageStatus = (typeof CmsPageStatus)[keyof typeof CmsPageStatus]
+
+
+export const SubscriptionStatus = {
+  TRIALING: 'TRIALING',
+  ACTIVE: 'ACTIVE',
+  PAST_DUE: 'PAST_DUE',
+  GRACE: 'GRACE',
+  EXPIRED: 'EXPIRED',
+  CANCELED: 'CANCELED'
+} as const
+
+export type SubscriptionStatus = (typeof SubscriptionStatus)[keyof typeof SubscriptionStatus]
+
+
+export const TenantStatus = {
+  ACTIVE: 'ACTIVE',
+  READ_ONLY: 'READ_ONLY',
+  LOCKED: 'LOCKED'
+} as const
+
+export type TenantStatus = (typeof TenantStatus)[keyof typeof TenantStatus]
+
+
+export const TenantMemberRole = {
+  OWNER: 'OWNER',
+  STAFF: 'STAFF'
+} as const
+
+export type TenantMemberRole = (typeof TenantMemberRole)[keyof typeof TenantMemberRole]
+
+
+export const ProductStatus = {
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+  ARCHIVED: 'ARCHIVED'
+} as const
+
+export type ProductStatus = (typeof ProductStatus)[keyof typeof ProductStatus]

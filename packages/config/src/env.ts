@@ -10,6 +10,8 @@ const envSchema = z.object({
 
   DATABASE_URL: z.string().min(1),
   DIRECT_URL: z.string().min(1),
+  /** Owner-role connection, DDL rights — Prisma CLI only. See ADR-010. */
+  PRISMA_MIGRATE_URL: z.string().min(1),
   TEST_DATABASE_URL: z.string().optional(),
 
   JWT_ACCESS_SECRET: z.string().min(32, "JWT_ACCESS_SECRET phải có ít nhất 32 ký tự"),

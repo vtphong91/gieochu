@@ -43,6 +43,8 @@ model User {
   profile            UserProfile?
   refreshTokens      RefreshToken[]
   verificationTokens VerificationToken[]
+  ownedTenant        Tenant?
+  tenantMemberships  TenantMember[]
 
   @@map("users")
 }
@@ -124,6 +126,8 @@ model Plan {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
+  subscriptions Subscription[]
+
   @@map("plans")
 }
 
@@ -145,4 +149,124 @@ model CmsPage {
   updatedAt      DateTime      @updatedAt
 
   @@map("cms_pages")
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  GRACE
+  EXPIRED
+  CANCELED
+}
+
+/// §5.1 Layer System — SUBSCRIPTIONS. Minimal shape forward-declared here so
+/// M4 onboarding can open a TRIALING row; M3 — Subscription và Platform
+/// Billing adds invoices, the sweep job, and the rest of the state machine.
+model Subscription {
+  id                 String             @id @default(cuid(2))
+  tenantId           String             @unique
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  planId             String
+  plan               Plan               @relation(fields: [planId], references: [id])
+  status             SubscriptionStatus @default(TRIALING)
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  graceEndsAt        DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@map("subscriptions")
+}
+
+enum TenantStatus {
+  ACTIVE
+  READ_ONLY
+  LOCKED
+}
+
+/// §5.2 Layer Tenant — TENANTS. Each row is an L2 root; tenant-scoped child
+/// tables (tenant_members, products, ...) carry tenant_id and are protected
+/// by RLS policies (packages/db/prisma/migrations/*_rls_m4/) enforced
+/// through withTenant/withPublic/withCustomer/withSystemJob (packages/db/src/rls.ts).
+model Tenant {
+  id               String       @id @default(cuid(2))
+  slug             String       @unique
+  ownerId          String       @unique
+  owner            User         @relation(fields: [ownerId], references: [id])
+  name             String
+  bio              String?
+  logoKey          String?
+  coverKey         String?
+  /// { primaryColor, accentColor, socialLinks: { facebook?, youtube?, tiktok?, zalo?, website? } }
+  branding         Json?
+  orderCodePrefix  String       @unique
+  status           TenantStatus @default(ACTIVE)
+  storageUsedBytes Int          @default(0)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  members      TenantMember[]
+  slugHistory  TenantSlugHistory[]
+  subscription Subscription?
+  products     Product[]
+
+  @@map("tenants")
+}
+
+enum TenantMemberRole {
+  OWNER
+  STAFF
+}
+
+/// §5.2 — TENANT_MEMBERS. MVP only ever creates OWNER rows (§2.2: staff with
+/// fine-grained permissions is out of scope, schema is ready for later).
+model TenantMember {
+  tenantId String
+  tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     TenantMemberRole @default(OWNER)
+  joinedAt DateTime         @default(now())
+
+  @@id([tenantId, userId])
+  @@index([tenantId])
+  @@map("tenant_members")
+}
+
+/// §4.3 — used to 301-redirect an old slug (changed at most once/30 days) to
+/// the tenant's current one.
+model TenantSlugHistory {
+  id        String   @id @default(cuid(2))
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  oldSlug   String   @unique
+  changedAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@map("tenant_slug_history")
+}
+
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+/// §5.2 — PRODUCTS. Minimal shape forward-declared so the M4 storefront can
+/// filter by status; M5 — Sản phẩm và File tài liệu adds price, files,
+/// description, and the rest.
+model Product {
+  id        String        @id @default(cuid(2))
+  tenantId  String
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  slug      String
+  title     String
+  status    ProductStatus @default(DRAFT)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@map("products")
 }

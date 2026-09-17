@@ -80,6 +80,30 @@
   cầu hồ sơ bắt buộc đủ 4 trường; đây là quyết định về cấu trúc dữ liệu, không ảnh hưởng tiền/bảo mật/dữ liệu
   cá nhân theo hướng bất lợi (dữ liệu cá nhân vẫn được thu thập, chỉ tách làm hai bước).
 
+## ADR-010 — Role Postgres riêng cho app (`gieochu_app`), tách khỏi `neondb_owner`, để RLS có hiệu lực thật
+
+- **Bối cảnh:** Khi viết integration test cho RLS ở M4 (`withTenant(A)` không được đọc `products` của B), test thất
+  bại dù policy RLS đã bật đúng (`ENABLE`/`FORCE ROW LEVEL SECURITY`, policy đúng). Kiểm tra `pg_roles` phát hiện
+  role mặc định Neon cấp (`neondb_owner`) có `rolbypassrls = true` — Postgres luôn bỏ qua RLS cho role có cờ này,
+  bất kể `FORCE`. Đây là hành vi mặc định của role "owner" trên nhiều nền tảng Postgres quản lý, không phải lỗi
+  cấu hình. `ALTER ROLE neondb_owner NOBYPASSRLS` bị Neon từ chối (không có quyền tự đổi thuộc tính của chính role
+  owner).
+- **Quyết định:** Tạo role `gieochu_app` riêng (`NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`), chỉ cấp
+  `SELECT/INSERT/UPDATE/DELETE` trên các bảng hiện có + `ALTER DEFAULT PRIVILEGES` để tự động cấp quyền đó cho
+  bảng mới tạo sau này (không cần nhớ GRANT lại mỗi migration). Runtime app (`DATABASE_URL`, `DIRECT_URL`) dùng
+  role này. Việc tạo role nằm trong script riêng `packages/db/scripts/setup-app-role.mts` (chạy 1 lần/môi
+  trường qua `pnpm --filter @gieochu/db run setup-app-role`), **không** nằm trong Prisma migration, vì role là
+  đối tượng cấp cluster/project chứ không phải cấp schema.
+  Vì `gieochu_app` không có quyền DDL (`CREATE`/`ALTER TABLE`), `prisma migrate`/`generate` vẫn cần role owner —
+  tách riêng biến môi trường mới **`PRISMA_MIGRATE_URL`** (owner, chỉ CLI dùng) khỏi **`DIRECT_URL`** (nay là
+  `gieochu_app`, dùng cho pg-boss — vẫn đúng tinh thần ADR-007 là không qua pooler).
+- **Lý do:** Đây là quyết định bảo mật trực tiếp (RLS chỉ có ý nghĩa nếu kết nối app không bypass nó) nên đã dừng
+  lại hỏi người dùng trước khi thực hiện thay vì tự ý chọn phương án "chấp nhận RLS chỉ là lớp phòng thủ trên
+  giấy". Người dùng chọn tạo role riêng.
+- **Việc cần làm khi thêm module có bảng L2 mới:** không cần chạy lại `setup-app-role.mts` (nhờ
+  `ALTER DEFAULT PRIVILEGES`), nhưng nếu tạo schema Postgres mới (khác `public`/`pgboss`) thì cần chạy lại script
+  để cấp quyền cho schema đó.
+
 ## ADR-009 — Integration test (Vitest) dùng chung Neon DB với dev, không có `TEST_DATABASE_URL` riêng
 
 - **Bối cảnh:** Mục 9 khuyến nghị "DB test riêng cho test, Neon branch hoặc Postgres container", nhưng tạo
