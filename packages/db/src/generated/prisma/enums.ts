@@ -133,3 +133,11 @@ export const WebhookScope = {
 } as const
 
 export type WebhookScope = (typeof WebhookScope)[keyof typeof WebhookScope]
+
+
+export const CouponType = {
+  PERCENT: 'PERCENT',
+  FIXED: 'FIXED'
+} as const
+
+export type CouponType = (typeof CouponType)[keyof typeof CouponType]

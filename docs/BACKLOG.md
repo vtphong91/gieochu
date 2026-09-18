@@ -174,3 +174,19 @@ lộ ra 2 lỗi cả 2 đều tồn tại từ trước, không riêng module n�
 - **`/admin/settings/storage` chưa test tự động**: xem ghi chú ở `docs/modules/M5.md` — hạ tầng mới ngoài
   bảng test mục 9 gốc, cố ý không thêm test tự động nếu chưa hỏi lại người dùng. Verify bằng tay khi có
   credential R2 thật.
+
+## Phát sinh trong lúc dựng M6
+
+- **1/2 integration test M6 hoãn tới M8**: "Coupon chỉ bị tính lượt khi đơn PAID, hai đơn đồng thời không
+  vượt usageLimit" — cần `Order` thật (chuyển trạng thái `PAID`) để test có ý nghĩa, `Order` thuộc M8 (đứng
+  sau M6 đúng thứ tự triển khai). Khi M8 xây xong: viết hàm tiêu thụ coupon dùng
+  `UPDATE coupons SET usedCount = usedCount + 1 WHERE id = ... AND usedCount < usageLimit` (atomic, đúng đặc
+  tả — chống vượt `usageLimit` khi 2 đơn thanh toán đồng thời), ghi `coupon_redemptions`, nếu update trả về 0
+  dòng (hết lượt đúng lúc thanh toán) vẫn giữ đơn `PAID` + ghi audit `COUPON_OVERUSED` (đúng đặc tả mục M6).
+- **`CouponRedemption.orderId` chưa có `@relation` tới `Order`**: cột string thường vì `Order` (M8) chưa tồn
+  tại. M8 thêm quan hệ khi có Order — không cần đổi kiểu cột, chỉ thêm `@relation` + trường quan hệ.
+- **Chưa có UI công khai áp mã trên storefront**: `calculatePrice()` và API
+  `POST /api/[tenantSlug]/coupons/preview` đã sẵn sàng, nhưng chưa có trang chi tiết sản phẩm công khai (hoãn
+  từ M5) hay giỏ hàng/checkout (M8) để gắn ô nhập mã vào — UI thật sẽ làm cùng lúc với 2 module đó.
+- **Trang Studio coupon chưa có nút xoá**: chỉ có tạo/sửa/bật-tắt (`isEnabled`) — đặc tả không yêu cầu xoá
+  tường minh, tắt coupon coi như đủ cho MVP; cân nhắc thêm nếu người dùng cần dọn hẳn mã cũ.

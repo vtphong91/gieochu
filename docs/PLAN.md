@@ -19,7 +19,7 @@ M0 → M1 (kèm khung email M11) → M4 → M2 (phần cơ bản) → M7 → M3 
 | M7 | Cấu hình Tenant Payment | ✅ Xong | `packages/payments` | 10 / 4 |
 | M3 | Subscription và Platform Billing | ✅ Xong | `apps/web/lib/subscription-billing.ts`, `subscription-sweep.ts`, `platform-payment.ts`, `packages/core/src/billing` | 10 / 5 |
 | M5 | Sản phẩm và File tài liệu | 🟡 Code xong (CRUD + upload/presign/file.scan) — chờ verify với R2 thật | `packages/storage`, `apps/web/lib/{product,product-upload,file-scan}.ts` | 6 / 3 (+1 chờ storage thật) |
-| M6 | Giá và Khuyến mãi | ⬜ Chưa làm | `packages/core/pricing` | 14 / 2 |
+| M6 | Giá và Khuyến mãi | 🟡 Engine + Coupon CRUD xong — 1 test chờ Order (M8) | `packages/core/src/pricing`, `apps/web/lib/coupon.ts` | 14 / 1 (+1 chờ M8) |
 | M8 | Checkout và Đơn hàng | ⬜ Chưa làm | order service, webhooks | 10 / 8 |
 | M9 | Thư viện, Tải xuống, Share link | ⬜ Chưa làm | download API, `/s/[token]` | 7 / 5 |
 | M10 | Social Feed và Đánh giá | ⬜ Chưa làm | posts/comments/reviews | 4 / 3 |
@@ -231,6 +231,23 @@ Sau khi có hạ tầng cấu hình ở trên, làm tiếp toàn bộ phần upl
 **Đã xác minh chạy được trong phiên này:** `pnpm lint/typecheck/test/build` xanh toàn bộ (56/91 unit, 29/50
 integration cộng dồn — +1 so với trước); `curl` xác nhận route upload mới chưa đăng nhập → 401. **Chưa verify
 được**: toàn bộ luồng qua storage thật (cần người dùng nhập credential R2 qua `/admin/settings/storage`).
+
+## M6 — Việc đã làm (xem docs/modules/M6.md để có sơ đồ và danh sách test đầy đủ)
+
+- `packages/core/src/pricing/calculate-price.ts`: `calculatePrice()` — pricing engine thuần đúng chữ ký đặc
+  tả, 14/14 unit test (bao gồm phân bổ discount về từng dòng để tổng khớp chính xác, không lệch do làm tròn).
+- Schema `Coupon` (L2, RLS — public đọc được coupon `isEnabled`) + `CouponRedemption` (L2, RLS, `orderId` là
+  string thường — chưa có quan hệ tới `Order` vì M8 chưa tồn tại, M8 thêm `@relation` sau, không cần đổi cột).
+- `apps/web/lib/coupon.ts`: CRUD coupon (validate `value` theo `type`, unique mã trong tenant) +
+  `previewCouponPrice()` (đọc qua `withPublic`, gọi `calculatePrice()` — không tin số tiền từ client).
+- Trang Studio `/coupons`, `/coupons/new`, `/coupons/[id]`; API công khai
+  `POST /api/[tenantSlug]/coupons/preview` (không cần đăng nhập).
+- 1/2 integration test M6 gốc hoàn thành (API preview). Test còn lại ("coupon chỉ tính lượt khi đơn PAID")
+  hoãn tới M8 — cần `Order` thật để có sự kiện "chuyển PAID".
+
+**Đã xác minh chạy được trong phiên này:** `pnpm lint/typecheck/test/build` xanh toàn bộ (70/91 unit, 30/50
+integration cộng dồn); `curl` xác nhận `/studio/.../coupons` chưa đăng nhập → 307, preview cho tenant không
+tồn tại → 404.
 
 ## Câu hỏi còn mở (đã chọn phương án an toàn, xem ADR tương ứng)
 

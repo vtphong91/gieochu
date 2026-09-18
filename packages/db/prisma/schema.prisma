@@ -226,6 +226,7 @@ model Tenant {
   products            Product[]
   paymentConfigs      TenantPaymentConfig[]
   subscriptionInvoices SubscriptionInvoice[]
+  coupons             Coupon[]
 
   @@map("tenants")
 }
@@ -513,4 +514,60 @@ model BankBin {
   shortName String
 
   @@map("bank_bins")
+}
+
+enum CouponType {
+  PERCENT
+  FIXED
+}
+
+/// §"M6" — COUPONS. L2 (RLS like products/tenant_members). `productIds` is a
+/// JSON array of Product ids (null/empty = applies to every product in the
+/// tenant) — a plain array rather than a join table since it's small and
+/// read as a unit by `calculatePrice()` (packages/core), never queried by
+/// individual product id. `usedCount` is only ever incremented by M8's
+/// order-PAID transition (`UPDATE ... WHERE usedCount < usageLimit`,
+/// §"M6") — nothing in M6 itself writes it past the initial 0.
+model Coupon {
+  id               String     @id @default(cuid(2))
+  tenantId         String
+  tenant           Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code             String
+  type             CouponType
+  value            Int
+  maxDiscountVnd   Int?
+  minOrderVnd      Int?
+  usageLimit       Int?
+  usedCount        Int        @default(0)
+  perCustomerLimit Int?
+  startsAt         DateTime?
+  endsAt           DateTime?
+  productIds       Json?
+  isEnabled        Boolean    @default(true)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  redemptions CouponRedemption[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("coupons")
+}
+
+/// §5.2 "Bảng phụ: coupon_redemptions (couponId, userId, orderId)". `orderId`
+/// is a plain string, not a relation — the Order model doesn't exist yet
+/// (M8); M8 adds the `@relation` once it does. Nothing writes to this table
+/// in M6 — it's schema-only, ready for M8's order-PAID consumption logic.
+model CouponRedemption {
+  id        String   @id @default(cuid(2))
+  couponId  String
+  coupon    Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  tenantId  String
+  userId    String
+  orderId   String
+  createdAt DateTime @default(now())
+
+  @@unique([couponId, orderId])
+  @@index([tenantId])
+  @@map("coupon_redemptions")
 }

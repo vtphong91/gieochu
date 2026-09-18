@@ -70,7 +70,9 @@ export const ModelName = {
   SubscriptionInvoice: 'SubscriptionInvoice',
   PlatformPaymentTransaction: 'PlatformPaymentTransaction',
   WebhookEvent: 'WebhookEvent',
-  BankBin: 'BankBin'
+  BankBin: 'BankBin',
+  Coupon: 'Coupon',
+  CouponRedemption: 'CouponRedemption'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -383,6 +385,40 @@ export const BankBinScalarFieldEnum = {
 } as const
 
 export type BankBinScalarFieldEnum = (typeof BankBinScalarFieldEnum)[keyof typeof BankBinScalarFieldEnum]
+
+
+export const CouponScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  code: 'code',
+  type: 'type',
+  value: 'value',
+  maxDiscountVnd: 'maxDiscountVnd',
+  minOrderVnd: 'minOrderVnd',
+  usageLimit: 'usageLimit',
+  usedCount: 'usedCount',
+  perCustomerLimit: 'perCustomerLimit',
+  startsAt: 'startsAt',
+  endsAt: 'endsAt',
+  productIds: 'productIds',
+  isEnabled: 'isEnabled',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CouponScalarFieldEnum = (typeof CouponScalarFieldEnum)[keyof typeof CouponScalarFieldEnum]
+
+
+export const CouponRedemptionScalarFieldEnum = {
+  id: 'id',
+  couponId: 'couponId',
+  tenantId: 'tenantId',
+  userId: 'userId',
+  orderId: 'orderId',
+  createdAt: 'createdAt'
+} as const
+
+export type CouponRedemptionScalarFieldEnum = (typeof CouponRedemptionScalarFieldEnum)[keyof typeof CouponRedemptionScalarFieldEnum]
 
 
 export const SortOrder = {

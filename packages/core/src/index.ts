@@ -38,6 +38,17 @@ export { canPublishProduct } from "./product/publish-eligibility";
 export type { PublishBlockReason, PublishEligibilityInput, PublishEligibilityResult } from "./product/publish-eligibility";
 export { applyStorageDelta } from "./product/storage-accounting";
 
+export { calculatePrice } from "./pricing/calculate-price";
+export type {
+  CalculatePriceInput,
+  CalculatePriceResult,
+  CouponErrorCode,
+  CouponSnapshot,
+  CouponType,
+  PricedLine,
+  PricingLineInput,
+} from "./pricing/calculate-price";
+
 export { decideLockUser } from "./admin/user-lock";
 export type { LockRejectReason, LockTargetUser, LockUserDecision } from "./admin/user-lock";
 export { isValidPlanInput } from "./admin/plan-validation";

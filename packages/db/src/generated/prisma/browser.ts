@@ -175,3 +175,22 @@ export type WebhookEvent = Prisma.WebhookEventModel
  * danh sách NAPAS/VietQR chính thức (packages/db/prisma/seed.ts).
  */
 export type BankBin = Prisma.BankBinModel
+/**
+ * Model Coupon
+ * §"M6" — COUPONS. L2 (RLS like products/tenant_members). `productIds` is a
+ * JSON array of Product ids (null/empty = applies to every product in the
+ * tenant) — a plain array rather than a join table since it's small and
+ * read as a unit by `calculatePrice()` (packages/core), never queried by
+ * individual product id. `usedCount` is only ever incremented by M8's
+ * order-PAID transition (`UPDATE ... WHERE usedCount < usageLimit`,
+ * §"M6") — nothing in M6 itself writes it past the initial 0.
+ */
+export type Coupon = Prisma.CouponModel
+/**
+ * Model CouponRedemption
+ * §5.2 "Bảng phụ: coupon_redemptions (couponId, userId, orderId)". `orderId`
+ * is a plain string, not a relation — the Order model doesn't exist yet
+ * (M8); M8 adds the `@relation` once it does. Nothing writes to this table
+ * in M6 — it's schema-only, ready for M8's order-PAID consumption logic.
+ */
+export type CouponRedemption = Prisma.CouponRedemptionModel
