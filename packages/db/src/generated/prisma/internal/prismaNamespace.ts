@@ -411,6 +411,8 @@ export const ModelName = {
   SystemSettings: 'SystemSettings',
   TenantPaymentConfig: 'TenantPaymentConfig',
   PlatformPaymentConfig: 'PlatformPaymentConfig',
+  SubscriptionInvoice: 'SubscriptionInvoice',
+  PlatformPaymentTransaction: 'PlatformPaymentTransaction',
   WebhookEvent: 'WebhookEvent',
   BankBin: 'BankBin'
 } as const
@@ -428,7 +430,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userProfile" | "refreshToken" | "verificationToken" | "plan" | "cmsPage" | "subscription" | "tenant" | "tenantMember" | "tenantSlugHistory" | "product" | "systemSettings" | "tenantPaymentConfig" | "platformPaymentConfig" | "webhookEvent" | "bankBin"
+    modelProps: "user" | "userProfile" | "refreshToken" | "verificationToken" | "plan" | "cmsPage" | "subscription" | "tenant" | "tenantMember" | "tenantSlugHistory" | "product" | "systemSettings" | "tenantPaymentConfig" | "platformPaymentConfig" | "subscriptionInvoice" | "platformPaymentTransaction" | "webhookEvent" | "bankBin"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1468,6 +1470,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    SubscriptionInvoice: {
+      payload: Prisma.$SubscriptionInvoicePayload<ExtArgs>
+      fields: Prisma.SubscriptionInvoiceFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.SubscriptionInvoiceFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionInvoicePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.SubscriptionInvoiceFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionInvoicePayload>
+        }
+        findFirst: {
+          args: Prisma.SubscriptionInvoiceFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionInvoicePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.SubscriptionInvoiceFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionInvoicePayload>
+        }
+        findMany: {
+          args: Prisma.SubscriptionInvoiceFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionInvoicePayload>[]
+        }
+        create: {
+          args: Prisma.SubscriptionInvoiceCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionInvoicePayload>
+        }
+        createMany: {
+          args: Prisma.SubscriptionInvoiceCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.SubscriptionInvoiceCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionInvoicePayload>[]
+        }
+        delete: {
+          args: Prisma.SubscriptionInvoiceDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionInvoicePayload>
+        }
+        update: {
+          args: Prisma.SubscriptionInvoiceUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionInvoicePayload>
+        }
+        deleteMany: {
+          args: Prisma.SubscriptionInvoiceDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.SubscriptionInvoiceUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.SubscriptionInvoiceUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionInvoicePayload>[]
+        }
+        upsert: {
+          args: Prisma.SubscriptionInvoiceUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionInvoicePayload>
+        }
+        aggregate: {
+          args: Prisma.SubscriptionInvoiceAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateSubscriptionInvoice>
+        }
+        groupBy: {
+          args: Prisma.SubscriptionInvoiceGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SubscriptionInvoiceGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.SubscriptionInvoiceCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SubscriptionInvoiceCountAggregateOutputType> | number
+        }
+      }
+    }
+    PlatformPaymentTransaction: {
+      payload: Prisma.$PlatformPaymentTransactionPayload<ExtArgs>
+      fields: Prisma.PlatformPaymentTransactionFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PlatformPaymentTransactionFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PlatformPaymentTransactionPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PlatformPaymentTransactionFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PlatformPaymentTransactionPayload>
+        }
+        findFirst: {
+          args: Prisma.PlatformPaymentTransactionFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PlatformPaymentTransactionPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PlatformPaymentTransactionFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PlatformPaymentTransactionPayload>
+        }
+        findMany: {
+          args: Prisma.PlatformPaymentTransactionFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PlatformPaymentTransactionPayload>[]
+        }
+        create: {
+          args: Prisma.PlatformPaymentTransactionCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PlatformPaymentTransactionPayload>
+        }
+        createMany: {
+          args: Prisma.PlatformPaymentTransactionCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PlatformPaymentTransactionCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PlatformPaymentTransactionPayload>[]
+        }
+        delete: {
+          args: Prisma.PlatformPaymentTransactionDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PlatformPaymentTransactionPayload>
+        }
+        update: {
+          args: Prisma.PlatformPaymentTransactionUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PlatformPaymentTransactionPayload>
+        }
+        deleteMany: {
+          args: Prisma.PlatformPaymentTransactionDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PlatformPaymentTransactionUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PlatformPaymentTransactionUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PlatformPaymentTransactionPayload>[]
+        }
+        upsert: {
+          args: Prisma.PlatformPaymentTransactionUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PlatformPaymentTransactionPayload>
+        }
+        aggregate: {
+          args: Prisma.PlatformPaymentTransactionAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePlatformPaymentTransaction>
+        }
+        groupBy: {
+          args: Prisma.PlatformPaymentTransactionGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PlatformPaymentTransactionGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PlatformPaymentTransactionCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PlatformPaymentTransactionCountAggregateOutputType> | number
+        }
+      }
+    }
     WebhookEvent: {
       payload: Prisma.$WebhookEventPayload<ExtArgs>
       fields: Prisma.WebhookEventFieldRefs
@@ -1755,6 +1905,7 @@ export const SubscriptionScalarFieldEnum = {
   currentPeriodStart: 'currentPeriodStart',
   currentPeriodEnd: 'currentPeriodEnd',
   graceEndsAt: 'graceEndsAt',
+  periodEndReminderStage: 'periodEndReminderStage',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -1855,6 +2006,38 @@ export const PlatformPaymentConfigScalarFieldEnum = {
 } as const
 
 export type PlatformPaymentConfigScalarFieldEnum = (typeof PlatformPaymentConfigScalarFieldEnum)[keyof typeof PlatformPaymentConfigScalarFieldEnum]
+
+
+export const SubscriptionInvoiceScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  planId: 'planId',
+  code: 'code',
+  provider: 'provider',
+  status: 'status',
+  amountVnd: 'amountVnd',
+  periodStart: 'periodStart',
+  periodEnd: 'periodEnd',
+  dueAt: 'dueAt',
+  paidAt: 'paidAt',
+  checkoutPayload: 'checkoutPayload',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SubscriptionInvoiceScalarFieldEnum = (typeof SubscriptionInvoiceScalarFieldEnum)[keyof typeof SubscriptionInvoiceScalarFieldEnum]
+
+
+export const PlatformPaymentTransactionScalarFieldEnum = {
+  id: 'id',
+  provider: 'provider',
+  amountVnd: 'amountVnd',
+  rawPayload: 'rawPayload',
+  matchedInvoiceId: 'matchedInvoiceId',
+  createdAt: 'createdAt'
+} as const
+
+export type PlatformPaymentTransactionScalarFieldEnum = (typeof PlatformPaymentTransactionScalarFieldEnum)[keyof typeof PlatformPaymentTransactionScalarFieldEnum]
 
 
 export const WebhookEventScalarFieldEnum = {
@@ -2136,6 +2319,20 @@ export type ListEnumPaymentProviderIdFieldRefInput<$PrismaModel> = FieldRefInput
 
 
 /**
+ * Reference to a field of type 'SubscriptionInvoiceStatus'
+ */
+export type EnumSubscriptionInvoiceStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SubscriptionInvoiceStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'SubscriptionInvoiceStatus[]'
+ */
+export type ListEnumSubscriptionInvoiceStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SubscriptionInvoiceStatus[]'>
+    
+
+
+/**
  * Reference to a field of type 'WebhookScope'
  */
 export type EnumWebhookScopeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WebhookScope'>
@@ -2327,6 +2524,8 @@ export type GlobalOmitConfig = {
   systemSettings?: Prisma.SystemSettingsOmit
   tenantPaymentConfig?: Prisma.TenantPaymentConfigOmit
   platformPaymentConfig?: Prisma.PlatformPaymentConfigOmit
+  subscriptionInvoice?: Prisma.SubscriptionInvoiceOmit
+  platformPaymentTransaction?: Prisma.PlatformPaymentTransactionOmit
   webhookEvent?: Prisma.WebhookEventOmit
   bankBin?: Prisma.BankBinOmit
 }

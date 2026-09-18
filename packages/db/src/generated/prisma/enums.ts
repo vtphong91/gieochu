@@ -97,6 +97,16 @@ export const PaymentProviderId = {
 export type PaymentProviderId = (typeof PaymentProviderId)[keyof typeof PaymentProviderId]
 
 
+export const SubscriptionInvoiceStatus = {
+  PENDING: 'PENDING',
+  PAID: 'PAID',
+  EXPIRED: 'EXPIRED',
+  VOID: 'VOID'
+} as const
+
+export type SubscriptionInvoiceStatus = (typeof SubscriptionInvoiceStatus)[keyof typeof SubscriptionInvoiceStatus]
+
+
 export const WebhookScope = {
   PLATFORM: 'PLATFORM',
   TENANT: 'TENANT'

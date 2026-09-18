@@ -65,6 +65,8 @@ export const ModelName = {
   SystemSettings: 'SystemSettings',
   TenantPaymentConfig: 'TenantPaymentConfig',
   PlatformPaymentConfig: 'PlatformPaymentConfig',
+  SubscriptionInvoice: 'SubscriptionInvoice',
+  PlatformPaymentTransaction: 'PlatformPaymentTransaction',
   WebhookEvent: 'WebhookEvent',
   BankBin: 'BankBin'
 } as const
@@ -185,6 +187,7 @@ export const SubscriptionScalarFieldEnum = {
   currentPeriodStart: 'currentPeriodStart',
   currentPeriodEnd: 'currentPeriodEnd',
   graceEndsAt: 'graceEndsAt',
+  periodEndReminderStage: 'periodEndReminderStage',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -285,6 +288,38 @@ export const PlatformPaymentConfigScalarFieldEnum = {
 } as const
 
 export type PlatformPaymentConfigScalarFieldEnum = (typeof PlatformPaymentConfigScalarFieldEnum)[keyof typeof PlatformPaymentConfigScalarFieldEnum]
+
+
+export const SubscriptionInvoiceScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  planId: 'planId',
+  code: 'code',
+  provider: 'provider',
+  status: 'status',
+  amountVnd: 'amountVnd',
+  periodStart: 'periodStart',
+  periodEnd: 'periodEnd',
+  dueAt: 'dueAt',
+  paidAt: 'paidAt',
+  checkoutPayload: 'checkoutPayload',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SubscriptionInvoiceScalarFieldEnum = (typeof SubscriptionInvoiceScalarFieldEnum)[keyof typeof SubscriptionInvoiceScalarFieldEnum]
+
+
+export const PlatformPaymentTransactionScalarFieldEnum = {
+  id: 'id',
+  provider: 'provider',
+  amountVnd: 'amountVnd',
+  rawPayload: 'rawPayload',
+  matchedInvoiceId: 'matchedInvoiceId',
+  createdAt: 'createdAt'
+} as const
+
+export type PlatformPaymentTransactionScalarFieldEnum = (typeof PlatformPaymentTransactionScalarFieldEnum)[keyof typeof PlatformPaymentTransactionScalarFieldEnum]
 
 
 export const WebhookEventScalarFieldEnum = {

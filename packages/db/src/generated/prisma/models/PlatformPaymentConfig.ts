@@ -16,7 +16,10 @@ import type * as Prisma from "../internal/prismaNamespace"
  * Model PlatformPaymentConfig
  * §5.1 Layer System — platform_payment_configs. Same shape as
  * tenant_payment_configs but no tenantId (platform has exactly one config
- * per provider). Table only — UI/business logic land in M3.
+ * per provider). Table created in M7; UI/business logic land in §"M3"
+ * (apps/web/lib/platform-payment.ts) — saving auto-clears isEnabled/
+ * lastVerifiedAt whenever the account/secret identity changes, so a config
+ * never sits "enabled" with credentials nobody has re-confirmed.
  */
 export type PlatformPaymentConfigModel = runtime.Types.Result.DefaultSelection<Prisma.$PlatformPaymentConfigPayload>
 

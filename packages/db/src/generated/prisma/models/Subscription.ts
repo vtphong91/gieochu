@@ -14,16 +14,31 @@ import type * as Prisma from "../internal/prismaNamespace"
 
 /**
  * Model Subscription
- * §5.1 Layer System — SUBSCRIPTIONS. Minimal shape forward-declared here so
- * M4 onboarding can open a TRIALING row; M3 — Subscription và Platform
- * Billing adds invoices, the sweep job, and the rest of the state machine.
+ * §5.1 Layer System — SUBSCRIPTIONS. M4 onboarding opens the TRIALING row;
+ * §"M3" adds invoices, the sweep job (subscription.sweep), and the rest of
+ * the state machine (packages/core/src/billing/subscription-state.ts).
+ * PAST_DUE is declared on SubscriptionStatus but never assigned by M3's
+ * state machine (only TRIALING/ACTIVE/GRACE/EXPIRED/CANCELED per the
+ * mermaid diagram in the spec) — same "declared, unused" pattern as
+ * PlatformInvoiceStatus.VOID in the TaniGos report used to design this
+ * module; left in place rather than removed in case a later phase needs it.
  */
 export type SubscriptionModel = runtime.Types.Result.DefaultSelection<Prisma.$SubscriptionPayload>
 
 export type AggregateSubscription = {
   _count: SubscriptionCountAggregateOutputType | null
+  _avg: SubscriptionAvgAggregateOutputType | null
+  _sum: SubscriptionSumAggregateOutputType | null
   _min: SubscriptionMinAggregateOutputType | null
   _max: SubscriptionMaxAggregateOutputType | null
+}
+
+export type SubscriptionAvgAggregateOutputType = {
+  periodEndReminderStage: number | null
+}
+
+export type SubscriptionSumAggregateOutputType = {
+  periodEndReminderStage: number | null
 }
 
 export type SubscriptionMinAggregateOutputType = {
@@ -34,6 +49,7 @@ export type SubscriptionMinAggregateOutputType = {
   currentPeriodStart: Date | null
   currentPeriodEnd: Date | null
   graceEndsAt: Date | null
+  periodEndReminderStage: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -46,6 +62,7 @@ export type SubscriptionMaxAggregateOutputType = {
   currentPeriodStart: Date | null
   currentPeriodEnd: Date | null
   graceEndsAt: Date | null
+  periodEndReminderStage: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -58,11 +75,20 @@ export type SubscriptionCountAggregateOutputType = {
   currentPeriodStart: number
   currentPeriodEnd: number
   graceEndsAt: number
+  periodEndReminderStage: number
   createdAt: number
   updatedAt: number
   _all: number
 }
 
+
+export type SubscriptionAvgAggregateInputType = {
+  periodEndReminderStage?: true
+}
+
+export type SubscriptionSumAggregateInputType = {
+  periodEndReminderStage?: true
+}
 
 export type SubscriptionMinAggregateInputType = {
   id?: true
@@ -72,6 +98,7 @@ export type SubscriptionMinAggregateInputType = {
   currentPeriodStart?: true
   currentPeriodEnd?: true
   graceEndsAt?: true
+  periodEndReminderStage?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -84,6 +111,7 @@ export type SubscriptionMaxAggregateInputType = {
   currentPeriodStart?: true
   currentPeriodEnd?: true
   graceEndsAt?: true
+  periodEndReminderStage?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -96,6 +124,7 @@ export type SubscriptionCountAggregateInputType = {
   currentPeriodStart?: true
   currentPeriodEnd?: true
   graceEndsAt?: true
+  periodEndReminderStage?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -139,6 +168,18 @@ export type SubscriptionAggregateArgs<ExtArgs extends runtime.Types.Extensions.I
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
+   * Select which fields to average
+  **/
+  _avg?: SubscriptionAvgAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
+   * Select which fields to sum
+  **/
+  _sum?: SubscriptionSumAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
    * Select which fields to find the minimum value
   **/
   _min?: SubscriptionMinAggregateInputType
@@ -169,6 +210,8 @@ export type SubscriptionGroupByArgs<ExtArgs extends runtime.Types.Extensions.Int
   take?: number
   skip?: number
   _count?: SubscriptionCountAggregateInputType | true
+  _avg?: SubscriptionAvgAggregateInputType
+  _sum?: SubscriptionSumAggregateInputType
   _min?: SubscriptionMinAggregateInputType
   _max?: SubscriptionMaxAggregateInputType
 }
@@ -181,9 +224,12 @@ export type SubscriptionGroupByOutputType = {
   currentPeriodStart: Date
   currentPeriodEnd: Date
   graceEndsAt: Date | null
+  periodEndReminderStage: number | null
   createdAt: Date
   updatedAt: Date
   _count: SubscriptionCountAggregateOutputType | null
+  _avg: SubscriptionAvgAggregateOutputType | null
+  _sum: SubscriptionSumAggregateOutputType | null
   _min: SubscriptionMinAggregateOutputType | null
   _max: SubscriptionMaxAggregateOutputType | null
 }
@@ -214,6 +260,7 @@ export type SubscriptionWhereInput = {
   currentPeriodStart?: Prisma.DateTimeFilter<"Subscription"> | Date | string
   currentPeriodEnd?: Prisma.DateTimeFilter<"Subscription"> | Date | string
   graceEndsAt?: Prisma.DateTimeNullableFilter<"Subscription"> | Date | string | null
+  periodEndReminderStage?: Prisma.IntNullableFilter<"Subscription"> | number | null
   createdAt?: Prisma.DateTimeFilter<"Subscription"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Subscription"> | Date | string
   tenant?: Prisma.XOR<Prisma.TenantScalarRelationFilter, Prisma.TenantWhereInput>
@@ -228,6 +275,7 @@ export type SubscriptionOrderByWithRelationInput = {
   currentPeriodStart?: Prisma.SortOrder
   currentPeriodEnd?: Prisma.SortOrder
   graceEndsAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  periodEndReminderStage?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   tenant?: Prisma.TenantOrderByWithRelationInput
@@ -245,6 +293,7 @@ export type SubscriptionWhereUniqueInput = Prisma.AtLeast<{
   currentPeriodStart?: Prisma.DateTimeFilter<"Subscription"> | Date | string
   currentPeriodEnd?: Prisma.DateTimeFilter<"Subscription"> | Date | string
   graceEndsAt?: Prisma.DateTimeNullableFilter<"Subscription"> | Date | string | null
+  periodEndReminderStage?: Prisma.IntNullableFilter<"Subscription"> | number | null
   createdAt?: Prisma.DateTimeFilter<"Subscription"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Subscription"> | Date | string
   tenant?: Prisma.XOR<Prisma.TenantScalarRelationFilter, Prisma.TenantWhereInput>
@@ -259,11 +308,14 @@ export type SubscriptionOrderByWithAggregationInput = {
   currentPeriodStart?: Prisma.SortOrder
   currentPeriodEnd?: Prisma.SortOrder
   graceEndsAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  periodEndReminderStage?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.SubscriptionCountOrderByAggregateInput
+  _avg?: Prisma.SubscriptionAvgOrderByAggregateInput
   _max?: Prisma.SubscriptionMaxOrderByAggregateInput
   _min?: Prisma.SubscriptionMinOrderByAggregateInput
+  _sum?: Prisma.SubscriptionSumOrderByAggregateInput
 }
 
 export type SubscriptionScalarWhereWithAggregatesInput = {
@@ -277,6 +329,7 @@ export type SubscriptionScalarWhereWithAggregatesInput = {
   currentPeriodStart?: Prisma.DateTimeWithAggregatesFilter<"Subscription"> | Date | string
   currentPeriodEnd?: Prisma.DateTimeWithAggregatesFilter<"Subscription"> | Date | string
   graceEndsAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Subscription"> | Date | string | null
+  periodEndReminderStage?: Prisma.IntNullableWithAggregatesFilter<"Subscription"> | number | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Subscription"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Subscription"> | Date | string
 }
@@ -287,6 +340,7 @@ export type SubscriptionCreateInput = {
   currentPeriodStart: Date | string
   currentPeriodEnd: Date | string
   graceEndsAt?: Date | string | null
+  periodEndReminderStage?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
   tenant: Prisma.TenantCreateNestedOneWithoutSubscriptionInput
@@ -301,6 +355,7 @@ export type SubscriptionUncheckedCreateInput = {
   currentPeriodStart: Date | string
   currentPeriodEnd: Date | string
   graceEndsAt?: Date | string | null
+  periodEndReminderStage?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -311,6 +366,7 @@ export type SubscriptionUpdateInput = {
   currentPeriodStart?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   currentPeriodEnd?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   graceEndsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  periodEndReminderStage?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tenant?: Prisma.TenantUpdateOneRequiredWithoutSubscriptionNestedInput
@@ -325,6 +381,7 @@ export type SubscriptionUncheckedUpdateInput = {
   currentPeriodStart?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   currentPeriodEnd?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   graceEndsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  periodEndReminderStage?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -337,6 +394,7 @@ export type SubscriptionCreateManyInput = {
   currentPeriodStart: Date | string
   currentPeriodEnd: Date | string
   graceEndsAt?: Date | string | null
+  periodEndReminderStage?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -347,6 +405,7 @@ export type SubscriptionUpdateManyMutationInput = {
   currentPeriodStart?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   currentPeriodEnd?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   graceEndsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  periodEndReminderStage?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -359,6 +418,7 @@ export type SubscriptionUncheckedUpdateManyInput = {
   currentPeriodStart?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   currentPeriodEnd?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   graceEndsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  periodEndReminderStage?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -381,8 +441,13 @@ export type SubscriptionCountOrderByAggregateInput = {
   currentPeriodStart?: Prisma.SortOrder
   currentPeriodEnd?: Prisma.SortOrder
   graceEndsAt?: Prisma.SortOrder
+  periodEndReminderStage?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type SubscriptionAvgOrderByAggregateInput = {
+  periodEndReminderStage?: Prisma.SortOrder
 }
 
 export type SubscriptionMaxOrderByAggregateInput = {
@@ -393,6 +458,7 @@ export type SubscriptionMaxOrderByAggregateInput = {
   currentPeriodStart?: Prisma.SortOrder
   currentPeriodEnd?: Prisma.SortOrder
   graceEndsAt?: Prisma.SortOrder
+  periodEndReminderStage?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -405,8 +471,13 @@ export type SubscriptionMinOrderByAggregateInput = {
   currentPeriodStart?: Prisma.SortOrder
   currentPeriodEnd?: Prisma.SortOrder
   graceEndsAt?: Prisma.SortOrder
+  periodEndReminderStage?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type SubscriptionSumOrderByAggregateInput = {
+  periodEndReminderStage?: Prisma.SortOrder
 }
 
 export type SubscriptionNullableScalarRelationFilter = {
@@ -460,6 +531,14 @@ export type EnumSubscriptionStatusFieldUpdateOperationsInput = {
   set?: $Enums.SubscriptionStatus
 }
 
+export type NullableIntFieldUpdateOperationsInput = {
+  set?: number | null
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
+}
+
 export type SubscriptionCreateNestedOneWithoutTenantInput = {
   create?: Prisma.XOR<Prisma.SubscriptionCreateWithoutTenantInput, Prisma.SubscriptionUncheckedCreateWithoutTenantInput>
   connectOrCreate?: Prisma.SubscriptionCreateOrConnectWithoutTenantInput
@@ -498,6 +577,7 @@ export type SubscriptionCreateWithoutPlanInput = {
   currentPeriodStart: Date | string
   currentPeriodEnd: Date | string
   graceEndsAt?: Date | string | null
+  periodEndReminderStage?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
   tenant: Prisma.TenantCreateNestedOneWithoutSubscriptionInput
@@ -510,6 +590,7 @@ export type SubscriptionUncheckedCreateWithoutPlanInput = {
   currentPeriodStart: Date | string
   currentPeriodEnd: Date | string
   graceEndsAt?: Date | string | null
+  periodEndReminderStage?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -551,6 +632,7 @@ export type SubscriptionScalarWhereInput = {
   currentPeriodStart?: Prisma.DateTimeFilter<"Subscription"> | Date | string
   currentPeriodEnd?: Prisma.DateTimeFilter<"Subscription"> | Date | string
   graceEndsAt?: Prisma.DateTimeNullableFilter<"Subscription"> | Date | string | null
+  periodEndReminderStage?: Prisma.IntNullableFilter<"Subscription"> | number | null
   createdAt?: Prisma.DateTimeFilter<"Subscription"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Subscription"> | Date | string
 }
@@ -561,6 +643,7 @@ export type SubscriptionCreateWithoutTenantInput = {
   currentPeriodStart: Date | string
   currentPeriodEnd: Date | string
   graceEndsAt?: Date | string | null
+  periodEndReminderStage?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
   plan: Prisma.PlanCreateNestedOneWithoutSubscriptionsInput
@@ -573,6 +656,7 @@ export type SubscriptionUncheckedCreateWithoutTenantInput = {
   currentPeriodStart: Date | string
   currentPeriodEnd: Date | string
   graceEndsAt?: Date | string | null
+  periodEndReminderStage?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -599,6 +683,7 @@ export type SubscriptionUpdateWithoutTenantInput = {
   currentPeriodStart?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   currentPeriodEnd?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   graceEndsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  periodEndReminderStage?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   plan?: Prisma.PlanUpdateOneRequiredWithoutSubscriptionsNestedInput
@@ -611,6 +696,7 @@ export type SubscriptionUncheckedUpdateWithoutTenantInput = {
   currentPeriodStart?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   currentPeriodEnd?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   graceEndsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  periodEndReminderStage?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -622,6 +708,7 @@ export type SubscriptionCreateManyPlanInput = {
   currentPeriodStart: Date | string
   currentPeriodEnd: Date | string
   graceEndsAt?: Date | string | null
+  periodEndReminderStage?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -632,6 +719,7 @@ export type SubscriptionUpdateWithoutPlanInput = {
   currentPeriodStart?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   currentPeriodEnd?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   graceEndsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  periodEndReminderStage?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tenant?: Prisma.TenantUpdateOneRequiredWithoutSubscriptionNestedInput
@@ -644,6 +732,7 @@ export type SubscriptionUncheckedUpdateWithoutPlanInput = {
   currentPeriodStart?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   currentPeriodEnd?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   graceEndsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  periodEndReminderStage?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -655,6 +744,7 @@ export type SubscriptionUncheckedUpdateManyWithoutPlanInput = {
   currentPeriodStart?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   currentPeriodEnd?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   graceEndsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  periodEndReminderStage?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -669,6 +759,7 @@ export type SubscriptionSelect<ExtArgs extends runtime.Types.Extensions.Internal
   currentPeriodStart?: boolean
   currentPeriodEnd?: boolean
   graceEndsAt?: boolean
+  periodEndReminderStage?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
@@ -683,6 +774,7 @@ export type SubscriptionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   currentPeriodStart?: boolean
   currentPeriodEnd?: boolean
   graceEndsAt?: boolean
+  periodEndReminderStage?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
@@ -697,6 +789,7 @@ export type SubscriptionSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   currentPeriodStart?: boolean
   currentPeriodEnd?: boolean
   graceEndsAt?: boolean
+  periodEndReminderStage?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
@@ -711,11 +804,12 @@ export type SubscriptionSelectScalar = {
   currentPeriodStart?: boolean
   currentPeriodEnd?: boolean
   graceEndsAt?: boolean
+  periodEndReminderStage?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type SubscriptionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tenantId" | "planId" | "status" | "currentPeriodStart" | "currentPeriodEnd" | "graceEndsAt" | "createdAt" | "updatedAt", ExtArgs["result"]["subscription"]>
+export type SubscriptionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tenantId" | "planId" | "status" | "currentPeriodStart" | "currentPeriodEnd" | "graceEndsAt" | "periodEndReminderStage" | "createdAt" | "updatedAt", ExtArgs["result"]["subscription"]>
 export type SubscriptionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
   plan?: boolean | Prisma.PlanDefaultArgs<ExtArgs>
@@ -743,6 +837,13 @@ export type $SubscriptionPayload<ExtArgs extends runtime.Types.Extensions.Intern
     currentPeriodStart: Date
     currentPeriodEnd: Date
     graceEndsAt: Date | null
+    /**
+     * Which pre-expiry reminder (7 or 1 day) was last sent for the CURRENT
+     * period — null means none yet. Reset to null on every period renewal
+     * (subscription-billing.ts markInvoicePaid) and on entering GRACE, so a
+     * later period's reminders always start fresh instead of skipping.
+     */
+    periodEndReminderStage: number | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["subscription"]>
@@ -1177,6 +1278,7 @@ export interface SubscriptionFieldRefs {
   readonly currentPeriodStart: Prisma.FieldRef<"Subscription", 'DateTime'>
   readonly currentPeriodEnd: Prisma.FieldRef<"Subscription", 'DateTime'>
   readonly graceEndsAt: Prisma.FieldRef<"Subscription", 'DateTime'>
+  readonly periodEndReminderStage: Prisma.FieldRef<"Subscription", 'Int'>
   readonly createdAt: Prisma.FieldRef<"Subscription", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Subscription", 'DateTime'>
 }

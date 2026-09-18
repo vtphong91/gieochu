@@ -151,3 +151,24 @@
   tra tài liệu chính thức") — khi nguồn tham khảo tự nó không đáng tin (phát hiện được nhờ tự kiểm chứng bằng
   code thay vì tin bằng mắt), chọn phương án tự xác minh từ gốc (thuật toán chuẩn + cấu trúc đã xác nhận qua
   nhiều nguồn độc lập) thay vì lan truyền một lỗi tiềm ẩn vào bộ test.
+
+## ADR-013 — Dedupe hoá đơn PENDING + tự tắt `PlatformPaymentConfig` khi đổi tài khoản/secret (M3)
+
+- **Bối cảnh:** Trước khi code M3, người dùng đưa một báo cáo kỹ thuật về module payment của một hệ thống
+  khác họ tự xây (TaniGos — `docs/bao-cao-ky-thuat-module-payment-2026-09-18.md`) đã chạy production, yêu cầu
+  dùng làm tham khảo để phát triển module này. Đối chiếu với đặc tả M3 (không mâu thuẫn, chỉ bổ sung 2 điểm
+  đặc tả không nói rõ):
+  1. Đặc tả không nói owner bấm "Gia hạn" nhiều lần liên tiếp (trước khi hoá đơn cũ hết hạn 24h) thì xử lý
+     thế nào.
+  2. Đặc tả không nói khi admin sửa `PlatformPaymentConfig` (đổi số tài khoản/API key) thì cờ `isEnabled`/
+     `lastVerifiedAt` có giữ nguyên hay không.
+- **Quyết định:** (1) `createRenewalInvoice` tái sử dụng hoá đơn `PENDING` còn hạn thay vì tạo hoá đơn mới —
+  đúng pattern `createRenewalInvoice()`/dedupe đã kiểm chứng thật trong báo cáo TaniGos. (2)
+  `savePlatformProviderConfig` tự đặt `isEnabled=false` và xoá `lastVerifiedAt` khi số tài khoản/BIN (hoặc
+  partnerCode MoMo) hay secret thay đổi so với bản đã lưu — đúng cơ chế "tự tắt an toàn" của
+  `config.service.ts` trong báo cáo — admin phải lưu lại lần nữa (đã tích "Bật") để xác nhận cấu hình mới.
+  Sửa các trường không ảnh hưởng định danh tài khoản (tên chủ TK, `authType`...) không kích hoạt việc này.
+- **Lý do:** Cả hai đều là lựa chọn an toàn/đơn giản, không mâu thuẫn với đặc tả M3, và đã được kiểm chứng
+  bằng hệ thống thật trong báo cáo tham khảo — tránh (1) owner tạo nhiều hoá đơn trùng cho cùng một kỳ, (2)
+  một cấu hình thanh toán "đang bật" nhưng thông tin đã đổi chưa ai xác minh lại. Phạm vi áp dụng chỉ ở
+  `PlatformPaymentConfig` (M3); `TenantPaymentConfig` (M7) không đổi để tránh phá test M7 đã chốt.

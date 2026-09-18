@@ -10,3 +10,6 @@ export type { RenderedEmail, VerifyEmailTemplateData } from "./templates/verify-
 
 export { renderResetPasswordEmailTemplate } from "./templates/reset-password";
 export type { ResetPasswordTemplateData } from "./templates/reset-password";
+
+export { renderSubscriptionStatusEmail } from "./templates/subscription-billing";
+export type { SubscriptionEmailStage, SubscriptionStatusEmailData } from "./templates/subscription-billing";

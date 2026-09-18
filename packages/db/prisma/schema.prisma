@@ -130,6 +130,7 @@ model Plan {
   updatedAt     DateTime     @updatedAt
 
   subscriptions Subscription[]
+  invoices      SubscriptionInvoice[]
 
   @@map("plans")
 }
@@ -163,9 +164,14 @@ enum SubscriptionStatus {
   CANCELED
 }
 
-/// §5.1 Layer System — SUBSCRIPTIONS. Minimal shape forward-declared here so
-/// M4 onboarding can open a TRIALING row; M3 — Subscription và Platform
-/// Billing adds invoices, the sweep job, and the rest of the state machine.
+/// §5.1 Layer System — SUBSCRIPTIONS. M4 onboarding opens the TRIALING row;
+/// §"M3" adds invoices, the sweep job (subscription.sweep), and the rest of
+/// the state machine (packages/core/src/billing/subscription-state.ts).
+/// PAST_DUE is declared on SubscriptionStatus but never assigned by M3's
+/// state machine (only TRIALING/ACTIVE/GRACE/EXPIRED/CANCELED per the
+/// mermaid diagram in the spec) — same "declared, unused" pattern as
+/// PlatformInvoiceStatus.VOID in the TaniGos report used to design this
+/// module; left in place rather than removed in case a later phase needs it.
 model Subscription {
   id                 String             @id @default(cuid(2))
   tenantId           String             @unique
@@ -176,6 +182,11 @@ model Subscription {
   currentPeriodStart DateTime
   currentPeriodEnd   DateTime
   graceEndsAt        DateTime?
+  /// Which pre-expiry reminder (7 or 1 day) was last sent for the CURRENT
+  /// period — null means none yet. Reset to null on every period renewal
+  /// (subscription-billing.ts markInvoicePaid) and on entering GRACE, so a
+  /// later period's reminders always start fresh instead of skipping.
+  periodEndReminderStage Int?
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
@@ -209,11 +220,12 @@ model Tenant {
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
-  members        TenantMember[]
-  slugHistory    TenantSlugHistory[]
-  subscription   Subscription?
-  products       Product[]
-  paymentConfigs TenantPaymentConfig[]
+  members             TenantMember[]
+  slugHistory         TenantSlugHistory[]
+  subscription        Subscription?
+  products            Product[]
+  paymentConfigs      TenantPaymentConfig[]
+  subscriptionInvoices SubscriptionInvoice[]
 
   @@map("tenants")
 }
@@ -321,7 +333,10 @@ model TenantPaymentConfig {
 
 /// §5.1 Layer System — platform_payment_configs. Same shape as
 /// tenant_payment_configs but no tenantId (platform has exactly one config
-/// per provider). Table only — UI/business logic land in M3.
+/// per provider). Table created in M7; UI/business logic land in §"M3"
+/// (apps/web/lib/platform-payment.ts) — saving auto-clears isEnabled/
+/// lastVerifiedAt whenever the account/secret identity changes, so a config
+/// never sits "enabled" with credentials nobody has re-confirmed.
 model PlatformPaymentConfig {
   id                String            @id @default(cuid(2))
   provider          PaymentProviderId @unique
@@ -334,6 +349,64 @@ model PlatformPaymentConfig {
   updatedAt         DateTime          @updatedAt
 
   @@map("platform_payment_configs")
+}
+
+enum SubscriptionInvoiceStatus {
+  PENDING
+  PAID
+  EXPIRED
+  VOID
+}
+
+/// §"M3" — SUBSCRIPTION_INVOICES. L1 like Subscription/Plan (billing is
+/// system-managed even though each row references one tenant) — not RLS
+/// protected; access is gated in the application layer by
+/// requireTenantMember (owner reading their own invoices) or requireRole
+/// SYSTEM_ADMIN (admin reviewing pending manual-transfer invoices).
+/// amountVnd/periodStart/periodEnd are snapshotted from the Plan at
+/// creation time — a later price change never rewrites an issued invoice.
+model SubscriptionInvoice {
+  id              String                    @id @default(cuid(2))
+  tenantId        String
+  tenant          Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  planId          String
+  plan            Plan                      @relation(fields: [planId], references: [id])
+  code            String                    @unique
+  provider        PaymentProviderId
+  status          SubscriptionInvoiceStatus @default(PENDING)
+  amountVnd       Int
+  periodStart     DateTime
+  periodEnd       DateTime
+  dueAt           DateTime
+  paidAt          DateTime?
+  /// CheckoutResult (packages/payments) captured once at creation — read
+  /// back by the billing page instead of re-calling the provider (MoMo's
+  /// createCheckout hits their API; QR providers are cheap to recompute but
+  /// stored the same way for a uniform read path).
+  checkoutPayload Json?
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+
+  transactions PlatformPaymentTransaction[]
+
+  @@index([tenantId])
+  @@map("subscription_invoices")
+}
+
+/// §"M3" — PLATFORM_PAYMENT_TRANSACTIONS. Every platform webhook event that
+/// passed signature verification is recorded here, matched or not — the
+/// sequence diagram's "Lệch số tiền hoặc không tìm thấy → lưu UNMATCHED để
+/// admin xử lý" (matchedInvoiceId null = unmatched, admin reviews manually).
+model PlatformPaymentTransaction {
+  id               String               @id @default(cuid(2))
+  provider         PaymentProviderId
+  amountVnd        Int
+  rawPayload       Json
+  matchedInvoiceId String?
+  matchedInvoice   SubscriptionInvoice? @relation(fields: [matchedInvoiceId], references: [id])
+  createdAt        DateTime             @default(now())
+
+  @@map("platform_payment_transactions")
 }
 
 enum WebhookScope {

@@ -4,6 +4,7 @@ import { createJobQueue, QUEUE_NAMES } from "@gieochu/jobs";
 import { createEmailSenderFromEnv, type EmailMessage } from "@gieochu/email";
 import { getEnv } from "@gieochu/config";
 import { logger } from "@gieochu/core";
+import { runSubscriptionSweep } from "./lib/subscription-sweep";
 
 async function main() {
   loadEnv({ path: fileURLToPath(new URL("../../.env", import.meta.url)) });
@@ -14,10 +15,17 @@ async function main() {
 
   await queue.start();
   await queue.ensureQueue(QUEUE_NAMES.EMAIL_SEND);
+  await queue.ensureQueue(QUEUE_NAMES.SUBSCRIPTION_SWEEP);
+  await queue.schedule(QUEUE_NAMES.SUBSCRIPTION_SWEEP, "0 * * * *");
 
   await queue.work<EmailMessage>(QUEUE_NAMES.EMAIL_SEND, async (message) => {
     await sender.send(message);
     logger.info({ to: message.to, subject: message.subject }, "email sent");
+  });
+
+  await queue.work<Record<string, never>>(QUEUE_NAMES.SUBSCRIPTION_SWEEP, async () => {
+    await runSubscriptionSweep();
+    logger.info("subscription sweep ran");
   });
 
   logger.info("worker started, listening for jobs");

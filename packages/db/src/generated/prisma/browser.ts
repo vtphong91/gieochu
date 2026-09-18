@@ -53,9 +53,14 @@ export type Plan = Prisma.PlanModel
 export type CmsPage = Prisma.CmsPageModel
 /**
  * Model Subscription
- * §5.1 Layer System — SUBSCRIPTIONS. Minimal shape forward-declared here so
- * M4 onboarding can open a TRIALING row; M3 — Subscription và Platform
- * Billing adds invoices, the sweep job, and the rest of the state machine.
+ * §5.1 Layer System — SUBSCRIPTIONS. M4 onboarding opens the TRIALING row;
+ * §"M3" adds invoices, the sweep job (subscription.sweep), and the rest of
+ * the state machine (packages/core/src/billing/subscription-state.ts).
+ * PAST_DUE is declared on SubscriptionStatus but never assigned by M3's
+ * state machine (only TRIALING/ACTIVE/GRACE/EXPIRED/CANCELED per the
+ * mermaid diagram in the spec) — same "declared, unused" pattern as
+ * PlatformInvoiceStatus.VOID in the TaniGos report used to design this
+ * module; left in place rather than removed in case a later phase needs it.
  */
 export type Subscription = Prisma.SubscriptionModel
 /**
@@ -105,9 +110,31 @@ export type TenantPaymentConfig = Prisma.TenantPaymentConfigModel
  * Model PlatformPaymentConfig
  * §5.1 Layer System — platform_payment_configs. Same shape as
  * tenant_payment_configs but no tenantId (platform has exactly one config
- * per provider). Table only — UI/business logic land in M3.
+ * per provider). Table created in M7; UI/business logic land in §"M3"
+ * (apps/web/lib/platform-payment.ts) — saving auto-clears isEnabled/
+ * lastVerifiedAt whenever the account/secret identity changes, so a config
+ * never sits "enabled" with credentials nobody has re-confirmed.
  */
 export type PlatformPaymentConfig = Prisma.PlatformPaymentConfigModel
+/**
+ * Model SubscriptionInvoice
+ * §"M3" — SUBSCRIPTION_INVOICES. L1 like Subscription/Plan (billing is
+ * system-managed even though each row references one tenant) — not RLS
+ * protected; access is gated in the application layer by
+ * requireTenantMember (owner reading their own invoices) or requireRole
+ * SYSTEM_ADMIN (admin reviewing pending manual-transfer invoices).
+ * amountVnd/periodStart/periodEnd are snapshotted from the Plan at
+ * creation time — a later price change never rewrites an issued invoice.
+ */
+export type SubscriptionInvoice = Prisma.SubscriptionInvoiceModel
+/**
+ * Model PlatformPaymentTransaction
+ * §"M3" — PLATFORM_PAYMENT_TRANSACTIONS. Every platform webhook event that
+ * passed signature verification is recorded here, matched or not — the
+ * sequence diagram's "Lệch số tiền hoặc không tìm thấy → lưu UNMATCHED để
+ * admin xử lý" (matchedInvoiceId null = unmatched, admin reviews manually).
+ */
+export type PlatformPaymentTransaction = Prisma.PlatformPaymentTransactionModel
 /**
  * Model WebhookEvent
  * §5.2 — webhook_events. Idempotency guard: a provider's event id must only

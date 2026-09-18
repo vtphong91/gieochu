@@ -56,15 +56,19 @@ flowchart TB
     PAY <--> SEPAY & MOMO
 ```
 
-**Trạng thái hiện tại (sau M7):** `PX` (proxy.ts + gate hồ sơ/tenant/admin qua `lib/page-guards.ts`), `STF`
-(storefront công khai `/[tenantSlug]`), `STU` (`/studio`, `/studio/[tenantSlug]`, settings + settings/payments),
-`ADM` (`/admin`: users/tenants/plans/cms/settings — cơ bản, chưa có Platform Payment UI/audit log viewer),
-`MKT` (`/`, `/pricing`, `/p/[slug]`), `AUTH` (đầy đủ: mật khẩu, JWT, RBAC), `PAY` (`packages/payments` — đầy
-đủ MANUAL_QR/SEPAY/MOMO, dùng chung Platform/Tenant qua `PaymentScope`), `CORE` (errors, logger,
-slug/branding/access-policy/membership, admin: lock-decision/plan-validation/cms-blocks/dashboard-summary),
-`DB` (User(+isSuperAdmin)/.../Tenant/TenantMember/TenantSlugHistory/Subscription-tối-thiểu/Product-tối-thiểu/
-SystemSettings/TenantPaymentConfig/PlatformPaymentConfig-bảng-trống/WebhookEvent/BankBin + RLS helpers
-`withTenant/withCustomer/withPublic/withSystemJob` — **có hiệu lực thật**, xem ADR-010), `MAIL`, `JOBS` đã có.
+**Trạng thái hiện tại (sau M3):** `PX` (proxy.ts + gate hồ sơ/tenant/admin qua `lib/page-guards.ts`), `STF`
+(storefront công khai `/[tenantSlug]`), `STU` (`/studio`, `/studio/[tenantSlug]`, settings + settings/payments
++ billing), `ADM` (`/admin`: users/tenants/plans/cms/settings/billing/payment/billing/invoices — cơ bản, audit
+log viewer chờ M12), `MKT` (`/`, `/pricing`, `/p/[slug]`), `AUTH` (đầy đủ: mật khẩu, JWT, RBAC), `PAY`
+(`packages/payments` — đầy đủ MANUAL_QR/SEPAY/MOMO, dùng chung Platform/Tenant qua `PaymentScope`), `CORE`
+(errors, logger, slug/branding/access-policy/membership, admin: lock-decision/plan-validation/cms-blocks/
+dashboard-summary, billing: period/invoice-code/subscription-state/plan-limits), `DB`
+(User(+isSuperAdmin)/.../Tenant/TenantMember/TenantSlugHistory/Subscription(+periodEndReminderStage)/
+Product-tối-thiểu/SystemSettings/TenantPaymentConfig/PlatformPaymentConfig/WebhookEvent/BankBin/
+SubscriptionInvoice/PlatformPaymentTransaction + RLS helpers `withTenant/withCustomer/withPublic/
+withSystemJob` — **có hiệu lực thật**, xem ADR-010; SubscriptionInvoice/PlatformPaymentTransaction là L1,
+không RLS, giống Subscription/Plan), `MAIL`, `JOBS` (nay có `JobQueue.schedule()` cho cron —
+`subscription.sweep` chạy hằng giờ trong `apps/web/worker.ts`) đã có.
 `STO` và phần lớn bảng L2 còn lại (product đầy đủ, order, coupon...) còn là skeleton/tối thiểu chờ module
 tương ứng (xem `docs/PLAN.md`).
 
@@ -133,7 +137,7 @@ flowchart TD
 **Quy tắc bất biến:** `proxy.ts` chỉ chuyển hướng và gắn header. Mọi route handler / server action / server
 component nhạy cảm tự xác thực và phân quyền lại — không tin proxy đã lọc đủ.
 
-## Cấu trúc thư mục (thực tế sau M7)
+## Cấu trúc thư mục (thực tế sau M3)
 
 ```
 .
@@ -142,41 +146,49 @@ component nhạy cảm tự xác thực và phân quyền lại — không tin p
 │       ├── app/
 │       │   ├── (auth)/             # register, login, verify-email, forgot-password, reset-password
 │       │   ├── account/            # profile, security, library (stub)
-│       │   ├── admin/              # dashboard, users, tenants, plans, cms(+[slug]/new), settings
-│       │   ├── studio/             # onboarding, dashboard, settings (+ settings/payments — M7)
+│       │   ├── admin/              # dashboard, users, tenants, plans, cms(+[slug]/new), settings,
+│       │   │                       # billing/payment, billing/invoices (M3)
+│       │   ├── studio/             # onboarding, dashboard, settings (+ settings/payments — M7,
+│       │   │                       # + billing — M3)
 │       │   ├── [tenantSlug]/       # storefront công khai
 │       │   ├── pricing/, p/[slug]/ # trang công khai (M2)
 │       │   ├── api/
 │       │   │   ├── auth/           # register, login, refresh, logout, verify-email, resend-verification,
 │       │   │   │                   # forgot-password, reset-password
 │       │   │   ├── admin/          # dashboard (GET, aggregate-only)
-│       │   │   ├── webhooks/tenants/[tenantId]/[provider]/  # M7: verify + idempotent accept
+│       │   │   ├── webhooks/tenants/[tenantId]/[provider]/   # M7: verify + idempotent accept
+│       │   │   ├── webhooks/platform/[provider]/             # M3: verify + match invoice + PAID
 │       │   │   └── me/
 │       │   └── layout.tsx, page.tsx (marketing shell)
 │       ├── lib/                    # cookies, session, page-guards (+admin/tenant-page guards),
 │       │                           # tenant, create-tenant, storefront, admin-dashboard, admin-users,
-│       │                           # tenant-payment (M7), pricing, rate-limit, jobs, jwt-context, duration
+│       │                           # tenant-payment (M7), platform-payment/subscription-billing/
+│       │                           # subscription-sweep/tenant-write-guard (M3), pricing, rate-limit,
+│       │                           # jobs, jwt-context, duration
 │       ├── proxy.ts
-│       ├── worker.ts               # pg-boss worker: xử lý job email.send (khung M11)
-│       ├── tests/integration/      # Vitest — auth (8), tenant (5), admin (4), tenant-payment (4)
+│       ├── worker.ts               # pg-boss worker: email.send (M11) + subscription.sweep cron (M3)
+│       ├── tests/integration/      # Vitest — auth (8), tenant (5), admin (4), tenant-payment (4),
+│       │                           # subscription-billing (5)
 │       ├── next.config.ts          # CSP/security headers
 │       └── vitest.config.ts
 ├── packages/
 │   ├── auth/        # password, JWT access token, refresh/verification token, RBAC (M1)
 │   ├── core/         # errors, logger (M0); tenant/ slug-branding-access-membership (M4);
 │   │                 # admin/ lock-decision-plan-validation-cms-blocks-dashboard-summary (M2);
+│   │                 # billing/ period-invoice_code-subscription_state-plan_limits (M3);
 │   │                 # pricing/order-FSM ở M6/M8
 │   ├── payments/    # PaymentProvider (PaymentScope-agnostic), encryption, vietqr, providers/
 │   │                # (manual-qr/sepay/momo), registry (M7)
 │   ├── db/          # schema.prisma (User(+isSuperAdmin)/.../Tenant/TenantMember/TenantSlugHistory/
-│   │                # Subscription-tối-thiểu/Product-tối-thiểu/Plan/CmsPage/SystemSettings/
-│   │                # TenantPaymentConfig/PlatformPaymentConfig/WebhookEvent/BankBin),
+│   │                # Subscription(+periodEndReminderStage)/Product-tối-thiểu/Plan/CmsPage/
+│   │                # SystemSettings/TenantPaymentConfig/PlatformPaymentConfig/WebhookEvent/BankBin/
+│   │                # SubscriptionInvoice/PlatformPaymentTransaction — M3),
 │   │                # prisma.config.ts, client.ts, rls.ts (withTenant/withCustomer/withPublic/
 │   │                # withSystemJob), seed.ts, prisma/migrations/,
 │   │                # scripts/setup-app-role.mts (tạo role Postgres riêng cho app — ADR-010)
 │   ├── storage/     # skeleton — M5
-│   ├── email/       # EmailSender (SMTP/Resend) + template kích hoạt/reset mật khẩu (khung M11, M1 dùng)
-│   ├── jobs/        # pg-boss queue wrapper (khung M11, M1 dùng)
+│   ├── email/       # EmailSender (SMTP/Resend) + template kích hoạt/reset mật khẩu/subscription-billing (M3)
+│   ├── jobs/        # pg-boss queue wrapper — send() (M1) + schedule() cron (M3)
 │   └── config/      # env.ts (zod), brand.ts, eslint-preset.mjs
 ├── docker/
 │   └── docker-compose.yml         # minio (+createbuckets), mailpit, postgres (profile local-db)
@@ -185,10 +197,12 @@ component nhạy cảm tự xác thực và phân quyền lại — không tin p
 │   ├── PLAN.md
 │   ├── DECISIONS.md
 │   ├── BACKLOG.md
+│   ├── bao-cao-ky-thuat-module-payment-2026-09-18.md   # báo cáo tham khảo do người dùng cung cấp (M3)
 │   └── modules/
 │       ├── M0.md
 │       ├── M1.md
 │       ├── M2.md
+│       ├── M3.md
 │       ├── M4.md
 │       └── M7.md
 ├── scripts/count-tests.mjs

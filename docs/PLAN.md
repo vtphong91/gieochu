@@ -17,7 +17,7 @@ M0 → M1 (kèm khung email M11) → M4 → M2 (phần cơ bản) → M7 → M3 
 | M4 | Tenant Workspace và Storefront | ✅ Xong | `apps/web/app/[tenantSlug]`, `apps/web/app/studio`, `packages/db/src/rls.ts` | 6 / 5 |
 | M2 | System Admin (cơ bản) | ✅ Xong (cơ bản — Platform Payment UI + audit log viewer chờ M7/M12) | `apps/web/app/admin`, `packages/core/src/admin` | 4 / 4 |
 | M7 | Cấu hình Tenant Payment | ✅ Xong | `packages/payments` | 10 / 4 |
-| M3 | Subscription và Platform Billing | ⬜ Chưa làm | billing service + jobs | 10 / 5 |
+| M3 | Subscription và Platform Billing | ✅ Xong | `apps/web/lib/subscription-billing.ts`, `subscription-sweep.ts`, `platform-payment.ts`, `packages/core/src/billing` | 10 / 5 |
 | M5 | Sản phẩm và File tài liệu | ⬜ Chưa làm | `packages/storage`, product CRUD | 6 / 4 |
 | M6 | Giá và Khuyến mãi | ⬜ Chưa làm | `packages/core/pricing` | 14 / 2 |
 | M8 | Checkout và Đơn hàng | ⬜ Chưa làm | order service, webhooks | 10 / 8 |
@@ -148,6 +148,26 @@ với user thường xác nhận bị 404.
 integration cộng dồn); `curl` xác nhận trang cấu hình thanh toán chưa đăng nhập → 307, webhook tới tenant
 chưa cấu hình → 404.
 
+## M3 — Việc đã làm (xem docs/modules/M3.md để có sơ đồ và danh sách test đầy đủ)
+
+- Trước khi code, đối chiếu với báo cáo kỹ thuật payment của một hệ thống khác do người dùng cung cấp
+  (TaniGos, đã chạy production) — áp dụng 2 pattern an toàn không mâu thuẫn đặc tả (dedupe hoá đơn PENDING,
+  tự tắt `PlatformPaymentConfig` khi đổi tài khoản/secret — ADR-013), giữ nguyên theo đặc tả Gieo Chữ ở những
+  điểm khác biệt cố ý (không proration, sweep qua pg-boss cron in-process thay vì HTTP cron).
+- `packages/core/src/billing`: tính kỳ (tháng/năm, clamp cuối tháng), mã hoá đơn, máy trạng thái subscription
+  (ném lỗi khi chuyển sai), kiểm tra giới hạn gói — 10/10 unit test.
+- Schema: `SubscriptionInvoice`, `PlatformPaymentTransaction` (cả hai L1, không RLS — như `Subscription`),
+  `Subscription.periodEndReminderStage`.
+- `apps/web/lib`: `platform-payment.ts`, `subscription-billing.ts` (tạo hoá đơn + áp dụng thanh toán),
+  `subscription-sweep.ts` (job hằng giờ), `tenant-write-guard.ts`.
+- Trang `/studio/[tenantSlug]/billing`, `/admin/billing/payment`, `/admin/billing/invoices`; route
+  `POST /api/webhooks/platform/[provider]`; job `subscription.sweep` đăng ký cron qua `packages/jobs`
+  (thêm `JobQueue.schedule()`).
+
+**Đã xác minh chạy được trong phiên này:** `pnpm lint/typecheck/test/build` xanh toàn bộ (50/91 unit, 26/50
+integration cộng dồn); `curl` xác nhận `/studio/.../billing` và `/admin/billing/*` chưa đăng nhập → 307,
+webhook platform SePay/MoMo chưa cấu hình → 404, MANUAL_QR → 404 (không có webhook).
+
 ## Câu hỏi còn mở (đã chọn phương án an toàn, xem ADR tương ứng)
 
 - ID strategy: cuid2 (ADR-001).
@@ -160,5 +180,7 @@ chưa cấu hình → 404.
   dùng `PRISMA_MIGRATE_URL` riêng (ADR-010).
 - `platform_payment_configs` tạo sớm ở M7 (bảng trống, chưa UI) để test webhook cross-scope đúng nghĩa đen —
   đã hỏi người dùng trước khi làm (ADR-011).
+- Dedupe hoá đơn `PENDING` + tự tắt `PlatformPaymentConfig` khi đổi tài khoản/secret ở M3, theo báo cáo tham
+  khảo TaniGos người dùng cung cấp (ADR-013).
 - Chưa hỏi người dùng các quyết định ảnh hưởng tiền/bảo mật/dữ liệu cá nhân — sẽ dừng lại đúng lúc theo mục
   0.6 khi gặp.

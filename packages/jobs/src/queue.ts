@@ -6,6 +6,8 @@ import { PgBoss } from "pg-boss";
  */
 export const QUEUE_NAMES = {
   EMAIL_SEND: "email.send",
+  /** §"M3" — hourly sweep: subscription GRACE/EXPIRED transitions, reminder emails, invoice expiry. */
+  SUBSCRIPTION_SWEEP: "subscription.sweep",
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
@@ -18,6 +20,8 @@ export interface JobQueue {
   ensureQueue(name: QueueName): Promise<void>;
   send<T extends object>(name: QueueName, data: T): Promise<string | null>;
   work<T extends object>(name: QueueName, handler: (data: T) => Promise<void>): Promise<void>;
+  /** Registers a recurring job (cron, UTC) — idempotent to call on every worker start. */
+  schedule(name: QueueName, cron: string): Promise<void>;
 }
 
 /**
@@ -48,6 +52,9 @@ export function createJobQueue(directConnectionString: string): JobQueue {
           await handler(job.data);
         }
       });
+    },
+    async schedule(name, cron) {
+      await boss.schedule(name, cron, null, { tz: "UTC" });
     },
   };
 }
