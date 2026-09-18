@@ -113,6 +113,19 @@ export type ProductFile = Prisma.ProductFileModel
  */
 export type SystemSettings = Prisma.SystemSettingsModel
 /**
+ * Model SystemStorageConfig
+ * §"M5": SYSTEM_STORAGE_CONFIG. Single row — the platform has exactly one
+ * object storage account (R2 in prod). Configured via System Admin
+ * (/admin/settings/storage) instead of static env vars, same
+ * publicConfig+encryptedSecrets shape and masking rules as
+ * PlatformPaymentConfig (§7.3) — but encrypted with its own
+ * STORAGE_ENCRYPTION_KEY, never PAYMENT_ENCRYPTION_KEY, so a leaked key
+ * only ever exposes one secret domain (ADR-017). `publicConfig` holds
+ * { endpoint, region, bucketPrivate, bucketPublic, publicBaseUrl? };
+ * `encryptedSecrets` holds { accessKeyId, secretAccessKey }.
+ */
+export type SystemStorageConfig = Prisma.SystemStorageConfigModel
+/**
  * Model TenantPaymentConfig
  * §5.2 — TENANT_PAYMENT_CONFIGS. L2 (tenantId), RLS-protected like
  * products/tenant_members (packages/db/prisma/migrations/*_rls_m7/).

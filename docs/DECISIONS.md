@@ -222,3 +222,26 @@
   cơ chế hydrate nội bộ của Next.js hoạt động — không phải lựa chọn giữa nhiều phương án, mà là sửa đúng theo
   khuyến nghị chính thức của framework. Ghi ADR vì đổi vị trí cấu hình bảo mật (CSP) khỏi nơi đặc tả gốc nhắc
   tới (`next.config.ts`, mục 7.8) sang `proxy.ts`.
+
+## ADR-017 — Cấu hình storage (endpoint/bucket/access key R2) quản lý qua System Admin + DB mã hoá, không phải biến môi trường
+
+- **Bối cảnh:** Người dùng yêu cầu tường minh "phát triển hạ tầng cấu hình upload ở Module system" thay vì
+  đặt cứng qua `.env` như kế hoạch M5 gốc. Đã trình bày đánh đổi trước khi làm (mục 0.6 — ảnh hưởng bảo mật):
+  access key/secret của storage có quyền đọc/ghi/xoá **toàn bộ file của mọi tenant** — nhạy cảm hơn secret
+  thanh toán từng tenant (chỉ ảnh hưởng 1 tenant/1 phương thức). Đưa vào DB (dù mã hoá) mở rộng bề mặt tấn
+  công so với chỉ để trong biến môi trường.
+- **Quyết định:** Người dùng chọn quản lý qua System Admin (`/admin/settings/storage`), giống hệt pattern
+  `PlatformPaymentConfig` (M3/M7): bảng `SystemStorageConfig` (1 dòng, `publicConfig` + `encryptedSecrets`),
+  form nhập, nút "Kiểm tra kết nối" (gọi `HeadBucketCommand` thật lên cả 2 bucket), cơ chế tự tắt khi đổi
+  endpoint/bucket/access key (giống ADR-013). **Mã hoá bằng key riêng `STORAGE_ENCRYPTION_KEY`, không dùng
+  chung `PAYMENT_ENCRYPTION_KEY`** — lộ 1 key chỉ lộ đúng 1 miền secret, không lộ cả hai. 7 biến `S3_*` cũ
+  (endpoint/region/access key/secret/2 bucket/public base URL) xoá khỏi `env.ts` — không còn ai đọc trực
+  tiếp; `PRESIGN_*_TTL_SECONDS`/`CLAMAV_HOST`/`DEFAULT_DOWNLOAD_LIMIT` (tham số vận hành, không phải bí mật
+  hạ tầng) vẫn giữ trong env.
+- **Tác dụng phụ tích cực đã tận dụng:** hàm mã hoá AES-256-GCM generic (`encryptSecret`/`decryptSecret`/
+  `maskSecret`) trước đây nằm trong `packages/payments` (chỉ vì đó là nơi dùng đầu tiên ở M7) được chuyển
+  sang `packages/core/src/crypto/` — nơi trung lập, dùng chung được cho cả payments lẫn storage — thay vì
+  storage phải phụ thuộc ngược vào package payments để lấy hàm mã hoá không liên quan gì tới thanh toán.
+- **Lý do:** Người dùng đã cân nhắc đánh đổi bảo mật và chọn linh hoạt vận hành (đổi credential không cần
+  redeploy, tự phục vụ qua UI, không phải gửi secret qua tay tôi để sửa `.env`) — đồng thời có sẵn cơ chế
+  giảm rủi ro tương đương phần thanh toán (mã hoá + tự tắt khi thay đổi) nên chấp nhận được.

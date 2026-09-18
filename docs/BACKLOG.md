@@ -118,8 +118,8 @@ hoá đơn điện tử, đa tiền tệ, partition/backup/giám sát vận hàn
 
 ## Phát sinh trong lúc dựng M5 (phần 1 — metadata/CRUD, xem ADR-014)
 
-- **Toàn bộ phần upload/storage thật của M5**: `packages/storage` cần `s3-client.ts` (S3Client trỏ R2,
-  `forcePathStyle: true`) + `presign.ts` (PUT đơn cho file ≤ 50MB, multipart cho file lớn hơn — part 10MB,
+- **Phần upload thật của M5 (presign/complete/file.scan)**: `s3-client.ts` **đã có** (hạ tầng cấu hình, xem
+  ADR-017) — còn thiếu `presign.ts` (PUT đơn cho file ≤ 50MB, multipart cho file lớn hơn — part 10MB,
   `createPresignedMultipartUpload`/`completeMultipartUpload`, `headObject`, `deleteObject`,
   `createPresignedDownload` cho M9). Route `POST /api/studio/[tenantSlug]/uploads/presign` +
   `POST /api/studio/[tenantSlug]/uploads/complete`. Job `file.scan` (`QUEUE_NAMES.FILE_SCAN` — tên đã định,
@@ -127,7 +127,8 @@ hoá đơn điện tử, đa tiền tệ, partition/backup/giám sát vận hàn
   `sha256` streaming toàn file, so khớp qua `matchesDeclaredExtension()` (đã có), sai → xoá object +
   `scanStatus=REJECTED` + trừ `storageUsedBytes` (`applyStorageDelta()` đã có) + email báo owner (template
   mới trong `packages/email`); không có `CLAMAV_HOST` → `CLEAN` + log cảnh báo (**cần ghi ADR khi làm**, đúng
-  gợi ý trong đặc tả — chưa ghi vì logic thật chưa tồn tại).
+  gợi ý trong đặc tả — chưa ghi vì logic thật chưa tồn tại). Tất cả các hàm này đọc credential qua
+  `apps/web/lib/system-storage.ts` (DB), không còn qua biến môi trường (ADR-017).
 - **2/4 integration test M5 còn thiếu**: "Presign chỉ trả URL cho owner của tenant", "`complete` ghi
   `product_files` và enqueue job quét" — cần R2/MinIO thật để chạy `HeadObject`.
 - **Upload ảnh bìa (`coverImageKey`) trong Studio product editor**: UI vẫn chưa có cách đặt `coverImageKey`
@@ -164,3 +165,13 @@ lộ ra 2 lỗi cả 2 đều tồn tại từ trước, không riêng module n�
   chính thức của Next.js. `next.config.ts` giờ chỉ còn 2 header tĩnh (X-Content-Type-Options, Referrer-Policy).
   **Bài học**: `curl` không thay thế được việc tải trang qua trình duyệt thật — lỗi này lẽ ra đã lộ ra từ M1
   nếu có bước test tay qua trình duyệt sớm hơn.
+
+## Phát sinh khi xây hạ tầng cấu hình storage ở System Admin (ADR-017)
+
+- **`docker-compose.yml` MinIO giờ không còn được app đọc tới**: 7 biến `S3_*` đã xoá khỏi `env.ts`, cấu hình
+  storage giờ hoàn toàn qua `SystemStorageConfig` (DB). Service `minio`/`minio-createbuckets` trong
+  `docker-compose.yml` vẫn còn khai báo nhưng không ai dùng — có thể dọn bỏ, hoặc giữ lại cho ai muốn tự host
+  MinIO test riêng (không bắt buộc, không ảnh hưởng đúng đắn hệ thống).
+- **`/admin/settings/storage` chưa test tự động**: xem ghi chú ở `docs/modules/M5.md` — hạ tầng mới ngoài
+  bảng test mục 9 gốc, cố ý không thêm test tự động nếu chưa hỏi lại người dùng. Verify bằng tay khi có
+  credential R2 thật.

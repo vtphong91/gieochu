@@ -14,11 +14,7 @@ function validEnv(overrides: Record<string, string | undefined> = {}) {
     JWT_ISSUER: "gieochu",
     JWT_AUDIENCE: "gieochu-web",
     PAYMENT_ENCRYPTION_KEY: "b".repeat(32),
-    S3_ENDPOINT: "http://localhost:9000",
-    S3_ACCESS_KEY_ID: "minio",
-    S3_SECRET_ACCESS_KEY: "minio123",
-    S3_BUCKET_PRIVATE: "gieochu-private",
-    S3_BUCKET_PUBLIC: "gieochu-public",
+    STORAGE_ENCRYPTION_KEY: "c".repeat(32),
     EMAIL_FROM: "Gieo Chữ <no-reply@gieochu.net>",
     ...overrides,
   };

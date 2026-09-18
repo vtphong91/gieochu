@@ -410,6 +410,7 @@ export const ModelName = {
   Product: 'Product',
   ProductFile: 'ProductFile',
   SystemSettings: 'SystemSettings',
+  SystemStorageConfig: 'SystemStorageConfig',
   TenantPaymentConfig: 'TenantPaymentConfig',
   PlatformPaymentConfig: 'PlatformPaymentConfig',
   SubscriptionInvoice: 'SubscriptionInvoice',
@@ -431,7 +432,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userProfile" | "refreshToken" | "verificationToken" | "plan" | "cmsPage" | "subscription" | "tenant" | "tenantMember" | "tenantSlugHistory" | "product" | "productFile" | "systemSettings" | "tenantPaymentConfig" | "platformPaymentConfig" | "subscriptionInvoice" | "platformPaymentTransaction" | "webhookEvent" | "bankBin"
+    modelProps: "user" | "userProfile" | "refreshToken" | "verificationToken" | "plan" | "cmsPage" | "subscription" | "tenant" | "tenantMember" | "tenantSlugHistory" | "product" | "productFile" | "systemSettings" | "systemStorageConfig" | "tenantPaymentConfig" | "platformPaymentConfig" | "subscriptionInvoice" | "platformPaymentTransaction" | "webhookEvent" | "bankBin"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1397,6 +1398,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    SystemStorageConfig: {
+      payload: Prisma.$SystemStorageConfigPayload<ExtArgs>
+      fields: Prisma.SystemStorageConfigFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.SystemStorageConfigFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemStorageConfigPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.SystemStorageConfigFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemStorageConfigPayload>
+        }
+        findFirst: {
+          args: Prisma.SystemStorageConfigFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemStorageConfigPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.SystemStorageConfigFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemStorageConfigPayload>
+        }
+        findMany: {
+          args: Prisma.SystemStorageConfigFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemStorageConfigPayload>[]
+        }
+        create: {
+          args: Prisma.SystemStorageConfigCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemStorageConfigPayload>
+        }
+        createMany: {
+          args: Prisma.SystemStorageConfigCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.SystemStorageConfigCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemStorageConfigPayload>[]
+        }
+        delete: {
+          args: Prisma.SystemStorageConfigDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemStorageConfigPayload>
+        }
+        update: {
+          args: Prisma.SystemStorageConfigUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemStorageConfigPayload>
+        }
+        deleteMany: {
+          args: Prisma.SystemStorageConfigDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.SystemStorageConfigUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.SystemStorageConfigUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemStorageConfigPayload>[]
+        }
+        upsert: {
+          args: Prisma.SystemStorageConfigUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemStorageConfigPayload>
+        }
+        aggregate: {
+          args: Prisma.SystemStorageConfigAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateSystemStorageConfig>
+        }
+        groupBy: {
+          args: Prisma.SystemStorageConfigGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SystemStorageConfigGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.SystemStorageConfigCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SystemStorageConfigCountAggregateOutputType> | number
+        }
+      }
+    }
     TenantPaymentConfig: {
       payload: Prisma.$TenantPaymentConfigPayload<ExtArgs>
       fields: Prisma.TenantPaymentConfigFieldRefs
@@ -2079,6 +2154,19 @@ export const SystemSettingsScalarFieldEnum = {
 export type SystemSettingsScalarFieldEnum = (typeof SystemSettingsScalarFieldEnum)[keyof typeof SystemSettingsScalarFieldEnum]
 
 
+export const SystemStorageConfigScalarFieldEnum = {
+  id: 'id',
+  isEnabled: 'isEnabled',
+  publicConfig: 'publicConfig',
+  encryptedSecrets: 'encryptedSecrets',
+  lastVerifiedAt: 'lastVerifiedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SystemStorageConfigScalarFieldEnum = (typeof SystemStorageConfigScalarFieldEnum)[keyof typeof SystemStorageConfigScalarFieldEnum]
+
+
 export const TenantPaymentConfigScalarFieldEnum = {
   id: 'id',
   tenantId: 'tenantId',
@@ -2653,6 +2741,7 @@ export type GlobalOmitConfig = {
   product?: Prisma.ProductOmit
   productFile?: Prisma.ProductFileOmit
   systemSettings?: Prisma.SystemSettingsOmit
+  systemStorageConfig?: Prisma.SystemStorageConfigOmit
   tenantPaymentConfig?: Prisma.TenantPaymentConfigOmit
   platformPaymentConfig?: Prisma.PlatformPaymentConfigOmit
   subscriptionInvoice?: Prisma.SubscriptionInvoiceOmit

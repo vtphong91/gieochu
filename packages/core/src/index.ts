@@ -14,6 +14,8 @@ export type { AppErrorOptions, ErrorResponseBody } from "./errors";
 export { createLogger, logger, loggerWithRequestId } from "./logger";
 export type { CreateLoggerOptions } from "./logger";
 
+export { decryptSecret, encryptSecret, maskSecret } from "./crypto/encryption";
+
 export { isReservedSlug, RESERVED_SLUGS, slugify } from "./tenant/slug";
 export { generateOrderCodePrefix, isValidOrderCodePrefix } from "./tenant/order-code-prefix";
 export { isValidHexColor, isValidSocialLink } from "./tenant/branding";

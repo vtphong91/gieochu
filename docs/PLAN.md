@@ -188,6 +188,25 @@ webhook platform SePay/MoMo chưa cấu hình → 404, MANUAL_QR → 404 (không
 integration cộng dồn); `curl` xác nhận các trang Studio sản phẩm chưa đăng nhập → 307. **Chưa verify được**:
 "upload file lớn qua multipart", "file giả mạo đuôi bị từ chối" (nghiệm thu gốc M5) — thuộc phần hoãn lại.
 
+## M5 — Hạ tầng cấu hình upload ở System Admin (thay đổi hướng so với ADR-014)
+
+Người dùng yêu cầu tường minh chuyển cấu hình storage (endpoint/bucket/access key R2) sang quản lý qua
+System Admin thay vì biến môi trường tĩnh — đã trình bày đánh đổi bảo mật trước khi làm (ADR-017).
+
+- Bảng `SystemStorageConfig` (1 dòng, mã hoá `encryptedSecrets` bằng `STORAGE_ENCRYPTION_KEY` riêng — không
+  dùng chung `PAYMENT_ENCRYPTION_KEY`), cùng pattern tự tắt khi đổi credential như `PlatformPaymentConfig`.
+- Refactor: `encryptSecret`/`decryptSecret`/`maskSecret` chuyển từ `packages/payments` sang
+  `packages/core/src/crypto/` (dùng chung được, không còn gắn riêng với thanh toán).
+- `packages/storage`: `s3-client.ts` (`createS3Client`), `connection-test.ts` (`testS3Connection` — gọi
+  `HeadBucketCommand` thật).
+- `apps/web/lib/system-storage.ts` + trang `/admin/settings/storage` (form + nút "Kiểm tra kết nối").
+- 7 biến `S3_*` cũ xoá khỏi `env.ts` (không còn ai đọc trực tiếp).
+
+**Chưa thêm test tự động** (giữ đúng kỷ luật không đổi số lượng test mục 9 nếu chưa hỏi — đây là hạ tầng mới
+ngoài phạm vi bảng gốc) — verify bằng tay: `pnpm lint/typecheck/test/build` xanh (56/91 unit, 28/50
+integration — không đổi), `curl` xác nhận `/admin/settings/storage` chưa đăng nhập → 307. Việc nhập credential
+R2 thật + bấm "Kiểm tra kết nối" cần người dùng tự làm qua trình duyệt (chưa verify được từ phía tôi).
+
 ## Câu hỏi còn mở (đã chọn phương án an toàn, xem ADR tương ứng)
 
 - ID strategy: cuid2 (ADR-001).
@@ -204,5 +223,9 @@ integration cộng dồn); `curl` xác nhận các trang Studio sản phẩm ch�
   khảo TaniGos người dùng cung cấp (ADR-013).
 - M5 chia 2 phần (metadata/CRUD trước, upload/storage R2 thật sau) vì máy code không có Docker — đã hỏi
   người dùng trước khi làm (ADR-014).
+- CSP chuyển sang sinh động (nonce) trong `proxy.ts` thay vì header tĩnh trong `next.config.ts` — sửa lỗi
+  chặn hydrate React phát hiện khi test qua trình duyệt thật (ADR-016).
+- Cấu hình storage (endpoint/bucket/access key R2) quản lý qua System Admin + DB mã hoá thay vì biến môi
+  trường — đã trình bày đánh đổi bảo mật rồi hỏi người dùng trước khi làm (ADR-017).
 - Chưa hỏi người dùng các quyết định ảnh hưởng tiền/bảo mật/dữ liệu cá nhân — sẽ dừng lại đúng lúc theo mục
   0.6 khi gặp.

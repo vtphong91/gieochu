@@ -357,6 +357,27 @@ model SystemSettings {
   @@map("system_settings")
 }
 
+/// §"M5": SYSTEM_STORAGE_CONFIG. Single row — the platform has exactly one
+/// object storage account (R2 in prod). Configured via System Admin
+/// (/admin/settings/storage) instead of static env vars, same
+/// publicConfig+encryptedSecrets shape and masking rules as
+/// PlatformPaymentConfig (§7.3) — but encrypted with its own
+/// STORAGE_ENCRYPTION_KEY, never PAYMENT_ENCRYPTION_KEY, so a leaked key
+/// only ever exposes one secret domain (ADR-017). `publicConfig` holds
+/// { endpoint, region, bucketPrivate, bucketPublic, publicBaseUrl? };
+/// `encryptedSecrets` holds { accessKeyId, secretAccessKey }.
+model SystemStorageConfig {
+  id               String    @id @default("default")
+  isEnabled        Boolean   @default(false)
+  publicConfig     Json
+  encryptedSecrets String
+  lastVerifiedAt   DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("system_storage_config")
+}
+
 enum PaymentProviderId {
   MANUAL_QR
   SEPAY

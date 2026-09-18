@@ -4,8 +4,11 @@ const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12;
 
 /**
- * §7.3: payment provider secrets are encrypted with AES-256-GCM before being
- * stored, using PAYMENT_ENCRYPTION_KEY (32 bytes, base64). Stored format is
+ * Generic AES-256-GCM string encryption — first built for payment provider
+ * secrets (§7.3, M7) using `PAYMENT_ENCRYPTION_KEY`, now shared with any
+ * other secret that needs the same at-rest treatment (e.g. system storage
+ * credentials, M5, using their own separate key — a leaked key should only
+ * ever expose one domain's secrets, not every domain's). Stored format is
  * "iv:tag:ciphertext", each base64-encoded.
  */
 export function encryptSecret(plaintext: string, keyBase64: string): string {

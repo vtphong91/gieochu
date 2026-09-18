@@ -64,6 +64,7 @@ export const ModelName = {
   Product: 'Product',
   ProductFile: 'ProductFile',
   SystemSettings: 'SystemSettings',
+  SystemStorageConfig: 'SystemStorageConfig',
   TenantPaymentConfig: 'TenantPaymentConfig',
   PlatformPaymentConfig: 'PlatformPaymentConfig',
   SubscriptionInvoice: 'SubscriptionInvoice',
@@ -285,6 +286,19 @@ export const SystemSettingsScalarFieldEnum = {
 } as const
 
 export type SystemSettingsScalarFieldEnum = (typeof SystemSettingsScalarFieldEnum)[keyof typeof SystemSettingsScalarFieldEnum]
+
+
+export const SystemStorageConfigScalarFieldEnum = {
+  id: 'id',
+  isEnabled: 'isEnabled',
+  publicConfig: 'publicConfig',
+  encryptedSecrets: 'encryptedSecrets',
+  lastVerifiedAt: 'lastVerifiedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SystemStorageConfigScalarFieldEnum = (typeof SystemStorageConfigScalarFieldEnum)[keyof typeof SystemStorageConfigScalarFieldEnum]
 
 
 export const TenantPaymentConfigScalarFieldEnum = {

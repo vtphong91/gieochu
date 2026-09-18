@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getEnv } from "@gieochu/config";
 import { getPrismaClient } from "@gieochu/db";
 import { requireAdminAccess } from "../../../lib/page-guards";
@@ -21,6 +22,11 @@ export default async function AdminSettingsPage() {
           graceDays: settings?.graceDays ?? env.GRACE_DAYS,
         }}
       />
+      <p className="mt-6 text-sm">
+        <Link href="/admin/settings/storage" className="text-[var(--color-primary)] underline">
+          Cấu hình lưu trữ file (S3-compatible) →
+        </Link>
+      </p>
     </main>
   );
 }

@@ -14,7 +14,7 @@ export type {
   TestResult,
 } from "./types";
 
-export { decryptSecret, encryptSecret, maskSecret } from "./encryption";
+export { decryptSecret, encryptSecret, maskSecret } from "@gieochu/core";
 export { buildVietQrPayload, crc16ccitt } from "./vietqr";
 export type { VietQrInput } from "./vietqr";
 

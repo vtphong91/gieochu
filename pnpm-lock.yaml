@@ -38,6 +38,9 @@ importers:
       '@gieochu/payments':
         specifier: workspace:*
         version: link:../../packages/payments
+      '@gieochu/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
       dotenv:
         specifier: 17.4.2
         version: 17.4.2
@@ -282,6 +285,9 @@ importers:
 
   packages/payments:
     dependencies:
+      '@gieochu/core':
+        specifier: workspace:*
+        version: link:../core
       qrcode:
         specifier: 1.5.4
         version: 1.5.4

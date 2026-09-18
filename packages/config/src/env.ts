@@ -23,14 +23,10 @@ const envSchema = z.object({
   PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().positive().default(30),
 
   PAYMENT_ENCRYPTION_KEY: z.string().min(1),
+  /** §"M5"/ADR-017: separate key from PAYMENT_ENCRYPTION_KEY for SystemStorageConfig secrets — object
+   * storage credentials reach every tenant's files, so they never share a key with payment secrets. */
+  STORAGE_ENCRYPTION_KEY: z.string().min(1),
 
-  S3_ENDPOINT: z.string().min(1),
-  S3_REGION: z.string().min(1).default("auto"),
-  S3_ACCESS_KEY_ID: z.string().min(1),
-  S3_SECRET_ACCESS_KEY: z.string().min(1),
-  S3_BUCKET_PRIVATE: z.string().min(1),
-  S3_BUCKET_PUBLIC: z.string().min(1),
-  S3_PUBLIC_BASE_URL: z.string().optional(),
   PRESIGN_UPLOAD_TTL_SECONDS: z.coerce.number().int().positive().default(600),
   PRESIGN_DOWNLOAD_TTL_SECONDS: z.coerce.number().int().positive().max(600).default(600),
   CLAMAV_HOST: z.string().optional(),
