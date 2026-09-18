@@ -116,34 +116,33 @@ hoá đơn điện tử, đa tiền tệ, partition/backup/giám sát vận hàn
   chưa có cơ chế này — cân nhắc đồng bộ khi có nhu cầu thật, không bắt buộc vì không ảnh hưởng đúng đắn của
   M7 hiện tại (chỉ là một lớp an toàn bổ sung).
 
-## Phát sinh trong lúc dựng M5 (phần 1 — metadata/CRUD, xem ADR-014)
+## Phát sinh trong lúc dựng M5 (cả 2 giai đoạn — metadata/CRUD rồi upload thật, xem ADR-014/017/018)
 
-- **Phần upload thật của M5 (presign/complete/file.scan)**: `s3-client.ts` **đã có** (hạ tầng cấu hình, xem
-  ADR-017) — còn thiếu `presign.ts` (PUT đơn cho file ≤ 50MB, multipart cho file lớn hơn — part 10MB,
-  `createPresignedMultipartUpload`/`completeMultipartUpload`, `headObject`, `deleteObject`,
-  `createPresignedDownload` cho M9). Route `POST /api/studio/[tenantSlug]/uploads/presign` +
-  `POST /api/studio/[tenantSlug]/uploads/complete`. Job `file.scan` (`QUEUE_NAMES.FILE_SCAN` — tên đã định,
-  chưa đăng ký trong `apps/web/worker.ts`): đọc đầu file qua Range GET để nhận diện magic bytes, tính
-  `sha256` streaming toàn file, so khớp qua `matchesDeclaredExtension()` (đã có), sai → xoá object +
-  `scanStatus=REJECTED` + trừ `storageUsedBytes` (`applyStorageDelta()` đã có) + email báo owner (template
-  mới trong `packages/email`); không có `CLAMAV_HOST` → `CLEAN` + log cảnh báo (**cần ghi ADR khi làm**, đúng
-  gợi ý trong đặc tả — chưa ghi vì logic thật chưa tồn tại). Tất cả các hàm này đọc credential qua
-  `apps/web/lib/system-storage.ts` (DB), không còn qua biến môi trường (ADR-017).
-- **2/4 integration test M5 còn thiếu**: "Presign chỉ trả URL cho owner của tenant", "`complete` ghi
-  `product_files` và enqueue job quét" — cần R2/MinIO thật để chạy `HeadObject`.
-- **Upload ảnh bìa (`coverImageKey`) trong Studio product editor**: UI vẫn chưa có cách đặt `coverImageKey`
-  qua trình duyệt cho tới khi module upload xong — không sản phẩm nào thực sự xuất bản được qua UI ở trạng
-  thái hiện tại (thiếu ảnh bìa; file bán CLEAN cũng vậy). Chỉ verify được qua test/script chèn thẳng DB.
-  **Quản lý file đã có (không cần chờ upload)**: form sửa sản phẩm giờ có 3 trường giá ưu đãi
-  (`salePriceVnd`/`saleStartsAt`/`saleEndsAt` — validate `salePriceVnd < priceVnd`, giờ nhập theo
-  Asia/Ho_Chi_Minh), và danh sách file có nút "Ẩn" (`removeProductFile()` — soft-hide `removedAt`, trừ
-  `storageUsedBytes` nguyên tử qua `decrement`, không đụng object S3, đúng §5.2).
+- **Chưa verify upload thật end-to-end với R2 thật**: toàn bộ code (`presign.ts`, `scan.ts`, route 4 cái,
+  job `file.scan`, UI `UploadFileForm`/`CoverImageUpload`) đã viết xong, xanh lint/typecheck/build, và 1/2
+  integration test còn thiếu đã hoàn thành (presign auth — dùng `SystemStorageConfig` giả vì presign đơn là
+  ký chữ ký thuần không gọi mạng). Còn thiếu: verify thật qua trình duyệt với R2 thật (upload đơn, upload
+  multipart file >50MB, file giả mạo đuôi bị `file.scan` từ chối thật, `complete` gọi `HeadObject` thật) —
+  người dùng tự làm khi nhập credential ở `/admin/settings/storage`.
+- **1/4 integration test M5 còn thiếu**: "`complete` ghi `product_files` và enqueue job quét" — cần
+  `HeadObject` thật lên bucket thật (không thể giả bằng config giả như test presign).
 - **Trang public `/{tenantSlug}/products/{productSlug}`**: đề xuất ở kế hoạch M5 (hiển thị tối thiểu
-  tiêu đề/ảnh bìa/mô tả/giá/file preview) nhưng chưa xây — hoãn cùng lý do (không có ảnh bìa/file thật để
-  hiển thị cho tới khi có upload).
+  tiêu đề/ảnh bìa/mô tả/giá/file preview) nhưng chưa xây — không nằm trong 6 unit/4 integration test bắt
+  buộc, hoãn tới khi cần.
 - **`unpublishProduct()` không kiểm tra "chưa có đơn"**: đặc tả ghi "PUBLISHED → DRAFT: Owner gỡ xuống (chưa
   có đơn)" nhưng M8 (Order) chưa tồn tại nên không có gì để kiểm tra — hiện luôn cho phép gỡ. Nối lại điều
   kiện khi M8 xong.
+- **ClamAV thật chưa tích hợp** (ADR-018): `file.scan` luôn đánh dấu `CLEAN` sau khi qua kiểm tra
+  magic-bytes, kể cả khi `CLAMAV_HOST` được set (chỉ ghi log cảnh báo). Cần chọn + cài client library
+  (`clamscan`/`clamdjs`) và chạy `clamd` daemon riêng (thêm phụ thuộc hạ tầng ngoài phạm vi "không Docker"
+  đã chọn) khi vận hành thật cần quét virus.
+- **4 route upload mới chưa có rate limit**: `presign`/`complete`/`cover-presign`/`cover-complete` — mục 6
+  đặc tả có nhắc rate limit cho nhiều endpoint; các route này gọi S3 thật (tốn chi phí/tài nguyên nếu bị
+  spam) nên rủi ro cao hơn form thường — cân nhắc thêm khi vận hành thật.
+- **Route ghi dữ liệu chưa kiểm tra header `Origin`** (mục 7.7): phát hiện đây là khoảng trống có sẵn từ
+  trước (không riêng M5) — mọi Route Handler ghi dữ liệu trong dự án (register, login, 4 route upload mới...)
+  chưa có route nào kiểm tra `Origin`. Không sửa riêng lẻ cho 4 route mới (sẽ không nhất quán) — cần một lượt
+  rà soát áp dụng chung cho toàn bộ Route Handler ghi dữ liệu khi có thời gian.
 
 ## 2 bug thật phát hiện khi test thủ công qua trình duyệt (sau M5, đã sửa ngay)
 

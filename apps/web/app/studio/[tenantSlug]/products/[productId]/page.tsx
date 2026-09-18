@@ -2,9 +2,12 @@ import { notFound } from "next/navigation";
 import { AppError } from "@gieochu/core";
 import { requireTenantMemberPage } from "../../../../../lib/page-guards";
 import { getProduct } from "../../../../../lib/product";
+import { getSystemStorageConfig } from "../../../../../lib/system-storage";
 import { EditProductForm } from "./edit-form";
 import { ProductStatusActions } from "./status-actions";
 import { RemoveFileButton } from "./remove-file-button";
+import { UploadFileForm } from "./upload-file-form";
+import { CoverImageUpload } from "./cover-image-upload";
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "Nháp",
@@ -45,6 +48,10 @@ export default async function EditProductPage({
     throw error;
   }
 
+  const storageConfig = await getSystemStorageConfig();
+  const publicBaseUrl = storageConfig?.publicConfig.publicBaseUrl;
+  const coverUrl = product.coverImageKey && publicBaseUrl ? `${publicBaseUrl}/${product.coverImageKey}` : null;
+
   return (
     <main className="mx-auto max-w-md px-4 py-10">
       <div className="flex items-center justify-between">
@@ -56,6 +63,13 @@ export default async function EditProductPage({
       <div className="mt-4">
         <ProductStatusActions tenantSlug={tenantSlug} productId={productId} status={product.status} />
       </div>
+
+      <section className="mt-8">
+        <h2 className="text-lg font-semibold">Ảnh bìa</h2>
+        <div className="mt-3">
+          <CoverImageUpload tenantSlug={tenantSlug} productId={productId} currentUrl={coverUrl} />
+        </div>
+      </section>
 
       <section className="mt-8">
         <h2 className="text-lg font-semibold">Thông tin sản phẩm</h2>
@@ -80,9 +94,9 @@ export default async function EditProductPage({
 
       <section className="mt-8">
         <h2 className="text-lg font-semibold">File tài liệu</h2>
-        <p className="mt-1 text-sm text-gray-500">
-          Chức năng tải file lên đang được hoàn thiện (cần hạ tầng lưu trữ) — sẽ có sớm.
-        </p>
+        <div className="mt-3">
+          <UploadFileForm tenantSlug={tenantSlug} productId={productId} />
+        </div>
         {files.length > 0 ? (
           <ul className="mt-2 divide-y rounded border text-sm">
             {files.map((file) => (

@@ -1,7 +1,4 @@
-// §"M5 — Sản phẩm và File tài liệu". Presign/upload/file.scan (the actual
-// upload flow) are still deferred — see docs/BACKLOG.md — but the S3 client
-// and a connection test now exist for System Admin's storage config page
-// (apps/web/app/admin/settings/storage), built via ADR-017.
+// §"M5 — Sản phẩm và File tài liệu".
 export { ALLOWED_EXTENSIONS, getDeclaredExtension, isAllowedExtension, matchesDeclaredExtension } from "./file-format";
 export type { AllowedExtension } from "./file-format";
 
@@ -12,3 +9,22 @@ export type { S3ClientConfig } from "./s3-client";
 
 export { testS3Connection } from "./connection-test";
 export type { TestConnectionResult } from "./connection-test";
+
+export {
+  completeMultipartUpload,
+  createPresignedDownload,
+  createPresignedUpload,
+  deleteObject,
+  headObject,
+} from "./presign";
+export type {
+  CreatePresignedUploadArgs,
+  HeadObjectResult,
+  PresignedMultipartPart,
+  PresignedMultipartUpload,
+  PresignedSinglePut,
+  PresignedUpload,
+} from "./presign";
+
+export { readObjectForScan } from "./scan";
+export type { ScanResult } from "./scan";

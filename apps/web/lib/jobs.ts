@@ -15,7 +15,10 @@ async function getStartedQueue(): Promise<JobQueue> {
     queue = createJobQueue(getEnv().DIRECT_URL);
   }
   if (!started) {
-    started = queue.start().then(() => queue!.ensureQueue(QUEUE_NAMES.EMAIL_SEND));
+    started = queue
+      .start()
+      .then(() => queue!.ensureQueue(QUEUE_NAMES.EMAIL_SEND))
+      .then(() => queue!.ensureQueue(QUEUE_NAMES.FILE_SCAN));
   }
   await started;
   return queue;
@@ -24,4 +27,13 @@ async function getStartedQueue(): Promise<JobQueue> {
 export async function enqueueEmail(message: EmailMessage): Promise<void> {
   const q = await getStartedQueue();
   await q.send(QUEUE_NAMES.EMAIL_SEND, message);
+}
+
+export interface FileScanJobData {
+  productFileId: string;
+}
+
+export async function enqueueFileScan(data: FileScanJobData): Promise<void> {
+  const q = await getStartedQueue();
+  await q.send(QUEUE_NAMES.FILE_SCAN, data);
 }

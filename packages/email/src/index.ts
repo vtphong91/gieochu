@@ -13,3 +13,6 @@ export type { ResetPasswordTemplateData } from "./templates/reset-password";
 
 export { renderSubscriptionStatusEmail } from "./templates/subscription-billing";
 export type { SubscriptionEmailStage, SubscriptionStatusEmailData } from "./templates/subscription-billing";
+
+export { renderProductFileRejectedEmail } from "./templates/product-file-rejected";
+export type { ProductFileRejectedTemplateData } from "./templates/product-file-rejected";

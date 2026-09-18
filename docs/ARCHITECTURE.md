@@ -56,10 +56,10 @@ flowchart TB
     PAY <--> SEPAY & MOMO
 ```
 
-**Trạng thái hiện tại (sau M5 — hạ tầng cấu hình storage):** `PX` (proxy.ts — x-request-id + CSP nonce theo
-từng request, ADR-016 — + gate hồ sơ/tenant/admin qua `lib/page-guards.ts`), `STF` (storefront công khai
-`/[tenantSlug]`), `STU` (`/studio`, `/studio/[tenantSlug]`, settings + settings/payments + billing +
-products/CRUD — **chưa có upload file thật**, xem ADR-014), `ADM` (`/admin`:
+**Trạng thái hiện tại (sau M5 — upload thật):** `PX` (proxy.ts — x-request-id + CSP nonce theo từng request,
+ADR-016 — + gate hồ sơ/tenant/admin qua `lib/page-guards.ts`), `STF` (storefront công khai `/[tenantSlug]`),
+`STU` (`/studio`, `/studio/[tenantSlug]`, settings + settings/payments + billing + products/CRUD + upload file
+thật/ảnh bìa — **code xong, chờ verify với R2 thật**), `ADM` (`/admin`:
 users/tenants/plans/cms/settings(+settings/storage — ADR-017)/billing/payment/billing/invoices — cơ bản,
 audit log viewer chờ M12), `MKT` (`/`, `/pricing`, `/p/[slug]`), `AUTH` (đầy đủ: mật khẩu, JWT, RBAC), `PAY`
 (`packages/payments` — đầy đủ MANUAL_QR/SEPAY/MOMO, dùng chung Platform/Tenant qua `PaymentScope`), `CORE`
@@ -71,9 +71,9 @@ TenantSlugHistory/Subscription(+periodEndReminderStage)/Product(đầy đủ)/Pr
 SystemStorageConfig/TenantPaymentConfig/PlatformPaymentConfig/WebhookEvent/BankBin/SubscriptionInvoice/
 PlatformPaymentTransaction + RLS helpers `withTenant/withCustomer/withPublic/withSystemJob` — **có hiệu lực
 thật**, xem ADR-010; SubscriptionInvoice/PlatformPaymentTransaction/SystemStorageConfig là L1, không RLS),
-`STO` (`packages/storage` — nay có `createS3Client`/`testS3Connection` thật, dùng bởi
-`/admin/settings/storage`; presign/upload/file.scan vẫn hoãn, ADR-014), `MAIL`, `JOBS` (nay có
-`JobQueue.schedule()` cho cron — `subscription.sweep` chạy hằng giờ trong `apps/web/worker.ts`) đã có.
+`STO` (`packages/storage` — đầy đủ: `createS3Client`/`testS3Connection`/`presign.ts`/`scan.ts`; ClamAV thật
+vẫn chưa tích hợp, ADR-018), `MAIL`, `JOBS` (nay có `JobQueue.schedule()` cho cron —
+`subscription.sweep` chạy hằng giờ, `file.scan` xử lý theo job — cả 2 trong `apps/web/worker.ts`) đã có.
 Phần lớn bảng L2 còn lại (order, coupon...) còn là skeleton/tối thiểu chờ module tương ứng (xem `docs/PLAN.md`).
 
 ## Ranh giới dữ liệu theo layer
@@ -162,17 +162,21 @@ component nhạy cảm tự xác thực và phân quyền lại — không tin p
 │       │   │   ├── admin/          # dashboard (GET, aggregate-only)
 │       │   │   ├── webhooks/tenants/[tenantId]/[provider]/   # M7: verify + idempotent accept
 │       │   │   ├── webhooks/platform/[provider]/             # M3: verify + match invoice + PAID
+│       │   │   ├── studio/[tenantSlug]/uploads/               # M5: presign/complete/cover-presign/cover-complete
 │       │   │   └── me/
 │       │   └── layout.tsx, page.tsx (marketing shell)
 │       ├── lib/                    # cookies, session, page-guards (+admin/tenant-page guards),
 │       │                           # tenant, create-tenant, storefront, admin-dashboard, admin-users,
 │       │                           # tenant-payment (M7), platform-payment/subscription-billing/
 │       │                           # subscription-sweep/tenant-write-guard (M3), plan-limits/product/
-│       │                           # system-storage (M5), pricing, rate-limit, jobs, jwt-context, duration
+│       │                           # product-upload/file-scan/system-storage (M5), pricing, rate-limit,
+│       │                           # jobs, jwt-context, duration
 │       ├── proxy.ts                # x-request-id + CSP nonce theo từng request (ADR-016)
-│       ├── worker.ts               # pg-boss worker: email.send (M11) + subscription.sweep cron (M3)
+│       ├── worker.ts               # pg-boss worker: email.send (M11) + subscription.sweep cron (M3) +
+│       │                           # file.scan (M5)
 │       ├── tests/integration/      # Vitest — auth (8), tenant (5), admin (4), tenant-payment (4),
-│       │                           # subscription-billing (5), product (2 — 2 còn lại chờ storage thật)
+│       │                           # subscription-billing (5), product (2), product-upload (1 — 1 test M5
+│       │                           # còn lại chờ storage thật)
 │       ├── next.config.ts          # X-Content-Type-Options/Referrer-Policy (CSP ở proxy.ts, ADR-016)
 │       └── vitest.config.ts
 ├── packages/
@@ -192,10 +196,11 @@ component nhạy cảm tự xác thực và phân quyền lại — không tin p
 │   │                # prisma.config.ts, client.ts, rls.ts (withTenant/withCustomer/withPublic/
 │   │                # withSystemJob), seed.ts, prisma/migrations/,
 │   │                # scripts/setup-app-role.mts (tạo role Postgres riêng cho app — ADR-010)
-│   ├── storage/     # file-format.ts, object-key.ts (M5, thuần); s3-client.ts/connection-test.ts (ADR-017,
-│   │                # dùng cho /admin/settings/storage) — presign/upload/file.scan thật vẫn hoãn (ADR-014)
-│   ├── email/       # EmailSender (SMTP/Resend) + template kích hoạt/reset mật khẩu/subscription-billing (M3)
-│   ├── jobs/        # pg-boss queue wrapper — send() (M1) + schedule() cron (M3)
+│   ├── storage/     # file-format.ts, object-key.ts, s3-client.ts, connection-test.ts, presign.ts (PUT
+│   │                # đơn + multipart), scan.ts (readObjectForScan — hash + magic bytes 1 lần đọc) (M5)
+│   ├── email/       # EmailSender (SMTP/Resend) + template kích hoạt/reset mật khẩu/subscription-billing (M3)/
+│   │                # product-file-rejected (M5)
+│   ├── jobs/        # pg-boss queue wrapper — send() (M1) + schedule() cron (M3) + FILE_SCAN queue (M5)
 │   └── config/      # env.ts (zod), brand.ts, eslint-preset.mjs
 ├── docker/
 │   └── docker-compose.yml         # minio (+createbuckets), mailpit, postgres (profile local-db)

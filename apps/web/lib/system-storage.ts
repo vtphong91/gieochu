@@ -93,6 +93,27 @@ export async function getSystemStorageConfig(): Promise<MaskedSystemStorageConfi
   };
 }
 
+export interface DecryptedSystemStorageConfig extends SystemStoragePublicConfig, SystemStorageSecrets {
+  isEnabled: boolean;
+}
+
+/**
+ * Internal, server-only — the full decrypted config (upload/presign,
+ * file.scan). Never returned from a Server Action/route response; only
+ * `getSystemStorageConfig()` (masked) is safe to send to the client.
+ * Returns null when unconfigured or not yet re-verified after a change.
+ */
+export async function getDecryptedSystemStorageConfig(): Promise<DecryptedSystemStorageConfig | null> {
+  const env = getEnv();
+  const prisma = getPrismaClient();
+  const row = await prisma.systemStorageConfig.findUnique({ where: { id: CONFIG_ID } });
+  if (!row || !row.isEnabled) return null;
+
+  const publicConfig = row.publicConfig as unknown as SystemStoragePublicConfig;
+  const secrets = JSON.parse(decryptSecret(row.encryptedSecrets, env.STORAGE_ENCRYPTION_KEY)) as SystemStorageSecrets;
+  return { ...publicConfig, ...secrets, isEnabled: row.isEnabled };
+}
+
 /** Runs a real HeadBucket against both buckets and, on success, flips isEnabled back on (the other half of the auto-disable guard above). */
 export async function testSystemStorageConnection(): Promise<TestConnectionResult> {
   const env = getEnv();

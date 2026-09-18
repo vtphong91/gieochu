@@ -5,6 +5,8 @@ import { createEmailSenderFromEnv, type EmailMessage } from "@gieochu/email";
 import { getEnv } from "@gieochu/config";
 import { logger } from "@gieochu/core";
 import { runSubscriptionSweep } from "./lib/subscription-sweep";
+import { runFileScan } from "./lib/file-scan";
+import type { FileScanJobData } from "./lib/jobs";
 
 async function main() {
   loadEnv({ path: fileURLToPath(new URL("../../.env", import.meta.url)) });
@@ -17,6 +19,7 @@ async function main() {
   await queue.ensureQueue(QUEUE_NAMES.EMAIL_SEND);
   await queue.ensureQueue(QUEUE_NAMES.SUBSCRIPTION_SWEEP);
   await queue.schedule(QUEUE_NAMES.SUBSCRIPTION_SWEEP, "0 * * * *");
+  await queue.ensureQueue(QUEUE_NAMES.FILE_SCAN);
 
   await queue.work<EmailMessage>(QUEUE_NAMES.EMAIL_SEND, async (message) => {
     await sender.send(message);
@@ -26,6 +29,11 @@ async function main() {
   await queue.work<Record<string, never>>(QUEUE_NAMES.SUBSCRIPTION_SWEEP, async () => {
     await runSubscriptionSweep();
     logger.info("subscription sweep ran");
+  });
+
+  await queue.work<FileScanJobData>(QUEUE_NAMES.FILE_SCAN, async (data) => {
+    await runFileScan(data.productFileId);
+    logger.info({ productFileId: data.productFileId }, "file scan ran");
   });
 
   logger.info("worker started, listening for jobs");

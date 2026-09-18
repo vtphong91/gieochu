@@ -8,6 +8,8 @@ export const QUEUE_NAMES = {
   EMAIL_SEND: "email.send",
   /** §"M3" — hourly sweep: subscription GRACE/EXPIRED transitions, reminder emails, invoice expiry. */
   SUBSCRIPTION_SWEEP: "subscription.sweep",
+  /** §"M5" — after `complete`: magic-byte + sha256 check, CLEAN or REJECTED. */
+  FILE_SCAN: "file.scan",
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];

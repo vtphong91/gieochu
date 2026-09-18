@@ -18,7 +18,7 @@ M0 → M1 (kèm khung email M11) → M4 → M2 (phần cơ bản) → M7 → M3 
 | M2 | System Admin (cơ bản) | ✅ Xong (cơ bản — Platform Payment UI + audit log viewer chờ M7/M12) | `apps/web/app/admin`, `packages/core/src/admin` | 4 / 4 |
 | M7 | Cấu hình Tenant Payment | ✅ Xong | `packages/payments` | 10 / 4 |
 | M3 | Subscription và Platform Billing | ✅ Xong | `apps/web/lib/subscription-billing.ts`, `subscription-sweep.ts`, `platform-payment.ts`, `packages/core/src/billing` | 10 / 5 |
-| M5 | Sản phẩm và File tài liệu | 🟡 Một phần (metadata/CRUD xong — upload/storage thật chờ R2, xem ADR-014) | `packages/storage`, `apps/web/lib/product.ts` | 6 / 2 (+2 chờ storage thật) |
+| M5 | Sản phẩm và File tài liệu | 🟡 Code xong (CRUD + upload/presign/file.scan) — chờ verify với R2 thật | `packages/storage`, `apps/web/lib/{product,product-upload,file-scan}.ts` | 6 / 3 (+1 chờ storage thật) |
 | M6 | Giá và Khuyến mãi | ⬜ Chưa làm | `packages/core/pricing` | 14 / 2 |
 | M8 | Checkout và Đơn hàng | ⬜ Chưa làm | order service, webhooks | 10 / 8 |
 | M9 | Thư viện, Tải xuống, Share link | ⬜ Chưa làm | download API, `/s/[token]` | 7 / 5 |
@@ -207,6 +207,31 @@ ngoài phạm vi bảng gốc) — verify bằng tay: `pnpm lint/typecheck/test/
 integration — không đổi), `curl` xác nhận `/admin/settings/storage` chưa đăng nhập → 307. Việc nhập credential
 R2 thật + bấm "Kiểm tra kết nối" cần người dùng tự làm qua trình duyệt (chưa verify được từ phía tôi).
 
+## M5 — Hoàn thiện luồng upload thật (presign/complete/file.scan)
+
+Sau khi có hạ tầng cấu hình ở trên, làm tiếp toàn bộ phần upload M5 từng hoãn ở ADR-014.
+
+- `packages/storage`: `presign.ts` (PUT đơn ≤50MB, multipart part 10MB cho file lớn hơn — trả thêm
+  `partSizeBytes` để client chia file đúng khớp), `scan.ts` (`readObjectForScan` — stream 1 lần vừa hash
+  sha256 vừa lấy đầu file nhận diện magic bytes, không buffer cả file).
+- `apps/web/lib/product-upload.ts` (file bán — bucket private, có `file.scan`) và
+  `presignCoverImageUpload`/`completeCoverImageUpload` (ảnh bìa — bucket public, không `file.scan`, không
+  tính vào `storageUsedBytes`).
+- `apps/web/lib/file-scan.ts`: không có ClamAV thật → luôn `CLEAN` sau khi qua kiểm tra định dạng, ghi log
+  cảnh báo nếu có set `CLAMAV_HOST` (ADR-018). Sai định dạng → xoá object + `REJECTED` + trừ dung lượng +
+  email báo owner.
+- 4 route `POST /api/studio/[tenantSlug]/uploads/{presign,complete,cover-presign,cover-complete}`, job
+  `file.scan` đăng ký trong `worker.ts`.
+- UI Studio: `UploadFileForm` (chọn file → presign → PUT thẳng lên S3 → complete → refresh), `CoverImageUpload`
+  tương tự cho ảnh bìa.
+- Hoàn thành thêm 1 integration test M5 gốc: "Presign chỉ trả URL cho owner của tenant" (dùng
+  `SystemStorageConfig` giả — presign đơn là ký chữ ký thuần, không gọi mạng thật nên test được mà không cần
+  R2 thật). Còn 1 test cuối ("`complete` ghi `product_files`") cần `HeadObject` thật, để dành khi có R2.
+
+**Đã xác minh chạy được trong phiên này:** `pnpm lint/typecheck/test/build` xanh toàn bộ (56/91 unit, 29/50
+integration cộng dồn — +1 so với trước); `curl` xác nhận route upload mới chưa đăng nhập → 401. **Chưa verify
+được**: toàn bộ luồng qua storage thật (cần người dùng nhập credential R2 qua `/admin/settings/storage`).
+
 ## Câu hỏi còn mở (đã chọn phương án an toàn, xem ADR tương ứng)
 
 - ID strategy: cuid2 (ADR-001).
@@ -227,5 +252,7 @@ R2 thật + bấm "Kiểm tra kết nối" cần người dùng tự làm qua tr
   chặn hydrate React phát hiện khi test qua trình duyệt thật (ADR-016).
 - Cấu hình storage (endpoint/bucket/access key R2) quản lý qua System Admin + DB mã hoá thay vì biến môi
   trường — đã trình bày đánh đổi bảo mật rồi hỏi người dùng trước khi làm (ADR-017).
+- `file.scan` không có ClamAV thật → luôn `CLEAN` sau kiểm tra định dạng, kể cả khi có set `CLAMAV_HOST`
+  (ADR-018) — đúng phương án dự phòng đặc tả đã gợi ý.
 - Chưa hỏi người dùng các quyết định ảnh hưởng tiền/bảo mật/dữ liệu cá nhân — sẽ dừng lại đúng lúc theo mục
   0.6 khi gặp.

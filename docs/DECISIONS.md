@@ -245,3 +245,17 @@
 - **Lý do:** Người dùng đã cân nhắc đánh đổi bảo mật và chọn linh hoạt vận hành (đổi credential không cần
   redeploy, tự phục vụ qua UI, không phải gửi secret qua tay tôi để sửa `.env`) — đồng thời có sẵn cơ chế
   giảm rủi ro tương đương phần thanh toán (mã hoá + tự tắt khi thay đổi) nên chấp nhận được.
+
+## ADR-018 — `file.scan` không có ClamAV thật, mọi file qua được kiểm tra định dạng đều đánh dấu CLEAN
+
+- **Bối cảnh:** Đặc tả M5 nói "nếu có cấu hình `CLAMAV_HOST` thì quét virus (nếu không có thì đánh dấu CLEAN
+  và ghi cảnh báo trong log — ghi ADR)". Không có thư viện client ClamAV nào (`clamscan`, `clamdjs`...) trong
+  dependencies của dự án, và việc tích hợp quét virus thật (cần chạy daemon `clamd` riêng, ngoài phạm vi
+  "không cần Docker" đã chọn ở ADR-014/017) không nằm trong 6 unit/4 integration test đã định của M5.
+- **Quyết định:** `apps/web/lib/file-scan.ts` **luôn** đánh dấu `CLEAN` cho file đã qua được kiểm tra
+  magic-bytes-khớp-đuôi (`matchesDeclaredExtension`), bất kể `CLAMAV_HOST` có được set hay không — nếu có set,
+  ghi thêm log cảnh báo "đã cấu hình CLAMAV_HOST nhưng chưa có client thật". Không chặn luồng, không làm sai
+  lệch hành vi so với việc không set biến này.
+- **Lý do:** Đúng theo gợi ý dự phòng trong đặc tả khi thiếu hạ tầng — kiểm tra định dạng/magic-bytes (đã có,
+  chặn được phần lớn file giả mạo đuôi) vẫn chạy đầy đủ; quét virus thật là lớp phòng thủ bổ sung, để dành khi
+  vận hành thật cần (ghi `docs/BACKLOG.md`), không chặn phần còn lại của luồng upload.
