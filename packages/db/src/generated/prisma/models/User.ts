@@ -235,6 +235,9 @@ export type UserWhereInput = {
   verificationTokens?: Prisma.VerificationTokenListRelationFilter
   ownedTenant?: Prisma.XOR<Prisma.TenantNullableScalarRelationFilter, Prisma.TenantWhereInput> | null
   tenantMemberships?: Prisma.TenantMemberListRelationFilter
+  orders?: Prisma.OrderListRelationFilter
+  entitlements?: Prisma.EntitlementListRelationFilter
+  tenantCustomerOf?: Prisma.TenantCustomerListRelationFilter
 }
 
 export type UserOrderByWithRelationInput = {
@@ -254,6 +257,9 @@ export type UserOrderByWithRelationInput = {
   verificationTokens?: Prisma.VerificationTokenOrderByRelationAggregateInput
   ownedTenant?: Prisma.TenantOrderByWithRelationInput
   tenantMemberships?: Prisma.TenantMemberOrderByRelationAggregateInput
+  orders?: Prisma.OrderOrderByRelationAggregateInput
+  entitlements?: Prisma.EntitlementOrderByRelationAggregateInput
+  tenantCustomerOf?: Prisma.TenantCustomerOrderByRelationAggregateInput
 }
 
 export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -276,6 +282,9 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   verificationTokens?: Prisma.VerificationTokenListRelationFilter
   ownedTenant?: Prisma.XOR<Prisma.TenantNullableScalarRelationFilter, Prisma.TenantWhereInput> | null
   tenantMemberships?: Prisma.TenantMemberListRelationFilter
+  orders?: Prisma.OrderListRelationFilter
+  entitlements?: Prisma.EntitlementListRelationFilter
+  tenantCustomerOf?: Prisma.TenantCustomerListRelationFilter
 }, "id" | "email">
 
 export type UserOrderByWithAggregationInput = {
@@ -329,6 +338,9 @@ export type UserCreateInput = {
   verificationTokens?: Prisma.VerificationTokenCreateNestedManyWithoutUserInput
   ownedTenant?: Prisma.TenantCreateNestedOneWithoutOwnerInput
   tenantMemberships?: Prisma.TenantMemberCreateNestedManyWithoutUserInput
+  orders?: Prisma.OrderCreateNestedManyWithoutCustomerInput
+  entitlements?: Prisma.EntitlementCreateNestedManyWithoutUserInput
+  tenantCustomerOf?: Prisma.TenantCustomerCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateInput = {
@@ -348,6 +360,9 @@ export type UserUncheckedCreateInput = {
   verificationTokens?: Prisma.VerificationTokenUncheckedCreateNestedManyWithoutUserInput
   ownedTenant?: Prisma.TenantUncheckedCreateNestedOneWithoutOwnerInput
   tenantMemberships?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutUserInput
+  orders?: Prisma.OrderUncheckedCreateNestedManyWithoutCustomerInput
+  entitlements?: Prisma.EntitlementUncheckedCreateNestedManyWithoutUserInput
+  tenantCustomerOf?: Prisma.TenantCustomerUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserUpdateInput = {
@@ -367,6 +382,9 @@ export type UserUpdateInput = {
   verificationTokens?: Prisma.VerificationTokenUpdateManyWithoutUserNestedInput
   ownedTenant?: Prisma.TenantUpdateOneWithoutOwnerNestedInput
   tenantMemberships?: Prisma.TenantMemberUpdateManyWithoutUserNestedInput
+  orders?: Prisma.OrderUpdateManyWithoutCustomerNestedInput
+  entitlements?: Prisma.EntitlementUpdateManyWithoutUserNestedInput
+  tenantCustomerOf?: Prisma.TenantCustomerUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateInput = {
@@ -386,6 +404,9 @@ export type UserUncheckedUpdateInput = {
   verificationTokens?: Prisma.VerificationTokenUncheckedUpdateManyWithoutUserNestedInput
   ownedTenant?: Prisma.TenantUncheckedUpdateOneWithoutOwnerNestedInput
   tenantMemberships?: Prisma.TenantMemberUncheckedUpdateManyWithoutUserNestedInput
+  orders?: Prisma.OrderUncheckedUpdateManyWithoutCustomerNestedInput
+  entitlements?: Prisma.EntitlementUncheckedUpdateManyWithoutUserNestedInput
+  tenantCustomerOf?: Prisma.TenantCustomerUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateManyInput = {
@@ -571,6 +592,48 @@ export type UserUpdateOneRequiredWithoutTenantMembershipsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutTenantMembershipsInput, Prisma.UserUpdateWithoutTenantMembershipsInput>, Prisma.UserUncheckedUpdateWithoutTenantMembershipsInput>
 }
 
+export type UserCreateNestedOneWithoutOrdersInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutOrdersInput, Prisma.UserUncheckedCreateWithoutOrdersInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutOrdersInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutOrdersNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutOrdersInput, Prisma.UserUncheckedCreateWithoutOrdersInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutOrdersInput
+  upsert?: Prisma.UserUpsertWithoutOrdersInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutOrdersInput, Prisma.UserUpdateWithoutOrdersInput>, Prisma.UserUncheckedUpdateWithoutOrdersInput>
+}
+
+export type UserCreateNestedOneWithoutTenantCustomerOfInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutTenantCustomerOfInput, Prisma.UserUncheckedCreateWithoutTenantCustomerOfInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutTenantCustomerOfInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutTenantCustomerOfNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutTenantCustomerOfInput, Prisma.UserUncheckedCreateWithoutTenantCustomerOfInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutTenantCustomerOfInput
+  upsert?: Prisma.UserUpsertWithoutTenantCustomerOfInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutTenantCustomerOfInput, Prisma.UserUpdateWithoutTenantCustomerOfInput>, Prisma.UserUncheckedUpdateWithoutTenantCustomerOfInput>
+}
+
+export type UserCreateNestedOneWithoutEntitlementsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutEntitlementsInput, Prisma.UserUncheckedCreateWithoutEntitlementsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutEntitlementsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutEntitlementsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutEntitlementsInput, Prisma.UserUncheckedCreateWithoutEntitlementsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutEntitlementsInput
+  upsert?: Prisma.UserUpsertWithoutEntitlementsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutEntitlementsInput, Prisma.UserUpdateWithoutEntitlementsInput>, Prisma.UserUncheckedUpdateWithoutEntitlementsInput>
+}
+
 export type UserCreateWithoutProfileInput = {
   id?: string
   email: string
@@ -587,6 +650,9 @@ export type UserCreateWithoutProfileInput = {
   verificationTokens?: Prisma.VerificationTokenCreateNestedManyWithoutUserInput
   ownedTenant?: Prisma.TenantCreateNestedOneWithoutOwnerInput
   tenantMemberships?: Prisma.TenantMemberCreateNestedManyWithoutUserInput
+  orders?: Prisma.OrderCreateNestedManyWithoutCustomerInput
+  entitlements?: Prisma.EntitlementCreateNestedManyWithoutUserInput
+  tenantCustomerOf?: Prisma.TenantCustomerCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutProfileInput = {
@@ -605,6 +671,9 @@ export type UserUncheckedCreateWithoutProfileInput = {
   verificationTokens?: Prisma.VerificationTokenUncheckedCreateNestedManyWithoutUserInput
   ownedTenant?: Prisma.TenantUncheckedCreateNestedOneWithoutOwnerInput
   tenantMemberships?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutUserInput
+  orders?: Prisma.OrderUncheckedCreateNestedManyWithoutCustomerInput
+  entitlements?: Prisma.EntitlementUncheckedCreateNestedManyWithoutUserInput
+  tenantCustomerOf?: Prisma.TenantCustomerUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutProfileInput = {
@@ -639,6 +708,9 @@ export type UserUpdateWithoutProfileInput = {
   verificationTokens?: Prisma.VerificationTokenUpdateManyWithoutUserNestedInput
   ownedTenant?: Prisma.TenantUpdateOneWithoutOwnerNestedInput
   tenantMemberships?: Prisma.TenantMemberUpdateManyWithoutUserNestedInput
+  orders?: Prisma.OrderUpdateManyWithoutCustomerNestedInput
+  entitlements?: Prisma.EntitlementUpdateManyWithoutUserNestedInput
+  tenantCustomerOf?: Prisma.TenantCustomerUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutProfileInput = {
@@ -657,6 +729,9 @@ export type UserUncheckedUpdateWithoutProfileInput = {
   verificationTokens?: Prisma.VerificationTokenUncheckedUpdateManyWithoutUserNestedInput
   ownedTenant?: Prisma.TenantUncheckedUpdateOneWithoutOwnerNestedInput
   tenantMemberships?: Prisma.TenantMemberUncheckedUpdateManyWithoutUserNestedInput
+  orders?: Prisma.OrderUncheckedUpdateManyWithoutCustomerNestedInput
+  entitlements?: Prisma.EntitlementUncheckedUpdateManyWithoutUserNestedInput
+  tenantCustomerOf?: Prisma.TenantCustomerUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutRefreshTokensInput = {
@@ -675,6 +750,9 @@ export type UserCreateWithoutRefreshTokensInput = {
   verificationTokens?: Prisma.VerificationTokenCreateNestedManyWithoutUserInput
   ownedTenant?: Prisma.TenantCreateNestedOneWithoutOwnerInput
   tenantMemberships?: Prisma.TenantMemberCreateNestedManyWithoutUserInput
+  orders?: Prisma.OrderCreateNestedManyWithoutCustomerInput
+  entitlements?: Prisma.EntitlementCreateNestedManyWithoutUserInput
+  tenantCustomerOf?: Prisma.TenantCustomerCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutRefreshTokensInput = {
@@ -693,6 +771,9 @@ export type UserUncheckedCreateWithoutRefreshTokensInput = {
   verificationTokens?: Prisma.VerificationTokenUncheckedCreateNestedManyWithoutUserInput
   ownedTenant?: Prisma.TenantUncheckedCreateNestedOneWithoutOwnerInput
   tenantMemberships?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutUserInput
+  orders?: Prisma.OrderUncheckedCreateNestedManyWithoutCustomerInput
+  entitlements?: Prisma.EntitlementUncheckedCreateNestedManyWithoutUserInput
+  tenantCustomerOf?: Prisma.TenantCustomerUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutRefreshTokensInput = {
@@ -727,6 +808,9 @@ export type UserUpdateWithoutRefreshTokensInput = {
   verificationTokens?: Prisma.VerificationTokenUpdateManyWithoutUserNestedInput
   ownedTenant?: Prisma.TenantUpdateOneWithoutOwnerNestedInput
   tenantMemberships?: Prisma.TenantMemberUpdateManyWithoutUserNestedInput
+  orders?: Prisma.OrderUpdateManyWithoutCustomerNestedInput
+  entitlements?: Prisma.EntitlementUpdateManyWithoutUserNestedInput
+  tenantCustomerOf?: Prisma.TenantCustomerUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutRefreshTokensInput = {
@@ -745,6 +829,9 @@ export type UserUncheckedUpdateWithoutRefreshTokensInput = {
   verificationTokens?: Prisma.VerificationTokenUncheckedUpdateManyWithoutUserNestedInput
   ownedTenant?: Prisma.TenantUncheckedUpdateOneWithoutOwnerNestedInput
   tenantMemberships?: Prisma.TenantMemberUncheckedUpdateManyWithoutUserNestedInput
+  orders?: Prisma.OrderUncheckedUpdateManyWithoutCustomerNestedInput
+  entitlements?: Prisma.EntitlementUncheckedUpdateManyWithoutUserNestedInput
+  tenantCustomerOf?: Prisma.TenantCustomerUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutVerificationTokensInput = {
@@ -763,6 +850,9 @@ export type UserCreateWithoutVerificationTokensInput = {
   refreshTokens?: Prisma.RefreshTokenCreateNestedManyWithoutUserInput
   ownedTenant?: Prisma.TenantCreateNestedOneWithoutOwnerInput
   tenantMemberships?: Prisma.TenantMemberCreateNestedManyWithoutUserInput
+  orders?: Prisma.OrderCreateNestedManyWithoutCustomerInput
+  entitlements?: Prisma.EntitlementCreateNestedManyWithoutUserInput
+  tenantCustomerOf?: Prisma.TenantCustomerCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutVerificationTokensInput = {
@@ -781,6 +871,9 @@ export type UserUncheckedCreateWithoutVerificationTokensInput = {
   refreshTokens?: Prisma.RefreshTokenUncheckedCreateNestedManyWithoutUserInput
   ownedTenant?: Prisma.TenantUncheckedCreateNestedOneWithoutOwnerInput
   tenantMemberships?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutUserInput
+  orders?: Prisma.OrderUncheckedCreateNestedManyWithoutCustomerInput
+  entitlements?: Prisma.EntitlementUncheckedCreateNestedManyWithoutUserInput
+  tenantCustomerOf?: Prisma.TenantCustomerUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutVerificationTokensInput = {
@@ -815,6 +908,9 @@ export type UserUpdateWithoutVerificationTokensInput = {
   refreshTokens?: Prisma.RefreshTokenUpdateManyWithoutUserNestedInput
   ownedTenant?: Prisma.TenantUpdateOneWithoutOwnerNestedInput
   tenantMemberships?: Prisma.TenantMemberUpdateManyWithoutUserNestedInput
+  orders?: Prisma.OrderUpdateManyWithoutCustomerNestedInput
+  entitlements?: Prisma.EntitlementUpdateManyWithoutUserNestedInput
+  tenantCustomerOf?: Prisma.TenantCustomerUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutVerificationTokensInput = {
@@ -833,6 +929,9 @@ export type UserUncheckedUpdateWithoutVerificationTokensInput = {
   refreshTokens?: Prisma.RefreshTokenUncheckedUpdateManyWithoutUserNestedInput
   ownedTenant?: Prisma.TenantUncheckedUpdateOneWithoutOwnerNestedInput
   tenantMemberships?: Prisma.TenantMemberUncheckedUpdateManyWithoutUserNestedInput
+  orders?: Prisma.OrderUncheckedUpdateManyWithoutCustomerNestedInput
+  entitlements?: Prisma.EntitlementUncheckedUpdateManyWithoutUserNestedInput
+  tenantCustomerOf?: Prisma.TenantCustomerUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutOwnedTenantInput = {
@@ -851,6 +950,9 @@ export type UserCreateWithoutOwnedTenantInput = {
   refreshTokens?: Prisma.RefreshTokenCreateNestedManyWithoutUserInput
   verificationTokens?: Prisma.VerificationTokenCreateNestedManyWithoutUserInput
   tenantMemberships?: Prisma.TenantMemberCreateNestedManyWithoutUserInput
+  orders?: Prisma.OrderCreateNestedManyWithoutCustomerInput
+  entitlements?: Prisma.EntitlementCreateNestedManyWithoutUserInput
+  tenantCustomerOf?: Prisma.TenantCustomerCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutOwnedTenantInput = {
@@ -869,6 +971,9 @@ export type UserUncheckedCreateWithoutOwnedTenantInput = {
   refreshTokens?: Prisma.RefreshTokenUncheckedCreateNestedManyWithoutUserInput
   verificationTokens?: Prisma.VerificationTokenUncheckedCreateNestedManyWithoutUserInput
   tenantMemberships?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutUserInput
+  orders?: Prisma.OrderUncheckedCreateNestedManyWithoutCustomerInput
+  entitlements?: Prisma.EntitlementUncheckedCreateNestedManyWithoutUserInput
+  tenantCustomerOf?: Prisma.TenantCustomerUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutOwnedTenantInput = {
@@ -903,6 +1008,9 @@ export type UserUpdateWithoutOwnedTenantInput = {
   refreshTokens?: Prisma.RefreshTokenUpdateManyWithoutUserNestedInput
   verificationTokens?: Prisma.VerificationTokenUpdateManyWithoutUserNestedInput
   tenantMemberships?: Prisma.TenantMemberUpdateManyWithoutUserNestedInput
+  orders?: Prisma.OrderUpdateManyWithoutCustomerNestedInput
+  entitlements?: Prisma.EntitlementUpdateManyWithoutUserNestedInput
+  tenantCustomerOf?: Prisma.TenantCustomerUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutOwnedTenantInput = {
@@ -921,6 +1029,9 @@ export type UserUncheckedUpdateWithoutOwnedTenantInput = {
   refreshTokens?: Prisma.RefreshTokenUncheckedUpdateManyWithoutUserNestedInput
   verificationTokens?: Prisma.VerificationTokenUncheckedUpdateManyWithoutUserNestedInput
   tenantMemberships?: Prisma.TenantMemberUncheckedUpdateManyWithoutUserNestedInput
+  orders?: Prisma.OrderUncheckedUpdateManyWithoutCustomerNestedInput
+  entitlements?: Prisma.EntitlementUncheckedUpdateManyWithoutUserNestedInput
+  tenantCustomerOf?: Prisma.TenantCustomerUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutTenantMembershipsInput = {
@@ -939,6 +1050,9 @@ export type UserCreateWithoutTenantMembershipsInput = {
   refreshTokens?: Prisma.RefreshTokenCreateNestedManyWithoutUserInput
   verificationTokens?: Prisma.VerificationTokenCreateNestedManyWithoutUserInput
   ownedTenant?: Prisma.TenantCreateNestedOneWithoutOwnerInput
+  orders?: Prisma.OrderCreateNestedManyWithoutCustomerInput
+  entitlements?: Prisma.EntitlementCreateNestedManyWithoutUserInput
+  tenantCustomerOf?: Prisma.TenantCustomerCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutTenantMembershipsInput = {
@@ -957,6 +1071,9 @@ export type UserUncheckedCreateWithoutTenantMembershipsInput = {
   refreshTokens?: Prisma.RefreshTokenUncheckedCreateNestedManyWithoutUserInput
   verificationTokens?: Prisma.VerificationTokenUncheckedCreateNestedManyWithoutUserInput
   ownedTenant?: Prisma.TenantUncheckedCreateNestedOneWithoutOwnerInput
+  orders?: Prisma.OrderUncheckedCreateNestedManyWithoutCustomerInput
+  entitlements?: Prisma.EntitlementUncheckedCreateNestedManyWithoutUserInput
+  tenantCustomerOf?: Prisma.TenantCustomerUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutTenantMembershipsInput = {
@@ -991,6 +1108,9 @@ export type UserUpdateWithoutTenantMembershipsInput = {
   refreshTokens?: Prisma.RefreshTokenUpdateManyWithoutUserNestedInput
   verificationTokens?: Prisma.VerificationTokenUpdateManyWithoutUserNestedInput
   ownedTenant?: Prisma.TenantUpdateOneWithoutOwnerNestedInput
+  orders?: Prisma.OrderUpdateManyWithoutCustomerNestedInput
+  entitlements?: Prisma.EntitlementUpdateManyWithoutUserNestedInput
+  tenantCustomerOf?: Prisma.TenantCustomerUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutTenantMembershipsInput = {
@@ -1009,6 +1129,309 @@ export type UserUncheckedUpdateWithoutTenantMembershipsInput = {
   refreshTokens?: Prisma.RefreshTokenUncheckedUpdateManyWithoutUserNestedInput
   verificationTokens?: Prisma.VerificationTokenUncheckedUpdateManyWithoutUserNestedInput
   ownedTenant?: Prisma.TenantUncheckedUpdateOneWithoutOwnerNestedInput
+  orders?: Prisma.OrderUncheckedUpdateManyWithoutCustomerNestedInput
+  entitlements?: Prisma.EntitlementUncheckedUpdateManyWithoutUserNestedInput
+  tenantCustomerOf?: Prisma.TenantCustomerUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutOrdersInput = {
+  id?: string
+  email: string
+  passwordHash: string
+  systemRole?: $Enums.SystemRole
+  status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
+  emailVerifiedAt?: Date | string | null
+  profileCompletedAt?: Date | string | null
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  profile?: Prisma.UserProfileCreateNestedOneWithoutUserInput
+  refreshTokens?: Prisma.RefreshTokenCreateNestedManyWithoutUserInput
+  verificationTokens?: Prisma.VerificationTokenCreateNestedManyWithoutUserInput
+  ownedTenant?: Prisma.TenantCreateNestedOneWithoutOwnerInput
+  tenantMemberships?: Prisma.TenantMemberCreateNestedManyWithoutUserInput
+  entitlements?: Prisma.EntitlementCreateNestedManyWithoutUserInput
+  tenantCustomerOf?: Prisma.TenantCustomerCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutOrdersInput = {
+  id?: string
+  email: string
+  passwordHash: string
+  systemRole?: $Enums.SystemRole
+  status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
+  emailVerifiedAt?: Date | string | null
+  profileCompletedAt?: Date | string | null
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  profile?: Prisma.UserProfileUncheckedCreateNestedOneWithoutUserInput
+  refreshTokens?: Prisma.RefreshTokenUncheckedCreateNestedManyWithoutUserInput
+  verificationTokens?: Prisma.VerificationTokenUncheckedCreateNestedManyWithoutUserInput
+  ownedTenant?: Prisma.TenantUncheckedCreateNestedOneWithoutOwnerInput
+  tenantMemberships?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutUserInput
+  entitlements?: Prisma.EntitlementUncheckedCreateNestedManyWithoutUserInput
+  tenantCustomerOf?: Prisma.TenantCustomerUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutOrdersInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutOrdersInput, Prisma.UserUncheckedCreateWithoutOrdersInput>
+}
+
+export type UserUpsertWithoutOrdersInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutOrdersInput, Prisma.UserUncheckedUpdateWithoutOrdersInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutOrdersInput, Prisma.UserUncheckedCreateWithoutOrdersInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutOrdersInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutOrdersInput, Prisma.UserUncheckedUpdateWithoutOrdersInput>
+}
+
+export type UserUpdateWithoutOrdersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  profile?: Prisma.UserProfileUpdateOneWithoutUserNestedInput
+  refreshTokens?: Prisma.RefreshTokenUpdateManyWithoutUserNestedInput
+  verificationTokens?: Prisma.VerificationTokenUpdateManyWithoutUserNestedInput
+  ownedTenant?: Prisma.TenantUpdateOneWithoutOwnerNestedInput
+  tenantMemberships?: Prisma.TenantMemberUpdateManyWithoutUserNestedInput
+  entitlements?: Prisma.EntitlementUpdateManyWithoutUserNestedInput
+  tenantCustomerOf?: Prisma.TenantCustomerUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutOrdersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  profile?: Prisma.UserProfileUncheckedUpdateOneWithoutUserNestedInput
+  refreshTokens?: Prisma.RefreshTokenUncheckedUpdateManyWithoutUserNestedInput
+  verificationTokens?: Prisma.VerificationTokenUncheckedUpdateManyWithoutUserNestedInput
+  ownedTenant?: Prisma.TenantUncheckedUpdateOneWithoutOwnerNestedInput
+  tenantMemberships?: Prisma.TenantMemberUncheckedUpdateManyWithoutUserNestedInput
+  entitlements?: Prisma.EntitlementUncheckedUpdateManyWithoutUserNestedInput
+  tenantCustomerOf?: Prisma.TenantCustomerUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutTenantCustomerOfInput = {
+  id?: string
+  email: string
+  passwordHash: string
+  systemRole?: $Enums.SystemRole
+  status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
+  emailVerifiedAt?: Date | string | null
+  profileCompletedAt?: Date | string | null
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  profile?: Prisma.UserProfileCreateNestedOneWithoutUserInput
+  refreshTokens?: Prisma.RefreshTokenCreateNestedManyWithoutUserInput
+  verificationTokens?: Prisma.VerificationTokenCreateNestedManyWithoutUserInput
+  ownedTenant?: Prisma.TenantCreateNestedOneWithoutOwnerInput
+  tenantMemberships?: Prisma.TenantMemberCreateNestedManyWithoutUserInput
+  orders?: Prisma.OrderCreateNestedManyWithoutCustomerInput
+  entitlements?: Prisma.EntitlementCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutTenantCustomerOfInput = {
+  id?: string
+  email: string
+  passwordHash: string
+  systemRole?: $Enums.SystemRole
+  status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
+  emailVerifiedAt?: Date | string | null
+  profileCompletedAt?: Date | string | null
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  profile?: Prisma.UserProfileUncheckedCreateNestedOneWithoutUserInput
+  refreshTokens?: Prisma.RefreshTokenUncheckedCreateNestedManyWithoutUserInput
+  verificationTokens?: Prisma.VerificationTokenUncheckedCreateNestedManyWithoutUserInput
+  ownedTenant?: Prisma.TenantUncheckedCreateNestedOneWithoutOwnerInput
+  tenantMemberships?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutUserInput
+  orders?: Prisma.OrderUncheckedCreateNestedManyWithoutCustomerInput
+  entitlements?: Prisma.EntitlementUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutTenantCustomerOfInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutTenantCustomerOfInput, Prisma.UserUncheckedCreateWithoutTenantCustomerOfInput>
+}
+
+export type UserUpsertWithoutTenantCustomerOfInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutTenantCustomerOfInput, Prisma.UserUncheckedUpdateWithoutTenantCustomerOfInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutTenantCustomerOfInput, Prisma.UserUncheckedCreateWithoutTenantCustomerOfInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutTenantCustomerOfInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutTenantCustomerOfInput, Prisma.UserUncheckedUpdateWithoutTenantCustomerOfInput>
+}
+
+export type UserUpdateWithoutTenantCustomerOfInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  profile?: Prisma.UserProfileUpdateOneWithoutUserNestedInput
+  refreshTokens?: Prisma.RefreshTokenUpdateManyWithoutUserNestedInput
+  verificationTokens?: Prisma.VerificationTokenUpdateManyWithoutUserNestedInput
+  ownedTenant?: Prisma.TenantUpdateOneWithoutOwnerNestedInput
+  tenantMemberships?: Prisma.TenantMemberUpdateManyWithoutUserNestedInput
+  orders?: Prisma.OrderUpdateManyWithoutCustomerNestedInput
+  entitlements?: Prisma.EntitlementUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutTenantCustomerOfInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  profile?: Prisma.UserProfileUncheckedUpdateOneWithoutUserNestedInput
+  refreshTokens?: Prisma.RefreshTokenUncheckedUpdateManyWithoutUserNestedInput
+  verificationTokens?: Prisma.VerificationTokenUncheckedUpdateManyWithoutUserNestedInput
+  ownedTenant?: Prisma.TenantUncheckedUpdateOneWithoutOwnerNestedInput
+  tenantMemberships?: Prisma.TenantMemberUncheckedUpdateManyWithoutUserNestedInput
+  orders?: Prisma.OrderUncheckedUpdateManyWithoutCustomerNestedInput
+  entitlements?: Prisma.EntitlementUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutEntitlementsInput = {
+  id?: string
+  email: string
+  passwordHash: string
+  systemRole?: $Enums.SystemRole
+  status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
+  emailVerifiedAt?: Date | string | null
+  profileCompletedAt?: Date | string | null
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  profile?: Prisma.UserProfileCreateNestedOneWithoutUserInput
+  refreshTokens?: Prisma.RefreshTokenCreateNestedManyWithoutUserInput
+  verificationTokens?: Prisma.VerificationTokenCreateNestedManyWithoutUserInput
+  ownedTenant?: Prisma.TenantCreateNestedOneWithoutOwnerInput
+  tenantMemberships?: Prisma.TenantMemberCreateNestedManyWithoutUserInput
+  orders?: Prisma.OrderCreateNestedManyWithoutCustomerInput
+  tenantCustomerOf?: Prisma.TenantCustomerCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutEntitlementsInput = {
+  id?: string
+  email: string
+  passwordHash: string
+  systemRole?: $Enums.SystemRole
+  status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
+  emailVerifiedAt?: Date | string | null
+  profileCompletedAt?: Date | string | null
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  profile?: Prisma.UserProfileUncheckedCreateNestedOneWithoutUserInput
+  refreshTokens?: Prisma.RefreshTokenUncheckedCreateNestedManyWithoutUserInput
+  verificationTokens?: Prisma.VerificationTokenUncheckedCreateNestedManyWithoutUserInput
+  ownedTenant?: Prisma.TenantUncheckedCreateNestedOneWithoutOwnerInput
+  tenantMemberships?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutUserInput
+  orders?: Prisma.OrderUncheckedCreateNestedManyWithoutCustomerInput
+  tenantCustomerOf?: Prisma.TenantCustomerUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutEntitlementsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutEntitlementsInput, Prisma.UserUncheckedCreateWithoutEntitlementsInput>
+}
+
+export type UserUpsertWithoutEntitlementsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutEntitlementsInput, Prisma.UserUncheckedUpdateWithoutEntitlementsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutEntitlementsInput, Prisma.UserUncheckedCreateWithoutEntitlementsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutEntitlementsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutEntitlementsInput, Prisma.UserUncheckedUpdateWithoutEntitlementsInput>
+}
+
+export type UserUpdateWithoutEntitlementsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  profile?: Prisma.UserProfileUpdateOneWithoutUserNestedInput
+  refreshTokens?: Prisma.RefreshTokenUpdateManyWithoutUserNestedInput
+  verificationTokens?: Prisma.VerificationTokenUpdateManyWithoutUserNestedInput
+  ownedTenant?: Prisma.TenantUpdateOneWithoutOwnerNestedInput
+  tenantMemberships?: Prisma.TenantMemberUpdateManyWithoutUserNestedInput
+  orders?: Prisma.OrderUpdateManyWithoutCustomerNestedInput
+  tenantCustomerOf?: Prisma.TenantCustomerUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutEntitlementsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  profile?: Prisma.UserProfileUncheckedUpdateOneWithoutUserNestedInput
+  refreshTokens?: Prisma.RefreshTokenUncheckedUpdateManyWithoutUserNestedInput
+  verificationTokens?: Prisma.VerificationTokenUncheckedUpdateManyWithoutUserNestedInput
+  ownedTenant?: Prisma.TenantUncheckedUpdateOneWithoutOwnerNestedInput
+  tenantMemberships?: Prisma.TenantMemberUncheckedUpdateManyWithoutUserNestedInput
+  orders?: Prisma.OrderUncheckedUpdateManyWithoutCustomerNestedInput
+  tenantCustomerOf?: Prisma.TenantCustomerUncheckedUpdateManyWithoutUserNestedInput
 }
 
 
@@ -1020,12 +1443,18 @@ export type UserCountOutputType = {
   refreshTokens: number
   verificationTokens: number
   tenantMemberships: number
+  orders: number
+  entitlements: number
+  tenantCustomerOf: number
 }
 
 export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   refreshTokens?: boolean | UserCountOutputTypeCountRefreshTokensArgs
   verificationTokens?: boolean | UserCountOutputTypeCountVerificationTokensArgs
   tenantMemberships?: boolean | UserCountOutputTypeCountTenantMembershipsArgs
+  orders?: boolean | UserCountOutputTypeCountOrdersArgs
+  entitlements?: boolean | UserCountOutputTypeCountEntitlementsArgs
+  tenantCustomerOf?: boolean | UserCountOutputTypeCountTenantCustomerOfArgs
 }
 
 /**
@@ -1059,6 +1488,27 @@ export type UserCountOutputTypeCountTenantMembershipsArgs<ExtArgs extends runtim
   where?: Prisma.TenantMemberWhereInput
 }
 
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountOrdersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.OrderWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountEntitlementsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.EntitlementWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountTenantCustomerOfArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.TenantCustomerWhereInput
+}
+
 
 export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -1077,6 +1527,9 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   verificationTokens?: boolean | Prisma.User$verificationTokensArgs<ExtArgs>
   ownedTenant?: boolean | Prisma.User$ownedTenantArgs<ExtArgs>
   tenantMemberships?: boolean | Prisma.User$tenantMembershipsArgs<ExtArgs>
+  orders?: boolean | Prisma.User$ordersArgs<ExtArgs>
+  entitlements?: boolean | Prisma.User$entitlementsArgs<ExtArgs>
+  tenantCustomerOf?: boolean | Prisma.User$tenantCustomerOfArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -1129,6 +1582,9 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   verificationTokens?: boolean | Prisma.User$verificationTokensArgs<ExtArgs>
   ownedTenant?: boolean | Prisma.User$ownedTenantArgs<ExtArgs>
   tenantMemberships?: boolean | Prisma.User$tenantMembershipsArgs<ExtArgs>
+  orders?: boolean | Prisma.User$ordersArgs<ExtArgs>
+  entitlements?: boolean | Prisma.User$entitlementsArgs<ExtArgs>
+  tenantCustomerOf?: boolean | Prisma.User$tenantCustomerOfArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -1142,6 +1598,9 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     verificationTokens: Prisma.$VerificationTokenPayload<ExtArgs>[]
     ownedTenant: Prisma.$TenantPayload<ExtArgs> | null
     tenantMemberships: Prisma.$TenantMemberPayload<ExtArgs>[]
+    orders: Prisma.$OrderPayload<ExtArgs>[]
+    entitlements: Prisma.$EntitlementPayload<ExtArgs>[]
+    tenantCustomerOf: Prisma.$TenantCustomerPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1558,6 +2017,9 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   verificationTokens<T extends Prisma.User$verificationTokensArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$verificationTokensArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$VerificationTokenPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   ownedTenant<T extends Prisma.User$ownedTenantArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$ownedTenantArgs<ExtArgs>>): Prisma.Prisma__TenantClient<runtime.Types.Result.GetResult<Prisma.$TenantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   tenantMemberships<T extends Prisma.User$tenantMembershipsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$tenantMembershipsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TenantMemberPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  orders<T extends Prisma.User$ordersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$ordersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OrderPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  entitlements<T extends Prisma.User$entitlementsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$entitlementsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$EntitlementPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  tenantCustomerOf<T extends Prisma.User$tenantCustomerOfArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$tenantCustomerOfArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TenantCustomerPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2098,6 +2560,78 @@ export type User$tenantMembershipsArgs<ExtArgs extends runtime.Types.Extensions.
   take?: number
   skip?: number
   distinct?: Prisma.TenantMemberScalarFieldEnum | Prisma.TenantMemberScalarFieldEnum[]
+}
+
+/**
+ * User.orders
+ */
+export type User$ordersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Order
+   */
+  select?: Prisma.OrderSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Order
+   */
+  omit?: Prisma.OrderOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.OrderInclude<ExtArgs> | null
+  where?: Prisma.OrderWhereInput
+  orderBy?: Prisma.OrderOrderByWithRelationInput | Prisma.OrderOrderByWithRelationInput[]
+  cursor?: Prisma.OrderWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.OrderScalarFieldEnum | Prisma.OrderScalarFieldEnum[]
+}
+
+/**
+ * User.entitlements
+ */
+export type User$entitlementsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Entitlement
+   */
+  select?: Prisma.EntitlementSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Entitlement
+   */
+  omit?: Prisma.EntitlementOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.EntitlementInclude<ExtArgs> | null
+  where?: Prisma.EntitlementWhereInput
+  orderBy?: Prisma.EntitlementOrderByWithRelationInput | Prisma.EntitlementOrderByWithRelationInput[]
+  cursor?: Prisma.EntitlementWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.EntitlementScalarFieldEnum | Prisma.EntitlementScalarFieldEnum[]
+}
+
+/**
+ * User.tenantCustomerOf
+ */
+export type User$tenantCustomerOfArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the TenantCustomer
+   */
+  select?: Prisma.TenantCustomerSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the TenantCustomer
+   */
+  omit?: Prisma.TenantCustomerOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TenantCustomerInclude<ExtArgs> | null
+  where?: Prisma.TenantCustomerWhereInput
+  orderBy?: Prisma.TenantCustomerOrderByWithRelationInput | Prisma.TenantCustomerOrderByWithRelationInput[]
+  cursor?: Prisma.TenantCustomerWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.TenantCustomerScalarFieldEnum | Prisma.TenantCustomerScalarFieldEnum[]
 }
 
 /**

@@ -126,12 +126,13 @@ hoá đơn điện tử, đa tiền tệ, partition/backup/giám sát vận hàn
   người dùng tự làm khi nhập credential ở `/admin/settings/storage`.
 - **1/4 integration test M5 còn thiếu**: "`complete` ghi `product_files` và enqueue job quét" — cần
   `HeadObject` thật lên bucket thật (không thể giả bằng config giả như test presign).
-- **Trang public `/{tenantSlug}/products/{productSlug}`**: đề xuất ở kế hoạch M5 (hiển thị tối thiểu
-  tiêu đề/ảnh bìa/mô tả/giá/file preview) nhưng chưa xây — không nằm trong 6 unit/4 integration test bắt
-  buộc, hoãn tới khi cần.
+- **Trang public `/{tenantSlug}/products/{productSlug}`**: ✅ đã xây ở M8 (cần nút "Mua ngay" nên làm cùng
+  lúc với checkout) — hiển thị tiêu đề/ảnh bìa/mô tả/giá (đã resolve sale price qua `calculateOrderPricing`).
 - **`unpublishProduct()` không kiểm tra "chưa có đơn"**: đặc tả ghi "PUBLISHED → DRAFT: Owner gỡ xuống (chưa
-  có đơn)" nhưng M8 (Order) chưa tồn tại nên không có gì để kiểm tra — hiện luôn cho phép gỡ. Nối lại điều
-  kiện khi M8 xong.
+  có đơn)" — `Order` giờ đã tồn tại (M8) nên điều kiện này có thể nối lại, nhưng chưa làm trong phiên M8 (nằm
+  ngoài danh sách hàm M8 phải xây, sửa `product.ts` của M5 ngoài phạm vi module đang làm). Còn mở — dễ hoàn
+  thành khi có thời gian: chỉ cần `withTenant(tenantId, tx => tx.orderItem.count({where:{productId}}))` > 0
+  thì chặn.
 - **ClamAV thật chưa tích hợp** (ADR-018): `file.scan` luôn đánh dấu `CLEAN` sau khi qua kiểm tra
   magic-bytes, kể cả khi `CLAMAV_HOST` được set (chỉ ghi log cảnh báo). Cần chọn + cài client library
   (`clamscan`/`clamdjs`) và chạy `clamd` daemon riêng (thêm phụ thuộc hạ tầng ngoài phạm vi "không Docker"
@@ -177,16 +178,43 @@ lộ ra 2 lỗi cả 2 đều tồn tại từ trước, không riêng module n�
 
 ## Phát sinh trong lúc dựng M6
 
-- **1/2 integration test M6 hoãn tới M8**: "Coupon chỉ bị tính lượt khi đơn PAID, hai đơn đồng thời không
-  vượt usageLimit" — cần `Order` thật (chuyển trạng thái `PAID`) để test có ý nghĩa, `Order` thuộc M8 (đứng
-  sau M6 đúng thứ tự triển khai). Khi M8 xây xong: viết hàm tiêu thụ coupon dùng
-  `UPDATE coupons SET usedCount = usedCount + 1 WHERE id = ... AND usedCount < usageLimit` (atomic, đúng đặc
-  tả — chống vượt `usageLimit` khi 2 đơn thanh toán đồng thời), ghi `coupon_redemptions`, nếu update trả về 0
-  dòng (hết lượt đúng lúc thanh toán) vẫn giữ đơn `PAID` + ghi audit `COUPON_OVERUSED` (đúng đặc tả mục M6).
-- **`CouponRedemption.orderId` chưa có `@relation` tới `Order`**: cột string thường vì `Order` (M8) chưa tồn
-  tại. M8 thêm quan hệ khi có Order — không cần đổi kiểu cột, chỉ thêm `@relation` + trường quan hệ.
-- **Chưa có UI công khai áp mã trên storefront**: `calculatePrice()` và API
-  `POST /api/[tenantSlug]/coupons/preview` đã sẵn sàng, nhưng chưa có trang chi tiết sản phẩm công khai (hoãn
-  từ M5) hay giỏ hàng/checkout (M8) để gắn ô nhập mã vào — UI thật sẽ làm cùng lúc với 2 module đó.
+- **1/2 integration test M6 hoãn tới M8**: ✅ hoàn thành ở M8 (`order.test.ts` — "a coupon is only consumed
+  once an order is PAID..."), đúng thiết kế đã ghi ở đây: `UPDATE coupons SET usedCount = usedCount + 1 WHERE
+  id = ... AND (usageLimit IS NULL OR usedCount < usageLimit)` (raw SQL, atomic), ghi `coupon_redemptions` chỉ
+  khi update trả về >0 dòng; nếu 0 dòng (hết lượt đúng lúc thanh toán) đơn vẫn giữ `PAID`/`FULFILLED`, chỉ ghi
+  `logger.warn` (chưa có bảng `audit_logs` — đó là M12, xem ghi chú bên dưới) thay vì `COUPON_OVERUSED` như
+  đặc tả gốc chữ.
+- **`CouponRedemption.orderId` chưa có `@relation` tới `Order`**: ✅ đã thêm ở M8.
+- **Chưa có UI công khai áp mã trên storefront**: ✅ đã xây ở M8 — `CouponPanel` trên trang checkout
+  (`/[tenantSlug]/checkout/[orderCode]`), gọi lại `calculateOrderPricing()` (bọc `calculatePrice()`) ở server,
+  không tin tổng tiền từ client.
 - **Trang Studio coupon chưa có nút xoá**: chỉ có tạo/sửa/bật-tắt (`isEnabled`) — đặc tả không yêu cầu xoá
   tường minh, tắt coupon coi như đủ cho MVP; cân nhắc thêm nếu người dùng cần dọn hẳn mã cũ.
+- **`COUPON_OVERUSED` chưa ghi audit log thật**: xem ghi chú ngay phía trên — sẽ nối vào bảng `audit_logs`
+  khi M12 xây xong, hiện chỉ có `logger.warn` (pino, không truy vấn lại được từ UI admin).
+
+## Phát sinh trong lúc dựng M8
+
+- **Webhook M3 (Platform) và M8 (Tenant) xử lý khác kiểu, không nhất quán** (xem ADR-019): route platform
+  (`POST /api/webhooks/platform/[provider]`, M3) gọi `markInvoicePaid()` đồng bộ ngay trong request — không
+  đúng §7 mục 4 ("trả 2xx nhanh, xử lý nặng đẩy sang job"). Route tenant (M8) làm đúng: chỉ ghi
+  `webhook_events` rồi đẩy job `payment.process`. Không sửa lại M3 trong phiên này (ngoài phạm vi, module đã
+  ổn định/đã có test xanh) — nếu cần đồng bộ 2 route, làm như một việc riêng, hỏi người dùng trước vì đụng
+  vào luồng thanh toán platform đã chạy thật.
+- **Không có luồng upload "ảnh biên lai" (`proofImageKey`)**: cột `proofImageKey` đã có trên `Order` (theo
+  ERD đặc tả) nhưng M8 chưa xây UI/API cho khách hàng tải ảnh biên lai lên khi thanh toán MANUAL_QR — đặc tả
+  chỉ liệt kê cột này trong ERD, không có trong danh sách hàm/route bắt buộc của M8. Owner vẫn xác nhận thủ
+  công dựa trên sao kê ngân hàng của chính họ (không cần ảnh biên lai khách gửi). Có thể thêm sau nếu cần,
+  tái dùng `presignCoverImageUpload`-style flow (bucket public, không quét file).
+- **4 route/Server Action mới của M8 chưa có rate limit**: giống ghi chú M5 — `applyCouponAction` (dò mã giảm
+  giá bằng cách thử nhiều lần) và webhook tenant là 2 điểm nhạy cảm nhất; cân nhắc khi vận hành thật.
+- **Route ghi dữ liệu M8 cũng chưa kiểm tra header `Origin`** (mục 7.7) — cùng khoảng trống có sẵn từ M5, áp
+  dụng luôn cho các Server Action/route mới của M8; chờ đợt rà soát chung.
+- **Chưa verify luồng mua hàng thật qua trình duyệt**: chọn sản phẩm → "Mua ngay" → checkout → nhập mã giảm
+  giá → chọn phương thức → quét QR/redirect → polling tự cập nhật trạng thái — toàn bộ code đã có và 9
+  integration test chạy thật trên Neon (RLS thật, webhook ký HMAC thật), nhưng chưa test tay qua trình duyệt
+  (cần R2 + ít nhất 1 provider thanh toán tenant đã cấu hình thật qua `/studio/[tenantSlug]/settings/payments`).
+- **Dashboard tenant**: 2 StatCard "Doanh thu 30 ngày"/"Đơn chờ xác nhận" đã nối dữ liệu thật; 2 ô còn lại
+  ("Sản phẩm bán chạy", "Đánh giá mới") vẫn để "Cần M5/M6"/"Cần M10" — ô "Sản phẩm bán chạy" đáng lẽ có thể
+  nối được luôn từ `order_items` (M8), nhưng chưa làm vì không nằm trong phạm vi hàm M8 phải xây; dễ hoàn
+  thành sau bằng một `groupBy` đơn giản trên `OrderItem`.

@@ -115,7 +115,7 @@ export async function getCoupon(tenantId: string, couponId: string): Promise<Cou
   return coupon;
 }
 
-function toCouponSnapshot(row: Coupon): CouponSnapshot {
+export function toCouponSnapshot(row: Coupon): CouponSnapshot {
   return {
     type: row.type,
     value: row.value,

@@ -188,9 +188,46 @@ export type BankBin = Prisma.BankBinModel
 export type Coupon = Prisma.CouponModel
 /**
  * Model CouponRedemption
- * §5.2 "Bảng phụ: coupon_redemptions (couponId, userId, orderId)". `orderId`
- * is a plain string, not a relation — the Order model doesn't exist yet
- * (M8); M8 adds the `@relation` once it does. Nothing writes to this table
- * in M6 — it's schema-only, ready for M8's order-PAID consumption logic.
+ * §5.2 "Bảng phụ: coupon_redemptions (couponId, userId, orderId)". Written
+ * once, atomically, by `markOrderPaid()` (§"M8") — `@@unique([couponId,
+ * orderId])` makes a second attempt at the same order a no-op rather than
+ * double-counting `usedCount`.
  */
 export type CouponRedemption = Prisma.CouponRedemptionModel
+/**
+ * Model Order
+ * §"M8" — ORDERS. L2 with an extra customer-ownership dimension: RLS
+ * allows tenantId match (owner) OR customerId match under `app.scope =
+ * 'customer'` (the buyer) OR system_job (§5.4) — see `_rls_m8`.
+ * MVP is "mỗi đơn 1 sản phẩm" but `OrderItem` stays its own table (the
+ * spec's own forward note) so a future cart just adds more rows.
+ */
+export type Order = Prisma.OrderModel
+/**
+ * Model OrderItem
+ * §5.3 "order_items lưu snapshot tiêu đề và giá tại thời điểm mua" — a later
+ * price/title change on Product never rewrites a placed order.
+ */
+export type OrderItem = Prisma.OrderItemModel
+/**
+ * Model TenantPaymentTransaction
+ * §5.3 unique `(tenantId, provider, providerTxnId)` — the same provider
+ * event id can never be recorded twice for a tenant (idempotency at the
+ * ledger level, separate from `webhook_events`' idempotency at the HTTP
+ * delivery level).
+ */
+export type TenantPaymentTransaction = Prisma.TenantPaymentTransactionModel
+/**
+ * Model TenantCustomer
+ * §5.3 unique `(tenantId, userId)` — one aggregate row per customer per
+ * tenant, upserted (cộng dồn) by `markOrderPaid()`.
+ */
+export type TenantCustomer = Prisma.TenantCustomerModel
+/**
+ * Model Entitlement
+ * §5.2 Layer L3 "Customer" — filtered by userId (M9 downloads read this).
+ * `downloadLimit` is a snapshot of `product.downloadLimit` at purchase
+ * time (§5.3 snapshot convention) — a later change to the product's limit
+ * never retroactively changes what an existing buyer already has.
+ */
+export type Entitlement = Prisma.EntitlementModel

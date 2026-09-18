@@ -64,7 +64,9 @@ export default async function StorefrontPage({ params }: { params: Promise<{ ten
           <ul className="mt-3 space-y-2">
             {products.map((product) => (
               <li key={product.id} className="rounded border p-3">
-                {product.title}
+                <a href={`/${tenant.slug}/products/${product.slug}`} className="hover:underline">
+                  {product.title}
+                </a>
               </li>
             ))}
           </ul>

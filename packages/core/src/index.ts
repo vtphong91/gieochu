@@ -49,6 +49,19 @@ export type {
   PricingLineInput,
 } from "./pricing/calculate-price";
 
+export { transitionOrderStatus } from "./order/state";
+export type { OrderEvent, OrderStatus } from "./order/state";
+export { generateOrderCode, isValidOrderCode } from "./order/code";
+export { canManuallyConfirmOrder, computeOrderExpiresAt } from "./order/expiry";
+export { matchPaymentAmount } from "./order/payment-match";
+export type { PaymentMatchStatus } from "./order/payment-match";
+export { calculateOrderPricing } from "./order/pricing";
+export type { OrderPricedLine, OrderPricingResult, OrderProductSnapshot } from "./order/pricing";
+export { canPurchaseProduct } from "./order/purchase-guard";
+export type { PurchaseBlockReason, PurchaseGuardResult } from "./order/purchase-guard";
+export { applyOrderToCustomerStats } from "./order/customer-stats";
+export type { TenantCustomerStats } from "./order/customer-stats";
+
 export { decideLockUser } from "./admin/user-lock";
 export type { LockRejectReason, LockTargetUser, LockUserDecision } from "./admin/user-lock";
 export { isValidPlanInput } from "./admin/plan-validation";

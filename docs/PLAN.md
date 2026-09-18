@@ -20,7 +20,7 @@ M0 → M1 (kèm khung email M11) → M4 → M2 (phần cơ bản) → M7 → M3 
 | M3 | Subscription và Platform Billing | ✅ Xong | `apps/web/lib/subscription-billing.ts`, `subscription-sweep.ts`, `platform-payment.ts`, `packages/core/src/billing` | 10 / 5 |
 | M5 | Sản phẩm và File tài liệu | 🟡 Code xong (CRUD + upload/presign/file.scan) — chờ verify với R2 thật | `packages/storage`, `apps/web/lib/{product,product-upload,file-scan}.ts` | 6 / 3 (+1 chờ storage thật) |
 | M6 | Giá và Khuyến mãi | 🟡 Engine + Coupon CRUD xong — 1 test chờ Order (M8) | `packages/core/src/pricing`, `apps/web/lib/coupon.ts` | 14 / 1 (+1 chờ M8) |
-| M8 | Checkout và Đơn hàng | ⬜ Chưa làm | order service, webhooks | 10 / 8 |
+| M8 | Checkout và Đơn hàng | ✅ Xong | `apps/web/lib/{order,payment-process}.ts`, `packages/core/src/order` | 10 / 9 |
 | M9 | Thư viện, Tải xuống, Share link | ⬜ Chưa làm | download API, `/s/[token]` | 7 / 5 |
 | M10 | Social Feed và Đánh giá | ⬜ Chưa làm | posts/comments/reviews | 4 / 3 |
 | M11 | Email và Background Jobs | 🟡 Khung đã có (cùng M1) — job/worker còn lại thêm khi có nghiệp vụ tương ứng | `packages/jobs`, `packages/email`, `apps/web/worker.ts` | 0 / 0 (tính trong module khác) |
@@ -249,6 +249,51 @@ integration cộng dồn — +1 so với trước); `curl` xác nhận route upl
 integration cộng dồn); `curl` xác nhận `/studio/.../coupons` chưa đăng nhập → 307, preview cho tenant không
 tồn tại → 404.
 
+## M8 — Việc đã làm (xem docs/modules/M8.md để có sơ đồ và danh sách test đầy đủ)
+
+- `packages/core/src/order/*`: máy trạng thái đơn hàng (`transitionOrderStatus`, ném lỗi khi chuyển sai — cùng
+  mẫu `billing/subscription-state.ts`), mã đơn (`generateOrderCode`, bảng chữ base32 không gây nhầm), hạn đơn +
+  cửa sổ xác nhận muộn 24h, so khớp số tiền, pricing đơn (bọc `calculatePrice()` M6, không nhận tham số "tổng
+  tiền từ client"), guard mua hàng (chặn tự mua sản phẩm mình/đã sở hữu), cộng dồn `tenant_customers` — 10/10
+  unit test.
+- Schema: `Order`, `OrderItem`, `TenantPaymentTransaction`, `TenantCustomer`, `Entitlement` (đều L2, RLS —
+  `orders`/`order_items` có thêm chiều "khách hàng" trong policy, khác các bảng L2 khác chỉ có chiều tenant),
+  thêm `@relation` thật cho `CouponRedemption.orderId` (M6 để tạm là string). `Order.confirmNote` thêm sau khi
+  nhận ra cần chỗ lưu ghi chú xác nhận thủ công bắt buộc (giống `SubscriptionInvoice.confirmNote` ở M3).
+- `apps/web/lib/order.ts`: `createOrder`/`applyCouponToOrder`/`removeCouponFromOrder`/`initiateOrderCheckout`
+  (dùng chung `packages/payments` với `scope:{kind:'TENANT',...}`, không đụng bảng/secret Platform), và hàm
+  bắt buộc theo đặc tả — **một hàm `markOrderPaid(tx, orderId, source)` duy nhất**, nhận `tx` (transaction đã
+  mở sẵn bởi caller qua `withTenant`/`withSystemJob`) — gọi từ SePay webhook, MoMo IPN, xác nhận thủ công, và
+  đơn 0đ; idempotent (đơn đã PAID/FULFILLED thì bỏ qua); bên trong dùng `UPDATE coupons SET usedCount =
+  usedCount + 1 WHERE usedCount < usageLimit` (raw SQL, atomic — chống vượt giới hạn khi 2 đơn thanh toán đồng
+  thời, hoàn thành BACKLOG hoãn từ M6).
+- `apps/web/lib/payment-process.ts`: job `payment.process` — route webhook tenant giờ xác thực chữ ký, ghi
+  `webhook_events` idempotent rồi **đẩy job** thay vì xử lý luôn (đúng §7 mục 4 "trả 2xx nhanh, xử lý nặng đẩy
+  sang job" — điểm này M3's platform webhook route KHÔNG theo đúng, xem ghi chú BACKLOG). Job so khớp đơn theo
+  mã tham chiếu, ghi `tenant_payment_transactions` (MATCHED/UNMATCHED/MISMATCH_AMOUNT) rồi gọi `markOrderPaid`
+  khi khớp và đơn còn hợp lệ (PENDING hoặc EXPIRED trong 24h).
+- **Bug tự bắt được qua integration test, không phải qua review**: `payment-process.ts` bản đầu dùng
+  `getPrismaClient()` trần (không qua `withTenant`) để đọc/ghi `orders`/`tenant_payment_transactions` — hai
+  bảng L2 có RLS. Kết quả: `SELECT` bị RLS lọc âm thầm về rỗng (tưởng "không tìm thấy đơn"), `INSERT` bị RLS
+  chặn hẳn (lỗi `42501`). 3/9 integration test đầu tiên fail đúng vào lỗi này — sửa bằng cách bọc toàn bộ hàm
+  trong một `withTenant(data.tenantId, ...)` duy nhất (đã biết tenantId từ webhook route, không cần
+  `withSystemJob`).
+- Trang công khai `/[tenantSlug]/products/[productSlug]` (chi tiết sản phẩm, nút "Mua ngay" — mở lại quyết
+  định hoãn từ M5) và `/[tenantSlug]/checkout/[orderCode]` (tóm tắt đơn, nhập mã giảm giá, chọn phương thức
+  thanh toán, hiện QR/redirect, polling 3 giây — cùng mẫu `BillingPoll` của M3's `/studio/.../billing`).
+- Trang Studio `/studio/[tenantSlug]/orders` (danh sách lọc theo trạng thái, chi tiết, xác nhận thủ công/huỷ/
+  hoàn tiền) và `/studio/[tenantSlug]/customers` (danh sách khách hàng). Dashboard Studio nối 2 StatCard từng
+  để trống "Cần M8" (doanh thu 30 ngày, đơn chờ xác nhận) bằng dữ liệu thật.
+- Job `order.sweep` chạy mỗi 5 phút (không phải mỗi giờ như `subscription.sweep`) — TTL đơn PENDING mặc định
+  chỉ 60 phút nên lịch mỗi giờ có thể để đơn hết hạn hiển thị PENDING sai tới gần 1 giờ.
+- Hoàn thành nốt integration test hoãn từ M6 ("coupon chỉ tính lượt khi đơn PAID, 2 đơn đồng thời không vượt
+  `usageLimit`") — 9/8 test M8 (8 gốc + 1 hoãn từ M6).
+
+**Đã xác minh chạy được trong phiên này:** `pnpm lint/typecheck/test/build` xanh toàn bộ (80/91 unit, 39/50
+integration cộng dồn); toàn bộ 9 integration test M8 chạy thật trên Neon (webhook ký HMAC thật, RLS thật,
+UPDATE atomic coupon thật qua `Promise.all` mô phỏng đồng thời). **Chưa verify được**: luồng thật qua trình
+duyệt (chọn sản phẩm → mua → quét QR → polling), vì cần R2 + provider thanh toán thật đã cấu hình qua UI.
+
 ## Câu hỏi còn mở (đã chọn phương án an toàn, xem ADR tương ứng)
 
 - ID strategy: cuid2 (ADR-001).
@@ -271,5 +316,7 @@ tồn tại → 404.
   trường — đã trình bày đánh đổi bảo mật rồi hỏi người dùng trước khi làm (ADR-017).
 - `file.scan` không có ClamAV thật → luôn `CLEAN` sau kiểm tra định dạng, kể cả khi có set `CLAMAV_HOST`
   (ADR-018) — đúng phương án dự phòng đặc tả đã gợi ý.
+- `order.sweep` chạy mỗi 5 phút thay vì mỗi giờ như các job sweep khác, vì TTL đơn PENDING ngắn hơn nhiều so
+  với chu kỳ subscription (ADR-019).
 - Chưa hỏi người dùng các quyết định ảnh hưởng tiền/bảo mật/dữ liệu cá nhân — sẽ dừng lại đúng lúc theo mục
   0.6 khi gặp.

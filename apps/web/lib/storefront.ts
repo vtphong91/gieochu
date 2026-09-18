@@ -40,3 +40,12 @@ export async function getPublishedProducts(tenantId: string): Promise<PublicProd
     }),
   );
 }
+
+/** §"M8" product detail page — same `withPublic` RLS gate (status='PUBLISHED') as `getPublishedProducts`. */
+export async function getPublishedProductBySlug(tenantId: string, slug: string) {
+  return withPublic((tx) =>
+    tx.product.findFirst({
+      where: { tenantId, slug, status: "PUBLISHED" },
+    }),
+  );
+}

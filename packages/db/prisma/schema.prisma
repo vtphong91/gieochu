@@ -48,6 +48,9 @@ model User {
   verificationTokens VerificationToken[]
   ownedTenant        Tenant?
   tenantMemberships  TenantMember[]
+  orders             Order[]
+  entitlements       Entitlement[]
+  tenantCustomerOf   TenantCustomer[]
 
   @@map("users")
 }
@@ -227,6 +230,10 @@ model Tenant {
   paymentConfigs      TenantPaymentConfig[]
   subscriptionInvoices SubscriptionInvoice[]
   coupons             Coupon[]
+  orders              Order[]
+  transactions        TenantPaymentTransaction[]
+  customers           TenantCustomer[]
+  entitlements        Entitlement[]
 
   @@map("tenants")
 }
@@ -304,7 +311,9 @@ model Product {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  files ProductFile[]
+  files        ProductFile[]
+  orderItems   OrderItem[]
+  entitlements Entitlement[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -554,10 +563,10 @@ model Coupon {
   @@map("coupons")
 }
 
-/// §5.2 "Bảng phụ: coupon_redemptions (couponId, userId, orderId)". `orderId`
-/// is a plain string, not a relation — the Order model doesn't exist yet
-/// (M8); M8 adds the `@relation` once it does. Nothing writes to this table
-/// in M6 — it's schema-only, ready for M8's order-PAID consumption logic.
+/// §5.2 "Bảng phụ: coupon_redemptions (couponId, userId, orderId)". Written
+/// once, atomically, by `markOrderPaid()` (§"M8") — `@@unique([couponId,
+/// orderId])` makes a second attempt at the same order a no-op rather than
+/// double-counting `usedCount`.
 model CouponRedemption {
   id        String   @id @default(cuid(2))
   couponId  String
@@ -565,9 +574,149 @@ model CouponRedemption {
   tenantId  String
   userId    String
   orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
   @@unique([couponId, orderId])
   @@index([tenantId])
   @@map("coupon_redemptions")
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FULFILLED
+  EXPIRED
+  CANCELED
+  REFUNDED
+}
+
+/// §"M8" — ORDERS. L2 with an extra customer-ownership dimension: RLS
+/// allows tenantId match (owner) OR customerId match under `app.scope =
+/// 'customer'` (the buyer) OR system_job (§5.4) — see `_rls_m8`.
+/// MVP is "mỗi đơn 1 sản phẩm" but `OrderItem` stays its own table (the
+/// spec's own forward note) so a future cart just adds more rows.
+model Order {
+  id            String      @id @default(cuid(2))
+  tenantId      String
+  tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customerId    String
+  customer      User        @relation(fields: [customerId], references: [id])
+  code          String      @unique
+  status        OrderStatus @default(PENDING)
+  subtotalVnd   Int
+  discountVnd   Int         @default(0)
+  totalVnd      Int
+  couponCode    String?
+  provider      PaymentProviderId?
+  /// CheckoutResult (packages/payments) captured once the customer picks a
+  /// provider on the checkout page — read back instead of re-calling the
+  /// provider (MoMo's createCheckout hits their API), same as
+  /// SubscriptionInvoice.checkoutPayload (M3).
+  checkoutPayload Json?
+  proofImageKey String?
+  /// Ghi chú bắt buộc khi owner xác nhận thủ công (§"M8"), cùng mẫu với
+  /// SubscriptionInvoice.confirmNote (M3).
+  confirmNote   String?
+  expiresAt     DateTime
+  paidAt        DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  items             OrderItem[]
+  transactions      TenantPaymentTransaction[]
+  couponRedemptions CouponRedemption[]
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@map("orders")
+}
+
+/// §5.3 "order_items lưu snapshot tiêu đề và giá tại thời điểm mua" — a later
+/// price/title change on Product never rewrites a placed order.
+model OrderItem {
+  id            String   @id @default(cuid(2))
+  orderId       String
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id])
+  titleSnapshot String
+  unitPriceVnd  Int
+  finalPriceVnd Int
+  createdAt     DateTime @default(now())
+
+  entitlement Entitlement?
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+enum PaymentMatchStatus {
+  MATCHED
+  UNMATCHED
+  MISMATCH_AMOUNT
+}
+
+/// §5.3 unique `(tenantId, provider, providerTxnId)` — the same provider
+/// event id can never be recorded twice for a tenant (idempotency at the
+/// ledger level, separate from `webhook_events`' idempotency at the HTTP
+/// delivery level).
+model TenantPaymentTransaction {
+  id            String             @id @default(cuid(2))
+  tenantId      String
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orderId       String?
+  order         Order?             @relation(fields: [orderId], references: [id])
+  provider      PaymentProviderId
+  providerTxnId String
+  amountVnd     Int
+  matchStatus   PaymentMatchStatus
+  rawPayload    Json
+  createdAt     DateTime           @default(now())
+
+  @@unique([tenantId, provider, providerTxnId])
+  @@index([tenantId])
+  @@map("tenant_payment_transactions")
+}
+
+/// §5.3 unique `(tenantId, userId)` — one aggregate row per customer per
+/// tenant, upserted (cộng dồn) by `markOrderPaid()`.
+model TenantCustomer {
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  ordersCount   Int       @default(0)
+  totalSpentVnd Int       @default(0)
+  firstOrderAt  DateTime?
+  lastOrderAt   DateTime?
+  note          String?
+
+  @@id([tenantId, userId])
+  @@index([tenantId])
+  @@map("tenant_customers")
+}
+
+/// §5.2 Layer L3 "Customer" — filtered by userId (M9 downloads read this).
+/// `downloadLimit` is a snapshot of `product.downloadLimit` at purchase
+/// time (§5.3 snapshot convention) — a later change to the product's limit
+/// never retroactively changes what an existing buyer already has.
+model Entitlement {
+  id            String    @id @default(cuid(2))
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product   @relation(fields: [productId], references: [id])
+  orderItemId   String    @unique
+  orderItem     OrderItem @relation(fields: [orderItemId], references: [id])
+  downloadsUsed Int       @default(0)
+  downloadLimit Int
+  revokedAt     DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([userId])
+  @@index([tenantId])
+  @@map("entitlements")
 }

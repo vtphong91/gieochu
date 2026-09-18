@@ -1,6 +1,7 @@
 import { createJobQueue, QUEUE_NAMES, type JobQueue } from "@gieochu/jobs";
 import { getEnv } from "@gieochu/config";
 import type { EmailMessage } from "@gieochu/email";
+import type { PaymentProviderId } from "@gieochu/payments";
 
 let queue: JobQueue | undefined;
 let started: Promise<void> | undefined;
@@ -18,7 +19,8 @@ async function getStartedQueue(): Promise<JobQueue> {
     started = queue
       .start()
       .then(() => queue!.ensureQueue(QUEUE_NAMES.EMAIL_SEND))
-      .then(() => queue!.ensureQueue(QUEUE_NAMES.FILE_SCAN));
+      .then(() => queue!.ensureQueue(QUEUE_NAMES.FILE_SCAN))
+      .then(() => queue!.ensureQueue(QUEUE_NAMES.PAYMENT_PROCESS));
   }
   await started;
   return queue;
@@ -36,4 +38,20 @@ export interface FileScanJobData {
 export async function enqueueFileScan(data: FileScanJobData): Promise<void> {
   const q = await getStartedQueue();
   await q.send(QUEUE_NAMES.FILE_SCAN, data);
+}
+
+export interface PaymentProcessJobData {
+  tenantId: string;
+  provider: PaymentProviderId;
+  providerEventId: string;
+  reference: string | undefined;
+  amountVnd: number;
+  /** From `NormalizedPaymentEvent.success` — a failed/reversed transfer event never matches an order. */
+  success: boolean;
+  rawPayload: unknown;
+}
+
+export async function enqueuePaymentProcess(data: PaymentProcessJobData): Promise<void> {
+  const q = await getStartedQueue();
+  await q.send(QUEUE_NAMES.PAYMENT_PROCESS, data);
 }

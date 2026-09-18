@@ -259,3 +259,24 @@
 - **Lý do:** Đúng theo gợi ý dự phòng trong đặc tả khi thiếu hạ tầng — kiểm tra định dạng/magic-bytes (đã có,
   chặn được phần lớn file giả mạo đuôi) vẫn chạy đầy đủ; quét virus thật là lớp phòng thủ bổ sung, để dành khi
   vận hành thật cần (ghi `docs/BACKLOG.md`), không chặn phần còn lại của luồng upload.
+
+## ADR-019 — Webhook tenant xử lý qua job `payment.process` (đúng §7 mục 4); job `order.sweep` chạy mỗi 5 phút
+
+- **Bối cảnh:** §7 mục 4 của đặc tả yêu cầu tường minh: "Webhook: ... idempotent qua `webhook_events`; trả
+  2xx nhanh, xử lý nặng đẩy sang job." M7 (route `POST /api/webhooks/tenants/[tenantId]/[provider]`) đã cố
+  tình dừng lại sau khi ghi `webhook_events` (Order chưa tồn tại lúc đó), đúng comment "order matching lands
+  in M8". Tới M8, có 2 lựa chọn: xử lý luôn trong route (giống M3's `POST
+  /api/webhooks/platform/[provider]`, gọi `markInvoicePaid()` trực tiếp trong request) hoặc tách qua job thật
+  như §7 mục 4 yêu cầu.
+- **Quyết định:** M8 làm **đúng theo đặc tả** — route chỉ xác thực chữ ký + ghi `webhook_events` idempotent +
+  `enqueuePaymentProcess(...)` rồi trả 200 ngay; toàn bộ việc so khớp đơn + gọi `markOrderPaid()` chuyển sang
+  job `payment.process` (`apps/web/lib/payment-process.ts`, đăng ký trong `worker.ts`). **Không sửa lại M3's
+  platform webhook route** (vẫn xử lý đồng bộ trong request) — đây là một khoảng lệch đã biết giữa 2 module,
+  ghi vào `docs/BACKLOG.md` thay vì refactor một module đã xong/đã có test xanh ngoài phạm vi M8.
+- Cùng lúc, `order.sweep` (tương đương `subscription.sweep` của M3) đặt lịch **mỗi 5 phút** thay vì mỗi giờ —
+  TTL đơn PENDING mặc định (`ORDER_PENDING_TTL_MINUTES`) chỉ 60 phút, lịch mỗi giờ có thể để một đơn đã hết
+  hạn thật hiển thị PENDING sai lệch tới gần 1 giờ, đủ để gây nhầm lẫn cho khách hàng đang xem trang checkout.
+- **Lý do:** Ưu tiên đúng đặc tả cho module mới (M8) thay vì lặp lại một quyết định đã lệch chuẩn từ trước;
+  sửa M3 ngoài phạm vi công việc đang làm là rủi ro không cần thiết cho một module đã ổn định — nếu cần đồng
+  bộ hoá cả hai, làm như một thay đổi riêng, có xin ý kiến người dùng trước (ảnh hưởng luồng thanh toán đã
+  chạy thật).

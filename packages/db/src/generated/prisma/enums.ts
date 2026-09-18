@@ -141,3 +141,24 @@ export const CouponType = {
 } as const
 
 export type CouponType = (typeof CouponType)[keyof typeof CouponType]
+
+
+export const OrderStatus = {
+  PENDING: 'PENDING',
+  PAID: 'PAID',
+  FULFILLED: 'FULFILLED',
+  EXPIRED: 'EXPIRED',
+  CANCELED: 'CANCELED',
+  REFUNDED: 'REFUNDED'
+} as const
+
+export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus]
+
+
+export const PaymentMatchStatus = {
+  MATCHED: 'MATCHED',
+  UNMATCHED: 'UNMATCHED',
+  MISMATCH_AMOUNT: 'MISMATCH_AMOUNT'
+} as const
+
+export type PaymentMatchStatus = (typeof PaymentMatchStatus)[keyof typeof PaymentMatchStatus]

@@ -16,3 +16,9 @@ export type { SubscriptionEmailStage, SubscriptionStatusEmailData } from "./temp
 
 export { renderProductFileRejectedEmail } from "./templates/product-file-rejected";
 export type { ProductFileRejectedTemplateData } from "./templates/product-file-rejected";
+
+export { renderOrderPaidEmail } from "./templates/order-paid";
+export type { OrderPaidTemplateData } from "./templates/order-paid";
+
+export { renderNewSaleEmail } from "./templates/new-sale";
+export type { NewSaleTemplateData } from "./templates/new-sale";

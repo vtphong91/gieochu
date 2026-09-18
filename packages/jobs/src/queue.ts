@@ -10,6 +10,10 @@ export const QUEUE_NAMES = {
   SUBSCRIPTION_SWEEP: "subscription.sweep",
   /** §"M5" — after `complete`: magic-byte + sha256 check, CLEAN or REJECTED. */
   FILE_SCAN: "file.scan",
+  /** §"M8" — heavy webhook work runs here, after the webhook route already answered 200 (§7.4). */
+  PAYMENT_PROCESS: "payment.process",
+  /** §"M8" — hourly: orders past `expiresAt` move PENDING -> EXPIRED. */
+  ORDER_SWEEP: "order.sweep",
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];

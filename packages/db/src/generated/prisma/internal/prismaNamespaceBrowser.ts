@@ -72,7 +72,12 @@ export const ModelName = {
   WebhookEvent: 'WebhookEvent',
   BankBin: 'BankBin',
   Coupon: 'Coupon',
-  CouponRedemption: 'CouponRedemption'
+  CouponRedemption: 'CouponRedemption',
+  Order: 'Order',
+  OrderItem: 'OrderItem',
+  TenantPaymentTransaction: 'TenantPaymentTransaction',
+  TenantCustomer: 'TenantCustomer',
+  Entitlement: 'Entitlement'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -419,6 +424,85 @@ export const CouponRedemptionScalarFieldEnum = {
 } as const
 
 export type CouponRedemptionScalarFieldEnum = (typeof CouponRedemptionScalarFieldEnum)[keyof typeof CouponRedemptionScalarFieldEnum]
+
+
+export const OrderScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  customerId: 'customerId',
+  code: 'code',
+  status: 'status',
+  subtotalVnd: 'subtotalVnd',
+  discountVnd: 'discountVnd',
+  totalVnd: 'totalVnd',
+  couponCode: 'couponCode',
+  provider: 'provider',
+  checkoutPayload: 'checkoutPayload',
+  proofImageKey: 'proofImageKey',
+  confirmNote: 'confirmNote',
+  expiresAt: 'expiresAt',
+  paidAt: 'paidAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type OrderScalarFieldEnum = (typeof OrderScalarFieldEnum)[keyof typeof OrderScalarFieldEnum]
+
+
+export const OrderItemScalarFieldEnum = {
+  id: 'id',
+  orderId: 'orderId',
+  productId: 'productId',
+  titleSnapshot: 'titleSnapshot',
+  unitPriceVnd: 'unitPriceVnd',
+  finalPriceVnd: 'finalPriceVnd',
+  createdAt: 'createdAt'
+} as const
+
+export type OrderItemScalarFieldEnum = (typeof OrderItemScalarFieldEnum)[keyof typeof OrderItemScalarFieldEnum]
+
+
+export const TenantPaymentTransactionScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  orderId: 'orderId',
+  provider: 'provider',
+  providerTxnId: 'providerTxnId',
+  amountVnd: 'amountVnd',
+  matchStatus: 'matchStatus',
+  rawPayload: 'rawPayload',
+  createdAt: 'createdAt'
+} as const
+
+export type TenantPaymentTransactionScalarFieldEnum = (typeof TenantPaymentTransactionScalarFieldEnum)[keyof typeof TenantPaymentTransactionScalarFieldEnum]
+
+
+export const TenantCustomerScalarFieldEnum = {
+  tenantId: 'tenantId',
+  userId: 'userId',
+  ordersCount: 'ordersCount',
+  totalSpentVnd: 'totalSpentVnd',
+  firstOrderAt: 'firstOrderAt',
+  lastOrderAt: 'lastOrderAt',
+  note: 'note'
+} as const
+
+export type TenantCustomerScalarFieldEnum = (typeof TenantCustomerScalarFieldEnum)[keyof typeof TenantCustomerScalarFieldEnum]
+
+
+export const EntitlementScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  tenantId: 'tenantId',
+  productId: 'productId',
+  orderItemId: 'orderItemId',
+  downloadsUsed: 'downloadsUsed',
+  downloadLimit: 'downloadLimit',
+  revokedAt: 'revokedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type EntitlementScalarFieldEnum = (typeof EntitlementScalarFieldEnum)[keyof typeof EntitlementScalarFieldEnum]
 
 
 export const SortOrder = {

@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server";
-import { decryptSecret, getProvider, type PaymentProviderId } from "@gieochu/payments";
+import { decryptSecret, extractSepayReference, getProvider, type PaymentProviderId } from "@gieochu/payments";
 import { logger } from "@gieochu/core";
 import { getEnv } from "@gieochu/config";
 import { withSystemJob } from "@gieochu/db";
+import { enqueuePaymentProcess } from "../../../../../../lib/jobs";
 
 const VALID_PROVIDERS = new Set<PaymentProviderId>(["MANUAL_QR", "SEPAY", "MOMO"]);
 
 /**
- * §"M7": verifies the signature and records the event for idempotency
- * (webhook_events). Matching the event to an Order and marking it PAID is
- * M8's job (no Order model exists yet) — this route intentionally stops
- * after accepting the webhook, per §7.4 "trả 2xx nhanh rồi xử lý nặng trong job".
+ * §"M7"/§"M8": verifies the signature, records the event for idempotency
+ * (webhook_events), then enqueues `payment.process` with the already-parsed
+ * event and returns 200 — order matching + `markOrderPaid()` happen in the
+ * job, per §7.4 "trả 2xx nhanh rồi xử lý nặng trong job".
  */
 export async function POST(
   request: Request,
@@ -69,10 +70,25 @@ export async function POST(
     return NextResponse.json({ success: true });
   }
 
-  logger.info(
-    { tenantId, provider: providerId, providerEventId: event.providerEventId },
-    "tenant payment webhook accepted (order matching lands in M8)",
-  );
+  // SePay's parseWebhook can't know the tenant's paymentPrefix (no cfg param on the shared
+  // interface) — extract the reference here, with cfg already decrypted above. MoMo's own
+  // orderId already comes back as `event.reference` from parseWebhook.
+  const reference =
+    providerId === "SEPAY"
+      ? extractSepayReference(parsedBody as Parameters<typeof extractSepayReference>[0], (cfg as { paymentPrefix: string }).paymentPrefix)
+      : event.reference;
+
+  await enqueuePaymentProcess({
+    tenantId,
+    provider: providerId,
+    providerEventId: event.providerEventId,
+    reference,
+    amountVnd: event.amountVnd,
+    success: event.success,
+    rawPayload: parsedBody,
+  });
+
+  logger.info({ tenantId, provider: providerId, providerEventId: event.providerEventId, reference }, "tenant payment webhook enqueued for processing");
 
   return NextResponse.json({ success: true });
 }

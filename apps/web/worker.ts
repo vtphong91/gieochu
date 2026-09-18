@@ -6,7 +6,9 @@ import { getEnv } from "@gieochu/config";
 import { logger } from "@gieochu/core";
 import { runSubscriptionSweep } from "./lib/subscription-sweep";
 import { runFileScan } from "./lib/file-scan";
-import type { FileScanJobData } from "./lib/jobs";
+import { runOrderSweep } from "./lib/order";
+import { processPaymentEvent } from "./lib/payment-process";
+import type { FileScanJobData, PaymentProcessJobData } from "./lib/jobs";
 
 async function main() {
   loadEnv({ path: fileURLToPath(new URL("../../.env", import.meta.url)) });
@@ -20,6 +22,11 @@ async function main() {
   await queue.ensureQueue(QUEUE_NAMES.SUBSCRIPTION_SWEEP);
   await queue.schedule(QUEUE_NAMES.SUBSCRIPTION_SWEEP, "0 * * * *");
   await queue.ensureQueue(QUEUE_NAMES.FILE_SCAN);
+  await queue.ensureQueue(QUEUE_NAMES.PAYMENT_PROCESS);
+  await queue.ensureQueue(QUEUE_NAMES.ORDER_SWEEP);
+  // Every 5 min, not hourly like subscription.sweep — ORDER_PENDING_TTL_MINUTES defaults to
+  // 60, so an hourly cadence could leave an expired order showing PENDING for up to an hour.
+  await queue.schedule(QUEUE_NAMES.ORDER_SWEEP, "*/5 * * * *");
 
   await queue.work<EmailMessage>(QUEUE_NAMES.EMAIL_SEND, async (message) => {
     await sender.send(message);
@@ -34,6 +41,16 @@ async function main() {
   await queue.work<FileScanJobData>(QUEUE_NAMES.FILE_SCAN, async (data) => {
     await runFileScan(data.productFileId);
     logger.info({ productFileId: data.productFileId }, "file scan ran");
+  });
+
+  await queue.work<PaymentProcessJobData>(QUEUE_NAMES.PAYMENT_PROCESS, async (data) => {
+    await processPaymentEvent(data);
+    logger.info({ tenantId: data.tenantId, provider: data.provider }, "payment event processed");
+  });
+
+  await queue.work<Record<string, never>>(QUEUE_NAMES.ORDER_SWEEP, async () => {
+    await runOrderSweep();
+    logger.info("order sweep ran");
   });
 
   logger.info("worker started, listening for jobs");
