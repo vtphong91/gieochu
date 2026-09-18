@@ -1,5 +1,8 @@
-// Placeholder package scaffold. Implemented starting M5 — Sản phẩm và File
-// tài liệu (S3-compatible presigned upload/download against R2 in prod,
-// MinIO in dev — see docker/docker-compose.yml).
-// See docs/GIEOCHU_PROMPT_MVP_PHASE1.md §"M5 — Sản phẩm và File tài liệu".
-export {};
+// §"M5 — Sản phẩm và File tài liệu". The S3 client / presign helpers
+// (network calls against R2/MinIO) are intentionally not built yet — this
+// session builds the format/key logic that doesn't need live storage; see
+// docs/BACKLOG.md for the deferred upload/presign half of this module.
+export { ALLOWED_EXTENSIONS, getDeclaredExtension, isAllowedExtension, matchesDeclaredExtension } from "./file-format";
+export type { AllowedExtension } from "./file-format";
+
+export { buildProductFileKey, sanitizeFileName } from "./object-key";

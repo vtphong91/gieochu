@@ -88,6 +88,26 @@ export const ProductStatus = {
 export type ProductStatus = (typeof ProductStatus)[keyof typeof ProductStatus]
 
 
+export const ProductType = {
+  TEMPLATE: 'TEMPLATE',
+  SLIDE: 'SLIDE',
+  EBOOK: 'EBOOK',
+  EXAM: 'EXAM',
+  OTHER: 'OTHER'
+} as const
+
+export type ProductType = (typeof ProductType)[keyof typeof ProductType]
+
+
+export const ProductFileScanStatus = {
+  PENDING: 'PENDING',
+  CLEAN: 'CLEAN',
+  REJECTED: 'REJECTED'
+} as const
+
+export type ProductFileScanStatus = (typeof ProductFileScanStatus)[keyof typeof ProductFileScanStatus]
+
+
 export const PaymentProviderId = {
   MANUAL_QR: 'MANUAL_QR',
   SEPAY: 'SEPAY',

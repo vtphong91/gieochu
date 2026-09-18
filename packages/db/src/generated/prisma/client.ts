@@ -109,11 +109,25 @@ export type TenantMember = Prisma.TenantMemberModel
 export type TenantSlugHistory = Prisma.TenantSlugHistoryModel
 /**
  * Model Product
- * §5.2 — PRODUCTS. Minimal shape forward-declared so the M4 storefront can
- * filter by status; M5 — Sản phẩm và File tài liệu adds price, files,
- * description, and the rest.
+ * §"M5" — PRODUCTS. `coverImageKey` points at the PUBLIC bucket (direct
+ * URL, no presign needed to display it) — the sellable files themselves
+ * live in the private bucket via ProductFile. `salePriceVnd`/`saleStartsAt`/
+ * `saleEndsAt` are columns only — M6 adds the pricing engine that reads
+ * them. `downloadLimit=0` means unlimited (ADR-014). `ratingAvg`/
+ * `ratingCount` are deliberately NOT added here — nothing in M5 writes
+ * them; M10 adds those columns when it adds review aggregation.
  */
 export type Product = Prisma.ProductModel
+/**
+ * Model ProductFile
+ * §"M5" — PRODUCT_FILES. `tenantId` is denormalized from Product (per the
+ * spec's own ERD) so RLS can scope this table the same way as `products`,
+ * without a join. `removedAt` is a soft-hide only — the spec is explicit
+ * that removing a file from a product that already has buyers must never
+ * delete the underlying object (§5.2), so a real S3 delete only ever
+ * happens from the file.scan job rejecting a file that was never CLEAN.
+ */
+export type ProductFile = Prisma.ProductFileModel
 /**
  * Model SystemSettings
  * §5.1 Layer System — system_settings. Single row (id fixed to "default").

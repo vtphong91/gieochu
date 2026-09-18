@@ -408,6 +408,7 @@ export const ModelName = {
   TenantMember: 'TenantMember',
   TenantSlugHistory: 'TenantSlugHistory',
   Product: 'Product',
+  ProductFile: 'ProductFile',
   SystemSettings: 'SystemSettings',
   TenantPaymentConfig: 'TenantPaymentConfig',
   PlatformPaymentConfig: 'PlatformPaymentConfig',
@@ -430,7 +431,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userProfile" | "refreshToken" | "verificationToken" | "plan" | "cmsPage" | "subscription" | "tenant" | "tenantMember" | "tenantSlugHistory" | "product" | "systemSettings" | "tenantPaymentConfig" | "platformPaymentConfig" | "subscriptionInvoice" | "platformPaymentTransaction" | "webhookEvent" | "bankBin"
+    modelProps: "user" | "userProfile" | "refreshToken" | "verificationToken" | "plan" | "cmsPage" | "subscription" | "tenant" | "tenantMember" | "tenantSlugHistory" | "product" | "productFile" | "systemSettings" | "tenantPaymentConfig" | "platformPaymentConfig" | "subscriptionInvoice" | "platformPaymentTransaction" | "webhookEvent" | "bankBin"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1248,6 +1249,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    ProductFile: {
+      payload: Prisma.$ProductFilePayload<ExtArgs>
+      fields: Prisma.ProductFileFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ProductFileFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductFilePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ProductFileFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductFilePayload>
+        }
+        findFirst: {
+          args: Prisma.ProductFileFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductFilePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ProductFileFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductFilePayload>
+        }
+        findMany: {
+          args: Prisma.ProductFileFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductFilePayload>[]
+        }
+        create: {
+          args: Prisma.ProductFileCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductFilePayload>
+        }
+        createMany: {
+          args: Prisma.ProductFileCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ProductFileCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductFilePayload>[]
+        }
+        delete: {
+          args: Prisma.ProductFileDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductFilePayload>
+        }
+        update: {
+          args: Prisma.ProductFileUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductFilePayload>
+        }
+        deleteMany: {
+          args: Prisma.ProductFileDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ProductFileUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ProductFileUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductFilePayload>[]
+        }
+        upsert: {
+          args: Prisma.ProductFileUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductFilePayload>
+        }
+        aggregate: {
+          args: Prisma.ProductFileAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateProductFile>
+        }
+        groupBy: {
+          args: Prisma.ProductFileGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ProductFileGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ProductFileCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ProductFileCountAggregateOutputType> | number
+        }
+      }
+    }
     SystemSettings: {
       payload: Prisma.$SystemSettingsPayload<ExtArgs>
       fields: Prisma.SystemSettingsFieldRefs
@@ -1957,12 +2032,39 @@ export const ProductScalarFieldEnum = {
   tenantId: 'tenantId',
   slug: 'slug',
   title: 'title',
+  description: 'description',
+  type: 'type',
+  coverImageKey: 'coverImageKey',
+  tags: 'tags',
+  priceVnd: 'priceVnd',
+  salePriceVnd: 'salePriceVnd',
+  saleStartsAt: 'saleStartsAt',
+  saleEndsAt: 'saleEndsAt',
+  downloadLimit: 'downloadLimit',
   status: 'status',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
 export type ProductScalarFieldEnum = (typeof ProductScalarFieldEnum)[keyof typeof ProductScalarFieldEnum]
+
+
+export const ProductFileScalarFieldEnum = {
+  id: 'id',
+  productId: 'productId',
+  tenantId: 'tenantId',
+  objectKey: 'objectKey',
+  fileName: 'fileName',
+  mimeType: 'mimeType',
+  sizeBytes: 'sizeBytes',
+  sha256: 'sha256',
+  scanStatus: 'scanStatus',
+  isPreview: 'isPreview',
+  removedAt: 'removedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type ProductFileScalarFieldEnum = (typeof ProductFileScalarFieldEnum)[keyof typeof ProductFileScalarFieldEnum]
 
 
 export const SystemSettingsScalarFieldEnum = {
@@ -2291,6 +2393,20 @@ export type ListEnumTenantMemberRoleFieldRefInput<$PrismaModel> = FieldRefInputT
 
 
 /**
+ * Reference to a field of type 'ProductType'
+ */
+export type EnumProductTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ProductType'>
+    
+
+
+/**
+ * Reference to a field of type 'ProductType[]'
+ */
+export type ListEnumProductTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ProductType[]'>
+    
+
+
+/**
  * Reference to a field of type 'ProductStatus'
  */
 export type EnumProductStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ProductStatus'>
@@ -2301,6 +2417,20 @@ export type EnumProductStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$Pr
  * Reference to a field of type 'ProductStatus[]'
  */
 export type ListEnumProductStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ProductStatus[]'>
+    
+
+
+/**
+ * Reference to a field of type 'ProductFileScanStatus'
+ */
+export type EnumProductFileScanStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ProductFileScanStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'ProductFileScanStatus[]'
+ */
+export type ListEnumProductFileScanStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ProductFileScanStatus[]'>
     
 
 
@@ -2521,6 +2651,7 @@ export type GlobalOmitConfig = {
   tenantMember?: Prisma.TenantMemberOmit
   tenantSlugHistory?: Prisma.TenantSlugHistoryOmit
   product?: Prisma.ProductOmit
+  productFile?: Prisma.ProductFileOmit
   systemSettings?: Prisma.SystemSettingsOmit
   tenantPaymentConfig?: Prisma.TenantPaymentConfigOmit
   platformPaymentConfig?: Prisma.PlatformPaymentConfigOmit

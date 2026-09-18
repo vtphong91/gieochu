@@ -15,3 +15,11 @@ describe("M3 plan limits", () => {
     expect(isWithinPlanLimit("storage", withinCap + 1, limits)).toBe(false);
   });
 });
+
+describe("M5 per-file size limit (reuses isWithinPlanLimit built in M3)", () => {
+  it("checks a single file's size against the plan's per-file MB cap", () => {
+    const withinCap = limits.maxFileMb * 1024 * 1024;
+    expect(isWithinPlanLimit("fileSize", withinCap, limits)).toBe(true);
+    expect(isWithinPlanLimit("fileSize", withinCap + 1, limits)).toBe(false);
+  });
+});

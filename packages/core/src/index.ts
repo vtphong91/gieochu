@@ -31,6 +31,11 @@ export type { SubscriptionEvent, SubscriptionStatus } from "./billing/subscripti
 export { isWithinPlanLimit } from "./billing/plan-limits";
 export type { PlanLimitKind, PlanLimits } from "./billing/plan-limits";
 
+export { suggestSlug } from "./product/slug-suggestion";
+export { canPublishProduct } from "./product/publish-eligibility";
+export type { PublishBlockReason, PublishEligibilityInput, PublishEligibilityResult } from "./product/publish-eligibility";
+export { applyStorageDelta } from "./product/storage-accounting";
+
 export { decideLockUser } from "./admin/user-lock";
 export type { LockRejectReason, LockTargetUser, LockUserDecision } from "./admin/user-lock";
 export { isValidPlanInput } from "./admin/plan-validation";

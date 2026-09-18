@@ -18,7 +18,7 @@ M0 → M1 (kèm khung email M11) → M4 → M2 (phần cơ bản) → M7 → M3 
 | M2 | System Admin (cơ bản) | ✅ Xong (cơ bản — Platform Payment UI + audit log viewer chờ M7/M12) | `apps/web/app/admin`, `packages/core/src/admin` | 4 / 4 |
 | M7 | Cấu hình Tenant Payment | ✅ Xong | `packages/payments` | 10 / 4 |
 | M3 | Subscription và Platform Billing | ✅ Xong | `apps/web/lib/subscription-billing.ts`, `subscription-sweep.ts`, `platform-payment.ts`, `packages/core/src/billing` | 10 / 5 |
-| M5 | Sản phẩm và File tài liệu | ⬜ Chưa làm | `packages/storage`, product CRUD | 6 / 4 |
+| M5 | Sản phẩm và File tài liệu | 🟡 Một phần (metadata/CRUD xong — upload/storage thật chờ R2, xem ADR-014) | `packages/storage`, `apps/web/lib/product.ts` | 6 / 2 (+2 chờ storage thật) |
 | M6 | Giá và Khuyến mãi | ⬜ Chưa làm | `packages/core/pricing` | 14 / 2 |
 | M8 | Checkout và Đơn hàng | ⬜ Chưa làm | order service, webhooks | 10 / 8 |
 | M9 | Thư viện, Tải xuống, Share link | ⬜ Chưa làm | download API, `/s/[token]` | 7 / 5 |
@@ -168,10 +168,30 @@ chưa cấu hình → 404.
 integration cộng dồn); `curl` xác nhận `/studio/.../billing` và `/admin/billing/*` chưa đăng nhập → 307,
 webhook platform SePay/MoMo chưa cấu hình → 404, MANUAL_QR → 404 (không có webhook).
 
+## M5 — Việc đã làm, phần 1 (xem docs/modules/M5.md để có sơ đồ và danh sách test đầy đủ)
+
+- Máy đang code không có Docker (không chạy được MinIO local) → hỏi người dùng trước khi làm — quyết định
+  chia M5 làm 2: phần metadata/CRUD (không cần storage thật) làm ngay, phần upload/storage thật (Cloudflare
+  R2, không dùng Docker) làm sau như module riêng (ADR-014).
+- Schema: `Product` mở rộng đầy đủ (description/type/coverImageKey/tags/giá/downloadLimit — `0` = không giới
+  hạn, ADR-015), `ProductFile` mới (L2, RLS, `removedAt` soft-hide — không bao giờ xoá object khi owner ẩn
+  file).
+- `packages/storage` (từ khung rỗng): `file-format.ts`, `object-key.ts` — 2 hàm thuần, không cần storage
+  thật.
+- `packages/core/src/product`: `suggestSlug`, `canPublishProduct`, `applyStorageDelta` — 6/6 unit test M5
+  hoàn thành (bao gồm tái dùng `isWithinPlanLimit("fileSize", ...)` đã xây ở M3).
+- `apps/web/lib/plan-limits.ts`: `assertPlanLimit()` — wrapper DB thật M3 đã hoãn, giờ xây xong.
+- `apps/web/lib/product.ts` + trang Studio `/products`, `/products/new`, `/products/[id]` — CRUD đầy đủ,
+  4 hàm chuyển trạng thái đúng sơ đồ đặc tả.
+
+**Đã xác minh chạy được trong phiên này:** `pnpm lint/typecheck/test/build` xanh toàn bộ (56/91 unit, 28/50
+integration cộng dồn); `curl` xác nhận các trang Studio sản phẩm chưa đăng nhập → 307. **Chưa verify được**:
+"upload file lớn qua multipart", "file giả mạo đuôi bị từ chối" (nghiệm thu gốc M5) — thuộc phần hoãn lại.
+
 ## Câu hỏi còn mở (đã chọn phương án an toàn, xem ADR tương ứng)
 
 - ID strategy: cuid2 (ADR-001).
-- `downloadLimit=0` nghĩa là không giới hạn (ADR — sẽ ghi ở M5).
+- `downloadLimit=0` nghĩa là không giới hạn (ADR-015).
 - Local dev DB: khuyến nghị dùng Neon branch miễn phí thay vì Postgres container, vì `@prisma/adapter-neon`
   cần giao thức Neon serverless (ADR-004).
 - `UserProfile` tạo một phần lúc đăng ký, hoàn thiện dần sau (ADR-008).
@@ -182,5 +202,7 @@ webhook platform SePay/MoMo chưa cấu hình → 404, MANUAL_QR → 404 (không
   đã hỏi người dùng trước khi làm (ADR-011).
 - Dedupe hoá đơn `PENDING` + tự tắt `PlatformPaymentConfig` khi đổi tài khoản/secret ở M3, theo báo cáo tham
   khảo TaniGos người dùng cung cấp (ADR-013).
+- M5 chia 2 phần (metadata/CRUD trước, upload/storage R2 thật sau) vì máy code không có Docker — đã hỏi
+  người dùng trước khi làm (ADR-014).
 - Chưa hỏi người dùng các quyết định ảnh hưởng tiền/bảo mật/dữ liệu cá nhân — sẽ dừng lại đúng lúc theo mục
   0.6 khi gặp.

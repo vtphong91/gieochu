@@ -62,6 +62,7 @@ export const ModelName = {
   TenantMember: 'TenantMember',
   TenantSlugHistory: 'TenantSlugHistory',
   Product: 'Product',
+  ProductFile: 'ProductFile',
   SystemSettings: 'SystemSettings',
   TenantPaymentConfig: 'TenantPaymentConfig',
   PlatformPaymentConfig: 'PlatformPaymentConfig',
@@ -239,12 +240,39 @@ export const ProductScalarFieldEnum = {
   tenantId: 'tenantId',
   slug: 'slug',
   title: 'title',
+  description: 'description',
+  type: 'type',
+  coverImageKey: 'coverImageKey',
+  tags: 'tags',
+  priceVnd: 'priceVnd',
+  salePriceVnd: 'salePriceVnd',
+  saleStartsAt: 'saleStartsAt',
+  saleEndsAt: 'saleEndsAt',
+  downloadLimit: 'downloadLimit',
   status: 'status',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
 export type ProductScalarFieldEnum = (typeof ProductScalarFieldEnum)[keyof typeof ProductScalarFieldEnum]
+
+
+export const ProductFileScalarFieldEnum = {
+  id: 'id',
+  productId: 'productId',
+  tenantId: 'tenantId',
+  objectKey: 'objectKey',
+  fileName: 'fileName',
+  mimeType: 'mimeType',
+  sizeBytes: 'sizeBytes',
+  sha256: 'sha256',
+  scanStatus: 'scanStatus',
+  isPreview: 'isPreview',
+  removedAt: 'removedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type ProductFileScalarFieldEnum = (typeof ProductFileScalarFieldEnum)[keyof typeof ProductFileScalarFieldEnum]
 
 
 export const SystemSettingsScalarFieldEnum = {

@@ -14,16 +14,34 @@ import type * as Prisma from "../internal/prismaNamespace"
 
 /**
  * Model Product
- * §5.2 — PRODUCTS. Minimal shape forward-declared so the M4 storefront can
- * filter by status; M5 — Sản phẩm và File tài liệu adds price, files,
- * description, and the rest.
+ * §"M5" — PRODUCTS. `coverImageKey` points at the PUBLIC bucket (direct
+ * URL, no presign needed to display it) — the sellable files themselves
+ * live in the private bucket via ProductFile. `salePriceVnd`/`saleStartsAt`/
+ * `saleEndsAt` are columns only — M6 adds the pricing engine that reads
+ * them. `downloadLimit=0` means unlimited (ADR-014). `ratingAvg`/
+ * `ratingCount` are deliberately NOT added here — nothing in M5 writes
+ * them; M10 adds those columns when it adds review aggregation.
  */
 export type ProductModel = runtime.Types.Result.DefaultSelection<Prisma.$ProductPayload>
 
 export type AggregateProduct = {
   _count: ProductCountAggregateOutputType | null
+  _avg: ProductAvgAggregateOutputType | null
+  _sum: ProductSumAggregateOutputType | null
   _min: ProductMinAggregateOutputType | null
   _max: ProductMaxAggregateOutputType | null
+}
+
+export type ProductAvgAggregateOutputType = {
+  priceVnd: number | null
+  salePriceVnd: number | null
+  downloadLimit: number | null
+}
+
+export type ProductSumAggregateOutputType = {
+  priceVnd: number | null
+  salePriceVnd: number | null
+  downloadLimit: number | null
 }
 
 export type ProductMinAggregateOutputType = {
@@ -31,6 +49,14 @@ export type ProductMinAggregateOutputType = {
   tenantId: string | null
   slug: string | null
   title: string | null
+  description: string | null
+  type: $Enums.ProductType | null
+  coverImageKey: string | null
+  priceVnd: number | null
+  salePriceVnd: number | null
+  saleStartsAt: Date | null
+  saleEndsAt: Date | null
+  downloadLimit: number | null
   status: $Enums.ProductStatus | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -41,6 +67,14 @@ export type ProductMaxAggregateOutputType = {
   tenantId: string | null
   slug: string | null
   title: string | null
+  description: string | null
+  type: $Enums.ProductType | null
+  coverImageKey: string | null
+  priceVnd: number | null
+  salePriceVnd: number | null
+  saleStartsAt: Date | null
+  saleEndsAt: Date | null
+  downloadLimit: number | null
   status: $Enums.ProductStatus | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -51,6 +85,15 @@ export type ProductCountAggregateOutputType = {
   tenantId: number
   slug: number
   title: number
+  description: number
+  type: number
+  coverImageKey: number
+  tags: number
+  priceVnd: number
+  salePriceVnd: number
+  saleStartsAt: number
+  saleEndsAt: number
+  downloadLimit: number
   status: number
   createdAt: number
   updatedAt: number
@@ -58,11 +101,31 @@ export type ProductCountAggregateOutputType = {
 }
 
 
+export type ProductAvgAggregateInputType = {
+  priceVnd?: true
+  salePriceVnd?: true
+  downloadLimit?: true
+}
+
+export type ProductSumAggregateInputType = {
+  priceVnd?: true
+  salePriceVnd?: true
+  downloadLimit?: true
+}
+
 export type ProductMinAggregateInputType = {
   id?: true
   tenantId?: true
   slug?: true
   title?: true
+  description?: true
+  type?: true
+  coverImageKey?: true
+  priceVnd?: true
+  salePriceVnd?: true
+  saleStartsAt?: true
+  saleEndsAt?: true
+  downloadLimit?: true
   status?: true
   createdAt?: true
   updatedAt?: true
@@ -73,6 +136,14 @@ export type ProductMaxAggregateInputType = {
   tenantId?: true
   slug?: true
   title?: true
+  description?: true
+  type?: true
+  coverImageKey?: true
+  priceVnd?: true
+  salePriceVnd?: true
+  saleStartsAt?: true
+  saleEndsAt?: true
+  downloadLimit?: true
   status?: true
   createdAt?: true
   updatedAt?: true
@@ -83,6 +154,15 @@ export type ProductCountAggregateInputType = {
   tenantId?: true
   slug?: true
   title?: true
+  description?: true
+  type?: true
+  coverImageKey?: true
+  tags?: true
+  priceVnd?: true
+  salePriceVnd?: true
+  saleStartsAt?: true
+  saleEndsAt?: true
+  downloadLimit?: true
   status?: true
   createdAt?: true
   updatedAt?: true
@@ -127,6 +207,18 @@ export type ProductAggregateArgs<ExtArgs extends runtime.Types.Extensions.Intern
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
+   * Select which fields to average
+  **/
+  _avg?: ProductAvgAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
+   * Select which fields to sum
+  **/
+  _sum?: ProductSumAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
    * Select which fields to find the minimum value
   **/
   _min?: ProductMinAggregateInputType
@@ -157,6 +249,8 @@ export type ProductGroupByArgs<ExtArgs extends runtime.Types.Extensions.Internal
   take?: number
   skip?: number
   _count?: ProductCountAggregateInputType | true
+  _avg?: ProductAvgAggregateInputType
+  _sum?: ProductSumAggregateInputType
   _min?: ProductMinAggregateInputType
   _max?: ProductMaxAggregateInputType
 }
@@ -166,10 +260,21 @@ export type ProductGroupByOutputType = {
   tenantId: string
   slug: string
   title: string
+  description: string | null
+  type: $Enums.ProductType
+  coverImageKey: string | null
+  tags: string[]
+  priceVnd: number
+  salePriceVnd: number | null
+  saleStartsAt: Date | null
+  saleEndsAt: Date | null
+  downloadLimit: number
   status: $Enums.ProductStatus
   createdAt: Date
   updatedAt: Date
   _count: ProductCountAggregateOutputType | null
+  _avg: ProductAvgAggregateOutputType | null
+  _sum: ProductSumAggregateOutputType | null
   _min: ProductMinAggregateOutputType | null
   _max: ProductMaxAggregateOutputType | null
 }
@@ -197,10 +302,20 @@ export type ProductWhereInput = {
   tenantId?: Prisma.StringFilter<"Product"> | string
   slug?: Prisma.StringFilter<"Product"> | string
   title?: Prisma.StringFilter<"Product"> | string
+  description?: Prisma.StringNullableFilter<"Product"> | string | null
+  type?: Prisma.EnumProductTypeFilter<"Product"> | $Enums.ProductType
+  coverImageKey?: Prisma.StringNullableFilter<"Product"> | string | null
+  tags?: Prisma.StringNullableListFilter<"Product">
+  priceVnd?: Prisma.IntFilter<"Product"> | number
+  salePriceVnd?: Prisma.IntNullableFilter<"Product"> | number | null
+  saleStartsAt?: Prisma.DateTimeNullableFilter<"Product"> | Date | string | null
+  saleEndsAt?: Prisma.DateTimeNullableFilter<"Product"> | Date | string | null
+  downloadLimit?: Prisma.IntFilter<"Product"> | number
   status?: Prisma.EnumProductStatusFilter<"Product"> | $Enums.ProductStatus
   createdAt?: Prisma.DateTimeFilter<"Product"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Product"> | Date | string
   tenant?: Prisma.XOR<Prisma.TenantScalarRelationFilter, Prisma.TenantWhereInput>
+  files?: Prisma.ProductFileListRelationFilter
 }
 
 export type ProductOrderByWithRelationInput = {
@@ -208,10 +323,20 @@ export type ProductOrderByWithRelationInput = {
   tenantId?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  description?: Prisma.SortOrderInput | Prisma.SortOrder
+  type?: Prisma.SortOrder
+  coverImageKey?: Prisma.SortOrderInput | Prisma.SortOrder
+  tags?: Prisma.SortOrder
+  priceVnd?: Prisma.SortOrder
+  salePriceVnd?: Prisma.SortOrderInput | Prisma.SortOrder
+  saleStartsAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  saleEndsAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  downloadLimit?: Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   tenant?: Prisma.TenantOrderByWithRelationInput
+  files?: Prisma.ProductFileOrderByRelationAggregateInput
 }
 
 export type ProductWhereUniqueInput = Prisma.AtLeast<{
@@ -223,10 +348,20 @@ export type ProductWhereUniqueInput = Prisma.AtLeast<{
   tenantId?: Prisma.StringFilter<"Product"> | string
   slug?: Prisma.StringFilter<"Product"> | string
   title?: Prisma.StringFilter<"Product"> | string
+  description?: Prisma.StringNullableFilter<"Product"> | string | null
+  type?: Prisma.EnumProductTypeFilter<"Product"> | $Enums.ProductType
+  coverImageKey?: Prisma.StringNullableFilter<"Product"> | string | null
+  tags?: Prisma.StringNullableListFilter<"Product">
+  priceVnd?: Prisma.IntFilter<"Product"> | number
+  salePriceVnd?: Prisma.IntNullableFilter<"Product"> | number | null
+  saleStartsAt?: Prisma.DateTimeNullableFilter<"Product"> | Date | string | null
+  saleEndsAt?: Prisma.DateTimeNullableFilter<"Product"> | Date | string | null
+  downloadLimit?: Prisma.IntFilter<"Product"> | number
   status?: Prisma.EnumProductStatusFilter<"Product"> | $Enums.ProductStatus
   createdAt?: Prisma.DateTimeFilter<"Product"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Product"> | Date | string
   tenant?: Prisma.XOR<Prisma.TenantScalarRelationFilter, Prisma.TenantWhereInput>
+  files?: Prisma.ProductFileListRelationFilter
 }, "id" | "tenantId_slug">
 
 export type ProductOrderByWithAggregationInput = {
@@ -234,12 +369,23 @@ export type ProductOrderByWithAggregationInput = {
   tenantId?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  description?: Prisma.SortOrderInput | Prisma.SortOrder
+  type?: Prisma.SortOrder
+  coverImageKey?: Prisma.SortOrderInput | Prisma.SortOrder
+  tags?: Prisma.SortOrder
+  priceVnd?: Prisma.SortOrder
+  salePriceVnd?: Prisma.SortOrderInput | Prisma.SortOrder
+  saleStartsAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  saleEndsAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  downloadLimit?: Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.ProductCountOrderByAggregateInput
+  _avg?: Prisma.ProductAvgOrderByAggregateInput
   _max?: Prisma.ProductMaxOrderByAggregateInput
   _min?: Prisma.ProductMinOrderByAggregateInput
+  _sum?: Prisma.ProductSumOrderByAggregateInput
 }
 
 export type ProductScalarWhereWithAggregatesInput = {
@@ -250,6 +396,15 @@ export type ProductScalarWhereWithAggregatesInput = {
   tenantId?: Prisma.StringWithAggregatesFilter<"Product"> | string
   slug?: Prisma.StringWithAggregatesFilter<"Product"> | string
   title?: Prisma.StringWithAggregatesFilter<"Product"> | string
+  description?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  type?: Prisma.EnumProductTypeWithAggregatesFilter<"Product"> | $Enums.ProductType
+  coverImageKey?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  tags?: Prisma.StringNullableListFilter<"Product">
+  priceVnd?: Prisma.IntWithAggregatesFilter<"Product"> | number
+  salePriceVnd?: Prisma.IntNullableWithAggregatesFilter<"Product"> | number | null
+  saleStartsAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Product"> | Date | string | null
+  saleEndsAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Product"> | Date | string | null
+  downloadLimit?: Prisma.IntWithAggregatesFilter<"Product"> | number
   status?: Prisma.EnumProductStatusWithAggregatesFilter<"Product"> | $Enums.ProductStatus
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Product"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Product"> | Date | string
@@ -259,10 +414,20 @@ export type ProductCreateInput = {
   id?: string
   slug: string
   title: string
+  description?: string | null
+  type?: $Enums.ProductType
+  coverImageKey?: string | null
+  tags?: Prisma.ProductCreatetagsInput | string[]
+  priceVnd?: number
+  salePriceVnd?: number | null
+  saleStartsAt?: Date | string | null
+  saleEndsAt?: Date | string | null
+  downloadLimit?: number
   status?: $Enums.ProductStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   tenant: Prisma.TenantCreateNestedOneWithoutProductsInput
+  files?: Prisma.ProductFileCreateNestedManyWithoutProductInput
 }
 
 export type ProductUncheckedCreateInput = {
@@ -270,19 +435,39 @@ export type ProductUncheckedCreateInput = {
   tenantId: string
   slug: string
   title: string
+  description?: string | null
+  type?: $Enums.ProductType
+  coverImageKey?: string | null
+  tags?: Prisma.ProductCreatetagsInput | string[]
+  priceVnd?: number
+  salePriceVnd?: number | null
+  saleStartsAt?: Date | string | null
+  saleEndsAt?: Date | string | null
+  downloadLimit?: number
   status?: $Enums.ProductStatus
   createdAt?: Date | string
   updatedAt?: Date | string
+  files?: Prisma.ProductFileUncheckedCreateNestedManyWithoutProductInput
 }
 
 export type ProductUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumProductTypeFieldUpdateOperationsInput | $Enums.ProductType
+  coverImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProductUpdatetagsInput | string[]
+  priceVnd?: Prisma.IntFieldUpdateOperationsInput | number
+  salePriceVnd?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  saleStartsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  saleEndsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tenant?: Prisma.TenantUpdateOneRequiredWithoutProductsNestedInput
+  files?: Prisma.ProductFileUpdateManyWithoutProductNestedInput
 }
 
 export type ProductUncheckedUpdateInput = {
@@ -290,9 +475,19 @@ export type ProductUncheckedUpdateInput = {
   tenantId?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumProductTypeFieldUpdateOperationsInput | $Enums.ProductType
+  coverImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProductUpdatetagsInput | string[]
+  priceVnd?: Prisma.IntFieldUpdateOperationsInput | number
+  salePriceVnd?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  saleStartsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  saleEndsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  files?: Prisma.ProductFileUncheckedUpdateManyWithoutProductNestedInput
 }
 
 export type ProductCreateManyInput = {
@@ -300,6 +495,15 @@ export type ProductCreateManyInput = {
   tenantId: string
   slug: string
   title: string
+  description?: string | null
+  type?: $Enums.ProductType
+  coverImageKey?: string | null
+  tags?: Prisma.ProductCreatetagsInput | string[]
+  priceVnd?: number
+  salePriceVnd?: number | null
+  saleStartsAt?: Date | string | null
+  saleEndsAt?: Date | string | null
+  downloadLimit?: number
   status?: $Enums.ProductStatus
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -309,6 +513,15 @@ export type ProductUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumProductTypeFieldUpdateOperationsInput | $Enums.ProductType
+  coverImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProductUpdatetagsInput | string[]
+  priceVnd?: Prisma.IntFieldUpdateOperationsInput | number
+  salePriceVnd?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  saleStartsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  saleEndsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -319,6 +532,15 @@ export type ProductUncheckedUpdateManyInput = {
   tenantId?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumProductTypeFieldUpdateOperationsInput | $Enums.ProductType
+  coverImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProductUpdatetagsInput | string[]
+  priceVnd?: Prisma.IntFieldUpdateOperationsInput | number
+  salePriceVnd?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  saleStartsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  saleEndsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -334,6 +556,14 @@ export type ProductOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
 }
 
+export type StringNullableListFilter<$PrismaModel = never> = {
+  equals?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel> | null
+  has?: string | Prisma.StringFieldRefInput<$PrismaModel> | null
+  hasEvery?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
+  hasSome?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
+  isEmpty?: boolean
+}
+
 export type ProductTenantIdSlugCompoundUniqueInput = {
   tenantId: string
   slug: string
@@ -344,9 +574,24 @@ export type ProductCountOrderByAggregateInput = {
   tenantId?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  description?: Prisma.SortOrder
+  type?: Prisma.SortOrder
+  coverImageKey?: Prisma.SortOrder
+  tags?: Prisma.SortOrder
+  priceVnd?: Prisma.SortOrder
+  salePriceVnd?: Prisma.SortOrder
+  saleStartsAt?: Prisma.SortOrder
+  saleEndsAt?: Prisma.SortOrder
+  downloadLimit?: Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type ProductAvgOrderByAggregateInput = {
+  priceVnd?: Prisma.SortOrder
+  salePriceVnd?: Prisma.SortOrder
+  downloadLimit?: Prisma.SortOrder
 }
 
 export type ProductMaxOrderByAggregateInput = {
@@ -354,6 +599,14 @@ export type ProductMaxOrderByAggregateInput = {
   tenantId?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  description?: Prisma.SortOrder
+  type?: Prisma.SortOrder
+  coverImageKey?: Prisma.SortOrder
+  priceVnd?: Prisma.SortOrder
+  salePriceVnd?: Prisma.SortOrder
+  saleStartsAt?: Prisma.SortOrder
+  saleEndsAt?: Prisma.SortOrder
+  downloadLimit?: Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -364,9 +617,28 @@ export type ProductMinOrderByAggregateInput = {
   tenantId?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  description?: Prisma.SortOrder
+  type?: Prisma.SortOrder
+  coverImageKey?: Prisma.SortOrder
+  priceVnd?: Prisma.SortOrder
+  salePriceVnd?: Prisma.SortOrder
+  saleStartsAt?: Prisma.SortOrder
+  saleEndsAt?: Prisma.SortOrder
+  downloadLimit?: Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type ProductSumOrderByAggregateInput = {
+  priceVnd?: Prisma.SortOrder
+  salePriceVnd?: Prisma.SortOrder
+  downloadLimit?: Prisma.SortOrder
+}
+
+export type ProductScalarRelationFilter = {
+  is?: Prisma.ProductWhereInput
+  isNot?: Prisma.ProductWhereInput
 }
 
 export type ProductCreateNestedManyWithoutTenantInput = {
@@ -411,26 +683,73 @@ export type ProductUncheckedUpdateManyWithoutTenantNestedInput = {
   deleteMany?: Prisma.ProductScalarWhereInput | Prisma.ProductScalarWhereInput[]
 }
 
+export type ProductCreatetagsInput = {
+  set: string[]
+}
+
+export type EnumProductTypeFieldUpdateOperationsInput = {
+  set?: $Enums.ProductType
+}
+
+export type ProductUpdatetagsInput = {
+  set?: string[]
+  push?: string | string[]
+}
+
 export type EnumProductStatusFieldUpdateOperationsInput = {
   set?: $Enums.ProductStatus
+}
+
+export type ProductCreateNestedOneWithoutFilesInput = {
+  create?: Prisma.XOR<Prisma.ProductCreateWithoutFilesInput, Prisma.ProductUncheckedCreateWithoutFilesInput>
+  connectOrCreate?: Prisma.ProductCreateOrConnectWithoutFilesInput
+  connect?: Prisma.ProductWhereUniqueInput
+}
+
+export type ProductUpdateOneRequiredWithoutFilesNestedInput = {
+  create?: Prisma.XOR<Prisma.ProductCreateWithoutFilesInput, Prisma.ProductUncheckedCreateWithoutFilesInput>
+  connectOrCreate?: Prisma.ProductCreateOrConnectWithoutFilesInput
+  upsert?: Prisma.ProductUpsertWithoutFilesInput
+  connect?: Prisma.ProductWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ProductUpdateToOneWithWhereWithoutFilesInput, Prisma.ProductUpdateWithoutFilesInput>, Prisma.ProductUncheckedUpdateWithoutFilesInput>
 }
 
 export type ProductCreateWithoutTenantInput = {
   id?: string
   slug: string
   title: string
+  description?: string | null
+  type?: $Enums.ProductType
+  coverImageKey?: string | null
+  tags?: Prisma.ProductCreatetagsInput | string[]
+  priceVnd?: number
+  salePriceVnd?: number | null
+  saleStartsAt?: Date | string | null
+  saleEndsAt?: Date | string | null
+  downloadLimit?: number
   status?: $Enums.ProductStatus
   createdAt?: Date | string
   updatedAt?: Date | string
+  files?: Prisma.ProductFileCreateNestedManyWithoutProductInput
 }
 
 export type ProductUncheckedCreateWithoutTenantInput = {
   id?: string
   slug: string
   title: string
+  description?: string | null
+  type?: $Enums.ProductType
+  coverImageKey?: string | null
+  tags?: Prisma.ProductCreatetagsInput | string[]
+  priceVnd?: number
+  salePriceVnd?: number | null
+  saleStartsAt?: Date | string | null
+  saleEndsAt?: Date | string | null
+  downloadLimit?: number
   status?: $Enums.ProductStatus
   createdAt?: Date | string
   updatedAt?: Date | string
+  files?: Prisma.ProductFileUncheckedCreateNestedManyWithoutProductInput
 }
 
 export type ProductCreateOrConnectWithoutTenantInput = {
@@ -467,15 +786,125 @@ export type ProductScalarWhereInput = {
   tenantId?: Prisma.StringFilter<"Product"> | string
   slug?: Prisma.StringFilter<"Product"> | string
   title?: Prisma.StringFilter<"Product"> | string
+  description?: Prisma.StringNullableFilter<"Product"> | string | null
+  type?: Prisma.EnumProductTypeFilter<"Product"> | $Enums.ProductType
+  coverImageKey?: Prisma.StringNullableFilter<"Product"> | string | null
+  tags?: Prisma.StringNullableListFilter<"Product">
+  priceVnd?: Prisma.IntFilter<"Product"> | number
+  salePriceVnd?: Prisma.IntNullableFilter<"Product"> | number | null
+  saleStartsAt?: Prisma.DateTimeNullableFilter<"Product"> | Date | string | null
+  saleEndsAt?: Prisma.DateTimeNullableFilter<"Product"> | Date | string | null
+  downloadLimit?: Prisma.IntFilter<"Product"> | number
   status?: Prisma.EnumProductStatusFilter<"Product"> | $Enums.ProductStatus
   createdAt?: Prisma.DateTimeFilter<"Product"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Product"> | Date | string
+}
+
+export type ProductCreateWithoutFilesInput = {
+  id?: string
+  slug: string
+  title: string
+  description?: string | null
+  type?: $Enums.ProductType
+  coverImageKey?: string | null
+  tags?: Prisma.ProductCreatetagsInput | string[]
+  priceVnd?: number
+  salePriceVnd?: number | null
+  saleStartsAt?: Date | string | null
+  saleEndsAt?: Date | string | null
+  downloadLimit?: number
+  status?: $Enums.ProductStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  tenant: Prisma.TenantCreateNestedOneWithoutProductsInput
+}
+
+export type ProductUncheckedCreateWithoutFilesInput = {
+  id?: string
+  tenantId: string
+  slug: string
+  title: string
+  description?: string | null
+  type?: $Enums.ProductType
+  coverImageKey?: string | null
+  tags?: Prisma.ProductCreatetagsInput | string[]
+  priceVnd?: number
+  salePriceVnd?: number | null
+  saleStartsAt?: Date | string | null
+  saleEndsAt?: Date | string | null
+  downloadLimit?: number
+  status?: $Enums.ProductStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type ProductCreateOrConnectWithoutFilesInput = {
+  where: Prisma.ProductWhereUniqueInput
+  create: Prisma.XOR<Prisma.ProductCreateWithoutFilesInput, Prisma.ProductUncheckedCreateWithoutFilesInput>
+}
+
+export type ProductUpsertWithoutFilesInput = {
+  update: Prisma.XOR<Prisma.ProductUpdateWithoutFilesInput, Prisma.ProductUncheckedUpdateWithoutFilesInput>
+  create: Prisma.XOR<Prisma.ProductCreateWithoutFilesInput, Prisma.ProductUncheckedCreateWithoutFilesInput>
+  where?: Prisma.ProductWhereInput
+}
+
+export type ProductUpdateToOneWithWhereWithoutFilesInput = {
+  where?: Prisma.ProductWhereInput
+  data: Prisma.XOR<Prisma.ProductUpdateWithoutFilesInput, Prisma.ProductUncheckedUpdateWithoutFilesInput>
+}
+
+export type ProductUpdateWithoutFilesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumProductTypeFieldUpdateOperationsInput | $Enums.ProductType
+  coverImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProductUpdatetagsInput | string[]
+  priceVnd?: Prisma.IntFieldUpdateOperationsInput | number
+  salePriceVnd?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  saleStartsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  saleEndsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
+  status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  tenant?: Prisma.TenantUpdateOneRequiredWithoutProductsNestedInput
+}
+
+export type ProductUncheckedUpdateWithoutFilesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  tenantId?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumProductTypeFieldUpdateOperationsInput | $Enums.ProductType
+  coverImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProductUpdatetagsInput | string[]
+  priceVnd?: Prisma.IntFieldUpdateOperationsInput | number
+  salePriceVnd?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  saleStartsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  saleEndsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
+  status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type ProductCreateManyTenantInput = {
   id?: string
   slug: string
   title: string
+  description?: string | null
+  type?: $Enums.ProductType
+  coverImageKey?: string | null
+  tags?: Prisma.ProductCreatetagsInput | string[]
+  priceVnd?: number
+  salePriceVnd?: number | null
+  saleStartsAt?: Date | string | null
+  saleEndsAt?: Date | string | null
+  downloadLimit?: number
   status?: $Enums.ProductStatus
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -485,29 +914,87 @@ export type ProductUpdateWithoutTenantInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumProductTypeFieldUpdateOperationsInput | $Enums.ProductType
+  coverImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProductUpdatetagsInput | string[]
+  priceVnd?: Prisma.IntFieldUpdateOperationsInput | number
+  salePriceVnd?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  saleStartsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  saleEndsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  files?: Prisma.ProductFileUpdateManyWithoutProductNestedInput
 }
 
 export type ProductUncheckedUpdateWithoutTenantInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumProductTypeFieldUpdateOperationsInput | $Enums.ProductType
+  coverImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProductUpdatetagsInput | string[]
+  priceVnd?: Prisma.IntFieldUpdateOperationsInput | number
+  salePriceVnd?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  saleStartsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  saleEndsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  files?: Prisma.ProductFileUncheckedUpdateManyWithoutProductNestedInput
 }
 
 export type ProductUncheckedUpdateManyWithoutTenantInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumProductTypeFieldUpdateOperationsInput | $Enums.ProductType
+  coverImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProductUpdatetagsInput | string[]
+  priceVnd?: Prisma.IntFieldUpdateOperationsInput | number
+  salePriceVnd?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  saleStartsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  saleEndsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
+
+/**
+ * Count Type ProductCountOutputType
+ */
+
+export type ProductCountOutputType = {
+  files: number
+}
+
+export type ProductCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  files?: boolean | ProductCountOutputTypeCountFilesArgs
+}
+
+/**
+ * ProductCountOutputType without action
+ */
+export type ProductCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ProductCountOutputType
+   */
+  select?: Prisma.ProductCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * ProductCountOutputType without action
+ */
+export type ProductCountOutputTypeCountFilesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ProductFileWhereInput
+}
 
 
 export type ProductSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -515,10 +1002,21 @@ export type ProductSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   tenantId?: boolean
   slug?: boolean
   title?: boolean
+  description?: boolean
+  type?: boolean
+  coverImageKey?: boolean
+  tags?: boolean
+  priceVnd?: boolean
+  salePriceVnd?: boolean
+  saleStartsAt?: boolean
+  saleEndsAt?: boolean
+  downloadLimit?: boolean
   status?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
+  files?: boolean | Prisma.Product$filesArgs<ExtArgs>
+  _count?: boolean | Prisma.ProductCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["product"]>
 
 export type ProductSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -526,6 +1024,15 @@ export type ProductSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   tenantId?: boolean
   slug?: boolean
   title?: boolean
+  description?: boolean
+  type?: boolean
+  coverImageKey?: boolean
+  tags?: boolean
+  priceVnd?: boolean
+  salePriceVnd?: boolean
+  saleStartsAt?: boolean
+  saleEndsAt?: boolean
+  downloadLimit?: boolean
   status?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -537,6 +1044,15 @@ export type ProductSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   tenantId?: boolean
   slug?: boolean
   title?: boolean
+  description?: boolean
+  type?: boolean
+  coverImageKey?: boolean
+  tags?: boolean
+  priceVnd?: boolean
+  salePriceVnd?: boolean
+  saleStartsAt?: boolean
+  saleEndsAt?: boolean
+  downloadLimit?: boolean
   status?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -548,14 +1064,25 @@ export type ProductSelectScalar = {
   tenantId?: boolean
   slug?: boolean
   title?: boolean
+  description?: boolean
+  type?: boolean
+  coverImageKey?: boolean
+  tags?: boolean
+  priceVnd?: boolean
+  salePriceVnd?: boolean
+  saleStartsAt?: boolean
+  saleEndsAt?: boolean
+  downloadLimit?: boolean
   status?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tenantId" | "slug" | "title" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["product"]>
+export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tenantId" | "slug" | "title" | "description" | "type" | "coverImageKey" | "tags" | "priceVnd" | "salePriceVnd" | "saleStartsAt" | "saleEndsAt" | "downloadLimit" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["product"]>
 export type ProductInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
+  files?: boolean | Prisma.Product$filesArgs<ExtArgs>
+  _count?: boolean | Prisma.ProductCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ProductIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
@@ -568,12 +1095,22 @@ export type $ProductPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
   name: "Product"
   objects: {
     tenant: Prisma.$TenantPayload<ExtArgs>
+    files: Prisma.$ProductFilePayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     tenantId: string
     slug: string
     title: string
+    description: string | null
+    type: $Enums.ProductType
+    coverImageKey: string | null
+    tags: string[]
+    priceVnd: number
+    salePriceVnd: number | null
+    saleStartsAt: Date | null
+    saleEndsAt: Date | null
+    downloadLimit: number
     status: $Enums.ProductStatus
     createdAt: Date
     updatedAt: Date
@@ -972,6 +1509,7 @@ readonly fields: ProductFieldRefs;
 export interface Prisma__ProductClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   tenant<T extends Prisma.TenantDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.TenantDefaultArgs<ExtArgs>>): Prisma.Prisma__TenantClient<runtime.Types.Result.GetResult<Prisma.$TenantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  files<T extends Prisma.Product$filesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Product$filesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ProductFilePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1005,6 +1543,15 @@ export interface ProductFieldRefs {
   readonly tenantId: Prisma.FieldRef<"Product", 'String'>
   readonly slug: Prisma.FieldRef<"Product", 'String'>
   readonly title: Prisma.FieldRef<"Product", 'String'>
+  readonly description: Prisma.FieldRef<"Product", 'String'>
+  readonly type: Prisma.FieldRef<"Product", 'ProductType'>
+  readonly coverImageKey: Prisma.FieldRef<"Product", 'String'>
+  readonly tags: Prisma.FieldRef<"Product", 'String[]'>
+  readonly priceVnd: Prisma.FieldRef<"Product", 'Int'>
+  readonly salePriceVnd: Prisma.FieldRef<"Product", 'Int'>
+  readonly saleStartsAt: Prisma.FieldRef<"Product", 'DateTime'>
+  readonly saleEndsAt: Prisma.FieldRef<"Product", 'DateTime'>
+  readonly downloadLimit: Prisma.FieldRef<"Product", 'Int'>
   readonly status: Prisma.FieldRef<"Product", 'ProductStatus'>
   readonly createdAt: Prisma.FieldRef<"Product", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Product", 'DateTime'>
@@ -1406,6 +1953,30 @@ export type ProductDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Inter
    * Limit how many Products to delete.
    */
   limit?: number
+}
+
+/**
+ * Product.files
+ */
+export type Product$filesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ProductFile
+   */
+  select?: Prisma.ProductFileSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ProductFile
+   */
+  omit?: Prisma.ProductFileOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ProductFileInclude<ExtArgs> | null
+  where?: Prisma.ProductFileWhereInput
+  orderBy?: Prisma.ProductFileOrderByWithRelationInput | Prisma.ProductFileOrderByWithRelationInput[]
+  cursor?: Prisma.ProductFileWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ProductFileScalarFieldEnum | Prisma.ProductFileScalarFieldEnum[]
 }
 
 /**

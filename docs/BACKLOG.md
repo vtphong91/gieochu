@@ -103,6 +103,7 @@ hoá đơn điện tử, đa tiền tệ, partition/backup/giám sát vận hàn
   (`packages/core/src/billing/plan-limits.ts`, đã unit test). Wrapper thật (query số sản phẩm/dung lượng đã
   dùng theo tenant) để M5 gọi trước khi tạo sản phẩm/upload file — chưa viết vì hình dạng query phụ thuộc
   schema Product/file mà M5 sẽ thêm; viết trước sẽ phải đoán và nhiều khả năng M5 viết lại.
+  **[Đã làm ở M5]** — `apps/web/lib/plan-limits.ts`.
 - **`/studio/[tenantSlug]/billing` chưa có progress bar dung lượng**: hiện chỉ hiện số MB đã dùng
   (`tenant.storageUsedBytes`), chưa hiển thị so với `plan.storageMb` dưới dạng thanh tiến trình — cần thiết
   kế UI, không ảnh hưởng đúng đắn dữ liệu.
@@ -114,3 +115,31 @@ hoá đơn điện tử, đa tiền tệ, partition/backup/giám sát vận hàn
 - **Auto-disable-khi-đổi-cấu-hình (ADR-013) chỉ áp dụng `PlatformPaymentConfig`**: `TenantPaymentConfig` (M7)
   chưa có cơ chế này — cân nhắc đồng bộ khi có nhu cầu thật, không bắt buộc vì không ảnh hưởng đúng đắn của
   M7 hiện tại (chỉ là một lớp an toàn bổ sung).
+
+## Phát sinh trong lúc dựng M5 (phần 1 — metadata/CRUD, xem ADR-014)
+
+- **Toàn bộ phần upload/storage thật của M5**: `packages/storage` cần `s3-client.ts` (S3Client trỏ R2,
+  `forcePathStyle: true`) + `presign.ts` (PUT đơn cho file ≤ 50MB, multipart cho file lớn hơn — part 10MB,
+  `createPresignedMultipartUpload`/`completeMultipartUpload`, `headObject`, `deleteObject`,
+  `createPresignedDownload` cho M9). Route `POST /api/studio/[tenantSlug]/uploads/presign` +
+  `POST /api/studio/[tenantSlug]/uploads/complete`. Job `file.scan` (`QUEUE_NAMES.FILE_SCAN` — tên đã định,
+  chưa đăng ký trong `apps/web/worker.ts`): đọc đầu file qua Range GET để nhận diện magic bytes, tính
+  `sha256` streaming toàn file, so khớp qua `matchesDeclaredExtension()` (đã có), sai → xoá object +
+  `scanStatus=REJECTED` + trừ `storageUsedBytes` (`applyStorageDelta()` đã có) + email báo owner (template
+  mới trong `packages/email`); không có `CLAMAV_HOST` → `CLEAN` + log cảnh báo (**cần ghi ADR khi làm**, đúng
+  gợi ý trong đặc tả — chưa ghi vì logic thật chưa tồn tại).
+- **2/4 integration test M5 còn thiếu**: "Presign chỉ trả URL cho owner của tenant", "`complete` ghi
+  `product_files` và enqueue job quét" — cần R2/MinIO thật để chạy `HeadObject`.
+- **Upload ảnh bìa (`coverImageKey`) và quản lý file trong Studio product editor**: UI hiện chỉ có form
+  metadata (tiêu đề/mô tả/loại/tags/giá/giới hạn tải) — không có cách đặt `coverImageKey` hay thêm
+  `ProductFile` nào qua UI cho tới khi module upload xong. Nghĩa là **không sản phẩm nào thực sự xuất bản
+  được qua UI ở trạng thái hiện tại** (thiếu ảnh bìa + file bán CLEAN) — chỉ verify được qua test/script
+  chèn thẳng DB.
+- **Trang public `/{tenantSlug}/products/{productSlug}`**: đề xuất ở kế hoạch M5 (hiển thị tối thiểu
+  tiêu đề/ảnh bìa/mô tả/giá/file preview) nhưng chưa xây — hoãn cùng lý do (không có ảnh bìa/file thật để
+  hiển thị cho tới khi có upload).
+- **`unpublishProduct()` không kiểm tra "chưa có đơn"**: đặc tả ghi "PUBLISHED → DRAFT: Owner gỡ xuống (chưa
+  có đơn)" nhưng M8 (Order) chưa tồn tại nên không có gì để kiểm tra — hiện luôn cho phép gỡ. Nối lại điều
+  kiện khi M8 xong.
+- **`salePriceVnd`/`saleStartsAt`/`saleEndsAt`** đã có cột trên `Product` nhưng chưa đọc ở đâu — đúng kế
+  hoạch, M6 (pricing engine) sẽ dùng.

@@ -269,22 +269,77 @@ enum ProductStatus {
   ARCHIVED
 }
 
-/// §5.2 — PRODUCTS. Minimal shape forward-declared so the M4 storefront can
-/// filter by status; M5 — Sản phẩm và File tài liệu adds price, files,
-/// description, and the rest.
+enum ProductType {
+  TEMPLATE
+  SLIDE
+  EBOOK
+  EXAM
+  OTHER
+}
+
+/// §"M5" — PRODUCTS. `coverImageKey` points at the PUBLIC bucket (direct
+/// URL, no presign needed to display it) — the sellable files themselves
+/// live in the private bucket via ProductFile. `salePriceVnd`/`saleStartsAt`/
+/// `saleEndsAt` are columns only — M6 adds the pricing engine that reads
+/// them. `downloadLimit=0` means unlimited (ADR-014). `ratingAvg`/
+/// `ratingCount` are deliberately NOT added here — nothing in M5 writes
+/// them; M10 adds those columns when it adds review aggregation.
 model Product {
-  id        String        @id @default(cuid(2))
-  tenantId  String
-  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  slug      String
-  title     String
-  status    ProductStatus @default(DRAFT)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id              String        @id @default(cuid(2))
+  tenantId        String
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  slug            String
+  title           String
+  description     String?
+  type            ProductType   @default(OTHER)
+  coverImageKey   String?
+  tags            String[]      @default([])
+  priceVnd        Int           @default(0)
+  salePriceVnd    Int?
+  saleStartsAt    DateTime?
+  saleEndsAt      DateTime?
+  downloadLimit   Int           @default(5)
+  status          ProductStatus @default(DRAFT)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  files ProductFile[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
   @@map("products")
+}
+
+enum ProductFileScanStatus {
+  PENDING
+  CLEAN
+  REJECTED
+}
+
+/// §"M5" — PRODUCT_FILES. `tenantId` is denormalized from Product (per the
+/// spec's own ERD) so RLS can scope this table the same way as `products`,
+/// without a join. `removedAt` is a soft-hide only — the spec is explicit
+/// that removing a file from a product that already has buyers must never
+/// delete the underlying object (§5.2), so a real S3 delete only ever
+/// happens from the file.scan job rejecting a file that was never CLEAN.
+model ProductFile {
+  id         String                @id @default(cuid(2))
+  productId  String
+  product    Product               @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tenantId   String
+  objectKey  String                @unique
+  fileName   String
+  mimeType   String
+  sizeBytes  Int
+  sha256     String?
+  scanStatus ProductFileScanStatus @default(PENDING)
+  isPreview  Boolean               @default(false)
+  removedAt  DateTime?
+  createdAt  DateTime              @default(now())
+
+  @@index([productId])
+  @@index([tenantId])
+  @@map("product_files")
 }
 
 /// §5.1 Layer System — system_settings. Single row (id fixed to "default").

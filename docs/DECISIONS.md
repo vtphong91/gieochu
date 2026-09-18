@@ -172,3 +172,33 @@
   bằng hệ thống thật trong báo cáo tham khảo — tránh (1) owner tạo nhiều hoá đơn trùng cho cùng một kỳ, (2)
   một cấu hình thanh toán "đang bật" nhưng thông tin đã đổi chưa ai xác minh lại. Phạm vi áp dụng chỉ ở
   `PlatformPaymentConfig` (M3); `TenantPaymentConfig` (M7) không đổi để tránh phá test M7 đã chốt.
+
+## ADR-014 — M5 chia làm 2 phần: metadata/CRUD trước, upload/storage thật sau
+
+- **Bối cảnh:** M5 cần S3-compatible storage thật để test presign/upload/`file.scan` (đọc/ghi/xoá object
+  thật). `.env` cấu hình sẵn trỏ tới MinIO local (`S3_ENDPOINT=http://localhost:9000`, credentials khớp
+  `docker-compose.yml`), nhưng máy đang code **không có Docker** (không có lệnh `docker`, không có WSL
+  distro, không có Docker Desktop). Đã hỏi người dùng (ảnh hưởng cách verify hạ tầng — mục 0.6) trước khi
+  quyết định.
+- **Quyết định:** Người dùng chọn tạm gác toàn bộ phần upload/storage lại, làm sau như một module riêng.
+  Phiên này chỉ làm phần **không phụ thuộc storage thật**: schema `Product` (mở rộng đầy đủ) + `ProductFile`
+  (model, RLS — chưa có object nào thật), CRUD sản phẩm, 3 hàm logic thuần
+  (`packages/core/src/product/`), 2 hàm thuần thuộc `packages/storage` (`file-format.ts`, `object-key.ts` —
+  không gọi mạng, chỉ validate chuỗi/định dạng). Route `presign`/`complete`, job `file.scan`, S3 client thật,
+  và 2/4 integration test cần storage thật (đã liệt kê trong đặc tả mục 9 M5) **để lại cho module upload sau**.
+  Khi làm tiếp, hướng đã thống nhất: dùng **Cloudflare R2 thật** cho cả dev lẫn production (giống Neon đang
+  dùng cho DB) thay vì cài Docker chạy MinIO local — tránh phụ thuộc Docker hoàn toàn.
+- **Lý do:** An toàn/đơn giản nhất trong điều kiện hiện tại — không chặn phần lớn M5 chỉ vì thiếu Docker, và
+  không viết integration test "biết trước sẽ đỏ" (phá kỷ luật pipeline luôn xanh đã giữ từ đầu dự án). Toàn
+  bộ phần đã làm không cần sửa lại khi module upload được nối tiếp sau này.
+
+## ADR-015 — `Product.downloadLimit = 0` nghĩa là không giới hạn
+
+- **Bối cảnh:** Đặc tả M5 liệt kê `downloadLimit` (mặc định 5) và gợi ý "`0` = không giới hạn — ghi ADR" mà
+  không nói rõ cơ chế thực thi (M9 sẽ đọc giá trị này khi đếm lượt tải).
+  `DEFAULT_DOWNLOAD_LIMIT=5` đã có sẵn trong env từ M0 khớp đúng mặc định này.
+- **Quyết định:** `downloadLimit` là số nguyên không âm; giá trị `0` được diễn giải là **không giới hạn số
+  lượt tải** (không phải "cấm tải") khi M9 xây cơ chế đếm lượt tải thật.
+- **Lý do:** Cách diễn giải phổ biến nhất cho trường "giới hạn = 0" trong các hệ thống tương tự (giống
+  `usageLimit`/`maxDiscountVnd` kiểu "0 hoặc null = không giới hạn" ở M6); đơn giản, không cần thêm cột
+  boolean `unlimited` riêng.
