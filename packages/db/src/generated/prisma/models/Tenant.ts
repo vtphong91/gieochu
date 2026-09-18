@@ -284,6 +284,7 @@ export type TenantWhereInput = {
   slugHistory?: Prisma.TenantSlugHistoryListRelationFilter
   subscription?: Prisma.XOR<Prisma.SubscriptionNullableScalarRelationFilter, Prisma.SubscriptionWhereInput> | null
   products?: Prisma.ProductListRelationFilter
+  paymentConfigs?: Prisma.TenantPaymentConfigListRelationFilter
 }
 
 export type TenantOrderByWithRelationInput = {
@@ -305,6 +306,7 @@ export type TenantOrderByWithRelationInput = {
   slugHistory?: Prisma.TenantSlugHistoryOrderByRelationAggregateInput
   subscription?: Prisma.SubscriptionOrderByWithRelationInput
   products?: Prisma.ProductOrderByRelationAggregateInput
+  paymentConfigs?: Prisma.TenantPaymentConfigOrderByRelationAggregateInput
 }
 
 export type TenantWhereUniqueInput = Prisma.AtLeast<{
@@ -329,6 +331,7 @@ export type TenantWhereUniqueInput = Prisma.AtLeast<{
   slugHistory?: Prisma.TenantSlugHistoryListRelationFilter
   subscription?: Prisma.XOR<Prisma.SubscriptionNullableScalarRelationFilter, Prisma.SubscriptionWhereInput> | null
   products?: Prisma.ProductListRelationFilter
+  paymentConfigs?: Prisma.TenantPaymentConfigListRelationFilter
 }, "id" | "slug" | "ownerId" | "orderCodePrefix">
 
 export type TenantOrderByWithAggregationInput = {
@@ -389,6 +392,7 @@ export type TenantCreateInput = {
   slugHistory?: Prisma.TenantSlugHistoryCreateNestedManyWithoutTenantInput
   subscription?: Prisma.SubscriptionCreateNestedOneWithoutTenantInput
   products?: Prisma.ProductCreateNestedManyWithoutTenantInput
+  paymentConfigs?: Prisma.TenantPaymentConfigCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateInput = {
@@ -409,6 +413,7 @@ export type TenantUncheckedCreateInput = {
   slugHistory?: Prisma.TenantSlugHistoryUncheckedCreateNestedManyWithoutTenantInput
   subscription?: Prisma.SubscriptionUncheckedCreateNestedOneWithoutTenantInput
   products?: Prisma.ProductUncheckedCreateNestedManyWithoutTenantInput
+  paymentConfigs?: Prisma.TenantPaymentConfigUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUpdateInput = {
@@ -429,6 +434,7 @@ export type TenantUpdateInput = {
   slugHistory?: Prisma.TenantSlugHistoryUpdateManyWithoutTenantNestedInput
   subscription?: Prisma.SubscriptionUpdateOneWithoutTenantNestedInput
   products?: Prisma.ProductUpdateManyWithoutTenantNestedInput
+  paymentConfigs?: Prisma.TenantPaymentConfigUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateInput = {
@@ -449,6 +455,7 @@ export type TenantUncheckedUpdateInput = {
   slugHistory?: Prisma.TenantSlugHistoryUncheckedUpdateManyWithoutTenantNestedInput
   subscription?: Prisma.SubscriptionUncheckedUpdateOneWithoutTenantNestedInput
   products?: Prisma.ProductUncheckedUpdateManyWithoutTenantNestedInput
+  paymentConfigs?: Prisma.TenantPaymentConfigUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateManyInput = {
@@ -654,6 +661,20 @@ export type TenantUpdateOneRequiredWithoutProductsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.TenantUpdateToOneWithWhereWithoutProductsInput, Prisma.TenantUpdateWithoutProductsInput>, Prisma.TenantUncheckedUpdateWithoutProductsInput>
 }
 
+export type TenantCreateNestedOneWithoutPaymentConfigsInput = {
+  create?: Prisma.XOR<Prisma.TenantCreateWithoutPaymentConfigsInput, Prisma.TenantUncheckedCreateWithoutPaymentConfigsInput>
+  connectOrCreate?: Prisma.TenantCreateOrConnectWithoutPaymentConfigsInput
+  connect?: Prisma.TenantWhereUniqueInput
+}
+
+export type TenantUpdateOneRequiredWithoutPaymentConfigsNestedInput = {
+  create?: Prisma.XOR<Prisma.TenantCreateWithoutPaymentConfigsInput, Prisma.TenantUncheckedCreateWithoutPaymentConfigsInput>
+  connectOrCreate?: Prisma.TenantCreateOrConnectWithoutPaymentConfigsInput
+  upsert?: Prisma.TenantUpsertWithoutPaymentConfigsInput
+  connect?: Prisma.TenantWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.TenantUpdateToOneWithWhereWithoutPaymentConfigsInput, Prisma.TenantUpdateWithoutPaymentConfigsInput>, Prisma.TenantUncheckedUpdateWithoutPaymentConfigsInput>
+}
+
 export type TenantCreateWithoutOwnerInput = {
   id?: string
   slug: string
@@ -671,6 +692,7 @@ export type TenantCreateWithoutOwnerInput = {
   slugHistory?: Prisma.TenantSlugHistoryCreateNestedManyWithoutTenantInput
   subscription?: Prisma.SubscriptionCreateNestedOneWithoutTenantInput
   products?: Prisma.ProductCreateNestedManyWithoutTenantInput
+  paymentConfigs?: Prisma.TenantPaymentConfigCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutOwnerInput = {
@@ -690,6 +712,7 @@ export type TenantUncheckedCreateWithoutOwnerInput = {
   slugHistory?: Prisma.TenantSlugHistoryUncheckedCreateNestedManyWithoutTenantInput
   subscription?: Prisma.SubscriptionUncheckedCreateNestedOneWithoutTenantInput
   products?: Prisma.ProductUncheckedCreateNestedManyWithoutTenantInput
+  paymentConfigs?: Prisma.TenantPaymentConfigUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutOwnerInput = {
@@ -725,6 +748,7 @@ export type TenantUpdateWithoutOwnerInput = {
   slugHistory?: Prisma.TenantSlugHistoryUpdateManyWithoutTenantNestedInput
   subscription?: Prisma.SubscriptionUpdateOneWithoutTenantNestedInput
   products?: Prisma.ProductUpdateManyWithoutTenantNestedInput
+  paymentConfigs?: Prisma.TenantPaymentConfigUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutOwnerInput = {
@@ -744,6 +768,7 @@ export type TenantUncheckedUpdateWithoutOwnerInput = {
   slugHistory?: Prisma.TenantSlugHistoryUncheckedUpdateManyWithoutTenantNestedInput
   subscription?: Prisma.SubscriptionUncheckedUpdateOneWithoutTenantNestedInput
   products?: Prisma.ProductUncheckedUpdateManyWithoutTenantNestedInput
+  paymentConfigs?: Prisma.TenantPaymentConfigUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutSubscriptionInput = {
@@ -763,6 +788,7 @@ export type TenantCreateWithoutSubscriptionInput = {
   members?: Prisma.TenantMemberCreateNestedManyWithoutTenantInput
   slugHistory?: Prisma.TenantSlugHistoryCreateNestedManyWithoutTenantInput
   products?: Prisma.ProductCreateNestedManyWithoutTenantInput
+  paymentConfigs?: Prisma.TenantPaymentConfigCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutSubscriptionInput = {
@@ -782,6 +808,7 @@ export type TenantUncheckedCreateWithoutSubscriptionInput = {
   members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
   slugHistory?: Prisma.TenantSlugHistoryUncheckedCreateNestedManyWithoutTenantInput
   products?: Prisma.ProductUncheckedCreateNestedManyWithoutTenantInput
+  paymentConfigs?: Prisma.TenantPaymentConfigUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutSubscriptionInput = {
@@ -817,6 +844,7 @@ export type TenantUpdateWithoutSubscriptionInput = {
   members?: Prisma.TenantMemberUpdateManyWithoutTenantNestedInput
   slugHistory?: Prisma.TenantSlugHistoryUpdateManyWithoutTenantNestedInput
   products?: Prisma.ProductUpdateManyWithoutTenantNestedInput
+  paymentConfigs?: Prisma.TenantPaymentConfigUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutSubscriptionInput = {
@@ -836,6 +864,7 @@ export type TenantUncheckedUpdateWithoutSubscriptionInput = {
   members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
   slugHistory?: Prisma.TenantSlugHistoryUncheckedUpdateManyWithoutTenantNestedInput
   products?: Prisma.ProductUncheckedUpdateManyWithoutTenantNestedInput
+  paymentConfigs?: Prisma.TenantPaymentConfigUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutMembersInput = {
@@ -855,6 +884,7 @@ export type TenantCreateWithoutMembersInput = {
   slugHistory?: Prisma.TenantSlugHistoryCreateNestedManyWithoutTenantInput
   subscription?: Prisma.SubscriptionCreateNestedOneWithoutTenantInput
   products?: Prisma.ProductCreateNestedManyWithoutTenantInput
+  paymentConfigs?: Prisma.TenantPaymentConfigCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutMembersInput = {
@@ -874,6 +904,7 @@ export type TenantUncheckedCreateWithoutMembersInput = {
   slugHistory?: Prisma.TenantSlugHistoryUncheckedCreateNestedManyWithoutTenantInput
   subscription?: Prisma.SubscriptionUncheckedCreateNestedOneWithoutTenantInput
   products?: Prisma.ProductUncheckedCreateNestedManyWithoutTenantInput
+  paymentConfigs?: Prisma.TenantPaymentConfigUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutMembersInput = {
@@ -909,6 +940,7 @@ export type TenantUpdateWithoutMembersInput = {
   slugHistory?: Prisma.TenantSlugHistoryUpdateManyWithoutTenantNestedInput
   subscription?: Prisma.SubscriptionUpdateOneWithoutTenantNestedInput
   products?: Prisma.ProductUpdateManyWithoutTenantNestedInput
+  paymentConfigs?: Prisma.TenantPaymentConfigUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutMembersInput = {
@@ -928,6 +960,7 @@ export type TenantUncheckedUpdateWithoutMembersInput = {
   slugHistory?: Prisma.TenantSlugHistoryUncheckedUpdateManyWithoutTenantNestedInput
   subscription?: Prisma.SubscriptionUncheckedUpdateOneWithoutTenantNestedInput
   products?: Prisma.ProductUncheckedUpdateManyWithoutTenantNestedInput
+  paymentConfigs?: Prisma.TenantPaymentConfigUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutSlugHistoryInput = {
@@ -947,6 +980,7 @@ export type TenantCreateWithoutSlugHistoryInput = {
   members?: Prisma.TenantMemberCreateNestedManyWithoutTenantInput
   subscription?: Prisma.SubscriptionCreateNestedOneWithoutTenantInput
   products?: Prisma.ProductCreateNestedManyWithoutTenantInput
+  paymentConfigs?: Prisma.TenantPaymentConfigCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutSlugHistoryInput = {
@@ -966,6 +1000,7 @@ export type TenantUncheckedCreateWithoutSlugHistoryInput = {
   members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
   subscription?: Prisma.SubscriptionUncheckedCreateNestedOneWithoutTenantInput
   products?: Prisma.ProductUncheckedCreateNestedManyWithoutTenantInput
+  paymentConfigs?: Prisma.TenantPaymentConfigUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutSlugHistoryInput = {
@@ -1001,6 +1036,7 @@ export type TenantUpdateWithoutSlugHistoryInput = {
   members?: Prisma.TenantMemberUpdateManyWithoutTenantNestedInput
   subscription?: Prisma.SubscriptionUpdateOneWithoutTenantNestedInput
   products?: Prisma.ProductUpdateManyWithoutTenantNestedInput
+  paymentConfigs?: Prisma.TenantPaymentConfigUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutSlugHistoryInput = {
@@ -1020,6 +1056,7 @@ export type TenantUncheckedUpdateWithoutSlugHistoryInput = {
   members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
   subscription?: Prisma.SubscriptionUncheckedUpdateOneWithoutTenantNestedInput
   products?: Prisma.ProductUncheckedUpdateManyWithoutTenantNestedInput
+  paymentConfigs?: Prisma.TenantPaymentConfigUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutProductsInput = {
@@ -1039,6 +1076,7 @@ export type TenantCreateWithoutProductsInput = {
   members?: Prisma.TenantMemberCreateNestedManyWithoutTenantInput
   slugHistory?: Prisma.TenantSlugHistoryCreateNestedManyWithoutTenantInput
   subscription?: Prisma.SubscriptionCreateNestedOneWithoutTenantInput
+  paymentConfigs?: Prisma.TenantPaymentConfigCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutProductsInput = {
@@ -1058,6 +1096,7 @@ export type TenantUncheckedCreateWithoutProductsInput = {
   members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
   slugHistory?: Prisma.TenantSlugHistoryUncheckedCreateNestedManyWithoutTenantInput
   subscription?: Prisma.SubscriptionUncheckedCreateNestedOneWithoutTenantInput
+  paymentConfigs?: Prisma.TenantPaymentConfigUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutProductsInput = {
@@ -1093,6 +1132,7 @@ export type TenantUpdateWithoutProductsInput = {
   members?: Prisma.TenantMemberUpdateManyWithoutTenantNestedInput
   slugHistory?: Prisma.TenantSlugHistoryUpdateManyWithoutTenantNestedInput
   subscription?: Prisma.SubscriptionUpdateOneWithoutTenantNestedInput
+  paymentConfigs?: Prisma.TenantPaymentConfigUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutProductsInput = {
@@ -1112,6 +1152,103 @@ export type TenantUncheckedUpdateWithoutProductsInput = {
   members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
   slugHistory?: Prisma.TenantSlugHistoryUncheckedUpdateManyWithoutTenantNestedInput
   subscription?: Prisma.SubscriptionUncheckedUpdateOneWithoutTenantNestedInput
+  paymentConfigs?: Prisma.TenantPaymentConfigUncheckedUpdateManyWithoutTenantNestedInput
+}
+
+export type TenantCreateWithoutPaymentConfigsInput = {
+  id?: string
+  slug: string
+  name: string
+  bio?: string | null
+  logoKey?: string | null
+  coverKey?: string | null
+  branding?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  orderCodePrefix: string
+  status?: $Enums.TenantStatus
+  storageUsedBytes?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  owner: Prisma.UserCreateNestedOneWithoutOwnedTenantInput
+  members?: Prisma.TenantMemberCreateNestedManyWithoutTenantInput
+  slugHistory?: Prisma.TenantSlugHistoryCreateNestedManyWithoutTenantInput
+  subscription?: Prisma.SubscriptionCreateNestedOneWithoutTenantInput
+  products?: Prisma.ProductCreateNestedManyWithoutTenantInput
+}
+
+export type TenantUncheckedCreateWithoutPaymentConfigsInput = {
+  id?: string
+  slug: string
+  ownerId: string
+  name: string
+  bio?: string | null
+  logoKey?: string | null
+  coverKey?: string | null
+  branding?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  orderCodePrefix: string
+  status?: $Enums.TenantStatus
+  storageUsedBytes?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
+  slugHistory?: Prisma.TenantSlugHistoryUncheckedCreateNestedManyWithoutTenantInput
+  subscription?: Prisma.SubscriptionUncheckedCreateNestedOneWithoutTenantInput
+  products?: Prisma.ProductUncheckedCreateNestedManyWithoutTenantInput
+}
+
+export type TenantCreateOrConnectWithoutPaymentConfigsInput = {
+  where: Prisma.TenantWhereUniqueInput
+  create: Prisma.XOR<Prisma.TenantCreateWithoutPaymentConfigsInput, Prisma.TenantUncheckedCreateWithoutPaymentConfigsInput>
+}
+
+export type TenantUpsertWithoutPaymentConfigsInput = {
+  update: Prisma.XOR<Prisma.TenantUpdateWithoutPaymentConfigsInput, Prisma.TenantUncheckedUpdateWithoutPaymentConfigsInput>
+  create: Prisma.XOR<Prisma.TenantCreateWithoutPaymentConfigsInput, Prisma.TenantUncheckedCreateWithoutPaymentConfigsInput>
+  where?: Prisma.TenantWhereInput
+}
+
+export type TenantUpdateToOneWithWhereWithoutPaymentConfigsInput = {
+  where?: Prisma.TenantWhereInput
+  data: Prisma.XOR<Prisma.TenantUpdateWithoutPaymentConfigsInput, Prisma.TenantUncheckedUpdateWithoutPaymentConfigsInput>
+}
+
+export type TenantUpdateWithoutPaymentConfigsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  branding?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
+  storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  owner?: Prisma.UserUpdateOneRequiredWithoutOwnedTenantNestedInput
+  members?: Prisma.TenantMemberUpdateManyWithoutTenantNestedInput
+  slugHistory?: Prisma.TenantSlugHistoryUpdateManyWithoutTenantNestedInput
+  subscription?: Prisma.SubscriptionUpdateOneWithoutTenantNestedInput
+  products?: Prisma.ProductUpdateManyWithoutTenantNestedInput
+}
+
+export type TenantUncheckedUpdateWithoutPaymentConfigsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  ownerId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  branding?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
+  storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
+  slugHistory?: Prisma.TenantSlugHistoryUncheckedUpdateManyWithoutTenantNestedInput
+  subscription?: Prisma.SubscriptionUncheckedUpdateOneWithoutTenantNestedInput
+  products?: Prisma.ProductUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 
@@ -1123,12 +1260,14 @@ export type TenantCountOutputType = {
   members: number
   slugHistory: number
   products: number
+  paymentConfigs: number
 }
 
 export type TenantCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   members?: boolean | TenantCountOutputTypeCountMembersArgs
   slugHistory?: boolean | TenantCountOutputTypeCountSlugHistoryArgs
   products?: boolean | TenantCountOutputTypeCountProductsArgs
+  paymentConfigs?: boolean | TenantCountOutputTypeCountPaymentConfigsArgs
 }
 
 /**
@@ -1162,6 +1301,13 @@ export type TenantCountOutputTypeCountProductsArgs<ExtArgs extends runtime.Types
   where?: Prisma.ProductWhereInput
 }
 
+/**
+ * TenantCountOutputType without action
+ */
+export type TenantCountOutputTypeCountPaymentConfigsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.TenantPaymentConfigWhereInput
+}
+
 
 export type TenantSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -1182,6 +1328,7 @@ export type TenantSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   slugHistory?: boolean | Prisma.Tenant$slugHistoryArgs<ExtArgs>
   subscription?: boolean | Prisma.Tenant$subscriptionArgs<ExtArgs>
   products?: boolean | Prisma.Tenant$productsArgs<ExtArgs>
+  paymentConfigs?: boolean | Prisma.Tenant$paymentConfigsArgs<ExtArgs>
   _count?: boolean | Prisma.TenantCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["tenant"]>
 
@@ -1242,6 +1389,7 @@ export type TenantInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   slugHistory?: boolean | Prisma.Tenant$slugHistoryArgs<ExtArgs>
   subscription?: boolean | Prisma.Tenant$subscriptionArgs<ExtArgs>
   products?: boolean | Prisma.Tenant$productsArgs<ExtArgs>
+  paymentConfigs?: boolean | Prisma.Tenant$paymentConfigsArgs<ExtArgs>
   _count?: boolean | Prisma.TenantCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type TenantIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1259,6 +1407,7 @@ export type $TenantPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     slugHistory: Prisma.$TenantSlugHistoryPayload<ExtArgs>[]
     subscription: Prisma.$SubscriptionPayload<ExtArgs> | null
     products: Prisma.$ProductPayload<ExtArgs>[]
+    paymentConfigs: Prisma.$TenantPaymentConfigPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1676,6 +1825,7 @@ export interface Prisma__TenantClient<T, Null = never, ExtArgs extends runtime.T
   slugHistory<T extends Prisma.Tenant$slugHistoryArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Tenant$slugHistoryArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TenantSlugHistoryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   subscription<T extends Prisma.Tenant$subscriptionArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Tenant$subscriptionArgs<ExtArgs>>): Prisma.Prisma__SubscriptionClient<runtime.Types.Result.GetResult<Prisma.$SubscriptionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   products<T extends Prisma.Tenant$productsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Tenant$productsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ProductPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  paymentConfigs<T extends Prisma.Tenant$paymentConfigsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Tenant$paymentConfigsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TenantPaymentConfigPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2207,6 +2357,30 @@ export type Tenant$productsArgs<ExtArgs extends runtime.Types.Extensions.Interna
   take?: number
   skip?: number
   distinct?: Prisma.ProductScalarFieldEnum | Prisma.ProductScalarFieldEnum[]
+}
+
+/**
+ * Tenant.paymentConfigs
+ */
+export type Tenant$paymentConfigsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the TenantPaymentConfig
+   */
+  select?: Prisma.TenantPaymentConfigSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the TenantPaymentConfig
+   */
+  omit?: Prisma.TenantPaymentConfigOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TenantPaymentConfigInclude<ExtArgs> | null
+  where?: Prisma.TenantPaymentConfigWhereInput
+  orderBy?: Prisma.TenantPaymentConfigOrderByWithRelationInput | Prisma.TenantPaymentConfigOrderByWithRelationInput[]
+  cursor?: Prisma.TenantPaymentConfigWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.TenantPaymentConfigScalarFieldEnum | Prisma.TenantPaymentConfigScalarFieldEnum[]
 }
 
 /**

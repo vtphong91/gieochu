@@ -120,3 +120,34 @@
   phải chạy cả một Next server thật trong lúc test. Với trang Server Component có `redirect()`
   (`/account/library`), test gọi thẳng hàm guard trong `lib/page-guards.ts`, mock `next/headers` để cấp cookie
   giả, và bắt lỗi `NEXT_REDIRECT` mà `redirect()` ném ra thay vì render cả trang.
+
+## ADR-011 — Tạo `platform_payment_configs` (bảng, chưa UI) sớm ở M7 thay vì để M3
+
+- **Bối cảnh:** Test tích hợp #4 của M7 viết đúng nghĩa đen "webhook tenant ký bằng secret của platform bị từ
+  chối (và ngược lại)", nhưng theo đúng thứ tự triển khai mục 10 (M7 → M3), bảng cấu hình thanh toán của
+  Platform vốn thuộc phạm vi M3. Nếu không có bảng này, test #4 không thể kiểm chứng đúng nghĩa đen được.
+- **Quyết định:** Đã hỏi lại người dùng (ảnh hưởng cấu trúc dữ liệu thanh toán — mục 0.6) trước khi làm, thay
+  vì tự diễn giải lại đề bài. Người dùng chọn tạo bảng `platform_payment_configs` tối thiểu ngay ở M7 (cùng
+  hình dạng `tenant_payment_configs` nhưng không có `tenantId` — đúng mục 5.1), **không có UI/business logic**
+  đi kèm — UI Platform Payment vẫn thuộc M2 "hoàn thiện" (sau M12), business logic áp dụng thật (tạo hoá đơn,
+  webhook platform thật) vẫn thuộc M3.
+- **Lý do:** Test #4 giờ dùng dữ liệu thật (`prisma.platformPaymentConfig.create(...)`) thay vì mô phỏng, kiểm
+  chứng đúng những gì đặc tả yêu cầu; M3 sau này tái sử dụng bảng có sẵn thay vì tự tạo lại.
+
+## ADR-012 — Xác minh VietQR/CRC16 bằng cách tự dựng test vector, không dùng mẫu bên thứ 3 nguyên trạng
+
+- **Bối cảnh:** Tra một implementation VietQR TypeScript bên thứ 3 (qua WebFetch) để lấy chuỗi payload mẫu
+  làm test "khớp mẫu đã biết" (mục 9, M7 unit test #3). Khi tự viết script phân tích lại chuỗi đó theo đúng
+  cấu trúc TLV EMVCo, phát hiện chuỗi mẫu có lỗi lệch 1 ký tự nội bộ (độ dài khai báo của subtag số tài khoản
+  không khớp số ký tự thực tế) — khả năng do lỗi đánh máy ở nguồn, hoặc do công cụ tóm tắt nội dung trang làm
+  sai lệch một vài ký tự trong chuỗi số dài (WebFetch dùng model tóm tắt, không đảm bảo sao chép nguyên văn
+  chuỗi dài).
+- **Quyết định:** Không dùng chuỗi mẫu đó. Thay vào đó: (1) xác minh thuật toán CRC-16/CCITT-FALSE bằng test
+  vector chuẩn quốc tế độc lập với VietQR (chuỗi `"123456789"` → `0x29B1`, thuộc catalogue CRC được nhiều
+  nguồn xác nhận trùng khớp); (2) tự dựng payload bằng chính hàm `buildVietQrPayload()` với input đơn giản,
+  xác minh cấu trúc TLV đúng qua script phân tích lại (không đoán bằng tay), dùng kết quả đó làm test vector
+  "đã biết" cho unit test.
+- **Lý do:** Đây là hệ quả trực tiếp của mục 0.7 ("payload/endpoint trong file này chỉ tham khảo, luôn kiểm
+  tra tài liệu chính thức") — khi nguồn tham khảo tự nó không đáng tin (phát hiện được nhờ tự kiểm chứng bằng
+  code thay vì tin bằng mắt), chọn phương án tự xác minh từ gốc (thuật toán chuẩn + cấu trúc đã xác nhận qua
+  nhiều nguồn độc lập) thay vì lan truyền một lỗi tiềm ẩn vào bộ test.

@@ -86,3 +86,20 @@ export const ProductStatus = {
 } as const
 
 export type ProductStatus = (typeof ProductStatus)[keyof typeof ProductStatus]
+
+
+export const PaymentProviderId = {
+  MANUAL_QR: 'MANUAL_QR',
+  SEPAY: 'SEPAY',
+  MOMO: 'MOMO'
+} as const
+
+export type PaymentProviderId = (typeof PaymentProviderId)[keyof typeof PaymentProviderId]
+
+
+export const WebhookScope = {
+  PLATFORM: 'PLATFORM',
+  TENANT: 'TENANT'
+} as const
+
+export type WebhookScope = (typeof WebhookScope)[keyof typeof WebhookScope]

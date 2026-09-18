@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireTenantMemberPage } from "../../../../lib/page-guards";
 import { BrandingForm } from "./branding-form";
 import { SlugForm } from "./slug-form";
@@ -35,6 +36,12 @@ export default async function StudioSettingsPage({ params }: { params: Promise<{
       />
 
       <SlugForm tenantSlug={tenant.slug} />
+
+      <div className="mt-10 border-t pt-6">
+        <Link href={`/studio/${tenant.slug}/settings/payments`} className="text-[var(--color-primary)]">
+          Cấu hình thanh toán →
+        </Link>
+      </div>
     </main>
   );
 }

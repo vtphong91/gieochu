@@ -21,6 +21,7 @@
     "@gieochu/db": "workspace:*",
     "@gieochu/email": "workspace:*",
     "@gieochu/jobs": "workspace:*",
+    "@gieochu/payments": "workspace:*",
     "dotenv": "17.4.2",
     "next": "16.3.5",
     "react": "19.3.0",

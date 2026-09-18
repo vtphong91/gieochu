@@ -35,6 +35,9 @@ importers:
       '@gieochu/jobs':
         specifier: workspace:*
         version: link:../../packages/jobs
+      '@gieochu/payments':
+        specifier: workspace:*
+        version: link:../../packages/payments
       dotenv:
         specifier: 17.4.2
         version: 17.4.2

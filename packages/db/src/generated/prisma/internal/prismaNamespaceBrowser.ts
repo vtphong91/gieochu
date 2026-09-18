@@ -62,7 +62,11 @@ export const ModelName = {
   TenantMember: 'TenantMember',
   TenantSlugHistory: 'TenantSlugHistory',
   Product: 'Product',
-  SystemSettings: 'SystemSettings'
+  SystemSettings: 'SystemSettings',
+  TenantPaymentConfig: 'TenantPaymentConfig',
+  PlatformPaymentConfig: 'PlatformPaymentConfig',
+  WebhookEvent: 'WebhookEvent',
+  BankBin: 'BankBin'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -250,6 +254,58 @@ export const SystemSettingsScalarFieldEnum = {
 } as const
 
 export type SystemSettingsScalarFieldEnum = (typeof SystemSettingsScalarFieldEnum)[keyof typeof SystemSettingsScalarFieldEnum]
+
+
+export const TenantPaymentConfigScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  provider: 'provider',
+  isEnabled: 'isEnabled',
+  publicConfig: 'publicConfig',
+  encryptedSecrets: 'encryptedSecrets',
+  webhookSecretHash: 'webhookSecretHash',
+  lastVerifiedAt: 'lastVerifiedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type TenantPaymentConfigScalarFieldEnum = (typeof TenantPaymentConfigScalarFieldEnum)[keyof typeof TenantPaymentConfigScalarFieldEnum]
+
+
+export const PlatformPaymentConfigScalarFieldEnum = {
+  id: 'id',
+  provider: 'provider',
+  isEnabled: 'isEnabled',
+  publicConfig: 'publicConfig',
+  encryptedSecrets: 'encryptedSecrets',
+  webhookSecretHash: 'webhookSecretHash',
+  lastVerifiedAt: 'lastVerifiedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PlatformPaymentConfigScalarFieldEnum = (typeof PlatformPaymentConfigScalarFieldEnum)[keyof typeof PlatformPaymentConfigScalarFieldEnum]
+
+
+export const WebhookEventScalarFieldEnum = {
+  id: 'id',
+  scope: 'scope',
+  provider: 'provider',
+  providerEventId: 'providerEventId',
+  tenantId: 'tenantId',
+  receivedAt: 'receivedAt'
+} as const
+
+export type WebhookEventScalarFieldEnum = (typeof WebhookEventScalarFieldEnum)[keyof typeof WebhookEventScalarFieldEnum]
+
+
+export const BankBinScalarFieldEnum = {
+  bin: 'bin',
+  name: 'name',
+  shortName: 'shortName'
+} as const
+
+export type BankBinScalarFieldEnum = (typeof BankBinScalarFieldEnum)[keyof typeof BankBinScalarFieldEnum]
 
 
 export const SortOrder = {

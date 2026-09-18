@@ -16,7 +16,7 @@ M0 → M1 (kèm khung email M11) → M4 → M2 (phần cơ bản) → M7 → M3 
 | M1 | Xác thực và định danh | ✅ Xong | `packages/auth`, `packages/email`, `packages/jobs`, `apps/web/app/(auth)`, `apps/web/app/account`, `apps/web/lib` | 16 / 8 |
 | M4 | Tenant Workspace và Storefront | ✅ Xong | `apps/web/app/[tenantSlug]`, `apps/web/app/studio`, `packages/db/src/rls.ts` | 6 / 5 |
 | M2 | System Admin (cơ bản) | ✅ Xong (cơ bản — Platform Payment UI + audit log viewer chờ M7/M12) | `apps/web/app/admin`, `packages/core/src/admin` | 4 / 4 |
-| M7 | Cấu hình Tenant Payment | ⬜ Chưa làm | `packages/payments` | 10 / 4 |
+| M7 | Cấu hình Tenant Payment | ✅ Xong | `packages/payments` | 10 / 4 |
 | M3 | Subscription và Platform Billing | ⬜ Chưa làm | billing service + jobs | 10 / 5 |
 | M5 | Sản phẩm và File tài liệu | ⬜ Chưa làm | `packages/storage`, product CRUD | 6 / 4 |
 | M6 | Giá và Khuyến mãi | ⬜ Chưa làm | `packages/core/pricing` | 14 / 2 |
@@ -130,6 +130,24 @@ hàm); `docker compose up` cho MinIO/Mailpit vẫn chưa test trong phiên này.
 integration cộng dồn); đăng nhập thật qua `curl` với user seed (`admin@gieochu.net`) xem `/admin` thật, và
 với user thường xác nhận bị 404.
 
+## M7 — Việc đã làm (xem docs/modules/M7.md để có sơ đồ và danh sách test đầy đủ)
+
+- Trước khi code, hỏi lại người dùng về phạm vi test webhook tenant-vs-platform (ảnh hưởng cấu trúc dữ liệu
+  thanh toán) → tạo bảng `platform_payment_configs` tối thiểu sớm ở M7 thay vì đợi M3 (ADR-011).
+- `packages/payments`: `PaymentProvider` interface dùng chung Platform/Tenant, 3 provider (MANUAL_QR, SEPAY,
+  MOMO), mã hoá AES-256-GCM, VietQR EMVCo + CRC16 — 10/10 unit test.
+- **Phát hiện khi xác minh tài liệu (mục 0.7)**: một mẫu payload VietQR tham khảo từ bên thứ 3 có lỗi lệch 1
+  ký tự nội bộ (phát hiện bằng script tự phân tích lại, không phải bằng mắt) — không dùng mẫu đó, tự dựng
+  test vector từ thuật toán CRC chuẩn quốc tế đã xác minh độc lập (ADR-012).
+- Schema: `TenantPaymentConfig` (RLS), `PlatformPaymentConfig` (bảng trống), `WebhookEvent` (idempotency),
+  `BankBin` (seed 19 ngân hàng NAPAS).
+- Trang `/studio/[tenantSlug]/settings/payments`, route `POST /api/webhooks/tenants/[tenantId]/[provider]`
+  (verify chữ ký + ghi idempotent, dừng lại — khớp Order thuộc M8).
+
+**Đã xác minh chạy được trong phiên này:** `pnpm lint/typecheck/test/build` xanh toàn bộ (40/91 unit, 21/50
+integration cộng dồn); `curl` xác nhận trang cấu hình thanh toán chưa đăng nhập → 307, webhook tới tenant
+chưa cấu hình → 404.
+
 ## Câu hỏi còn mở (đã chọn phương án an toàn, xem ADR tương ứng)
 
 - ID strategy: cuid2 (ADR-001).
@@ -140,5 +158,7 @@ với user thường xác nhận bị 404.
 - Integration test dùng chung Neon DB với dev, chưa có `TEST_DATABASE_URL` riêng (ADR-009).
 - App kết nối DB bằng role `gieochu_app` riêng (không phải owner Neon) để RLS có hiệu lực thật; CLI/migrate
   dùng `PRISMA_MIGRATE_URL` riêng (ADR-010).
+- `platform_payment_configs` tạo sớm ở M7 (bảng trống, chưa UI) để test webhook cross-scope đúng nghĩa đen —
+  đã hỏi người dùng trước khi làm (ADR-011).
 - Chưa hỏi người dùng các quyết định ảnh hưởng tiền/bảo mật/dữ liệu cá nhân — sẽ dừng lại đúng lúc theo mục
   0.6 khi gặp.

@@ -430,6 +430,40 @@ export type EnumProductStatusWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedEnumProductStatusFilter<$PrismaModel>
 }
 
+export type EnumPaymentProviderIdFilter<$PrismaModel = never> = {
+  equals?: $Enums.PaymentProviderId | Prisma.EnumPaymentProviderIdFieldRefInput<$PrismaModel>
+  in?: $Enums.PaymentProviderId[] | Prisma.ListEnumPaymentProviderIdFieldRefInput<$PrismaModel>
+  notIn?: $Enums.PaymentProviderId[] | Prisma.ListEnumPaymentProviderIdFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumPaymentProviderIdFilter<$PrismaModel> | $Enums.PaymentProviderId
+}
+
+export type EnumPaymentProviderIdWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.PaymentProviderId | Prisma.EnumPaymentProviderIdFieldRefInput<$PrismaModel>
+  in?: $Enums.PaymentProviderId[] | Prisma.ListEnumPaymentProviderIdFieldRefInput<$PrismaModel>
+  notIn?: $Enums.PaymentProviderId[] | Prisma.ListEnumPaymentProviderIdFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumPaymentProviderIdWithAggregatesFilter<$PrismaModel> | $Enums.PaymentProviderId
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumPaymentProviderIdFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumPaymentProviderIdFilter<$PrismaModel>
+}
+
+export type EnumWebhookScopeFilter<$PrismaModel = never> = {
+  equals?: $Enums.WebhookScope | Prisma.EnumWebhookScopeFieldRefInput<$PrismaModel>
+  in?: $Enums.WebhookScope[] | Prisma.ListEnumWebhookScopeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.WebhookScope[] | Prisma.ListEnumWebhookScopeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumWebhookScopeFilter<$PrismaModel> | $Enums.WebhookScope
+}
+
+export type EnumWebhookScopeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.WebhookScope | Prisma.EnumWebhookScopeFieldRefInput<$PrismaModel>
+  in?: $Enums.WebhookScope[] | Prisma.ListEnumWebhookScopeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.WebhookScope[] | Prisma.ListEnumWebhookScopeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumWebhookScopeWithAggregatesFilter<$PrismaModel> | $Enums.WebhookScope
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumWebhookScopeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumWebhookScopeFilter<$PrismaModel>
+}
+
 export type NestedStringFilter<$PrismaModel = never> = {
   equals?: string | Prisma.StringFieldRefInput<$PrismaModel>
   in?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
@@ -803,6 +837,40 @@ export type NestedEnumProductStatusWithAggregatesFilter<$PrismaModel = never> = 
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumProductStatusFilter<$PrismaModel>
   _max?: Prisma.NestedEnumProductStatusFilter<$PrismaModel>
+}
+
+export type NestedEnumPaymentProviderIdFilter<$PrismaModel = never> = {
+  equals?: $Enums.PaymentProviderId | Prisma.EnumPaymentProviderIdFieldRefInput<$PrismaModel>
+  in?: $Enums.PaymentProviderId[] | Prisma.ListEnumPaymentProviderIdFieldRefInput<$PrismaModel>
+  notIn?: $Enums.PaymentProviderId[] | Prisma.ListEnumPaymentProviderIdFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumPaymentProviderIdFilter<$PrismaModel> | $Enums.PaymentProviderId
+}
+
+export type NestedEnumPaymentProviderIdWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.PaymentProviderId | Prisma.EnumPaymentProviderIdFieldRefInput<$PrismaModel>
+  in?: $Enums.PaymentProviderId[] | Prisma.ListEnumPaymentProviderIdFieldRefInput<$PrismaModel>
+  notIn?: $Enums.PaymentProviderId[] | Prisma.ListEnumPaymentProviderIdFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumPaymentProviderIdWithAggregatesFilter<$PrismaModel> | $Enums.PaymentProviderId
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumPaymentProviderIdFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumPaymentProviderIdFilter<$PrismaModel>
+}
+
+export type NestedEnumWebhookScopeFilter<$PrismaModel = never> = {
+  equals?: $Enums.WebhookScope | Prisma.EnumWebhookScopeFieldRefInput<$PrismaModel>
+  in?: $Enums.WebhookScope[] | Prisma.ListEnumWebhookScopeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.WebhookScope[] | Prisma.ListEnumWebhookScopeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumWebhookScopeFilter<$PrismaModel> | $Enums.WebhookScope
+}
+
+export type NestedEnumWebhookScopeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.WebhookScope | Prisma.EnumWebhookScopeFieldRefInput<$PrismaModel>
+  in?: $Enums.WebhookScope[] | Prisma.ListEnumWebhookScopeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.WebhookScope[] | Prisma.ListEnumWebhookScopeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumWebhookScopeWithAggregatesFilter<$PrismaModel> | $Enums.WebhookScope
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumWebhookScopeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumWebhookScopeFilter<$PrismaModel>
 }
 
 

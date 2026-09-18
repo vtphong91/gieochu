@@ -104,6 +104,34 @@ async function main() {
     },
   });
   console.log("[seed] CMS home page ready");
+
+  // §"M7": NAPAS/VietQR BIN list, verified against vietqr.co/banks before seeding.
+  const bankBins = [
+    { bin: "970405", name: "Ngân hàng Nông nghiệp và Phát triển Nông thôn Việt Nam", shortName: "Agribank" },
+    { bin: "970415", name: "Ngân hàng TMCP Công Thương Việt Nam", shortName: "VietinBank" },
+    { bin: "970436", name: "Ngân hàng TMCP Ngoại Thương Việt Nam", shortName: "Vietcombank" },
+    { bin: "970418", name: "Ngân hàng TMCP Đầu tư và Phát triển Việt Nam", shortName: "BIDV" },
+    { bin: "970403", name: "Ngân hàng TMCP Sài Gòn Thương Tín", shortName: "Sacombank" },
+    { bin: "970407", name: "Ngân hàng TMCP Kỹ thương Việt Nam", shortName: "Techcombank" },
+    { bin: "970422", name: "Ngân hàng TMCP Quân đội", shortName: "MB Bank" },
+    { bin: "970423", name: "Ngân hàng TMCP Tiên Phong", shortName: "TPBank" },
+    { bin: "970425", name: "Ngân hàng TMCP An Bình", shortName: "ABBANK" },
+    { bin: "970426", name: "Ngân hàng TMCP Hàng Hải", shortName: "MSB" },
+    { bin: "970416", name: "Ngân hàng TMCP Á Châu", shortName: "ACB" },
+    { bin: "970429", name: "Ngân hàng TMCP Sài Gòn", shortName: "SCB" },
+    { bin: "970431", name: "Ngân hàng TMCP Xuất Nhập khẩu Việt Nam", shortName: "Eximbank" },
+    { bin: "970432", name: "Ngân hàng TMCP Việt Nam Thịnh Vượng", shortName: "VPBank" },
+    { bin: "970437", name: "Ngân hàng TMCP Phát triển Thành phố Hồ Chí Minh", shortName: "HDBank" },
+    { bin: "970440", name: "Ngân hàng TMCP Đông Nam Á", shortName: "SeABank" },
+    { bin: "970441", name: "Ngân hàng TMCP Quốc tế Việt Nam", shortName: "VIB" },
+    { bin: "970443", name: "Ngân hàng TMCP Sài Gòn - Hà Nội", shortName: "SHB" },
+    { bin: "970448", name: "Ngân hàng TMCP Phương Đông", shortName: "OCB" },
+  ];
+
+  for (const bank of bankBins) {
+    await prisma.bankBin.upsert({ where: { bin: bank.bin }, update: bank, create: bank });
+  }
+  console.log(`[seed] ${bankBins.length} bank BINs ready`);
 }
 
 main()

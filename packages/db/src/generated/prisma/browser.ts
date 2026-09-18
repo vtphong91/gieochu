@@ -93,3 +93,31 @@ export type Product = Prisma.ProductModel
  * business logic (M4 onboarding, M3 sweep) reads from here, not the env var.
  */
 export type SystemSettings = Prisma.SystemSettingsModel
+/**
+ * Model TenantPaymentConfig
+ * §5.2 — TENANT_PAYMENT_CONFIGS. L2 (tenantId), RLS-protected like
+ * products/tenant_members (packages/db/prisma/migrations/*_rls_m7/).
+ * `encryptedSecrets` holds the AES-256-GCM ciphertext (packages/payments/src/encryption.ts);
+ * plaintext secrets are never stored or returned to the client (§7.3).
+ */
+export type TenantPaymentConfig = Prisma.TenantPaymentConfigModel
+/**
+ * Model PlatformPaymentConfig
+ * §5.1 Layer System — platform_payment_configs. Same shape as
+ * tenant_payment_configs but no tenantId (platform has exactly one config
+ * per provider). Table only — UI/business logic land in M3.
+ */
+export type PlatformPaymentConfig = Prisma.PlatformPaymentConfigModel
+/**
+ * Model WebhookEvent
+ * §5.2 — webhook_events. Idempotency guard: a provider's event id must only
+ * ever be processed once per scope+provider (§7.4). Written via
+ * withSystemJob (no tenant session at the point a raw webhook arrives).
+ */
+export type WebhookEvent = Prisma.WebhookEventModel
+/**
+ * Model BankBin
+ * §"M7": ngân hàng cho form chọn BIN khi cấu hình MANUAL_QR/SEPAY — seed từ
+ * danh sách NAPAS/VietQR chính thức (packages/db/prisma/seed.ts).
+ */
+export type BankBin = Prisma.BankBinModel
