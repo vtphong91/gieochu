@@ -15,17 +15,31 @@ async function main() {
   const passwordHash = await argon2.hash(SEED_ADMIN_PASSWORD, { type: argon2.argon2id });
   await prisma.user.upsert({
     where: { email: SEED_ADMIN_EMAIL },
-    update: {},
+    update: { isSuperAdmin: true },
     create: {
       email: SEED_ADMIN_EMAIL,
       passwordHash,
       systemRole: "SYSTEM_ADMIN",
       status: "ACTIVE",
+      isSuperAdmin: true,
       emailVerifiedAt: new Date(),
       profileCompletedAt: new Date(),
     },
   });
-  console.log(`[seed] system admin ready: ${SEED_ADMIN_EMAIL} (dev password: ${SEED_ADMIN_PASSWORD})`);
+  console.log(`[seed] super admin ready: ${SEED_ADMIN_EMAIL} (dev password: ${SEED_ADMIN_PASSWORD})`);
+
+  await prisma.systemSettings.upsert({
+    where: { id: "default" },
+    update: {},
+    create: {
+      id: "default",
+      platformName: process.env.APP_NAME ?? "Gieo Chữ",
+      supportEmail: process.env.SEED_SUPPORT_EMAIL ?? "support@gieochu.net",
+      trialDays: Number(process.env.TRIAL_DAYS ?? 14),
+      graceDays: Number(process.env.GRACE_DAYS ?? 7),
+    },
+  });
+  console.log("[seed] system settings ready");
 
   const plans = [
     {

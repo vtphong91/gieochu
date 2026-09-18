@@ -551,10 +551,6 @@ export type EnumPlanIntervalFieldUpdateOperationsInput = {
   set?: $Enums.PlanInterval
 }
 
-export type BoolFieldUpdateOperationsInput = {
-  set?: boolean
-}
-
 export type PlanCreateNestedOneWithoutSubscriptionsInput = {
   create?: Prisma.XOR<Prisma.PlanCreateWithoutSubscriptionsInput, Prisma.PlanUncheckedCreateWithoutSubscriptionsInput>
   connectOrCreate?: Prisma.PlanCreateOrConnectWithoutSubscriptionsInput

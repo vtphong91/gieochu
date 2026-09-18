@@ -34,6 +34,9 @@ model User {
   passwordHash       String
   systemRole         SystemRole @default(USER)
   status             UserStatus @default(PENDING)
+  /// §"M2": only the seeded super admin can be granted/locked with no further
+  /// checks bypassed — the *one* admin nobody (incl. other admins) can lock.
+  isSuperAdmin       Boolean    @default(false)
   emailVerifiedAt    DateTime?
   profileCompletedAt DateTime?
   lastLoginAt        DateTime?
@@ -269,4 +272,19 @@ model Product {
   @@unique([tenantId, slug])
   @@index([tenantId])
   @@map("products")
+}
+
+/// §5.1 Layer System — system_settings. Single row (id fixed to "default").
+/// trialDays/graceDays seed from the TRIAL_DAYS/GRACE_DAYS env defaults
+/// (packages/config) but are the live source of truth once this row exists —
+/// business logic (M4 onboarding, M3 sweep) reads from here, not the env var.
+model SystemSettings {
+  id           String   @id @default("default")
+  platformName String
+  supportEmail String
+  trialDays    Int
+  graceDays    Int
+  updatedAt    DateTime @updatedAt
+
+  @@map("system_settings")
 }

@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { requireTenantMember } from "../../../lib/tenant";
+import { requireTenantMemberPage } from "../../../lib/page-guards";
 
 export default async function StudioDashboardPage({ params }: { params: Promise<{ tenantSlug: string }> }) {
   const { tenantSlug } = await params;
-  const { tenant } = await requireTenantMember(tenantSlug);
+  const { tenant } = await requireTenantMemberPage(tenantSlug, `/studio/${tenantSlug}`);
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">

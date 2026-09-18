@@ -56,13 +56,15 @@ flowchart TB
     PAY <--> SEPAY & MOMO
 ```
 
-**Trạng thái hiện tại (sau M4):** `PX` (proxy.ts + gate hồ sơ qua `lib/page-guards.ts`), `STF` (storefront
-công khai `/[tenantSlug]`), `STU` (`/studio`, `/studio/[tenantSlug]`, settings), `AUTH` (đầy đủ: mật khẩu,
-JWT, RBAC), `CORE` (errors, logger, slug/branding/access-policy/membership), `DB` (User/.../Tenant/
-TenantMember/TenantSlugHistory/Subscription-tối-thiểu/Product-tối-thiểu + RLS helpers `withTenant/
-withCustomer/withPublic/withSystemJob` — **có hiệu lực thật**, xem ADR-010), `MAIL`, `JOBS` đã có. `PAY`, `STO`
-và phần lớn bảng L2 (product đầy đủ, order, coupon...) còn là skeleton/tối thiểu chờ module tương ứng (xem
-`docs/PLAN.md`).
+**Trạng thái hiện tại (sau M2 cơ bản):** `PX` (proxy.ts + gate hồ sơ/tenant/admin qua `lib/page-guards.ts`),
+`STF` (storefront công khai `/[tenantSlug]`), `STU` (`/studio`, `/studio/[tenantSlug]`, settings), `ADM`
+(`/admin`: users/tenants/plans/cms/settings — cơ bản, chưa có Platform Payment UI/audit log viewer), `MKT`
+(`/`, `/pricing`, `/p/[slug]`), `AUTH` (đầy đủ: mật khẩu, JWT, RBAC), `CORE` (errors, logger,
+slug/branding/access-policy/membership, admin: lock-decision/plan-validation/cms-blocks/dashboard-summary),
+`DB` (User(+isSuperAdmin)/.../Tenant/TenantMember/TenantSlugHistory/Subscription-tối-thiểu/Product-tối-thiểu/
+SystemSettings + RLS helpers `withTenant/withCustomer/withPublic/withSystemJob` — **có hiệu lực thật**, xem
+ADR-010), `MAIL`, `JOBS` đã có. `PAY`, `STO` và phần lớn bảng L2 (product đầy đủ, order, coupon...) còn là
+skeleton/tối thiểu chờ module tương ứng (xem `docs/PLAN.md`).
 
 ## Ranh giới dữ liệu theo layer
 
@@ -129,7 +131,7 @@ flowchart TD
 **Quy tắc bất biến:** `proxy.ts` chỉ chuyển hướng và gắn header. Mọi route handler / server action / server
 component nhạy cảm tự xác thực và phân quyền lại — không tin proxy đã lọc đủ.
 
-## Cấu trúc thư mục (thực tế sau M4)
+## Cấu trúc thư mục (thực tế sau M2 cơ bản)
 
 ```
 .
@@ -137,28 +139,35 @@ component nhạy cảm tự xác thực và phân quyền lại — không tin p
 │   └── web/                       # Next.js App Router
 │       ├── app/
 │       │   ├── (auth)/             # register, login, verify-email, forgot-password, reset-password
-│       │   ├── account/            # profile, security, library (stub) — admin/ sau (M2)
+│       │   ├── account/            # profile, security, library (stub)
+│       │   ├── admin/              # dashboard, users, tenants, plans, cms(+[slug]/new), settings
 │       │   ├── studio/             # onboarding (/studio), dashboard + settings (/studio/[tenantSlug]/*)
 │       │   ├── [tenantSlug]/       # storefront công khai
+│       │   ├── pricing/, p/[slug]/ # trang công khai (M2)
 │       │   ├── api/
 │       │   │   ├── auth/           # register, login, refresh, logout, verify-email, resend-verification,
 │       │   │   │                   # forgot-password, reset-password
+│       │   │   ├── admin/          # dashboard (GET, aggregate-only)
 │       │   │   └── me/
 │       │   └── layout.tsx, page.tsx (marketing shell)
-│       ├── lib/                    # cookies, session, page-guards, tenant, create-tenant, storefront,
-│       │                           # rate-limit, jobs, jwt-context, duration
+│       ├── lib/                    # cookies, session, page-guards (+admin/tenant-page guards),
+│       │                           # tenant, create-tenant, storefront, admin-dashboard, admin-users,
+│       │                           # pricing, rate-limit, jobs, jwt-context, duration
 │       ├── proxy.ts
 │       ├── worker.ts               # pg-boss worker: xử lý job email.send (khung M11)
-│       ├── tests/integration/      # Vitest — auth.test.ts (8), tenant.test.ts (5)
+│       ├── tests/integration/      # Vitest — auth.test.ts (8), tenant.test.ts (5), admin.test.ts (4)
 │       ├── next.config.ts          # CSP/security headers
 │       └── vitest.config.ts
 ├── packages/
 │   ├── auth/        # password, JWT access token, refresh/verification token, RBAC (M1)
-│   ├── core/         # errors, logger (M0); tenant/ slug-branding-access-membership (M4); pricing/order-FSM ở M6/M8
+│   ├── core/         # errors, logger (M0); tenant/ slug-branding-access-membership (M4);
+│   │                 # admin/ lock-decision-plan-validation-cms-blocks-dashboard-summary (M2);
+│   │                 # pricing/order-FSM ở M6/M8
 │   ├── payments/    # skeleton — M7
-│   ├── db/          # schema.prisma (User/.../Tenant/TenantMember/TenantSlugHistory/Subscription-tối-thiểu/
-│   │                # Product-tối-thiểu/Plan/CmsPage), prisma.config.ts, client.ts, rls.ts (withTenant/
-│   │                # withCustomer/withPublic/withSystemJob), seed.ts, prisma/migrations/,
+│   ├── db/          # schema.prisma (User(+isSuperAdmin)/.../Tenant/TenantMember/TenantSlugHistory/
+│   │                # Subscription-tối-thiểu/Product-tối-thiểu/Plan/CmsPage/SystemSettings),
+│   │                # prisma.config.ts, client.ts, rls.ts (withTenant/withCustomer/withPublic/
+│   │                # withSystemJob), seed.ts, prisma/migrations/,
 │   │                # scripts/setup-app-role.mts (tạo role Postgres riêng cho app — ADR-010)
 │   ├── storage/     # skeleton — M5
 │   ├── email/       # EmailSender (SMTP/Resend) + template kích hoạt/reset mật khẩu (khung M11, M1 dùng)
@@ -174,6 +183,7 @@ component nhạy cảm tự xác thực và phân quyền lại — không tin p
 │   └── modules/
 │       ├── M0.md
 │       ├── M1.md
+│       ├── M2.md
 │       └── M4.md
 ├── scripts/count-tests.mjs
 ├── CLAUDE.md

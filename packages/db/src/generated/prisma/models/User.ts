@@ -30,6 +30,7 @@ export type UserMinAggregateOutputType = {
   passwordHash: string | null
   systemRole: $Enums.SystemRole | null
   status: $Enums.UserStatus | null
+  isSuperAdmin: boolean | null
   emailVerifiedAt: Date | null
   profileCompletedAt: Date | null
   lastLoginAt: Date | null
@@ -43,6 +44,7 @@ export type UserMaxAggregateOutputType = {
   passwordHash: string | null
   systemRole: $Enums.SystemRole | null
   status: $Enums.UserStatus | null
+  isSuperAdmin: boolean | null
   emailVerifiedAt: Date | null
   profileCompletedAt: Date | null
   lastLoginAt: Date | null
@@ -56,6 +58,7 @@ export type UserCountAggregateOutputType = {
   passwordHash: number
   systemRole: number
   status: number
+  isSuperAdmin: number
   emailVerifiedAt: number
   profileCompletedAt: number
   lastLoginAt: number
@@ -71,6 +74,7 @@ export type UserMinAggregateInputType = {
   passwordHash?: true
   systemRole?: true
   status?: true
+  isSuperAdmin?: true
   emailVerifiedAt?: true
   profileCompletedAt?: true
   lastLoginAt?: true
@@ -84,6 +88,7 @@ export type UserMaxAggregateInputType = {
   passwordHash?: true
   systemRole?: true
   status?: true
+  isSuperAdmin?: true
   emailVerifiedAt?: true
   profileCompletedAt?: true
   lastLoginAt?: true
@@ -97,6 +102,7 @@ export type UserCountAggregateInputType = {
   passwordHash?: true
   systemRole?: true
   status?: true
+  isSuperAdmin?: true
   emailVerifiedAt?: true
   profileCompletedAt?: true
   lastLoginAt?: true
@@ -183,6 +189,7 @@ export type UserGroupByOutputType = {
   passwordHash: string
   systemRole: $Enums.SystemRole
   status: $Enums.UserStatus
+  isSuperAdmin: boolean
   emailVerifiedAt: Date | null
   profileCompletedAt: Date | null
   lastLoginAt: Date | null
@@ -217,6 +224,7 @@ export type UserWhereInput = {
   passwordHash?: Prisma.StringFilter<"User"> | string
   systemRole?: Prisma.EnumSystemRoleFilter<"User"> | $Enums.SystemRole
   status?: Prisma.EnumUserStatusFilter<"User"> | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFilter<"User"> | boolean
   emailVerifiedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   profileCompletedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   lastLoginAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
@@ -235,6 +243,7 @@ export type UserOrderByWithRelationInput = {
   passwordHash?: Prisma.SortOrder
   systemRole?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  isSuperAdmin?: Prisma.SortOrder
   emailVerifiedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   profileCompletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   lastLoginAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -256,6 +265,7 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   passwordHash?: Prisma.StringFilter<"User"> | string
   systemRole?: Prisma.EnumSystemRoleFilter<"User"> | $Enums.SystemRole
   status?: Prisma.EnumUserStatusFilter<"User"> | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFilter<"User"> | boolean
   emailVerifiedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   profileCompletedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   lastLoginAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
@@ -274,6 +284,7 @@ export type UserOrderByWithAggregationInput = {
   passwordHash?: Prisma.SortOrder
   systemRole?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  isSuperAdmin?: Prisma.SortOrder
   emailVerifiedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   profileCompletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   lastLoginAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -293,6 +304,7 @@ export type UserScalarWhereWithAggregatesInput = {
   passwordHash?: Prisma.StringWithAggregatesFilter<"User"> | string
   systemRole?: Prisma.EnumSystemRoleWithAggregatesFilter<"User"> | $Enums.SystemRole
   status?: Prisma.EnumUserStatusWithAggregatesFilter<"User"> | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolWithAggregatesFilter<"User"> | boolean
   emailVerifiedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
   profileCompletedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
   lastLoginAt?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
@@ -306,6 +318,7 @@ export type UserCreateInput = {
   passwordHash: string
   systemRole?: $Enums.SystemRole
   status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
   emailVerifiedAt?: Date | string | null
   profileCompletedAt?: Date | string | null
   lastLoginAt?: Date | string | null
@@ -324,6 +337,7 @@ export type UserUncheckedCreateInput = {
   passwordHash: string
   systemRole?: $Enums.SystemRole
   status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
   emailVerifiedAt?: Date | string | null
   profileCompletedAt?: Date | string | null
   lastLoginAt?: Date | string | null
@@ -342,6 +356,7 @@ export type UserUpdateInput = {
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
   status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -360,6 +375,7 @@ export type UserUncheckedUpdateInput = {
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
   status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -378,6 +394,7 @@ export type UserCreateManyInput = {
   passwordHash: string
   systemRole?: $Enums.SystemRole
   status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
   emailVerifiedAt?: Date | string | null
   profileCompletedAt?: Date | string | null
   lastLoginAt?: Date | string | null
@@ -391,6 +408,7 @@ export type UserUpdateManyMutationInput = {
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
   status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -404,6 +422,7 @@ export type UserUncheckedUpdateManyInput = {
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
   status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -417,6 +436,7 @@ export type UserCountOrderByAggregateInput = {
   passwordHash?: Prisma.SortOrder
   systemRole?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  isSuperAdmin?: Prisma.SortOrder
   emailVerifiedAt?: Prisma.SortOrder
   profileCompletedAt?: Prisma.SortOrder
   lastLoginAt?: Prisma.SortOrder
@@ -430,6 +450,7 @@ export type UserMaxOrderByAggregateInput = {
   passwordHash?: Prisma.SortOrder
   systemRole?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  isSuperAdmin?: Prisma.SortOrder
   emailVerifiedAt?: Prisma.SortOrder
   profileCompletedAt?: Prisma.SortOrder
   lastLoginAt?: Prisma.SortOrder
@@ -443,6 +464,7 @@ export type UserMinOrderByAggregateInput = {
   passwordHash?: Prisma.SortOrder
   systemRole?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  isSuperAdmin?: Prisma.SortOrder
   emailVerifiedAt?: Prisma.SortOrder
   profileCompletedAt?: Prisma.SortOrder
   lastLoginAt?: Prisma.SortOrder
@@ -465,6 +487,10 @@ export type EnumSystemRoleFieldUpdateOperationsInput = {
 
 export type EnumUserStatusFieldUpdateOperationsInput = {
   set?: $Enums.UserStatus
+}
+
+export type BoolFieldUpdateOperationsInput = {
+  set?: boolean
 }
 
 export type NullableDateTimeFieldUpdateOperationsInput = {
@@ -551,6 +577,7 @@ export type UserCreateWithoutProfileInput = {
   passwordHash: string
   systemRole?: $Enums.SystemRole
   status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
   emailVerifiedAt?: Date | string | null
   profileCompletedAt?: Date | string | null
   lastLoginAt?: Date | string | null
@@ -568,6 +595,7 @@ export type UserUncheckedCreateWithoutProfileInput = {
   passwordHash: string
   systemRole?: $Enums.SystemRole
   status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
   emailVerifiedAt?: Date | string | null
   profileCompletedAt?: Date | string | null
   lastLoginAt?: Date | string | null
@@ -601,6 +629,7 @@ export type UserUpdateWithoutProfileInput = {
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
   status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -618,6 +647,7 @@ export type UserUncheckedUpdateWithoutProfileInput = {
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
   status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -635,6 +665,7 @@ export type UserCreateWithoutRefreshTokensInput = {
   passwordHash: string
   systemRole?: $Enums.SystemRole
   status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
   emailVerifiedAt?: Date | string | null
   profileCompletedAt?: Date | string | null
   lastLoginAt?: Date | string | null
@@ -652,6 +683,7 @@ export type UserUncheckedCreateWithoutRefreshTokensInput = {
   passwordHash: string
   systemRole?: $Enums.SystemRole
   status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
   emailVerifiedAt?: Date | string | null
   profileCompletedAt?: Date | string | null
   lastLoginAt?: Date | string | null
@@ -685,6 +717,7 @@ export type UserUpdateWithoutRefreshTokensInput = {
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
   status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -702,6 +735,7 @@ export type UserUncheckedUpdateWithoutRefreshTokensInput = {
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
   status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -719,6 +753,7 @@ export type UserCreateWithoutVerificationTokensInput = {
   passwordHash: string
   systemRole?: $Enums.SystemRole
   status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
   emailVerifiedAt?: Date | string | null
   profileCompletedAt?: Date | string | null
   lastLoginAt?: Date | string | null
@@ -736,6 +771,7 @@ export type UserUncheckedCreateWithoutVerificationTokensInput = {
   passwordHash: string
   systemRole?: $Enums.SystemRole
   status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
   emailVerifiedAt?: Date | string | null
   profileCompletedAt?: Date | string | null
   lastLoginAt?: Date | string | null
@@ -769,6 +805,7 @@ export type UserUpdateWithoutVerificationTokensInput = {
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
   status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -786,6 +823,7 @@ export type UserUncheckedUpdateWithoutVerificationTokensInput = {
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
   status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -803,6 +841,7 @@ export type UserCreateWithoutOwnedTenantInput = {
   passwordHash: string
   systemRole?: $Enums.SystemRole
   status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
   emailVerifiedAt?: Date | string | null
   profileCompletedAt?: Date | string | null
   lastLoginAt?: Date | string | null
@@ -820,6 +859,7 @@ export type UserUncheckedCreateWithoutOwnedTenantInput = {
   passwordHash: string
   systemRole?: $Enums.SystemRole
   status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
   emailVerifiedAt?: Date | string | null
   profileCompletedAt?: Date | string | null
   lastLoginAt?: Date | string | null
@@ -853,6 +893,7 @@ export type UserUpdateWithoutOwnedTenantInput = {
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
   status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -870,6 +911,7 @@ export type UserUncheckedUpdateWithoutOwnedTenantInput = {
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
   status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -887,6 +929,7 @@ export type UserCreateWithoutTenantMembershipsInput = {
   passwordHash: string
   systemRole?: $Enums.SystemRole
   status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
   emailVerifiedAt?: Date | string | null
   profileCompletedAt?: Date | string | null
   lastLoginAt?: Date | string | null
@@ -904,6 +947,7 @@ export type UserUncheckedCreateWithoutTenantMembershipsInput = {
   passwordHash: string
   systemRole?: $Enums.SystemRole
   status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
   emailVerifiedAt?: Date | string | null
   profileCompletedAt?: Date | string | null
   lastLoginAt?: Date | string | null
@@ -937,6 +981,7 @@ export type UserUpdateWithoutTenantMembershipsInput = {
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
   status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -954,6 +999,7 @@ export type UserUncheckedUpdateWithoutTenantMembershipsInput = {
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
   systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
   status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1020,6 +1066,7 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   passwordHash?: boolean
   systemRole?: boolean
   status?: boolean
+  isSuperAdmin?: boolean
   emailVerifiedAt?: boolean
   profileCompletedAt?: boolean
   lastLoginAt?: boolean
@@ -1039,6 +1086,7 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   passwordHash?: boolean
   systemRole?: boolean
   status?: boolean
+  isSuperAdmin?: boolean
   emailVerifiedAt?: boolean
   profileCompletedAt?: boolean
   lastLoginAt?: boolean
@@ -1052,6 +1100,7 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   passwordHash?: boolean
   systemRole?: boolean
   status?: boolean
+  isSuperAdmin?: boolean
   emailVerifiedAt?: boolean
   profileCompletedAt?: boolean
   lastLoginAt?: boolean
@@ -1065,6 +1114,7 @@ export type UserSelectScalar = {
   passwordHash?: boolean
   systemRole?: boolean
   status?: boolean
+  isSuperAdmin?: boolean
   emailVerifiedAt?: boolean
   profileCompletedAt?: boolean
   lastLoginAt?: boolean
@@ -1072,7 +1122,7 @@ export type UserSelectScalar = {
   updatedAt?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "passwordHash" | "systemRole" | "status" | "emailVerifiedAt" | "profileCompletedAt" | "lastLoginAt" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "passwordHash" | "systemRole" | "status" | "isSuperAdmin" | "emailVerifiedAt" | "profileCompletedAt" | "lastLoginAt" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   profile?: boolean | Prisma.User$profileArgs<ExtArgs>
   refreshTokens?: boolean | Prisma.User$refreshTokensArgs<ExtArgs>
@@ -1099,6 +1149,11 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     passwordHash: string
     systemRole: $Enums.SystemRole
     status: $Enums.UserStatus
+    /**
+     * §"M2": only the seeded super admin can be granted/locked with no further
+     * checks bypassed — the *one* admin nobody (incl. other admins) can lock.
+     */
+    isSuperAdmin: boolean
     emailVerifiedAt: Date | null
     profileCompletedAt: Date | null
     lastLoginAt: Date | null
@@ -1537,6 +1592,7 @@ export interface UserFieldRefs {
   readonly passwordHash: Prisma.FieldRef<"User", 'String'>
   readonly systemRole: Prisma.FieldRef<"User", 'SystemRole'>
   readonly status: Prisma.FieldRef<"User", 'UserStatus'>
+  readonly isSuperAdmin: Prisma.FieldRef<"User", 'Boolean'>
   readonly emailVerifiedAt: Prisma.FieldRef<"User", 'DateTime'>
   readonly profileCompletedAt: Prisma.FieldRef<"User", 'DateTime'>
   readonly lastLoginAt: Prisma.FieldRef<"User", 'DateTime'>

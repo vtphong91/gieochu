@@ -61,7 +61,8 @@ export const ModelName = {
   Tenant: 'Tenant',
   TenantMember: 'TenantMember',
   TenantSlugHistory: 'TenantSlugHistory',
-  Product: 'Product'
+  Product: 'Product',
+  SystemSettings: 'SystemSettings'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -86,6 +87,7 @@ export const UserScalarFieldEnum = {
   passwordHash: 'passwordHash',
   systemRole: 'systemRole',
   status: 'status',
+  isSuperAdmin: 'isSuperAdmin',
   emailVerifiedAt: 'emailVerifiedAt',
   profileCompletedAt: 'profileCompletedAt',
   lastLoginAt: 'lastLoginAt',
@@ -236,6 +238,18 @@ export const ProductScalarFieldEnum = {
 } as const
 
 export type ProductScalarFieldEnum = (typeof ProductScalarFieldEnum)[keyof typeof ProductScalarFieldEnum]
+
+
+export const SystemSettingsScalarFieldEnum = {
+  id: 'id',
+  platformName: 'platformName',
+  supportEmail: 'supportEmail',
+  trialDays: 'trialDays',
+  graceDays: 'graceDays',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SystemSettingsScalarFieldEnum = (typeof SystemSettingsScalarFieldEnum)[keyof typeof SystemSettingsScalarFieldEnum]
 
 
 export const SortOrder = {

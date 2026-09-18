@@ -76,9 +76,12 @@ export async function createTenantForUser(user: CurrentUser, input: CreateTenant
 
   const orderCodePrefix = await resolveOrderCodePrefix(generateOrderCodePrefix(input.name));
 
-  const env = getEnv();
+  // SystemSettings (§"M2") is the live source of truth for trialDays once it
+  // exists; TRIAL_DAYS env var is only the seed default (packages/db/prisma/seed.ts).
+  const settings = await prisma.systemSettings.findUnique({ where: { id: "default" } });
+  const trialDays = settings?.trialDays ?? getEnv().TRIAL_DAYS;
   const now = new Date();
-  const trialEnd = new Date(now.getTime() + env.TRIAL_DAYS * 24 * 60 * 60 * 1000);
+  const trialEnd = new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000);
 
   const tenant = await prisma.$transaction(async (tx) => {
     const created = await tx.tenant.create({

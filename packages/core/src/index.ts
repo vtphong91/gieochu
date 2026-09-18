@@ -22,3 +22,11 @@ export { resolveStorefrontAccess } from "./tenant/access-policy";
 export type { StorefrontAccessDecision, StorefrontViewer, TenantStatus } from "./tenant/access-policy";
 export { canManageTenant } from "./tenant/membership";
 export type { TenantMemberRole } from "./tenant/membership";
+
+export { decideLockUser } from "./admin/user-lock";
+export type { LockRejectReason, LockTargetUser, LockUserDecision } from "./admin/user-lock";
+export { isValidPlanInput } from "./admin/plan-validation";
+export type { PlanInput } from "./admin/plan-validation";
+export { cmsBlocksSchema, isValidCmsBlocks } from "./admin/cms-blocks";
+export { buildAdminDashboardSummary } from "./admin/dashboard-summary";
+export type { AdminDashboardCounts, AdminDashboardSummary } from "./admin/dashboard-summary";

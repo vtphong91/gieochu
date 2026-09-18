@@ -407,7 +407,8 @@ export const ModelName = {
   Tenant: 'Tenant',
   TenantMember: 'TenantMember',
   TenantSlugHistory: 'TenantSlugHistory',
-  Product: 'Product'
+  Product: 'Product',
+  SystemSettings: 'SystemSettings'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -423,7 +424,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userProfile" | "refreshToken" | "verificationToken" | "plan" | "cmsPage" | "subscription" | "tenant" | "tenantMember" | "tenantSlugHistory" | "product"
+    modelProps: "user" | "userProfile" | "refreshToken" | "verificationToken" | "plan" | "cmsPage" | "subscription" | "tenant" | "tenantMember" | "tenantSlugHistory" | "product" | "systemSettings"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1241,6 +1242,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    SystemSettings: {
+      payload: Prisma.$SystemSettingsPayload<ExtArgs>
+      fields: Prisma.SystemSettingsFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.SystemSettingsFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemSettingsPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.SystemSettingsFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemSettingsPayload>
+        }
+        findFirst: {
+          args: Prisma.SystemSettingsFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemSettingsPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.SystemSettingsFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemSettingsPayload>
+        }
+        findMany: {
+          args: Prisma.SystemSettingsFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemSettingsPayload>[]
+        }
+        create: {
+          args: Prisma.SystemSettingsCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemSettingsPayload>
+        }
+        createMany: {
+          args: Prisma.SystemSettingsCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.SystemSettingsCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemSettingsPayload>[]
+        }
+        delete: {
+          args: Prisma.SystemSettingsDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemSettingsPayload>
+        }
+        update: {
+          args: Prisma.SystemSettingsUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemSettingsPayload>
+        }
+        deleteMany: {
+          args: Prisma.SystemSettingsDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.SystemSettingsUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.SystemSettingsUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemSettingsPayload>[]
+        }
+        upsert: {
+          args: Prisma.SystemSettingsUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemSettingsPayload>
+        }
+        aggregate: {
+          args: Prisma.SystemSettingsAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateSystemSettings>
+        }
+        groupBy: {
+          args: Prisma.SystemSettingsGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SystemSettingsGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.SystemSettingsCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SystemSettingsCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1286,6 +1361,7 @@ export const UserScalarFieldEnum = {
   passwordHash: 'passwordHash',
   systemRole: 'systemRole',
   status: 'status',
+  isSuperAdmin: 'isSuperAdmin',
   emailVerifiedAt: 'emailVerifiedAt',
   profileCompletedAt: 'profileCompletedAt',
   lastLoginAt: 'lastLoginAt',
@@ -1438,6 +1514,18 @@ export const ProductScalarFieldEnum = {
 export type ProductScalarFieldEnum = (typeof ProductScalarFieldEnum)[keyof typeof ProductScalarFieldEnum]
 
 
+export const SystemSettingsScalarFieldEnum = {
+  id: 'id',
+  platformName: 'platformName',
+  supportEmail: 'supportEmail',
+  trialDays: 'trialDays',
+  graceDays: 'graceDays',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SystemSettingsScalarFieldEnum = (typeof SystemSettingsScalarFieldEnum)[keyof typeof SystemSettingsScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -1535,6 +1623,13 @@ export type ListEnumUserStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$P
 
 
 /**
+ * Reference to a field of type 'Boolean'
+ */
+export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
+    
+
+
+/**
  * Reference to a field of type 'DateTime'
  */
 export type DateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime'>
@@ -1587,13 +1682,6 @@ export type EnumPlanIntervalFieldRefInput<$PrismaModel> = FieldRefInputType<$Pri
  * Reference to a field of type 'PlanInterval[]'
  */
 export type ListEnumPlanIntervalFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PlanInterval[]'>
-    
-
-
-/**
- * Reference to a field of type 'Boolean'
- */
-export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
     
 
 
@@ -1856,6 +1944,7 @@ export type GlobalOmitConfig = {
   tenantMember?: Prisma.TenantMemberOmit
   tenantSlugHistory?: Prisma.TenantSlugHistoryOmit
   product?: Prisma.ProductOmit
+  systemSettings?: Prisma.SystemSettingsOmit
 }
 
 /* Types for Logging */

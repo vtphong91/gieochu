@@ -85,3 +85,11 @@ export type TenantSlugHistory = Prisma.TenantSlugHistoryModel
  * description, and the rest.
  */
 export type Product = Prisma.ProductModel
+/**
+ * Model SystemSettings
+ * §5.1 Layer System — system_settings. Single row (id fixed to "default").
+ * trialDays/graceDays seed from the TRIAL_DAYS/GRACE_DAYS env defaults
+ * (packages/config) but are the live source of truth once this row exists —
+ * business logic (M4 onboarding, M3 sweep) reads from here, not the env var.
+ */
+export type SystemSettings = Prisma.SystemSettingsModel

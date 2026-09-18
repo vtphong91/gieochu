@@ -15,7 +15,7 @@ M0 → M1 (kèm khung email M11) → M4 → M2 (phần cơ bản) → M7 → M3 
 | M0 | Nền móng dự án | ✅ Xong (bản đầu) | monorepo root, `packages/config`, `packages/core`, `packages/db` (schema tối thiểu), `docker/`, `apps/web` (shell) | 4 / 0 |
 | M1 | Xác thực và định danh | ✅ Xong | `packages/auth`, `packages/email`, `packages/jobs`, `apps/web/app/(auth)`, `apps/web/app/account`, `apps/web/lib` | 16 / 8 |
 | M4 | Tenant Workspace và Storefront | ✅ Xong | `apps/web/app/[tenantSlug]`, `apps/web/app/studio`, `packages/db/src/rls.ts` | 6 / 5 |
-| M2 | System Admin (cơ bản) | ⬜ Chưa làm | `apps/web/app/admin` | 4 / 4 |
+| M2 | System Admin (cơ bản) | ✅ Xong (cơ bản — Platform Payment UI + audit log viewer chờ M7/M12) | `apps/web/app/admin`, `packages/core/src/admin` | 4 / 4 |
 | M7 | Cấu hình Tenant Payment | ⬜ Chưa làm | `packages/payments` | 10 / 4 |
 | M3 | Subscription và Platform Billing | ⬜ Chưa làm | billing service + jobs | 10 / 5 |
 | M5 | Sản phẩm và File tài liệu | ⬜ Chưa làm | `packages/storage`, product CRUD | 6 / 4 |
@@ -110,6 +110,25 @@ tại → 404, storefront tenant thật render đúng.
 
 **Chưa làm/chưa xác minh:** UI onboarding/settings qua trình duyệt thật (chỉ qua curl + test gọi thẳng
 hàm); `docker compose up` cho MinIO/Mailpit vẫn chưa test trong phiên này.
+
+## M2 — Việc đã làm (cơ bản — xem docs/modules/M2.md để có sơ đồ và danh sách test đầy đủ)
+
+- Schema: `User.isSuperAdmin`, `SystemSettings` (singleton) — migration `20260918000236_m2_admin`.
+  `SystemSettings.trialDays` giờ là nguồn thật cho M4's tạo tenant (env `TRIAL_DAYS` chỉ còn là seed default).
+- `packages/core/src/admin/*`: quyết định khoá user, validate gói, validate block CMS, mapper dashboard —
+  4/4 unit test.
+- Trang `/admin` (dashboard), `/admin/users`, `/admin/tenants`, `/admin/plans`, `/admin/cms`,
+  `/admin/settings`; trang công khai `/pricing`, `/p/[slug]`. **Chưa làm**: Platform Payment config, audit log
+  viewer, báo cáo vi phạm — chờ M7/M12 theo đúng thứ tự mục 10 ("hoàn thiện M2" ở cuối).
+- **Bug tự bắt được khi smoke-test thật** (không phải qua unit/integration test): `/admin` trả 500 vì dùng
+  nhầm guard ném lỗi (`requireRole`, đúng cho API/Action) trong Server Component thay vì guard chuyển hướng.
+  Sửa bằng `requireAdminAccess()`/`requireTenantMemberPage()` mới trong `lib/page-guards.ts`, đồng thời vá
+  luôn 2 trang `/studio/[tenantSlug]/*` từ M4 bị lỗi tương tự. Đã xác minh lại bằng đăng nhập thật (super
+  admin → 200, user thường → 404, chưa đăng nhập → 307).
+
+**Đã xác minh chạy được trong phiên này:** `pnpm lint/typecheck/test/build` xanh toàn bộ (30/91 unit, 17/50
+integration cộng dồn); đăng nhập thật qua `curl` với user seed (`admin@gieochu.net`) xem `/admin` thật, và
+với user thường xác nhận bị 404.
 
 ## Câu hỏi còn mở (đã chọn phương án an toàn, xem ADR tương ứng)
 

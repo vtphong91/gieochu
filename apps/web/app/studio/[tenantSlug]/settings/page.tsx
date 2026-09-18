@@ -1,4 +1,4 @@
-import { requireTenantMember } from "../../../../lib/tenant";
+import { requireTenantMemberPage } from "../../../../lib/page-guards";
 import { BrandingForm } from "./branding-form";
 import { SlugForm } from "./slug-form";
 
@@ -10,7 +10,7 @@ interface TenantBranding {
 
 export default async function StudioSettingsPage({ params }: { params: Promise<{ tenantSlug: string }> }) {
   const { tenantSlug } = await params;
-  const { tenant } = await requireTenantMember(tenantSlug);
+  const { tenant } = await requireTenantMemberPage(tenantSlug, `/studio/${tenantSlug}/settings`);
 
   const branding = (tenant.branding as TenantBranding | null) ?? {};
   const socialLinks = branding.socialLinks ?? {};
