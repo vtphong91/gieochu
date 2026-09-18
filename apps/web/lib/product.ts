@@ -45,6 +45,10 @@ export interface UpdateProductInput {
   type?: ProductType;
   tags?: string[];
   priceVnd?: number;
+  /** null clears the sale price — M6 builds the pricing engine that reads these; M5 only owns the columns/CRUD. */
+  salePriceVnd?: number | null;
+  saleStartsAt?: Date | null;
+  saleEndsAt?: Date | null;
   downloadLimit?: number;
 }
 
@@ -52,9 +56,36 @@ export async function updateProduct(tenantId: string, productId: string, input: 
   const prisma = getPrismaClient();
   const tenant = await prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } });
   assertTenantCanWrite(tenant);
-  await requireOwnedProduct(tenantId, productId);
+  const existing = await requireOwnedProduct(tenantId, productId);
+
+  const effectivePrice = input.priceVnd ?? existing.priceVnd;
+  const effectiveSalePrice = input.salePriceVnd === undefined ? existing.salePriceVnd : input.salePriceVnd;
+  if (effectiveSalePrice != null && effectiveSalePrice >= effectivePrice) {
+    throw new AppError({ code: "INVALID_SALE_PRICE", message: "Giá ưu đãi phải nhỏ hơn giá gốc.", httpStatus: 400 });
+  }
 
   return withTenant(tenantId, (tx) => tx.product.update({ where: { id: productId }, data: input as Prisma.ProductUpdateInput }));
+}
+
+/**
+ * §"M5": "Xoá file của sản phẩm đã có người mua: chỉ ẩn khỏi danh sách mới,
+ * không xoá object" — soft-hide only (`removedAt`), the S3 object is never
+ * touched here (only file.scan's REJECTED path ever deletes an object, and
+ * only for a file that was never CLEAN).
+ */
+export async function removeProductFile(tenantId: string, productId: string, fileId: string): Promise<void> {
+  const prisma = getPrismaClient();
+  const tenant = await prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } });
+  assertTenantCanWrite(tenant);
+  await requireOwnedProduct(tenantId, productId);
+
+  const file = await withTenant(tenantId, (tx) => tx.productFile.findUnique({ where: { id: fileId } }));
+  if (!file || file.productId !== productId || file.removedAt) {
+    throw new AppError({ code: "PRODUCT_FILE_NOT_FOUND", message: "Không tìm thấy file.", httpStatus: 404 });
+  }
+
+  await withTenant(tenantId, (tx) => tx.productFile.update({ where: { id: fileId }, data: { removedAt: new Date() } }));
+  await prisma.tenant.update({ where: { id: tenantId }, data: { storageUsedBytes: { decrement: file.sizeBytes } } });
 }
 
 /**

@@ -130,16 +130,37 @@ hoá đơn điện tử, đa tiền tệ, partition/backup/giám sát vận hàn
   gợi ý trong đặc tả — chưa ghi vì logic thật chưa tồn tại).
 - **2/4 integration test M5 còn thiếu**: "Presign chỉ trả URL cho owner của tenant", "`complete` ghi
   `product_files` và enqueue job quét" — cần R2/MinIO thật để chạy `HeadObject`.
-- **Upload ảnh bìa (`coverImageKey`) và quản lý file trong Studio product editor**: UI hiện chỉ có form
-  metadata (tiêu đề/mô tả/loại/tags/giá/giới hạn tải) — không có cách đặt `coverImageKey` hay thêm
-  `ProductFile` nào qua UI cho tới khi module upload xong. Nghĩa là **không sản phẩm nào thực sự xuất bản
-  được qua UI ở trạng thái hiện tại** (thiếu ảnh bìa + file bán CLEAN) — chỉ verify được qua test/script
-  chèn thẳng DB.
+- **Upload ảnh bìa (`coverImageKey`) trong Studio product editor**: UI vẫn chưa có cách đặt `coverImageKey`
+  qua trình duyệt cho tới khi module upload xong — không sản phẩm nào thực sự xuất bản được qua UI ở trạng
+  thái hiện tại (thiếu ảnh bìa; file bán CLEAN cũng vậy). Chỉ verify được qua test/script chèn thẳng DB.
+  **Quản lý file đã có (không cần chờ upload)**: form sửa sản phẩm giờ có 3 trường giá ưu đãi
+  (`salePriceVnd`/`saleStartsAt`/`saleEndsAt` — validate `salePriceVnd < priceVnd`, giờ nhập theo
+  Asia/Ho_Chi_Minh), và danh sách file có nút "Ẩn" (`removeProductFile()` — soft-hide `removedAt`, trừ
+  `storageUsedBytes` nguyên tử qua `decrement`, không đụng object S3, đúng §5.2).
 - **Trang public `/{tenantSlug}/products/{productSlug}`**: đề xuất ở kế hoạch M5 (hiển thị tối thiểu
   tiêu đề/ảnh bìa/mô tả/giá/file preview) nhưng chưa xây — hoãn cùng lý do (không có ảnh bìa/file thật để
   hiển thị cho tới khi có upload).
 - **`unpublishProduct()` không kiểm tra "chưa có đơn"**: đặc tả ghi "PUBLISHED → DRAFT: Owner gỡ xuống (chưa
   có đơn)" nhưng M8 (Order) chưa tồn tại nên không có gì để kiểm tra — hiện luôn cho phép gỡ. Nối lại điều
   kiện khi M8 xong.
-- **`salePriceVnd`/`saleStartsAt`/`saleEndsAt`** đã có cột trên `Product` nhưng chưa đọc ở đâu — đúng kế
-  hoạch, M6 (pricing engine) sẽ dùng.
+
+## 2 bug thật phát hiện khi test thủ công qua trình duyệt (sau M5, đã sửa ngay)
+
+Mọi smoke-test trước giờ chỉ dùng `curl` (gọi thẳng API/route handler) — không tải trang qua trình duyệt thật
+nên không chạy JS phía client. Lần đầu người dùng bấm thử qua trình duyệt (theo hướng dẫn test thủ công) đã
+lộ ra 2 lỗi cả 2 đều tồn tại từ trước, không riêng module nào:
+
+- **Seed admin thiếu `UserProfile`**: `packages/db/prisma/seed.ts` chỉ set `User.profileCompletedAt` nhưng
+  không tạo bản ghi `UserProfile` — trong khi `isProfileComplete()` (`packages/auth`, dùng ở route login)
+  kiểm tra chính bảng đó, không phải cột `profileCompletedAt`. Hậu quả: admin đăng nhập được nhưng bị đưa
+  tới `/account/profile`, và nếu điền form ở đó sẽ lỗi (`userProfile.update` trên bản ghi không tồn tại).
+  Đã sửa: seed giờ `upsert` luôn `UserProfile` cho admin.
+- **CSP chặn toàn bộ JS phía client**: `next.config.ts` đặt `script-src 'self'` tĩnh, không có `unsafe-inline`
+  hay nonce — chặn đứng inline `<script>` mà Next.js App Router tự chèn mỗi request để hydrate RSC (cả dev
+  **và production**, không riêng gì hot-reload). Hậu quả: React không hydrate được, mọi form (kể cả
+  đăng nhập) rơi về submit HTML thuần (GET, lộ mật khẩu lên URL). Đã sửa: chuyển sinh CSP sang `proxy.ts`
+  (đúng vị trí duy nhất tạo được nonce theo từng request), dùng `script-src 'self' 'nonce-<random>'
+  'strict-dynamic'` (+ `unsafe-eval` riêng cho dev, Turbopack HMR cần `eval()`) — theo đúng khuyến nghị CSP
+  chính thức của Next.js. `next.config.ts` giờ chỉ còn 2 header tĩnh (X-Content-Type-Options, Referrer-Policy).
+  **Bài học**: `curl` không thay thế được việc tải trang qua trình duyệt thật — lỗi này lẽ ra đã lộ ra từ M1
+  nếu có bước test tay qua trình duyệt sớm hơn.

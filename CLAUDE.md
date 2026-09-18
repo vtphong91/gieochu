@@ -77,7 +77,8 @@ Xem sơ đồ đầy đủ ở `docs/GIEOCHU_PROMPT_MVP_PHASE1.md` §4.4. Tóm t
 6. File trong bucket private. URL tải chỉ là presigned, sống ≤ 10 phút, `Content-Disposition: attachment`.
 7. Server Actions dựa vào cơ chế CSRF sẵn có của Next.js; Route Handler ghi dữ liệu phải kiểm tra header
    `Origin`.
-8. CSP, `X-Content-Type-Options`, `Referrer-Policy` cấu hình trong `next.config.ts`.
+8. CSP (nonce theo từng request, sinh trong `proxy.ts` — xem ADR-016), `X-Content-Type-Options`,
+   `Referrer-Policy` (2 header sau cấu hình tĩnh trong `next.config.ts`).
 9. System admin **không có route nào** đọc chi tiết đơn hàng/khách hàng của tenant — chỉ đọc
    `tenant_daily_stats` và bảng L1.
 

@@ -168,11 +168,11 @@ component nhạy cảm tự xác thực và phân quyền lại — không tin p
 │       │                           # tenant-payment (M7), platform-payment/subscription-billing/
 │       │                           # subscription-sweep/tenant-write-guard (M3), plan-limits/product
 │       │                           # (M5), pricing, rate-limit, jobs, jwt-context, duration
-│       ├── proxy.ts
+│       ├── proxy.ts                # x-request-id + CSP nonce theo từng request (ADR-016)
 │       ├── worker.ts               # pg-boss worker: email.send (M11) + subscription.sweep cron (M3)
 │       ├── tests/integration/      # Vitest — auth (8), tenant (5), admin (4), tenant-payment (4),
 │       │                           # subscription-billing (5), product (2 — 2 còn lại chờ storage thật)
-│       ├── next.config.ts          # CSP/security headers
+│       ├── next.config.ts          # X-Content-Type-Options/Referrer-Policy (CSP ở proxy.ts, ADR-016)
 │       └── vitest.config.ts
 ├── packages/
 │   ├── auth/        # password, JWT access token, refresh/verification token, RBAC (M1)

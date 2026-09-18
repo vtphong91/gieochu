@@ -4,12 +4,29 @@ import { requireTenantMemberPage } from "../../../../../lib/page-guards";
 import { getProduct } from "../../../../../lib/product";
 import { EditProductForm } from "./edit-form";
 import { ProductStatusActions } from "./status-actions";
+import { RemoveFileButton } from "./remove-file-button";
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "Nháp",
   PUBLISHED: "Đã xuất bản",
   ARCHIVED: "Đã lưu trữ",
 };
+
+/** For a `datetime-local` input's defaultValue — wall-clock time in Asia/Ho_Chi_Minh, no timezone suffix. */
+function toDatetimeLocal(date: Date | null): string {
+  if (!date) return "";
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
+}
 
 export default async function EditProductPage({
   params,
@@ -52,6 +69,9 @@ export default async function EditProductPage({
               type: product.type,
               tags: product.tags.join(", "),
               priceVnd: product.priceVnd,
+              salePriceVnd: product.salePriceVnd?.toString() ?? "",
+              saleStartsAt: toDatetimeLocal(product.saleStartsAt),
+              saleEndsAt: toDatetimeLocal(product.saleEndsAt),
               downloadLimit: product.downloadLimit,
             }}
           />
@@ -66,8 +86,11 @@ export default async function EditProductPage({
         {files.length > 0 ? (
           <ul className="mt-2 divide-y rounded border text-sm">
             {files.map((file) => (
-              <li key={file.id} className="p-2">
-                {file.fileName} — {file.scanStatus}
+              <li key={file.id} className="flex items-center justify-between p-2">
+                <span>
+                  {file.fileName} — {file.scanStatus} {file.isPreview ? "(preview)" : ""}
+                </span>
+                <RemoveFileButton tenantSlug={tenantSlug} productId={productId} fileId={file.id} />
               </li>
             ))}
           </ul>

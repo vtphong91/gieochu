@@ -7,14 +7,11 @@ import type { NextConfig } from "next";
 // for the same pattern), so load it explicitly before anything reads process.env.
 loadEnv({ path: fileURLToPath(new URL("../../.env", import.meta.url)) });
 
+// §7.8: Content-Security-Policy moved to proxy.ts — it needs a fresh nonce
+// per request (Next's App Router injects its own inline <script> tags for
+// RSC hydration on every render; a static CSP here can't include that
+// nonce). Only the headers that don't vary per request stay here.
 const securityHeaders = [
-  // §7.8 CSP, X-Content-Type-Options, Referrer-Policy configured in next.config.
-  // Kept permissive for M0 (marketing-only shell); tightened as modules that
-  // need inline scripts/styles (payments QR, uploads) land.
-  {
-    key: "Content-Security-Policy",
-    value: "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'",
-  },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
 ];

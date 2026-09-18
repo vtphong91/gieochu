@@ -19,6 +19,11 @@ export interface EditProductValues {
   type: string;
   tags: string;
   priceVnd: number;
+  /** empty string = no sale price set */
+  salePriceVnd: string;
+  /** "YYYY-MM-DDTHH:mm" (datetime-local format) or empty string */
+  saleStartsAt: string;
+  saleEndsAt: string;
   downloadLimit: number;
 }
 
@@ -102,6 +107,54 @@ export function EditProductForm({
           />
         </div>
       </div>
+
+      <fieldset className="rounded border p-3">
+        <legend className="px-1 text-sm font-medium">
+          Giá ưu đãi (tùy chọn — hiển thị theo lịch sẽ có ở M6, để trống nếu không áp dụng)
+        </legend>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm" htmlFor="salePriceVnd">
+              Giá ưu đãi (VND) — phải nhỏ hơn giá gốc
+            </label>
+            <input
+              id="salePriceVnd"
+              name="salePriceVnd"
+              type="number"
+              min={0}
+              defaultValue={initial.salePriceVnd}
+              className="mt-1 w-full rounded border px-3 py-2"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm" htmlFor="saleStartsAt">
+                Bắt đầu
+              </label>
+              <input
+                id="saleStartsAt"
+                name="saleStartsAt"
+                type="datetime-local"
+                defaultValue={initial.saleStartsAt}
+                className="mt-1 w-full rounded border px-3 py-2"
+              />
+            </div>
+            <div>
+              <label className="block text-sm" htmlFor="saleEndsAt">
+                Kết thúc
+              </label>
+              <input
+                id="saleEndsAt"
+                name="saleEndsAt"
+                type="datetime-local"
+                defaultValue={initial.saleEndsAt}
+                className="mt-1 w-full rounded border px-3 py-2"
+              />
+            </div>
+          </div>
+        </div>
+      </fieldset>
+
       {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
       <button
         type="submit"

@@ -202,3 +202,23 @@
 - **Lý do:** Cách diễn giải phổ biến nhất cho trường "giới hạn = 0" trong các hệ thống tương tự (giống
   `usageLimit`/`maxDiscountVnd` kiểu "0 hoặc null = không giới hạn" ở M6); đơn giản, không cần thêm cột
   boolean `unlimited` riêng.
+
+## ADR-016 — Chuyển sinh CSP sang `proxy.ts` với nonce theo từng request, thay vì header tĩnh trong `next.config.ts`
+
+- **Bối cảnh:** Người dùng test đăng nhập qua trình duyệt thật (lần đầu trong dự án — mọi smoke-test trước
+  giờ chỉ qua `curl`) và phát hiện form đăng nhập lộ mật khẩu lên URL. Nguyên nhân: `next.config.ts` đặt CSP
+  tĩnh `script-src 'self'` (không `unsafe-inline`, không nonce) — chặn đứng inline `<script>` mà Next.js App
+  Router tự chèn mỗi request để hydrate dữ liệu RSC. Không có nonce, React không hydrate được ở **bất kỳ
+  trang nào có tương tác** (form, `useActionState`, client component), cả dev lẫn production — không phải
+  lỗi riêng dev/hot-reload như suy đoán ban đầu (console log xác nhận thông báo CSP là "inline script", không
+  phải "eval").
+- **Quyết định:** Sinh CSP động trong `proxy.ts` — nơi duy nhất chạy được mỗi request để tạo nonce ngẫu
+  nhiên — dùng `script-src 'self' 'nonce-<random>' 'strict-dynamic'` (+ `unsafe-eval` chỉ khi
+  `NODE_ENV !== "production"`, vì Turbopack/webpack dev HMR cần `eval()`, một vấn đề khác không liên quan tới
+  lỗi hydrate). Theo đúng pattern nonce chính thức của Next.js
+  (`https://nextjs.org/docs/app/guides/content-security-policy`). `next.config.ts` chỉ còn giữ 2 header
+  không đổi theo request (`X-Content-Type-Options`, `Referrer-Policy`).
+- **Lý do:** Đây là cách duy nhất vừa giữ CSP chặt (không `unsafe-inline` vĩnh viễn cho script) vừa cho phép
+  cơ chế hydrate nội bộ của Next.js hoạt động — không phải lựa chọn giữa nhiều phương án, mà là sửa đúng theo
+  khuyến nghị chính thức của framework. Ghi ADR vì đổi vị trí cấu hình bảo mật (CSP) khỏi nơi đặc tả gốc nhắc
+  tới (`next.config.ts`, mục 7.8) sang `proxy.ts`.
