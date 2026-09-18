@@ -1,12 +1,12 @@
 import type { RenderedEmail } from "./verify-email";
 
-export type SubscriptionEmailStage = "REMINDER_7D" | "REMINDER_1D" | "GRACE" | "EXPIRED";
+/** §"M3 v2" ADR-021: EXPIRED renamed DOWNGRADED_TO_FREE — grace lapsing no longer suspends selling, it downgrades the plan. */
+export type SubscriptionEmailStage = "REMINDER_7D" | "REMINDER_1D" | "GRACE" | "DOWNGRADED_TO_FREE";
 
 export interface SubscriptionStatusEmailData {
   appName: string;
   tenantName: string;
   billingUrl: string;
-  /** Local (Asia/Ho_Chi_Minh) display string, already formatted by the caller — email templates don't own TZ conversion. */
   periodEndDisplay?: string;
 }
 
@@ -15,28 +15,28 @@ const COPY: Record<SubscriptionEmailStage, (data: SubscriptionStatusEmailData) =
     subject: `Gói dịch vụ "${data.tenantName}" sắp hết hạn (còn 7 ngày)`,
     lines: [
       `Gói dịch vụ của trang "${data.tenantName}" sẽ hết hạn vào ${data.periodEndDisplay}.`,
-      `Gia hạn sớm để trang không bị chuyển sang chế độ tạm ngưng bán.`,
+      `Gia hạn sớm để giữ nguyên giới hạn/tính năng hiện tại — nếu không gia hạn, trang sẽ tự động chuyển về gói Free sau thời gian ân hạn.`,
     ],
   }),
   REMINDER_1D: (data) => ({
     subject: `Gói dịch vụ "${data.tenantName}" hết hạn vào ngày mai`,
     lines: [
       `Gói dịch vụ của trang "${data.tenantName}" sẽ hết hạn vào ${data.periodEndDisplay} (còn 1 ngày).`,
-      `Gia hạn ngay để tránh gián đoạn.`,
+      `Gia hạn ngay để tránh bị chuyển về gói Free.`,
     ],
   }),
   GRACE: (data) => ({
     subject: `Gói dịch vụ "${data.tenantName}" đã hết hạn — đang trong thời gian ân hạn`,
     lines: [
       `Gói dịch vụ của trang "${data.tenantName}" đã hết hạn và đang trong thời gian ân hạn.`,
-      `Thanh toán trước khi hết thời gian ân hạn để tránh trang bị chuyển sang chế độ tạm ngưng bán.`,
+      `Thanh toán trước khi hết thời gian ân hạn để giữ nguyên gói hiện tại — hết ân hạn mà chưa thanh toán, trang sẽ tự động chuyển về gói Free.`,
     ],
   }),
-  EXPIRED: (data) => ({
-    subject: `Trang "${data.tenantName}" đã bị tạm ngưng bán do chưa gia hạn`,
+  DOWNGRADED_TO_FREE: (data) => ({
+    subject: `Gói dịch vụ "${data.tenantName}" đã chuyển về gói Free`,
     lines: [
-      `Gói dịch vụ của trang "${data.tenantName}" đã hết hạn ân hạn.`,
-      `Trang chuyển sang chế độ tạm ngưng bán: khách hàng cũ vẫn tải được tài liệu đã mua, nhưng bạn không thể đăng sản phẩm/bài viết mới hoặc nhận đơn mới cho tới khi gia hạn.`,
+      `Gói dịch vụ của trang "${data.tenantName}" đã hết hạn ân hạn nên được tự động chuyển về gói Free.`,
+      `Trang vẫn bán hàng bình thường, khách hàng cũ vẫn tải được tài liệu đã mua — chỉ áp dụng lại giới hạn số sản phẩm/dung lượng của gói Free. Nâng cấp lại bất cứ lúc nào.`,
     ],
   }),
 };

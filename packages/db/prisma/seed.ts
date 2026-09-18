@@ -57,36 +57,57 @@ async function main() {
   });
   console.log("[seed] system settings ready");
 
+  // §"M3 v2" ADR-021 — Hybrid Monetization: FREE is a real, non-expiring plan every new
+  // tenant gets (createTenantForUser reads isFree:true), not a time-boxed trial. Numbers here
+  // are seed defaults only — every field is editable afterwards via /admin/plans.
   const plans = [
     {
-      code: "STARTER",
-      name: "Khởi đầu",
+      code: "FREE",
+      name: "Free",
       priceVnd: 0,
       interval: "MONTH" as const,
       intervalCount: 1,
       maxProducts: 5,
       storageMb: 500,
       maxFileMb: 50,
+      isFree: true,
+      features: {},
     },
     {
-      code: "PRO_MONTHLY",
-      name: "Chuyên nghiệp",
-      priceVnd: 199_000,
+      code: "CREATOR",
+      name: "Creator",
+      priceVnd: 99_000,
       interval: "MONTH" as const,
       intervalCount: 1,
       maxProducts: 50,
       storageMb: 5_000,
-      maxFileMb: 200,
+      maxFileMb: 250,
+      isFree: false,
+      features: { coupons: true, advancedAnalytics: true, advancedBranding: true },
     },
     {
-      code: "PRO_YEARLY",
-      name: "Chuyên nghiệp (năm)",
-      priceVnd: 1_990_000,
-      interval: "YEAR" as const,
+      code: "PRO",
+      name: "Pro",
+      priceVnd: 199_000,
+      interval: "MONTH" as const,
       intervalCount: 1,
-      maxProducts: 50,
-      storageMb: 5_000,
-      maxFileMb: 200,
+      maxProducts: 200,
+      storageMb: 20_000,
+      maxFileMb: 1_000,
+      isFree: false,
+      features: { coupons: true, advancedAnalytics: true, advancedBranding: true, seoTools: true, automation: true },
+    },
+    {
+      code: "BUSINESS",
+      name: "Business",
+      priceVnd: 499_000,
+      interval: "MONTH" as const,
+      intervalCount: 1,
+      maxProducts: 1_000,
+      storageMb: 100_000,
+      maxFileMb: 2_000,
+      isFree: false,
+      features: { coupons: true, advancedAnalytics: true, advancedBranding: true, seoTools: true, automation: true, customDomain: true },
     },
   ];
 

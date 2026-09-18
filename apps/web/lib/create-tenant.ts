@@ -1,5 +1,4 @@
 import { AppError, conflict, generateOrderCodePrefix, isReservedSlug, slugify } from "@gieochu/core";
-import { getEnv } from "@gieochu/config";
 import { getPrismaClient } from "@gieochu/db";
 import type { CurrentUser } from "./session";
 
@@ -44,9 +43,10 @@ async function resolveOrderCodePrefix(base: string): Promise<string> {
 }
 
 /**
- * §"M4" onboarding: one tenant per user, ACTIVE, OWNER membership, and a
- * TRIALING subscription opened in the same transaction (Subscription model
- * is forward-declared here — full billing logic lands in M3).
+ * §"M4" onboarding / §"M3 v2" ADR-021: one tenant per user, ACTIVE, OWNER
+ * membership, and a subscription on the FREE plan opened in the same
+ * transaction — FREE never expires (Free Forever), so there is no trial
+ * period to track here anymore.
  */
 export async function createTenantForUser(user: CurrentUser, input: CreateTenantInput): Promise<CreatedTenant> {
   const prisma = getPrismaClient();
@@ -69,19 +69,13 @@ export async function createTenantForUser(user: CurrentUser, input: CreateTenant
     throw conflict("SLUG_TAKEN", `Đường dẫn "${slug}" đã được sử dụng, vui lòng chọn tên khác (ví dụ: ${slug}-2).`);
   }
 
-  const plan = await prisma.plan.findFirst({ where: { isActive: true }, orderBy: { priceVnd: "asc" } });
+  const plan = await prisma.plan.findFirst({ where: { isActive: true, isFree: true } });
   if (!plan) {
     throw new AppError({ code: "NO_PLAN_AVAILABLE", message: "Chưa có gói dịch vụ nào khả dụng.", httpStatus: 500 });
   }
 
   const orderCodePrefix = await resolveOrderCodePrefix(generateOrderCodePrefix(input.name));
-
-  // SystemSettings (§"M2") is the live source of truth for trialDays once it
-  // exists; TRIAL_DAYS env var is only the seed default (packages/db/prisma/seed.ts).
-  const settings = await prisma.systemSettings.findUnique({ where: { id: "default" } });
-  const trialDays = settings?.trialDays ?? getEnv().TRIAL_DAYS;
   const now = new Date();
-  const trialEnd = new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000);
 
   const tenant = await prisma.$transaction(async (tx) => {
     const created = await tx.tenant.create({
@@ -103,9 +97,12 @@ export async function createTenantForUser(user: CurrentUser, input: CreateTenant
       data: {
         tenantId: created.id,
         planId: plan.id,
-        status: "TRIALING",
+        status: "ACTIVE",
         currentPeriodStart: now,
-        currentPeriodEnd: trialEnd,
+        // FREE never expires (§"M3 v2" ADR-021) — currentPeriodEnd stays <= now forever, which
+        // both keeps the sweep query simple (it excludes plan.isFree anyway) and makes an
+        // eventual Free -> Paid upgrade's computeRenewalPeriod() start the new period from "now".
+        currentPeriodEnd: now,
       },
     });
     return created;

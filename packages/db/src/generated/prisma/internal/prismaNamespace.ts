@@ -2774,6 +2774,8 @@ export const PlanScalarFieldEnum = {
   maxProducts: 'maxProducts',
   storageMb: 'storageMb',
   maxFileMb: 'maxFileMb',
+  isFree: 'isFree',
+  features: 'features',
   isActive: 'isActive',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'

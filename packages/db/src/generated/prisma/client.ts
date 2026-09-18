@@ -68,6 +68,13 @@ export type VerificationToken = Prisma.VerificationTokenModel
 /**
  * Model Plan
  * §5.1 Layer System — PLANS (subscription plans System admin manages)
+ * §"M3 v2" ADR-021: `isFree` marks the plan `createTenantForUser()` assigns
+ * to every new tenant and that `subscription-sweep.ts` excludes from
+ * GRACE/EXPIRED sweeping and downgrades a lapsed paid subscription back to.
+ * `features` are boolean entitlement flags (see
+ * `packages/core/src/billing/feature-gate.ts`) — business logic reads
+ * these, never `plan.code`, so plan packaging stays a pure commercial
+ * concern editable from System Admin.
  */
 export type Plan = Prisma.PlanModel
 /**

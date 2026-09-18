@@ -6,6 +6,7 @@ import { getEnv } from "@gieochu/config";
 import { createTenantForUser } from "../../lib/create-tenant";
 import { createRenewalInvoice, getSubscriptionOverview } from "../../lib/subscription-billing";
 import { runSubscriptionSweep } from "../../lib/subscription-sweep";
+import { assertPlanLimit } from "../../lib/plan-limits";
 import { assertTenantCanWrite } from "../../lib/tenant-write-guard";
 import { getPublishedProducts } from "../../lib/storefront";
 import { POST as platformWebhook } from "../../app/api/webhooks/platform/[provider]/route";
@@ -82,19 +83,19 @@ describe("M3 subscription and platform billing", () => {
     await prisma.platformPaymentConfig.deleteMany({ where: { provider: "SEPAY" } });
   });
 
-  it("creating a tenant opens a TRIALING subscription tied to a plan", async () => {
+  it("creating a tenant opens an ACTIVE subscription on the FREE plan, which never expires", async () => {
     const owner = await createActiveUser(nextEmail());
-    const tenant = await createTenantForUser(toCurrentUser(owner.id), { name: "Trial Test", slug: `${RUN_PREFIX}-trial` });
+    const tenant = await createTenantForUser(toCurrentUser(owner.id), { name: "Free Test", slug: `${RUN_PREFIX}-free` });
 
-    const subscription = await prisma.subscription.findUniqueOrThrow({ where: { tenantId: tenant.id } });
-    expect(subscription.status).toBe("TRIALING");
-    expect(subscription.planId).toBeTruthy();
-    expect(subscription.currentPeriodEnd.getTime()).toBeGreaterThan(subscription.currentPeriodStart.getTime());
+    const subscription = await prisma.subscription.findUniqueOrThrow({ where: { tenantId: tenant.id }, include: { plan: true } });
+    expect(subscription.status).toBe("ACTIVE");
+    expect(subscription.plan.isFree).toBe(true);
+    expect(subscription.currentPeriodEnd.getTime()).toBeLessThanOrEqual(subscription.currentPeriodStart.getTime() + 1);
   });
 
   it("creates a renewal invoice and marks it PAID via a signed platform SePay webhook, activating the subscription", async () => {
     await ensurePlatformSepayConfig();
-    const proPlan = await prisma.plan.findUniqueOrThrow({ where: { code: "PRO_MONTHLY" } });
+    const proPlan = await prisma.plan.findUniqueOrThrow({ where: { code: "CREATOR" } });
 
     const owner = await createActiveUser(nextEmail());
     const tenant = await createTenantForUser(toCurrentUser(owner.id), { name: "Sepay Billing", slug: `${RUN_PREFIX}-sepay-paid` });
@@ -122,7 +123,7 @@ describe("M3 subscription and platform billing", () => {
 
   it("processes a duplicate webhook event idempotently (no double transaction, no error)", async () => {
     await ensurePlatformSepayConfig();
-    const proPlan = await prisma.plan.findUniqueOrThrow({ where: { code: "PRO_MONTHLY" } });
+    const proPlan = await prisma.plan.findUniqueOrThrow({ where: { code: "CREATOR" } });
 
     const owner = await createActiveUser(nextEmail());
     const tenant = await createTenantForUser(toCurrentUser(owner.id), { name: "Sepay Dup", slug: `${RUN_PREFIX}-sepay-dup` });
@@ -145,17 +146,23 @@ describe("M3 subscription and platform billing", () => {
     expect(transactionCount).toBe(1);
   });
 
-  it("the hourly sweep moves an overdue subscription to GRACE, then to EXPIRED with the tenant set READ_ONLY", async () => {
+  it("the hourly sweep downgrades an overdue paid subscription back to FREE, keeping the tenant sellable", async () => {
     const owner = await createActiveUser(nextEmail());
     const tenant = await createTenantForUser(toCurrentUser(owner.id), { name: "Sweep Test", slug: `${RUN_PREFIX}-sweep` });
+    const creatorPlan = await prisma.plan.findUniqueOrThrow({ where: { code: "CREATOR" } });
 
+    // Upgrade at the DB level directly — this test is about the sweep's downgrade behavior, not the upgrade flow itself.
     const overduePeriodEnd = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    await prisma.subscription.update({ where: { tenantId: tenant.id }, data: { currentPeriodEnd: overduePeriodEnd } });
+    await prisma.subscription.update({
+      where: { tenantId: tenant.id },
+      data: { planId: creatorPlan.id, currentPeriodEnd: overduePeriodEnd },
+    });
 
     await runSubscriptionSweep();
-    let subscription = await prisma.subscription.findUniqueOrThrow({ where: { tenantId: tenant.id } });
+    let subscription = await prisma.subscription.findUniqueOrThrow({ where: { tenantId: tenant.id }, include: { plan: true } });
     expect(subscription.status).toBe("GRACE");
     expect(subscription.graceEndsAt).not.toBeNull();
+    expect(subscription.planId).toBe(creatorPlan.id);
 
     await prisma.subscription.update({
       where: { tenantId: tenant.id },
@@ -163,11 +170,61 @@ describe("M3 subscription and platform billing", () => {
     });
 
     await runSubscriptionSweep();
-    subscription = await prisma.subscription.findUniqueOrThrow({ where: { tenantId: tenant.id } });
-    expect(subscription.status).toBe("EXPIRED");
+    subscription = await prisma.subscription.findUniqueOrThrow({ where: { tenantId: tenant.id }, include: { plan: true } });
+    expect(subscription.status).toBe("ACTIVE");
+    expect(subscription.plan.isFree).toBe(true);
 
-    const expiredTenant = await prisma.tenant.findUniqueOrThrow({ where: { id: tenant.id } });
-    expect(expiredTenant.status).toBe("READ_ONLY");
+    // §"M3 v2" ADR-021: a lapsed paid subscription never sets the tenant READ_ONLY anymore — Free still sells.
+    const tenantAfter = await prisma.tenant.findUniqueOrThrow({ where: { id: tenant.id } });
+    expect(tenantAfter.status).toBe("ACTIVE");
+  });
+
+  it("a Free-plan tenant can publish within FREE's product limit, and assertPlanLimit blocks the next one", async () => {
+    const owner = await createActiveUser(nextEmail());
+    const tenant = await createTenantForUser(toCurrentUser(owner.id), { name: "Free Limit Test", slug: `${RUN_PREFIX}-freelimit` });
+    const { subscription } = await getSubscriptionOverview(tenant.id);
+    const freePlan = await prisma.plan.findUniqueOrThrow({ where: { id: subscription.planId } });
+    expect(freePlan.isFree).toBe(true);
+
+    await withTenant(tenant.id, async (tx) => {
+      for (let i = 0; i < freePlan.maxProducts; i += 1) {
+        await tx.product.create({ data: { tenantId: tenant.id, slug: `p-${i}`, title: `P${i}`, status: "PUBLISHED" } });
+      }
+    });
+
+    await expect(assertPlanLimit(tenant.id, "products", 1)).rejects.toMatchObject({ code: "PRODUCT_LIMIT_REACHED" });
+
+    await withTenant(tenant.id, (tx) => tx.product.updateMany({ where: { tenantId: tenant.id }, data: { status: "ARCHIVED" } }));
+    await expect(assertPlanLimit(tenant.id, "products", 1)).resolves.toBeUndefined();
+  });
+
+  it("upgrading from Free to a paid plan computes the new period starting now and switches the plan immediately on payment", async () => {
+    await ensurePlatformSepayConfig();
+    const creatorPlan = await prisma.plan.findUniqueOrThrow({ where: { code: "CREATOR" } });
+
+    const owner = await createActiveUser(nextEmail());
+    const tenant = await createTenantForUser(toCurrentUser(owner.id), { name: "Upgrade Test", slug: `${RUN_PREFIX}-upgrade` });
+    const before = await getSubscriptionOverview(tenant.id);
+    expect(before.subscription.plan.isFree).toBe(true);
+
+    const invoice = await createRenewalInvoice(tenant.id, { planId: creatorPlan.id, provider: "SEPAY" });
+    const now = new Date();
+    expect(invoice.periodStart.getTime()).toBeGreaterThanOrEqual(now.getTime() - 5_000);
+
+    const rawBody = JSON.stringify({
+      id: `evt_${RUN_PREFIX}_upgrade`,
+      content: `thanh toan ${invoice.code}`,
+      transferType: "in",
+      transferAmount: invoice.amountVnd,
+      transactionDate: "2026-01-01 10:00:00",
+    });
+    const response = await platformWebhook(signedSepayRequest(rawBody), { params: Promise.resolve({ provider: "sepay" }) });
+    expect(response.status).toBe(200);
+
+    const after = await getSubscriptionOverview(tenant.id);
+    expect(after.subscription.status).toBe("ACTIVE");
+    expect(after.subscription.plan.isFree).toBe(false);
+    expect(after.subscription.planId).toBe(creatorPlan.id);
   });
 
   it("a READ_ONLY tenant cannot write new content, but a customer can still list its already-published products", async () => {

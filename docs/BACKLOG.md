@@ -104,9 +104,8 @@ hoá đơn điện tử, đa tiền tệ, partition/backup/giám sát vận hàn
   dùng theo tenant) để M5 gọi trước khi tạo sản phẩm/upload file — chưa viết vì hình dạng query phụ thuộc
   schema Product/file mà M5 sẽ thêm; viết trước sẽ phải đoán và nhiều khả năng M5 viết lại.
   **[Đã làm ở M5]** — `apps/web/lib/plan-limits.ts`.
-- **`/studio/[tenantSlug]/billing` chưa có progress bar dung lượng**: hiện chỉ hiện số MB đã dùng
-  (`tenant.storageUsedBytes`), chưa hiển thị so với `plan.storageMb` dưới dạng thanh tiến trình — cần thiết
-  kế UI, không ảnh hưởng đúng đắn dữ liệu.
+- **`/studio/[tenantSlug]/billing` chưa có progress bar dung lượng**: ✅ đã làm ở M3 v2 — progress bar sản
+  phẩm/dung lượng so với giới hạn plan, cảnh báo ngưỡng 80%.
 - **Không có trang admin "danh sách toàn bộ subscription + override thủ công"**: báo cáo tham khảo TaniGos có
   `admin/billing/subscriptions` (gia hạn thủ công/đổi gói/suspend thủ công cho từng merchant); đặc tả M3 của
   Gieo Chữ không yêu cầu tường minh nên chưa làm — cân nhắc thêm khi vận hành thật cần can thiệp tay.
@@ -115,6 +114,26 @@ hoá đơn điện tử, đa tiền tệ, partition/backup/giám sát vận hàn
 - **Auto-disable-khi-đổi-cấu-hình (ADR-013) chỉ áp dụng `PlatformPaymentConfig`**: `TenantPaymentConfig` (M7)
   chưa có cơ chế này — cân nhắc đồng bộ khi có nhu cầu thật, không bắt buộc vì không ảnh hưởng đúng đắn của
   M7 hiện tại (chỉ là một lớp an toàn bổ sung).
+
+## Phát sinh trong lúc dựng M3 v2 (Hybrid Monetization, xem ADR-021)
+
+- **`assertPlanFeature()` chưa gate call site cụ thể nào**: hàm đã có (`apps/web/lib/plan-limits.ts`), đọc
+  `plan.features` đúng nguyên tắc entitlement — nhưng chưa gọi ở coupon/analytics/branding/SEO/automation/
+  customDomain vì mỗi cái cần quyết định riêng "Free có được dùng hay không" trước khi gate (đặc tả gốc M6
+  còn để ngỏ "Coupon: Có thể giới hạn / chưa mở" cho Free). Chưa làm, cần hỏi lại trước khi gate lần đầu.
+- **MRR/GMV đầy đủ trên `/admin` vẫn chờ M12**: M3 v2 chỉ thêm tách đếm subscription Free/Paid
+  (`subscriptionsByPlanType`), chưa tính doanh thu — đúng phạm vi đã thống nhất với người dùng.
+- **`SystemSettings.trialDays` không còn được đọc ở đâu**: `create-tenant.ts` không còn dùng trial nữa —
+  cột vẫn còn trong schema (không xoá vội, không phải trọng tâm đợt này), `/admin/settings` UI vẫn có thể
+  còn cho sửa giá trị này dù không có tác dụng — cần dọn khi có thời gian.
+- **`updatePlanAction` (mới) chưa có test tự động**: `/admin/plans` CRUD nói chung (kể cả `createPlanAction`/
+  `togglePlanActiveAction` cũ) chưa có integration test nào từ M2 tới giờ — không tăng phạm vi test M3 v2 để
+  thêm việc này (đặc tả M2 không liệt kê rõ), nhưng đáng làm khi rà soát coverage CRUD admin nói chung.
+- **Đã xoá tay 3 plan cũ (`STARTER`/`PRO_MONTHLY`/`PRO_YEARLY`) khỏi DB dev**: không có script migration
+  chính thức (dự án chưa có user thật) — nếu môi trường khác (staging thật) đã seed các plan này và có
+  tenant tham chiếu, cần xử lý thủ công tương tự (kiểm tra `subscription.count({planId})` trước khi xoá).
+- **Transaction fee, split payment, proration, usage billing theo API, `billing_accounts`/`usage_meters`/
+  `billing_events`**: cố tình không làm — xem ADR-021 để có đầy đủ lý do thu gọn kiến trúc.
 
 ## Phát sinh trong lúc dựng M5 (cả 2 giai đoạn — metadata/CRUD rồi upload thật, xem ADR-014/017/018)
 

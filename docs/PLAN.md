@@ -6,7 +6,8 @@ Nguồn: [GIEOCHU_PROMPT_MVP_PHASE1.md](GIEOCHU_PROMPT_MVP_PHASE1.md). Cập nh�
 
 Theo gợi ý ở mục 10 của đặc tả:
 
-M0 → M1 (kèm khung email M11) → M4 → M2 (phần cơ bản) → M7 → M3 → M5 → M6 → M8 → M9 → M10 → M12 → hoàn thiện M2.
+M0 → M1 (kèm khung email M11) → M4 → M2 (phần cơ bản) → M7 → M3 → M5 → M6 → M8 → M9 → M3 v2 (Hybrid
+Monetization, xen giữa theo yêu cầu người dùng) → M10 → M12 → hoàn thiện M2.
 
 ## Trạng thái module
 
@@ -17,7 +18,7 @@ M0 → M1 (kèm khung email M11) → M4 → M2 (phần cơ bản) → M7 → M3 
 | M4 | Tenant Workspace và Storefront | ✅ Xong | `apps/web/app/[tenantSlug]`, `apps/web/app/studio`, `packages/db/src/rls.ts` | 6 / 5 |
 | M2 | System Admin (cơ bản) | ✅ Xong (cơ bản — Platform Payment UI + audit log viewer chờ M7/M12) | `apps/web/app/admin`, `packages/core/src/admin` | 4 / 4 |
 | M7 | Cấu hình Tenant Payment | ✅ Xong | `packages/payments` | 10 / 4 |
-| M3 | Subscription và Platform Billing | ✅ Xong | `apps/web/lib/subscription-billing.ts`, `subscription-sweep.ts`, `platform-payment.ts`, `packages/core/src/billing` | 10 / 5 |
+| M3 | Billing, Subscription & Entitlements (v2 — Hybrid Monetization) | ✅ Xong | `apps/web/lib/subscription-billing.ts`, `subscription-sweep.ts`, `platform-payment.ts`, `packages/core/src/billing` | 11 / 7 |
 | M5 | Sản phẩm và File tài liệu | 🟡 Code xong (CRUD + upload/presign/file.scan) — chờ verify với R2 thật | `packages/storage`, `apps/web/lib/{product,product-upload,file-scan}.ts` | 6 / 3 (+1 chờ storage thật) |
 | M6 | Giá và Khuyến mãi | 🟡 Engine + Coupon CRUD xong — 1 test chờ Order (M8) | `packages/core/src/pricing`, `apps/web/lib/coupon.ts` | 14 / 1 (+1 chờ M8) |
 | M8 | Checkout và Đơn hàng | ✅ Xong | `apps/web/lib/{order,payment-process}.ts`, `packages/core/src/order` | 10 / 9 |
@@ -167,6 +168,37 @@ chưa cấu hình → 404.
 **Đã xác minh chạy được trong phiên này:** `pnpm lint/typecheck/test/build` xanh toàn bộ (50/91 unit, 26/50
 integration cộng dồn); `curl` xác nhận `/studio/.../billing` và `/admin/billing/*` chưa đăng nhập → 307,
 webhook platform SePay/MoMo chưa cấu hình → 404, MANUAL_QR → 404 (không có webhook).
+
+## M3 v2 — Hybrid Monetization: Free Forever + Paid Subscription (thay cho Subscription-first)
+
+Người dùng cung cấp `docs/GIEOCHU_HYBRID_MONETIZATION_BILLING_PROPOSAL_V2.md` — báo cáo đề xuất đổi mô hình
+billing: mọi tenant mới không còn vào `TRIALING` (trial đếm ngày, hết hạn → `READ_ONLY`), mà vào thẳng gói
+**FREE thật, bán được, không bao giờ hết hạn**; trả phí chỉ để mở rộng capacity/tính năng. Đã đọc báo cáo,
+nêu ý kiến, và triển khai theo 3 quyết định người dùng chốt (xem ADR-021 để có đầy đủ lý do + những chỗ thu
+gọn kiến trúc so với đề xuất gốc — không thêm bảng `billing_accounts`/`usage_meters`/`billing_events`).
+
+- M3 đổi tên thành **"Billing, Subscription & Entitlements"** theo đúng đề xuất báo cáo §15.
+- `Plan` thêm `isFree`/`features` (Json) — mọi số liệu/tính năng từng gói **customize được qua
+  `/admin/plans`** (đã thêm `updatePlanAction` — trước đây chỉ tạo mới/bật-tắt, chưa sửa được).
+- `packages/core/src/billing/feature-gate.ts`: `canUsePlanFeature()` — business logic đọc `plan.features`,
+  không bao giờ đọc `plan.code` (đúng nguyên tắc entitlement-vs-plan-name của báo cáo) — 1 unit test mới.
+- `create-tenant.ts`: tenant mới nhận thẳng gói `isFree:true` (không còn `TRIALING`/`TRIAL_DAYS`).
+- `subscription-sweep.ts`: loại Free khỏi mọi truy vấn sweep (`plan: {isFree: false}`); GRACE/CANCELED kết
+  thúc → **downgrade thẳng về Free** (`planId` đổi, `status: ACTIVE`) thay vì `EXPIRED` + tenant `READ_ONLY`
+  — `READ_ONLY` giờ chỉ còn dùng cho moderation/khoá thủ công, không còn là hệ quả billing.
+- Seed 4 gói: FREE / CREATOR / PRO / BUSINESS (số liệu tham khảo báo cáo §5, admin sửa lại được).
+- `/pricing` (4 cột + danh sách tính năng), `/studio/.../billing` (progress bar sản phẩm/dung lượng, cảnh
+  báo ngưỡng 80%, bỏ nhãn "Đang dùng thử"), `/admin` (tách đếm tenant Free/Paid).
+- 2 integration test cũ (`tenant.test.ts`, `subscription-billing.test.ts`) sửa assertion từ `TRIALING` sang
+  `ACTIVE + plan.isFree`; sweep test viết lại hoàn toàn theo hành vi downgrade mới; thêm 2 integration test
+  mới (Free chặn đúng giới hạn sản phẩm, upgrade Free→Paid tính kỳ mới từ lúc thanh toán).
+
+**Đã xác minh chạy được trong phiên này:** `pnpm lint/typecheck/test/build` xanh toàn bộ (88/91 unit, 46/50
+integration cộng dồn); seed lại DB thật trên Neon, xoá 3 plan cũ (`STARTER`/`PRO_MONTHLY`/`PRO_YEARLY`, xác
+nhận không còn subscription nào tham chiếu trước khi xoá). **Chưa làm** (đúng phạm vi đã thống nhất):
+transaction fee, split payment, proration, usage billing theo API, `billing_accounts`/`usage_meters`/
+`billing_events`, MRR/GMV đầy đủ (vẫn chờ M12), gate tính năng cụ thể (coupon/analytics/...) qua
+`assertPlanFeature()` — hàm đã có, chưa gọi ở call site nào.
 
 ## M5 — Việc đã làm, phần 1 (xem docs/modules/M5.md để có sơ đồ và danh sách test đầy đủ)
 

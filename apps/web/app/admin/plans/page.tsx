@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getPrismaClient } from "@gieochu/db";
 import { requireAdminAccess } from "../../../lib/page-guards";
 import { togglePlanActiveAction } from "./actions";
@@ -27,15 +28,25 @@ export default async function AdminPlansPage() {
         <tbody>
           {plans.map((plan) => (
             <tr key={plan.id} className="border-b">
-              <td className="py-2">{plan.code}</td>
-              <td className="py-2">{plan.name}</td>
+              <td className="py-2">
+                {plan.code}
+                {plan.isFree ? <span className="ml-1 rounded bg-green-100 px-1.5 py-0.5 text-xs text-green-800">FREE</span> : null}
+              </td>
+              <td className="py-2">
+                <Link href={`/admin/plans/${plan.id}`} className="hover:underline">
+                  {plan.name}
+                </Link>
+              </td>
               <td className="py-2">{plan.priceVnd.toLocaleString("vi-VN")}đ</td>
               <td className="py-2">
                 {plan.intervalCount} {plan.interval === "MONTH" ? "tháng" : "năm"}
               </td>
               <td className="py-2">{plan.isActive ? "Đang bật" : "Đã tắt"}</td>
-              <td className="py-2">
-                <form action={togglePlanActiveAction.bind(null, plan.id)}>
+              <td className="py-2 space-x-3">
+                <Link href={`/admin/plans/${plan.id}`} className="text-[var(--color-primary)]">
+                  Sửa
+                </Link>
+                <form action={togglePlanActiveAction.bind(null, plan.id)} className="inline">
                   <button type="submit" className="text-[var(--color-primary)]">
                     {plan.isActive ? "Tắt" : "Bật"}
                   </button>

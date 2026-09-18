@@ -1,4 +1,4 @@
-import { AppError, isWithinPlanLimit, type PlanLimitKind } from "@gieochu/core";
+import { AppError, canUsePlanFeature, isWithinPlanLimit, type PlanFeatureKey, type PlanLimitKind } from "@gieochu/core";
 import { getPrismaClient, withTenant } from "@gieochu/db";
 
 /**
@@ -46,6 +46,19 @@ export async function assertPlanLimit(tenantId: string, kind: PlanLimitKind, amo
       code: "PRODUCT_LIMIT_REACHED",
       message: `Đã đạt giới hạn ${limits.maxProducts} sản phẩm của gói hiện tại.`,
       httpStatus: 400,
+    });
+  }
+}
+
+/** §"M3 v2" ADR-021: reads `plan.features`, never `plan.code` — business logic never hard-codes a plan name. */
+export async function assertPlanFeature(tenantId: string, key: PlanFeatureKey): Promise<void> {
+  const prisma = getPrismaClient();
+  const subscription = await prisma.subscription.findUniqueOrThrow({ where: { tenantId }, include: { plan: true } });
+  if (!canUsePlanFeature(subscription.plan.features as Record<string, unknown>, key)) {
+    throw new AppError({
+      code: "PLAN_FEATURE_NOT_AVAILABLE",
+      message: "Tính năng này chưa khả dụng ở gói hiện tại — vui lòng nâng cấp.",
+      httpStatus: 403,
     });
   }
 }

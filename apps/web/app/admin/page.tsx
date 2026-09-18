@@ -16,12 +16,12 @@ export default async function AdminDashboardPage() {
         <StatCard label="User bị khoá" value={summary.usersByStatus.LOCKED} />
         <StatCard label="Tổng tenant" value={summary.totalTenants} />
         <StatCard label="Tenant hoạt động" value={summary.tenantsByStatus.ACTIVE} />
-        <StatCard label="Tổng subscription" value={summary.totalSubscriptions} />
+        <StatCard label="Đang dùng Free" value={summary.subscriptionsByPlanType.free} />
+        <StatCard label="Đang trả phí" value={summary.subscriptionsByPlanType.paid} />
       </div>
 
       <p className="mt-6 text-sm text-gray-500">
-        Doanh thu subscription và GMV tổng hợp theo tenant sẽ hiển thị khi có M3 (Subscription Billing) và
-        M12 (thống kê tổng hợp).
+        Doanh thu subscription (MRR) và GMV tổng hợp theo tenant sẽ hiển thị khi có M12 (thống kê tổng hợp).
       </p>
 
       <nav className="mt-8 flex flex-wrap gap-4 text-sm">

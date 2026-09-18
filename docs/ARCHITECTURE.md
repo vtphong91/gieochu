@@ -63,10 +63,12 @@ thật/ảnh bìa — **code xong, chờ verify với R2 thật** — + coupons/
 users/tenants/plans/cms/settings(+settings/storage — ADR-017)/billing/payment/billing/invoices — cơ bản,
 audit log viewer chờ M12), `MKT` (`/`, `/pricing`, `/p/[slug]`), `AUTH` (đầy đủ: mật khẩu, JWT, RBAC), `PAY`
 (`packages/payments` — đầy đủ MANUAL_QR/SEPAY/MOMO, dùng chung Platform/Tenant qua `PaymentScope`), `CORE`
-(errors, logger, crypto: encryptSecret/decryptSecret/maskSecret — chuyển từ payments, dùng chung được với
-storage, ADR-017 —, slug/branding/access-policy/membership, admin: lock-decision/plan-validation/cms-blocks/
-dashboard-summary, billing: period/invoice-code/subscription-state/plan-limits, product:
-slug-suggestion/publish-eligibility/storage-accounting, pricing: `calculatePrice()` — engine thuần, M6), `DB`
+(errors, logger, crypto: encryptSecret/decryptSecret/maskSecret + generateOpaqueToken/hashOpaqueToken —
+chuyển từ auth, ADR-020 —, dùng chung được với storage, ADR-017 —, slug/branding/access-policy/membership,
+admin: lock-decision/plan-validation/cms-blocks/dashboard-summary, billing: period/invoice-code/
+subscription-state/plan-limits/feature-gate (M3 v2, ADR-021 — `Plan.isFree`/`Plan.features`, business logic
+đọc entitlement chứ không đọc `plan.code`), product: slug-suggestion/publish-eligibility/storage-accounting,
+pricing: `calculatePrice()` — engine thuần, M6), `DB`
 (User(+isSuperAdmin)/.../Tenant/TenantMember/TenantSlugHistory/Subscription(+periodEndReminderStage)/
 Product(đầy đủ)/ProductFile/SystemSettings/SystemStorageConfig/TenantPaymentConfig/PlatformPaymentConfig/
 WebhookEvent/BankBin/SubscriptionInvoice/PlatformPaymentTransaction/Coupon/CouponRedemption/Order/OrderItem/

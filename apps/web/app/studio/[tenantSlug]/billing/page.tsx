@@ -1,4 +1,4 @@
-import { getPrismaClient } from "@gieochu/db";
+import { getPrismaClient, withTenant } from "@gieochu/db";
 import type { CheckoutResult } from "@gieochu/payments";
 import { requireTenantMemberPage } from "../../../../lib/page-guards";
 import { getSubscriptionOverview } from "../../../../lib/subscription-billing";
@@ -7,10 +7,8 @@ import { RenewForm } from "./renew-form";
 import { BillingPoll } from "./billing-poll";
 
 const STATUS_LABEL: Record<string, string> = {
-  TRIALING: "Đang dùng thử",
   ACTIVE: "Đang hoạt động",
   GRACE: "Quá hạn (ân hạn)",
-  EXPIRED: "Đã hết hạn",
   CANCELED: "Đã huỷ gia hạn",
 };
 
@@ -21,8 +19,33 @@ const INVOICE_STATUS_LABEL: Record<string, string> = {
   VOID: "Đã huỷ",
 };
 
+const UPGRADE_TRIGGER_RATIO = 0.8;
+
 function formatVnDate(date: Date): string {
   return date.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+}
+
+function UsageBar({ label, used, limit, unit }: { label: string; used: number; limit: number; unit: string }) {
+  const unlimited = limit === 0;
+  const ratio = unlimited ? 0 : Math.min(1, used / limit);
+  return (
+    <div className="mt-2">
+      <div className="flex justify-between text-xs text-gray-500">
+        <span>{label}</span>
+        <span>
+          {used.toLocaleString("vi-VN")} {unit} / {unlimited ? "không giới hạn" : `${limit.toLocaleString("vi-VN")} ${unit}`}
+        </span>
+      </div>
+      {!unlimited ? (
+        <div className="mt-1 h-2 rounded bg-gray-100">
+          <div
+            className={`h-2 rounded ${ratio >= UPGRADE_TRIGGER_RATIO ? "bg-amber-500" : "bg-[var(--color-primary)]"}`}
+            style={{ width: `${ratio * 100}%` }}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export default async function StudioBillingPage({ params }: { params: Promise<{ tenantSlug: string }> }) {
@@ -30,14 +53,20 @@ export default async function StudioBillingPage({ params }: { params: Promise<{ 
   const { tenant } = await requireTenantMemberPage(tenantSlug, `/studio/${tenantSlug}/billing`);
 
   const prisma = getPrismaClient();
-  const [{ subscription, invoices }, plans, enabledProviders] = await Promise.all([
+  const [{ subscription, invoices }, plans, enabledProviders, publishedCount] = await Promise.all([
     getSubscriptionOverview(tenant.id),
     prisma.plan.findMany({ where: { isActive: true }, orderBy: { priceVnd: "asc" } }),
     getEnabledPlatformProviders(),
+    withTenant(tenant.id, (tx) => tx.product.count({ where: { tenantId: tenant.id, status: "PUBLISHED" } })),
   ]);
 
   const pendingInvoice = invoices.find((invoice) => invoice.status === "PENDING");
   const storageUsedMb = Math.round((tenant.storageUsedBytes / (1024 * 1024)) * 10) / 10;
+  const plan = subscription.plan;
+
+  const productRatio = plan.maxProducts === 0 ? 0 : publishedCount / plan.maxProducts;
+  const storageRatio = plan.storageMb === 0 ? 0 : storageUsedMb / plan.storageMb;
+  const nearLimit = productRatio >= UPGRADE_TRIGGER_RATIO || storageRatio >= UPGRADE_TRIGGER_RATIO;
 
   return (
     <main className="mx-auto max-w-md px-4 py-10">
@@ -45,14 +74,29 @@ export default async function StudioBillingPage({ params }: { params: Promise<{ 
       <h1 className="text-2xl font-bold">Gói dịch vụ</h1>
 
       <section className="mt-6 rounded border p-4">
-        <p className="text-sm text-gray-500">Trạng thái: {STATUS_LABEL[subscription.status] ?? subscription.status}</p>
-        <p className="mt-1 text-sm text-gray-500">Hết hạn kỳ hiện tại: {formatVnDate(subscription.currentPeriodEnd)}</p>
-        {subscription.graceEndsAt ? (
-          <p className="mt-1 text-sm text-red-600">Hạn ân hạn: {formatVnDate(subscription.graceEndsAt)}</p>
-        ) : null}
-        <p className="mt-1 text-sm text-gray-500">
-          Dung lượng đã dùng: {storageUsedMb.toLocaleString("vi-VN")} MB
+        <p className="text-sm font-medium">
+          {plan.name} {plan.isFree ? <span className="text-xs font-normal text-gray-500">(không bao giờ hết hạn)</span> : null}
         </p>
+        {!plan.isFree ? (
+          <>
+            <p className="mt-1 text-sm text-gray-500">Trạng thái: {STATUS_LABEL[subscription.status] ?? subscription.status}</p>
+            <p className="mt-1 text-sm text-gray-500">Hết hạn kỳ hiện tại: {formatVnDate(subscription.currentPeriodEnd)}</p>
+            {subscription.graceEndsAt ? (
+              <p className="mt-1 text-sm text-red-600">
+                Hạn ân hạn: {formatVnDate(subscription.graceEndsAt)} — hết hạn mà chưa gia hạn, trang sẽ tự động chuyển về gói Free.
+              </p>
+            ) : null}
+          </>
+        ) : null}
+
+        <UsageBar label="Sản phẩm" used={publishedCount} limit={plan.maxProducts} unit="sản phẩm" />
+        <UsageBar label="Dung lượng" used={storageUsedMb} limit={plan.storageMb} unit="MB" />
+
+        {nearLimit ? (
+          <p className="mt-3 rounded bg-amber-50 p-2 text-xs text-amber-800">
+            Bạn sắp chạm giới hạn của gói {plan.name}. Nâng cấp để có thêm sản phẩm/dung lượng.
+          </p>
+        ) : null}
       </section>
 
       {pendingInvoice ? (
@@ -86,11 +130,11 @@ export default async function StudioBillingPage({ params }: { params: Promise<{ 
         </section>
       ) : (
         <section className="mt-6 rounded border p-4">
-          <h2 className="text-lg font-semibold">Gia hạn / Nâng cấp</h2>
+          <h2 className="text-lg font-semibold">{plan.isFree ? "Nâng cấp" : "Gia hạn / Nâng cấp"}</h2>
           <div className="mt-3">
             <RenewForm
               tenantSlug={tenant.slug}
-              plans={plans.map((plan) => ({ id: plan.id, name: plan.name, priceVnd: plan.priceVnd }))}
+              plans={plans.filter((p) => !p.isFree).map((p) => ({ id: p.id, name: p.name, priceVnd: p.priceVnd }))}
               currentPlanId={subscription.planId}
               enabledProviders={enabledProviders}
             />

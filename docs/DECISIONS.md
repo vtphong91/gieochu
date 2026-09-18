@@ -315,3 +315,41 @@
   RLS, chiều phụ thuộc package) hơn là tiện lợi ngắn hạn — và quan trọng hơn, 2 lỗ hổng RLS + 1 lỗi bỏ sót
   `withPublic()` đều được **sửa trước khi merge**, phát hiện bằng chính kỷ luật viết integration test chạy
   thật trên Neon (không mock DB) đã áp dụng xuyên suốt dự án.
+
+## ADR-021 — Hybrid Monetization: Free Forever thay cho Subscription-first; thu gọn kiến trúc so với đề xuất gốc
+
+- **Bối cảnh:** Người dùng cung cấp `docs/GIEOCHU_HYBRID_MONETIZATION_BILLING_PROPOSAL_V2.md` — báo cáo đề
+  xuất đổi mô hình billing từ "mọi tenant mới vào `TRIALING`, hết trial không trả tiền thì `READ_ONLY`" sang
+  "FREE là plan thật, bán được, không hết hạn; trả phí chỉ để mở rộng capacity/tính năng". Đã đọc báo cáo,
+  nêu 2 nhóm ý kiến trước khi làm: (1) đồng ý triết lý cốt lõi (Free Forever giảm friction, đúng khi tiền
+  chưa thu được ngay từ ngày đầu — mô hình phổ biến ở Gumroad/Payhip/Podia); (2) không đồng ý *kiến trúc*
+  báo cáo đề xuất (4 bảng mới `billing_accounts`/`usage_meters`/`billing_events` cộng entitlement như bảng
+  riêng) — cho rằng đây là đoán trước nhu cầu tương lai (add-on/usage-billing) chưa xảy ra, trong khi mục
+  tiêu thực sự chỉ cần mở rộng `Plan`/`Subscription` đã có.
+- **Quyết định:** Người dùng xác nhận đồng ý mô hình mới và 3 điểm cụ thể trước khi code (không phải quyết
+  định tự ý — ảnh hưởng tiền, đã dừng lại hỏi đúng mục 0.6):
+  1. Paid hết hạn (qua GRACE) → **downgrade thẳng về FREE** (vẫn bán được, giới hạn thấp lại), không còn
+     `READ_ONLY` vì lý do subscription — `READ_ONLY` chỉ còn dùng cho moderation/khoá thủ công.
+  2. Triển khai đủ **4 gói ngay**: FREE/CREATOR/PRO/BUSINESS (không làm tối giản 2-gói-rồi-mở-rộng-sau).
+  3. Toàn bộ số liệu/tính năng từng gói phải **customize được qua `/admin/plans`** — số trong báo cáo chỉ là
+     giá trị seed mặc định.
+- **Thu gọn kiến trúc so với đề xuất gốc** (đã trình bày, người dùng không phản đối):
+  - Không có `billing_accounts` — `Tenant` đã 1-1 `Subscription`, không cần bảng trung gian.
+  - Không có `usage_meters` — sản phẩm/dung lượng là số liệu tức thời (đếm sống + `Tenant.storageUsedBytes`
+    atomic từ M5), không phải usage-theo-kỳ cần ledger.
+  - Không có `billing_events` — trùng vai trò `audit_logs` (M12, chưa xây); sự kiện quan trọng ghi qua
+    `logger.info`/`warn` cho tới khi M12 có audit log thật (cùng mẫu `COUPON_OVERUSED` ở M6).
+  - `Plan` chỉ thêm 2 cột (`isFree`, `features Json`), không đổi tên bảng, không tách state machine riêng —
+    `transitionSubscriptionStatus()` (M3 v1) giữ nguyên không đổi; hệ quả DB của GRACE/CANCELED kết thúc đổi
+    (downgrade thay vì set EXPIRED+READ_ONLY) nhưng FSM thuần không đổi.
+  - Feature gate mới (`packages/core/src/billing/feature-gate.ts`, `canUsePlanFeature()`) cố tình **không**
+    dùng lại `packages/auth`'s argon2 hay bất kỳ package nào khác ngoài đọc JSON — giữ business logic luôn
+    đọc `plan.features`, không bao giờ đọc `plan.code` (đúng nguyên tắc entitlement-vs-plan-name báo cáo nêu).
+- **Quy ước kỹ thuật đáng chú ý:** Free's `Subscription` có `currentPeriodStart = currentPeriodEnd =` thời
+  điểm tạo (không nullable hoá cột, không dùng sentinel ngày xa tương lai) — vì luôn ≤ now,
+  `computeRenewalPeriod()` (đã có từ M3 v1) tự động tính đúng kỳ mới khi nâng cấp lên Paid mà **không cần
+  sửa gì** ở `subscription-billing.ts`; sweep loại Free khỏi mọi truy vấn bằng filter quan hệ
+  `plan: { isFree: false }`.
+- **Lý do:** Đạt đúng mục tiêu kinh doanh báo cáo đề ra (giảm friction onboarding, subscription là "động cơ
+  tăng trưởng" chứ không phải "vé vào cửa") với diff nhỏ nhất có thể lên schema/code đã build và test — tái
+  dùng tối đa hạ tầng M3 v1 đã ổn định thay vì viết lại toàn bộ theo đúng khung 4-bảng của báo cáo gốc.

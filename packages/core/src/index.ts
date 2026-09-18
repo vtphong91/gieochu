@@ -33,6 +33,8 @@ export { transitionSubscriptionStatus } from "./billing/subscription-state";
 export type { SubscriptionEvent, SubscriptionStatus } from "./billing/subscription-state";
 export { isWithinPlanLimit } from "./billing/plan-limits";
 export type { PlanLimitKind, PlanLimits } from "./billing/plan-limits";
+export { canUsePlanFeature } from "./billing/feature-gate";
+export type { PlanFeatureKey } from "./billing/feature-gate";
 
 export { suggestSlug } from "./product/slug-suggestion";
 export { canPublishProduct } from "./product/publish-eligibility";

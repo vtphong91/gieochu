@@ -26,11 +26,33 @@ async function notify(tenant: Pick<Tenant, "name" | "slug" | "ownerId">, stage: 
 }
 
 /**
+ * §"M3 v2" ADR-021: a lapsed paid subscription downgrades straight to the
+ * FREE plan — `tenant.status` is never touched here anymore (Free still
+ * sells; `READ_ONLY` is now exclusively an admin/moderation action, not a
+ * billing consequence).
+ */
+async function downgradeToFree(prisma: ReturnType<typeof getPrismaClient>, subscriptionId: string, freePlanId: string, now: Date) {
+  await prisma.subscription.update({
+    where: { id: subscriptionId },
+    data: {
+      planId: freePlanId,
+      status: "ACTIVE",
+      currentPeriodStart: now,
+      currentPeriodEnd: now,
+      graceEndsAt: null,
+      periodEndReminderStage: null,
+    },
+  });
+}
+
+/**
  * §"M3" hourly job `subscription.sweep` — run from apps/web/worker.ts on a
- * pg-boss cron schedule. Order matters: GRACE→EXPIRED and CANCELED→EXPIRED
- * run before TRIALING/ACTIVE→GRACE so a subscription can't be swept through
- * two transitions in the same tick (each gets its own email on the tick it
- * actually happens).
+ * pg-boss cron schedule. Order matters: GRACE→downgrade and CANCELED→downgrade
+ * run before ACTIVE→GRACE so a subscription can't be swept through two
+ * transitions in the same tick (each gets its own email on the tick it
+ * actually happens). FREE-plan subscriptions are excluded from every query
+ * below (`plan: { isFree: false }`) — Free never expires, so it never enters
+ * GRACE and never needs a renewal reminder.
  */
 export async function runSubscriptionSweep(): Promise<void> {
   const prisma = getPrismaClient();
@@ -38,19 +60,16 @@ export async function runSubscriptionSweep(): Promise<void> {
   const now = new Date();
   const settings = await prisma.systemSettings.findUnique({ where: { id: "default" } });
   const graceDays = settings?.graceDays ?? env.GRACE_DAYS;
+  const freePlan = await prisma.plan.findFirstOrThrow({ where: { isFree: true, isActive: true } });
 
   const graceExpiring = await prisma.subscription.findMany({
     where: { status: "GRACE", graceEndsAt: { lt: now } },
     include: { tenant: true },
   });
   for (const sub of graceExpiring) {
-    // PAST_DUE is declared on the DB enum but M3's state machine never assigns it (see schema.prisma).
-    const nextStatus = transitionSubscriptionStatus(sub.status as SubscriptionStatus, "GRACE_ENDED");
-    await prisma.$transaction([
-      prisma.subscription.update({ where: { id: sub.id }, data: { status: nextStatus } }),
-      ...(sub.tenant.status !== "LOCKED" ? [prisma.tenant.update({ where: { id: sub.tenantId }, data: { status: "READ_ONLY" as const } })] : []),
-    ]);
-    await notify(sub.tenant, "EXPIRED");
+    transitionSubscriptionStatus(sub.status as SubscriptionStatus, "GRACE_ENDED"); // validates the transition is legal before we act on it
+    await downgradeToFree(prisma, sub.id, freePlan.id, now);
+    await notify(sub.tenant, "DOWNGRADED_TO_FREE");
   }
 
   const canceledEnding = await prisma.subscription.findMany({
@@ -58,16 +77,13 @@ export async function runSubscriptionSweep(): Promise<void> {
     include: { tenant: true },
   });
   for (const sub of canceledEnding) {
-    const nextStatus = transitionSubscriptionStatus(sub.status as SubscriptionStatus, "PERIOD_ENDED");
-    await prisma.$transaction([
-      prisma.subscription.update({ where: { id: sub.id }, data: { status: nextStatus } }),
-      ...(sub.tenant.status !== "LOCKED" ? [prisma.tenant.update({ where: { id: sub.tenantId }, data: { status: "READ_ONLY" as const } })] : []),
-    ]);
-    await notify(sub.tenant, "EXPIRED");
+    transitionSubscriptionStatus(sub.status as SubscriptionStatus, "PERIOD_ENDED");
+    await downgradeToFree(prisma, sub.id, freePlan.id, now);
+    await notify(sub.tenant, "DOWNGRADED_TO_FREE");
   }
 
   const periodEnding = await prisma.subscription.findMany({
-    where: { status: { in: ["TRIALING", "ACTIVE"] }, currentPeriodEnd: { lt: now } },
+    where: { status: "ACTIVE", currentPeriodEnd: { lt: now }, plan: { isFree: false } },
     include: { tenant: true },
   });
   for (const sub of periodEnding) {
@@ -81,7 +97,7 @@ export async function runSubscriptionSweep(): Promise<void> {
   }
 
   const remindCandidates = await prisma.subscription.findMany({
-    where: { status: { in: ["TRIALING", "ACTIVE"] }, currentPeriodEnd: { gte: now } },
+    where: { status: "ACTIVE", currentPeriodEnd: { gte: now }, plan: { isFree: false } },
     include: { tenant: true },
   });
   for (const sub of remindCandidates) {

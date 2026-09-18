@@ -15,6 +15,13 @@ import type * as Prisma from "../internal/prismaNamespace"
 /**
  * Model Plan
  * §5.1 Layer System — PLANS (subscription plans System admin manages)
+ * §"M3 v2" ADR-021: `isFree` marks the plan `createTenantForUser()` assigns
+ * to every new tenant and that `subscription-sweep.ts` excludes from
+ * GRACE/EXPIRED sweeping and downgrades a lapsed paid subscription back to.
+ * `features` are boolean entitlement flags (see
+ * `packages/core/src/billing/feature-gate.ts`) — business logic reads
+ * these, never `plan.code`, so plan packaging stays a pure commercial
+ * concern editable from System Admin.
  */
 export type PlanModel = runtime.Types.Result.DefaultSelection<Prisma.$PlanPayload>
 
@@ -52,6 +59,7 @@ export type PlanMinAggregateOutputType = {
   maxProducts: number | null
   storageMb: number | null
   maxFileMb: number | null
+  isFree: boolean | null
   isActive: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -67,6 +75,7 @@ export type PlanMaxAggregateOutputType = {
   maxProducts: number | null
   storageMb: number | null
   maxFileMb: number | null
+  isFree: boolean | null
   isActive: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -82,6 +91,8 @@ export type PlanCountAggregateOutputType = {
   maxProducts: number
   storageMb: number
   maxFileMb: number
+  isFree: number
+  features: number
   isActive: number
   createdAt: number
   updatedAt: number
@@ -115,6 +126,7 @@ export type PlanMinAggregateInputType = {
   maxProducts?: true
   storageMb?: true
   maxFileMb?: true
+  isFree?: true
   isActive?: true
   createdAt?: true
   updatedAt?: true
@@ -130,6 +142,7 @@ export type PlanMaxAggregateInputType = {
   maxProducts?: true
   storageMb?: true
   maxFileMb?: true
+  isFree?: true
   isActive?: true
   createdAt?: true
   updatedAt?: true
@@ -145,6 +158,8 @@ export type PlanCountAggregateInputType = {
   maxProducts?: true
   storageMb?: true
   maxFileMb?: true
+  isFree?: true
+  features?: true
   isActive?: true
   createdAt?: true
   updatedAt?: true
@@ -247,6 +262,8 @@ export type PlanGroupByOutputType = {
   maxProducts: number
   storageMb: number
   maxFileMb: number
+  isFree: boolean
+  features: runtime.JsonValue
   isActive: boolean
   createdAt: Date
   updatedAt: Date
@@ -285,6 +302,8 @@ export type PlanWhereInput = {
   maxProducts?: Prisma.IntFilter<"Plan"> | number
   storageMb?: Prisma.IntFilter<"Plan"> | number
   maxFileMb?: Prisma.IntFilter<"Plan"> | number
+  isFree?: Prisma.BoolFilter<"Plan"> | boolean
+  features?: Prisma.JsonFilter<"Plan">
   isActive?: Prisma.BoolFilter<"Plan"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Plan"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Plan"> | Date | string
@@ -302,6 +321,8 @@ export type PlanOrderByWithRelationInput = {
   maxProducts?: Prisma.SortOrder
   storageMb?: Prisma.SortOrder
   maxFileMb?: Prisma.SortOrder
+  isFree?: Prisma.SortOrder
+  features?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -322,6 +343,8 @@ export type PlanWhereUniqueInput = Prisma.AtLeast<{
   maxProducts?: Prisma.IntFilter<"Plan"> | number
   storageMb?: Prisma.IntFilter<"Plan"> | number
   maxFileMb?: Prisma.IntFilter<"Plan"> | number
+  isFree?: Prisma.BoolFilter<"Plan"> | boolean
+  features?: Prisma.JsonFilter<"Plan">
   isActive?: Prisma.BoolFilter<"Plan"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Plan"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Plan"> | Date | string
@@ -339,6 +362,8 @@ export type PlanOrderByWithAggregationInput = {
   maxProducts?: Prisma.SortOrder
   storageMb?: Prisma.SortOrder
   maxFileMb?: Prisma.SortOrder
+  isFree?: Prisma.SortOrder
+  features?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -362,6 +387,8 @@ export type PlanScalarWhereWithAggregatesInput = {
   maxProducts?: Prisma.IntWithAggregatesFilter<"Plan"> | number
   storageMb?: Prisma.IntWithAggregatesFilter<"Plan"> | number
   maxFileMb?: Prisma.IntWithAggregatesFilter<"Plan"> | number
+  isFree?: Prisma.BoolWithAggregatesFilter<"Plan"> | boolean
+  features?: Prisma.JsonWithAggregatesFilter<"Plan">
   isActive?: Prisma.BoolWithAggregatesFilter<"Plan"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Plan"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Plan"> | Date | string
@@ -377,6 +404,8 @@ export type PlanCreateInput = {
   maxProducts: number
   storageMb: number
   maxFileMb: number
+  isFree?: boolean
+  features?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -394,6 +423,8 @@ export type PlanUncheckedCreateInput = {
   maxProducts: number
   storageMb: number
   maxFileMb: number
+  isFree?: boolean
+  features?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -411,6 +442,8 @@ export type PlanUpdateInput = {
   maxProducts?: Prisma.IntFieldUpdateOperationsInput | number
   storageMb?: Prisma.IntFieldUpdateOperationsInput | number
   maxFileMb?: Prisma.IntFieldUpdateOperationsInput | number
+  isFree?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  features?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -428,6 +461,8 @@ export type PlanUncheckedUpdateInput = {
   maxProducts?: Prisma.IntFieldUpdateOperationsInput | number
   storageMb?: Prisma.IntFieldUpdateOperationsInput | number
   maxFileMb?: Prisma.IntFieldUpdateOperationsInput | number
+  isFree?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  features?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -445,6 +480,8 @@ export type PlanCreateManyInput = {
   maxProducts: number
   storageMb: number
   maxFileMb: number
+  isFree?: boolean
+  features?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -460,6 +497,8 @@ export type PlanUpdateManyMutationInput = {
   maxProducts?: Prisma.IntFieldUpdateOperationsInput | number
   storageMb?: Prisma.IntFieldUpdateOperationsInput | number
   maxFileMb?: Prisma.IntFieldUpdateOperationsInput | number
+  isFree?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  features?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -475,6 +514,8 @@ export type PlanUncheckedUpdateManyInput = {
   maxProducts?: Prisma.IntFieldUpdateOperationsInput | number
   storageMb?: Prisma.IntFieldUpdateOperationsInput | number
   maxFileMb?: Prisma.IntFieldUpdateOperationsInput | number
+  isFree?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  features?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -490,6 +531,8 @@ export type PlanCountOrderByAggregateInput = {
   maxProducts?: Prisma.SortOrder
   storageMb?: Prisma.SortOrder
   maxFileMb?: Prisma.SortOrder
+  isFree?: Prisma.SortOrder
+  features?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -513,6 +556,7 @@ export type PlanMaxOrderByAggregateInput = {
   maxProducts?: Prisma.SortOrder
   storageMb?: Prisma.SortOrder
   maxFileMb?: Prisma.SortOrder
+  isFree?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -528,6 +572,7 @@ export type PlanMinOrderByAggregateInput = {
   maxProducts?: Prisma.SortOrder
   storageMb?: Prisma.SortOrder
   maxFileMb?: Prisma.SortOrder
+  isFree?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -596,6 +641,8 @@ export type PlanCreateWithoutSubscriptionsInput = {
   maxProducts: number
   storageMb: number
   maxFileMb: number
+  isFree?: boolean
+  features?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -612,6 +659,8 @@ export type PlanUncheckedCreateWithoutSubscriptionsInput = {
   maxProducts: number
   storageMb: number
   maxFileMb: number
+  isFree?: boolean
+  features?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -644,6 +693,8 @@ export type PlanUpdateWithoutSubscriptionsInput = {
   maxProducts?: Prisma.IntFieldUpdateOperationsInput | number
   storageMb?: Prisma.IntFieldUpdateOperationsInput | number
   maxFileMb?: Prisma.IntFieldUpdateOperationsInput | number
+  isFree?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  features?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -660,6 +711,8 @@ export type PlanUncheckedUpdateWithoutSubscriptionsInput = {
   maxProducts?: Prisma.IntFieldUpdateOperationsInput | number
   storageMb?: Prisma.IntFieldUpdateOperationsInput | number
   maxFileMb?: Prisma.IntFieldUpdateOperationsInput | number
+  isFree?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  features?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -676,6 +729,8 @@ export type PlanCreateWithoutInvoicesInput = {
   maxProducts: number
   storageMb: number
   maxFileMb: number
+  isFree?: boolean
+  features?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -692,6 +747,8 @@ export type PlanUncheckedCreateWithoutInvoicesInput = {
   maxProducts: number
   storageMb: number
   maxFileMb: number
+  isFree?: boolean
+  features?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -724,6 +781,8 @@ export type PlanUpdateWithoutInvoicesInput = {
   maxProducts?: Prisma.IntFieldUpdateOperationsInput | number
   storageMb?: Prisma.IntFieldUpdateOperationsInput | number
   maxFileMb?: Prisma.IntFieldUpdateOperationsInput | number
+  isFree?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  features?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -740,6 +799,8 @@ export type PlanUncheckedUpdateWithoutInvoicesInput = {
   maxProducts?: Prisma.IntFieldUpdateOperationsInput | number
   storageMb?: Prisma.IntFieldUpdateOperationsInput | number
   maxFileMb?: Prisma.IntFieldUpdateOperationsInput | number
+  isFree?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  features?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -796,6 +857,8 @@ export type PlanSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   maxProducts?: boolean
   storageMb?: boolean
   maxFileMb?: boolean
+  isFree?: boolean
+  features?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -814,6 +877,8 @@ export type PlanSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   maxProducts?: boolean
   storageMb?: boolean
   maxFileMb?: boolean
+  isFree?: boolean
+  features?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -829,6 +894,8 @@ export type PlanSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   maxProducts?: boolean
   storageMb?: boolean
   maxFileMb?: boolean
+  isFree?: boolean
+  features?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -844,12 +911,14 @@ export type PlanSelectScalar = {
   maxProducts?: boolean
   storageMb?: boolean
   maxFileMb?: boolean
+  isFree?: boolean
+  features?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type PlanOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "code" | "name" | "priceVnd" | "interval" | "intervalCount" | "maxProducts" | "storageMb" | "maxFileMb" | "isActive" | "createdAt" | "updatedAt", ExtArgs["result"]["plan"]>
+export type PlanOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "code" | "name" | "priceVnd" | "interval" | "intervalCount" | "maxProducts" | "storageMb" | "maxFileMb" | "isFree" | "features" | "isActive" | "createdAt" | "updatedAt", ExtArgs["result"]["plan"]>
 export type PlanInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   subscriptions?: boolean | Prisma.Plan$subscriptionsArgs<ExtArgs>
   invoices?: boolean | Prisma.Plan$invoicesArgs<ExtArgs>
@@ -874,6 +943,8 @@ export type $PlanPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     maxProducts: number
     storageMb: number
     maxFileMb: number
+    isFree: boolean
+    features: runtime.JsonValue
     isActive: boolean
     createdAt: Date
     updatedAt: Date
@@ -1311,6 +1382,8 @@ export interface PlanFieldRefs {
   readonly maxProducts: Prisma.FieldRef<"Plan", 'Int'>
   readonly storageMb: Prisma.FieldRef<"Plan", 'Int'>
   readonly maxFileMb: Prisma.FieldRef<"Plan", 'Int'>
+  readonly isFree: Prisma.FieldRef<"Plan", 'Boolean'>
+  readonly features: Prisma.FieldRef<"Plan", 'Json'>
   readonly isActive: Prisma.FieldRef<"Plan", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"Plan", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Plan", 'DateTime'>

@@ -17,5 +17,7 @@ describe("M2 plan validation", () => {
     expect(isValidPlanInput({ ...validPlan, priceVnd: -1 })).toBe(false);
     expect(isValidPlanInput({ ...validPlan, maxProducts: -1 })).toBe(false);
     expect(isValidPlanInput({ ...validPlan, storageMb: 1.5 })).toBe(false);
+    expect(isValidPlanInput({ ...validPlan, isFree: true, features: { coupons: true } })).toBe(true);
+    expect(isValidPlanInput({ ...validPlan, features: { coupons: "yes" as unknown as boolean } })).toBe(false);
   });
 });

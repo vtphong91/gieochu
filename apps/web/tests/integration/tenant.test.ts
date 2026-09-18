@@ -45,7 +45,7 @@ describe("M4 tenant workspace and storefront", () => {
     await prisma.user.deleteMany({ where: { email: { startsWith: RUN_PREFIX } } });
   });
 
-  it("creates a tenant with an OWNER membership and a TRIALING subscription", async () => {
+  it("creates a tenant with an OWNER membership and an ACTIVE subscription on the FREE plan", async () => {
     const user = await createActiveUser(nextEmail());
     const tenant = await createTenantForUser(toCurrentUser(user.id), {
       name: "Cô Hạnh Toán",
@@ -57,8 +57,9 @@ describe("M4 tenant workspace and storefront", () => {
     );
     expect(member?.role).toBe("OWNER");
 
-    const subscription = await prisma.subscription.findUnique({ where: { tenantId: tenant.id } });
-    expect(subscription?.status).toBe("TRIALING");
+    const subscription = await prisma.subscription.findUnique({ where: { tenantId: tenant.id }, include: { plan: true } });
+    expect(subscription?.status).toBe("ACTIVE");
+    expect(subscription?.plan.isFree).toBe(true);
   });
 
   it("rejects creating a tenant with a slug that is already taken (409)", async () => {
