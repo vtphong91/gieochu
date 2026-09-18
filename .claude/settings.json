@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm --filter @gieochu/db exec prisma migrate dev --name m3v2_plan_free_features)",
+      "Bash(pnpm --filter @gieochu/core test)",
+      "Bash(mkdir -p \"/f/VSCODE/gieochu/apps/web/app/admin/plans/[planId]\")",
+      "Bash(pnpm --filter @gieochu/db exec prisma generate)",
+      "Bash(pnpm --filter web typecheck)",
+      "Bash(pnpm --filter web lint)",
+      "Bash(pnpm db:seed)",
+      "Bash(pnpm --filter @gieochu/db exec prisma studio --browser none --port 5601)",
+      "Bash(pkill -f \"prisma studio\")",
+      "Bash(pnpm --filter @gieochu/db exec prisma db execute --file /tmp/check-old-plans.sql)",
+      "Bash(node --experimental-strip-types \"C:\\\\Users\\\\Z420\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\f--VSCODE-gieochu\\\\41b13fd3-df0a-4f7c-86f0-b6775c48a70b\\\\scratchpad\\\\check-old-plans.mjs\")",
+      "Bash(pnpm exec *)",
+      "Bash(pnpm --filter web exec vitest run tests/integration/subscription-billing.test.ts tests/integration/tenant.test.ts)",
+      "Bash(pnpm test:integration)",
+      "Bash(node scripts/count-tests.mjs)",
+      "Bash(pnpm lint *)",
+      "Bash(pnpm build *)",
+      "Bash(pnpm --filter web build)"
+    ],
+    "additionalDirectories": [
+      "F:\\VSCODE\\gieochu\\apps\\web\\app\\admin\\plans"
+    ]
+  }
+}
