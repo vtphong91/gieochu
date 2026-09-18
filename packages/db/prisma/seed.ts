@@ -13,7 +13,7 @@ async function main() {
   const prisma = getPrismaClient();
 
   const passwordHash = await argon2.hash(SEED_ADMIN_PASSWORD, { type: argon2.argon2id });
-  await prisma.user.upsert({
+  const admin = await prisma.user.upsert({
     where: { email: SEED_ADMIN_EMAIL },
     update: { isSuperAdmin: true },
     create: {
@@ -24,6 +24,22 @@ async function main() {
       isSuperAdmin: true,
       emailVerifiedAt: new Date(),
       profileCompletedAt: new Date(),
+    },
+  });
+  // `isProfileComplete()` (packages/auth) checks the UserProfile row itself,
+  // not `User.profileCompletedAt` — without this the seeded admin logs in
+  // fine but gets redirected to /account/profile, and submitting that form
+  // then fails (`userProfile.update` on a row that doesn't exist yet).
+  await prisma.userProfile.upsert({
+    where: { userId: admin.id },
+    update: {},
+    create: {
+      userId: admin.id,
+      fullName: "System Admin",
+      phone: "0900000000",
+      occupation: "Quản trị hệ thống",
+      province: "Hà Nội",
+      consentAt: new Date(),
     },
   });
   console.log(`[seed] super admin ready: ${SEED_ADMIN_EMAIL} (dev password: ${SEED_ADMIN_PASSWORD})`);
