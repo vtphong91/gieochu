@@ -1,4 +1,4 @@
-import { hashOpaqueToken } from "./random-token";
+import { hashOpaqueToken } from "@gieochu/core";
 import { createRefreshToken, evaluateRefreshToken, rotateRefreshToken } from "./refresh-token";
 
 describe("M1 refresh token", () => {

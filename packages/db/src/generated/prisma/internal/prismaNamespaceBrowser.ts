@@ -77,7 +77,10 @@ export const ModelName = {
   OrderItem: 'OrderItem',
   TenantPaymentTransaction: 'TenantPaymentTransaction',
   TenantCustomer: 'TenantCustomer',
-  Entitlement: 'Entitlement'
+  Entitlement: 'Entitlement',
+  DownloadToken: 'DownloadToken',
+  ShareLink: 'ShareLink',
+  DownloadEvent: 'DownloadEvent'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -503,6 +506,53 @@ export const EntitlementScalarFieldEnum = {
 } as const
 
 export type EntitlementScalarFieldEnum = (typeof EntitlementScalarFieldEnum)[keyof typeof EntitlementScalarFieldEnum]
+
+
+export const DownloadTokenScalarFieldEnum = {
+  id: 'id',
+  tokenHash: 'tokenHash',
+  entitlementId: 'entitlementId',
+  fileId: 'fileId',
+  userId: 'userId',
+  tenantId: 'tenantId',
+  expiresAt: 'expiresAt',
+  usedAt: 'usedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type DownloadTokenScalarFieldEnum = (typeof DownloadTokenScalarFieldEnum)[keyof typeof DownloadTokenScalarFieldEnum]
+
+
+export const ShareLinkScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  productId: 'productId',
+  tokenHash: 'tokenHash',
+  label: 'label',
+  passwordHash: 'passwordHash',
+  fileIds: 'fileIds',
+  maxUses: 'maxUses',
+  usedCount: 'usedCount',
+  expiresAt: 'expiresAt',
+  revokedAt: 'revokedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type ShareLinkScalarFieldEnum = (typeof ShareLinkScalarFieldEnum)[keyof typeof ShareLinkScalarFieldEnum]
+
+
+export const DownloadEventScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  fileId: 'fileId',
+  entitlementId: 'entitlementId',
+  shareLinkId: 'shareLinkId',
+  userId: 'userId',
+  ip: 'ip',
+  createdAt: 'createdAt'
+} as const
+
+export type DownloadEventScalarFieldEnum = (typeof DownloadEventScalarFieldEnum)[keyof typeof DownloadEventScalarFieldEnum]
 
 
 export const SortOrder = {

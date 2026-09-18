@@ -4,6 +4,7 @@ import { requireTenantMemberPage } from "../../../../../lib/page-guards";
 import { getOrderDetail } from "../../../../../lib/order";
 import { ConfirmForm } from "./confirm-form";
 import { CancelOrderButton, MarkRefundedButton } from "./order-status-actions";
+import { GrantExtraDownloadsForm, RevokeEntitlementButton } from "./entitlement-actions";
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING: "Chờ thanh toán",
@@ -53,11 +54,28 @@ export default async function StudioOrderDetailPage({
       </p>
 
       <section className="mt-6 rounded border p-4">
-        <ul className="space-y-1 text-sm">
+        <ul className="space-y-2 text-sm">
           {order.items.map((item) => (
-            <li key={item.id} className="flex justify-between">
-              <span>{item.titleSnapshot}</span>
-              <span>{item.finalPriceVnd.toLocaleString("vi-VN")}đ</span>
+            <li key={item.id}>
+              <div className="flex justify-between">
+                <span>{item.titleSnapshot}</span>
+                <span>{item.finalPriceVnd.toLocaleString("vi-VN")}đ</span>
+              </div>
+              {item.entitlement ? (
+                <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
+                  <span>
+                    {item.entitlement.revokedAt
+                      ? "Quyền tải đã bị thu hồi"
+                      : `Đã tải ${item.entitlement.downloadsUsed}${item.entitlement.downloadLimit === 0 ? "" : `/${item.entitlement.downloadLimit}`} lượt`}
+                  </span>
+                  {item.entitlement.revokedAt ? null : (
+                    <div className="flex items-center gap-3">
+                      <GrantExtraDownloadsForm tenantSlug={tenantSlug} orderId={orderId} entitlementId={item.entitlement.id} />
+                      <RevokeEntitlementButton tenantSlug={tenantSlug} orderId={orderId} entitlementId={item.entitlement.id} />
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </li>
           ))}
         </ul>

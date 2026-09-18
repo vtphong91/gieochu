@@ -28,3 +28,5 @@ export type {
 
 export { readObjectForScan } from "./scan";
 export type { ScanResult } from "./scan";
+
+export { buildAttachmentDisposition, clampDownloadTtlSeconds, MAX_DOWNLOAD_PRESIGN_TTL_SECONDS } from "./download-disposition";

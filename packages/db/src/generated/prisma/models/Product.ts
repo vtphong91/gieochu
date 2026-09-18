@@ -318,6 +318,7 @@ export type ProductWhereInput = {
   files?: Prisma.ProductFileListRelationFilter
   orderItems?: Prisma.OrderItemListRelationFilter
   entitlements?: Prisma.EntitlementListRelationFilter
+  shareLinks?: Prisma.ShareLinkListRelationFilter
 }
 
 export type ProductOrderByWithRelationInput = {
@@ -341,6 +342,7 @@ export type ProductOrderByWithRelationInput = {
   files?: Prisma.ProductFileOrderByRelationAggregateInput
   orderItems?: Prisma.OrderItemOrderByRelationAggregateInput
   entitlements?: Prisma.EntitlementOrderByRelationAggregateInput
+  shareLinks?: Prisma.ShareLinkOrderByRelationAggregateInput
 }
 
 export type ProductWhereUniqueInput = Prisma.AtLeast<{
@@ -368,6 +370,7 @@ export type ProductWhereUniqueInput = Prisma.AtLeast<{
   files?: Prisma.ProductFileListRelationFilter
   orderItems?: Prisma.OrderItemListRelationFilter
   entitlements?: Prisma.EntitlementListRelationFilter
+  shareLinks?: Prisma.ShareLinkListRelationFilter
 }, "id" | "tenantId_slug">
 
 export type ProductOrderByWithAggregationInput = {
@@ -436,6 +439,7 @@ export type ProductCreateInput = {
   files?: Prisma.ProductFileCreateNestedManyWithoutProductInput
   orderItems?: Prisma.OrderItemCreateNestedManyWithoutProductInput
   entitlements?: Prisma.EntitlementCreateNestedManyWithoutProductInput
+  shareLinks?: Prisma.ShareLinkCreateNestedManyWithoutProductInput
 }
 
 export type ProductUncheckedCreateInput = {
@@ -458,6 +462,7 @@ export type ProductUncheckedCreateInput = {
   files?: Prisma.ProductFileUncheckedCreateNestedManyWithoutProductInput
   orderItems?: Prisma.OrderItemUncheckedCreateNestedManyWithoutProductInput
   entitlements?: Prisma.EntitlementUncheckedCreateNestedManyWithoutProductInput
+  shareLinks?: Prisma.ShareLinkUncheckedCreateNestedManyWithoutProductInput
 }
 
 export type ProductUpdateInput = {
@@ -480,6 +485,7 @@ export type ProductUpdateInput = {
   files?: Prisma.ProductFileUpdateManyWithoutProductNestedInput
   orderItems?: Prisma.OrderItemUpdateManyWithoutProductNestedInput
   entitlements?: Prisma.EntitlementUpdateManyWithoutProductNestedInput
+  shareLinks?: Prisma.ShareLinkUpdateManyWithoutProductNestedInput
 }
 
 export type ProductUncheckedUpdateInput = {
@@ -502,6 +508,7 @@ export type ProductUncheckedUpdateInput = {
   files?: Prisma.ProductFileUncheckedUpdateManyWithoutProductNestedInput
   orderItems?: Prisma.OrderItemUncheckedUpdateManyWithoutProductNestedInput
   entitlements?: Prisma.EntitlementUncheckedUpdateManyWithoutProductNestedInput
+  shareLinks?: Prisma.ShareLinkUncheckedUpdateManyWithoutProductNestedInput
 }
 
 export type ProductCreateManyInput = {
@@ -756,6 +763,20 @@ export type ProductUpdateOneRequiredWithoutEntitlementsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ProductUpdateToOneWithWhereWithoutEntitlementsInput, Prisma.ProductUpdateWithoutEntitlementsInput>, Prisma.ProductUncheckedUpdateWithoutEntitlementsInput>
 }
 
+export type ProductCreateNestedOneWithoutShareLinksInput = {
+  create?: Prisma.XOR<Prisma.ProductCreateWithoutShareLinksInput, Prisma.ProductUncheckedCreateWithoutShareLinksInput>
+  connectOrCreate?: Prisma.ProductCreateOrConnectWithoutShareLinksInput
+  connect?: Prisma.ProductWhereUniqueInput
+}
+
+export type ProductUpdateOneRequiredWithoutShareLinksNestedInput = {
+  create?: Prisma.XOR<Prisma.ProductCreateWithoutShareLinksInput, Prisma.ProductUncheckedCreateWithoutShareLinksInput>
+  connectOrCreate?: Prisma.ProductCreateOrConnectWithoutShareLinksInput
+  upsert?: Prisma.ProductUpsertWithoutShareLinksInput
+  connect?: Prisma.ProductWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ProductUpdateToOneWithWhereWithoutShareLinksInput, Prisma.ProductUpdateWithoutShareLinksInput>, Prisma.ProductUncheckedUpdateWithoutShareLinksInput>
+}
+
 export type ProductCreateWithoutTenantInput = {
   id?: string
   slug: string
@@ -775,6 +796,7 @@ export type ProductCreateWithoutTenantInput = {
   files?: Prisma.ProductFileCreateNestedManyWithoutProductInput
   orderItems?: Prisma.OrderItemCreateNestedManyWithoutProductInput
   entitlements?: Prisma.EntitlementCreateNestedManyWithoutProductInput
+  shareLinks?: Prisma.ShareLinkCreateNestedManyWithoutProductInput
 }
 
 export type ProductUncheckedCreateWithoutTenantInput = {
@@ -796,6 +818,7 @@ export type ProductUncheckedCreateWithoutTenantInput = {
   files?: Prisma.ProductFileUncheckedCreateNestedManyWithoutProductInput
   orderItems?: Prisma.OrderItemUncheckedCreateNestedManyWithoutProductInput
   entitlements?: Prisma.EntitlementUncheckedCreateNestedManyWithoutProductInput
+  shareLinks?: Prisma.ShareLinkUncheckedCreateNestedManyWithoutProductInput
 }
 
 export type ProductCreateOrConnectWithoutTenantInput = {
@@ -865,6 +888,7 @@ export type ProductCreateWithoutFilesInput = {
   tenant: Prisma.TenantCreateNestedOneWithoutProductsInput
   orderItems?: Prisma.OrderItemCreateNestedManyWithoutProductInput
   entitlements?: Prisma.EntitlementCreateNestedManyWithoutProductInput
+  shareLinks?: Prisma.ShareLinkCreateNestedManyWithoutProductInput
 }
 
 export type ProductUncheckedCreateWithoutFilesInput = {
@@ -886,6 +910,7 @@ export type ProductUncheckedCreateWithoutFilesInput = {
   updatedAt?: Date | string
   orderItems?: Prisma.OrderItemUncheckedCreateNestedManyWithoutProductInput
   entitlements?: Prisma.EntitlementUncheckedCreateNestedManyWithoutProductInput
+  shareLinks?: Prisma.ShareLinkUncheckedCreateNestedManyWithoutProductInput
 }
 
 export type ProductCreateOrConnectWithoutFilesInput = {
@@ -923,6 +948,7 @@ export type ProductUpdateWithoutFilesInput = {
   tenant?: Prisma.TenantUpdateOneRequiredWithoutProductsNestedInput
   orderItems?: Prisma.OrderItemUpdateManyWithoutProductNestedInput
   entitlements?: Prisma.EntitlementUpdateManyWithoutProductNestedInput
+  shareLinks?: Prisma.ShareLinkUpdateManyWithoutProductNestedInput
 }
 
 export type ProductUncheckedUpdateWithoutFilesInput = {
@@ -944,6 +970,7 @@ export type ProductUncheckedUpdateWithoutFilesInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   orderItems?: Prisma.OrderItemUncheckedUpdateManyWithoutProductNestedInput
   entitlements?: Prisma.EntitlementUncheckedUpdateManyWithoutProductNestedInput
+  shareLinks?: Prisma.ShareLinkUncheckedUpdateManyWithoutProductNestedInput
 }
 
 export type ProductCreateWithoutOrderItemsInput = {
@@ -965,6 +992,7 @@ export type ProductCreateWithoutOrderItemsInput = {
   tenant: Prisma.TenantCreateNestedOneWithoutProductsInput
   files?: Prisma.ProductFileCreateNestedManyWithoutProductInput
   entitlements?: Prisma.EntitlementCreateNestedManyWithoutProductInput
+  shareLinks?: Prisma.ShareLinkCreateNestedManyWithoutProductInput
 }
 
 export type ProductUncheckedCreateWithoutOrderItemsInput = {
@@ -986,6 +1014,7 @@ export type ProductUncheckedCreateWithoutOrderItemsInput = {
   updatedAt?: Date | string
   files?: Prisma.ProductFileUncheckedCreateNestedManyWithoutProductInput
   entitlements?: Prisma.EntitlementUncheckedCreateNestedManyWithoutProductInput
+  shareLinks?: Prisma.ShareLinkUncheckedCreateNestedManyWithoutProductInput
 }
 
 export type ProductCreateOrConnectWithoutOrderItemsInput = {
@@ -1023,6 +1052,7 @@ export type ProductUpdateWithoutOrderItemsInput = {
   tenant?: Prisma.TenantUpdateOneRequiredWithoutProductsNestedInput
   files?: Prisma.ProductFileUpdateManyWithoutProductNestedInput
   entitlements?: Prisma.EntitlementUpdateManyWithoutProductNestedInput
+  shareLinks?: Prisma.ShareLinkUpdateManyWithoutProductNestedInput
 }
 
 export type ProductUncheckedUpdateWithoutOrderItemsInput = {
@@ -1044,6 +1074,7 @@ export type ProductUncheckedUpdateWithoutOrderItemsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   files?: Prisma.ProductFileUncheckedUpdateManyWithoutProductNestedInput
   entitlements?: Prisma.EntitlementUncheckedUpdateManyWithoutProductNestedInput
+  shareLinks?: Prisma.ShareLinkUncheckedUpdateManyWithoutProductNestedInput
 }
 
 export type ProductCreateWithoutEntitlementsInput = {
@@ -1065,6 +1096,7 @@ export type ProductCreateWithoutEntitlementsInput = {
   tenant: Prisma.TenantCreateNestedOneWithoutProductsInput
   files?: Prisma.ProductFileCreateNestedManyWithoutProductInput
   orderItems?: Prisma.OrderItemCreateNestedManyWithoutProductInput
+  shareLinks?: Prisma.ShareLinkCreateNestedManyWithoutProductInput
 }
 
 export type ProductUncheckedCreateWithoutEntitlementsInput = {
@@ -1086,6 +1118,7 @@ export type ProductUncheckedCreateWithoutEntitlementsInput = {
   updatedAt?: Date | string
   files?: Prisma.ProductFileUncheckedCreateNestedManyWithoutProductInput
   orderItems?: Prisma.OrderItemUncheckedCreateNestedManyWithoutProductInput
+  shareLinks?: Prisma.ShareLinkUncheckedCreateNestedManyWithoutProductInput
 }
 
 export type ProductCreateOrConnectWithoutEntitlementsInput = {
@@ -1123,6 +1156,7 @@ export type ProductUpdateWithoutEntitlementsInput = {
   tenant?: Prisma.TenantUpdateOneRequiredWithoutProductsNestedInput
   files?: Prisma.ProductFileUpdateManyWithoutProductNestedInput
   orderItems?: Prisma.OrderItemUpdateManyWithoutProductNestedInput
+  shareLinks?: Prisma.ShareLinkUpdateManyWithoutProductNestedInput
 }
 
 export type ProductUncheckedUpdateWithoutEntitlementsInput = {
@@ -1144,6 +1178,111 @@ export type ProductUncheckedUpdateWithoutEntitlementsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   files?: Prisma.ProductFileUncheckedUpdateManyWithoutProductNestedInput
   orderItems?: Prisma.OrderItemUncheckedUpdateManyWithoutProductNestedInput
+  shareLinks?: Prisma.ShareLinkUncheckedUpdateManyWithoutProductNestedInput
+}
+
+export type ProductCreateWithoutShareLinksInput = {
+  id?: string
+  slug: string
+  title: string
+  description?: string | null
+  type?: $Enums.ProductType
+  coverImageKey?: string | null
+  tags?: Prisma.ProductCreatetagsInput | string[]
+  priceVnd?: number
+  salePriceVnd?: number | null
+  saleStartsAt?: Date | string | null
+  saleEndsAt?: Date | string | null
+  downloadLimit?: number
+  status?: $Enums.ProductStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  tenant: Prisma.TenantCreateNestedOneWithoutProductsInput
+  files?: Prisma.ProductFileCreateNestedManyWithoutProductInput
+  orderItems?: Prisma.OrderItemCreateNestedManyWithoutProductInput
+  entitlements?: Prisma.EntitlementCreateNestedManyWithoutProductInput
+}
+
+export type ProductUncheckedCreateWithoutShareLinksInput = {
+  id?: string
+  tenantId: string
+  slug: string
+  title: string
+  description?: string | null
+  type?: $Enums.ProductType
+  coverImageKey?: string | null
+  tags?: Prisma.ProductCreatetagsInput | string[]
+  priceVnd?: number
+  salePriceVnd?: number | null
+  saleStartsAt?: Date | string | null
+  saleEndsAt?: Date | string | null
+  downloadLimit?: number
+  status?: $Enums.ProductStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  files?: Prisma.ProductFileUncheckedCreateNestedManyWithoutProductInput
+  orderItems?: Prisma.OrderItemUncheckedCreateNestedManyWithoutProductInput
+  entitlements?: Prisma.EntitlementUncheckedCreateNestedManyWithoutProductInput
+}
+
+export type ProductCreateOrConnectWithoutShareLinksInput = {
+  where: Prisma.ProductWhereUniqueInput
+  create: Prisma.XOR<Prisma.ProductCreateWithoutShareLinksInput, Prisma.ProductUncheckedCreateWithoutShareLinksInput>
+}
+
+export type ProductUpsertWithoutShareLinksInput = {
+  update: Prisma.XOR<Prisma.ProductUpdateWithoutShareLinksInput, Prisma.ProductUncheckedUpdateWithoutShareLinksInput>
+  create: Prisma.XOR<Prisma.ProductCreateWithoutShareLinksInput, Prisma.ProductUncheckedCreateWithoutShareLinksInput>
+  where?: Prisma.ProductWhereInput
+}
+
+export type ProductUpdateToOneWithWhereWithoutShareLinksInput = {
+  where?: Prisma.ProductWhereInput
+  data: Prisma.XOR<Prisma.ProductUpdateWithoutShareLinksInput, Prisma.ProductUncheckedUpdateWithoutShareLinksInput>
+}
+
+export type ProductUpdateWithoutShareLinksInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumProductTypeFieldUpdateOperationsInput | $Enums.ProductType
+  coverImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProductUpdatetagsInput | string[]
+  priceVnd?: Prisma.IntFieldUpdateOperationsInput | number
+  salePriceVnd?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  saleStartsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  saleEndsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
+  status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  tenant?: Prisma.TenantUpdateOneRequiredWithoutProductsNestedInput
+  files?: Prisma.ProductFileUpdateManyWithoutProductNestedInput
+  orderItems?: Prisma.OrderItemUpdateManyWithoutProductNestedInput
+  entitlements?: Prisma.EntitlementUpdateManyWithoutProductNestedInput
+}
+
+export type ProductUncheckedUpdateWithoutShareLinksInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  tenantId?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumProductTypeFieldUpdateOperationsInput | $Enums.ProductType
+  coverImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProductUpdatetagsInput | string[]
+  priceVnd?: Prisma.IntFieldUpdateOperationsInput | number
+  salePriceVnd?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  saleStartsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  saleEndsAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
+  status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  files?: Prisma.ProductFileUncheckedUpdateManyWithoutProductNestedInput
+  orderItems?: Prisma.OrderItemUncheckedUpdateManyWithoutProductNestedInput
+  entitlements?: Prisma.EntitlementUncheckedUpdateManyWithoutProductNestedInput
 }
 
 export type ProductCreateManyTenantInput = {
@@ -1183,6 +1322,7 @@ export type ProductUpdateWithoutTenantInput = {
   files?: Prisma.ProductFileUpdateManyWithoutProductNestedInput
   orderItems?: Prisma.OrderItemUpdateManyWithoutProductNestedInput
   entitlements?: Prisma.EntitlementUpdateManyWithoutProductNestedInput
+  shareLinks?: Prisma.ShareLinkUpdateManyWithoutProductNestedInput
 }
 
 export type ProductUncheckedUpdateWithoutTenantInput = {
@@ -1204,6 +1344,7 @@ export type ProductUncheckedUpdateWithoutTenantInput = {
   files?: Prisma.ProductFileUncheckedUpdateManyWithoutProductNestedInput
   orderItems?: Prisma.OrderItemUncheckedUpdateManyWithoutProductNestedInput
   entitlements?: Prisma.EntitlementUncheckedUpdateManyWithoutProductNestedInput
+  shareLinks?: Prisma.ShareLinkUncheckedUpdateManyWithoutProductNestedInput
 }
 
 export type ProductUncheckedUpdateManyWithoutTenantInput = {
@@ -1233,12 +1374,14 @@ export type ProductCountOutputType = {
   files: number
   orderItems: number
   entitlements: number
+  shareLinks: number
 }
 
 export type ProductCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   files?: boolean | ProductCountOutputTypeCountFilesArgs
   orderItems?: boolean | ProductCountOutputTypeCountOrderItemsArgs
   entitlements?: boolean | ProductCountOutputTypeCountEntitlementsArgs
+  shareLinks?: boolean | ProductCountOutputTypeCountShareLinksArgs
 }
 
 /**
@@ -1272,6 +1415,13 @@ export type ProductCountOutputTypeCountEntitlementsArgs<ExtArgs extends runtime.
   where?: Prisma.EntitlementWhereInput
 }
 
+/**
+ * ProductCountOutputType without action
+ */
+export type ProductCountOutputTypeCountShareLinksArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ShareLinkWhereInput
+}
+
 
 export type ProductSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -1294,6 +1444,7 @@ export type ProductSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   files?: boolean | Prisma.Product$filesArgs<ExtArgs>
   orderItems?: boolean | Prisma.Product$orderItemsArgs<ExtArgs>
   entitlements?: boolean | Prisma.Product$entitlementsArgs<ExtArgs>
+  shareLinks?: boolean | Prisma.Product$shareLinksArgs<ExtArgs>
   _count?: boolean | Prisma.ProductCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["product"]>
 
@@ -1362,6 +1513,7 @@ export type ProductInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs
   files?: boolean | Prisma.Product$filesArgs<ExtArgs>
   orderItems?: boolean | Prisma.Product$orderItemsArgs<ExtArgs>
   entitlements?: boolean | Prisma.Product$entitlementsArgs<ExtArgs>
+  shareLinks?: boolean | Prisma.Product$shareLinksArgs<ExtArgs>
   _count?: boolean | Prisma.ProductCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ProductIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1378,6 +1530,7 @@ export type $ProductPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     files: Prisma.$ProductFilePayload<ExtArgs>[]
     orderItems: Prisma.$OrderItemPayload<ExtArgs>[]
     entitlements: Prisma.$EntitlementPayload<ExtArgs>[]
+    shareLinks: Prisma.$ShareLinkPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1794,6 +1947,7 @@ export interface Prisma__ProductClient<T, Null = never, ExtArgs extends runtime.
   files<T extends Prisma.Product$filesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Product$filesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ProductFilePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   orderItems<T extends Prisma.Product$orderItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Product$orderItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OrderItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   entitlements<T extends Prisma.Product$entitlementsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Product$entitlementsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$EntitlementPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  shareLinks<T extends Prisma.Product$shareLinksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Product$shareLinksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ShareLinkPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2309,6 +2463,30 @@ export type Product$entitlementsArgs<ExtArgs extends runtime.Types.Extensions.In
   take?: number
   skip?: number
   distinct?: Prisma.EntitlementScalarFieldEnum | Prisma.EntitlementScalarFieldEnum[]
+}
+
+/**
+ * Product.shareLinks
+ */
+export type Product$shareLinksArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ShareLink
+   */
+  select?: Prisma.ShareLinkSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ShareLink
+   */
+  omit?: Prisma.ShareLinkOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ShareLinkInclude<ExtArgs> | null
+  where?: Prisma.ShareLinkWhereInput
+  orderBy?: Prisma.ShareLinkOrderByWithRelationInput | Prisma.ShareLinkOrderByWithRelationInput[]
+  cursor?: Prisma.ShareLinkWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ShareLinkScalarFieldEnum | Prisma.ShareLinkScalarFieldEnum[]
 }
 
 /**

@@ -1,4 +1,4 @@
-import { generateOpaqueToken, hashOpaqueToken } from "./random-token";
+import { generateOpaqueToken, hashOpaqueToken } from "@gieochu/core";
 
 export interface NewRefreshToken {
   token: string;

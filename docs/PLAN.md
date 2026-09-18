@@ -21,7 +21,7 @@ M0 → M1 (kèm khung email M11) → M4 → M2 (phần cơ bản) → M7 → M3 
 | M5 | Sản phẩm và File tài liệu | 🟡 Code xong (CRUD + upload/presign/file.scan) — chờ verify với R2 thật | `packages/storage`, `apps/web/lib/{product,product-upload,file-scan}.ts` | 6 / 3 (+1 chờ storage thật) |
 | M6 | Giá và Khuyến mãi | 🟡 Engine + Coupon CRUD xong — 1 test chờ Order (M8) | `packages/core/src/pricing`, `apps/web/lib/coupon.ts` | 14 / 1 (+1 chờ M8) |
 | M8 | Checkout và Đơn hàng | ✅ Xong | `apps/web/lib/{order,payment-process}.ts`, `packages/core/src/order` | 10 / 9 |
-| M9 | Thư viện, Tải xuống, Share link | ⬜ Chưa làm | download API, `/s/[token]` | 7 / 5 |
+| M9 | Thư viện, Tải xuống, Share link | ✅ Xong | `apps/web/lib/{download,share-link,library,entitlement}.ts`, `packages/core/src/download` | 7 / 5 |
 | M10 | Social Feed và Đánh giá | ⬜ Chưa làm | posts/comments/reviews | 4 / 3 |
 | M11 | Email và Background Jobs | 🟡 Khung đã có (cùng M1) — job/worker còn lại thêm khi có nghiệp vụ tương ứng | `packages/jobs`, `packages/email`, `apps/web/worker.ts` | 0 / 0 (tính trong module khác) |
 | M12 | Audit Log, Thống kê, Báo cáo vi phạm | ⬜ Chưa làm | audit + stats + reports | 0 / 2 |
@@ -294,6 +294,47 @@ integration cộng dồn); toàn bộ 9 integration test M8 chạy thật trên 
 UPDATE atomic coupon thật qua `Promise.all` mô phỏng đồng thời). **Chưa verify được**: luồng thật qua trình
 duyệt (chọn sản phẩm → mua → quét QR → polling), vì cần R2 + provider thanh toán thật đã cấu hình qua UI.
 
+## M9 — Việc đã làm (xem docs/modules/M9.md để có sơ đồ và danh sách test đầy đủ)
+
+- Chuyển `generateOpaqueToken`/`hashOpaqueToken` từ `packages/auth` sang `packages/core/src/crypto/`
+  (comment gốc của hàm này đã ghi trước "share-link tokens" là người dùng tương lai) — cùng mẫu refactor
+  encryption.ts ở M5 (ADR-017). `packages/auth` giờ có `@gieochu/core` làm dependency thật (trước chỉ
+  devDependency gián tiếp qua `@gieochu/config`).
+- `packages/core/src/download/*`: token tải (sinh/hash/TTL 60s/đánh giá trạng thái), guard entitlement
+  (thu hồi/hết lượt — `downloadLimit=0` = không giới hạn, cùng quy ước `downloadLimit` sản phẩm ở M5),
+  usability của share link (hết hạn/hết lượt/thu hồi), hash/verify mật khẩu share link (argon2id riêng,
+  không dùng chung `packages/auth`'s password — giữ `core` không phụ thuộc ngược vào `auth`) — 6/7 unit
+  test M9 (test 7 nằm ở `packages/storage`).
+- `packages/storage/src/download-disposition.ts`: `buildAttachmentDisposition()` (RFC 5987 —
+  `filename*=UTF-8''...` cho tên file tiếng Việt có dấu, trước đây `createPresignedDownload()` chỉ có
+  `filename="..."` ASCII thường, một lỗi thật cho một app tiếng Việt) + `clampDownloadTtlSeconds()` (≤600s)
+  — nối vào `createPresignedDownload()` luôn, không chỉ nằm trong test — 1/7 unit test M9.
+- Schema: `DownloadToken` (L1, không RLS — cùng lý do RefreshToken/VerificationToken: ranh giới bảo mật là
+  "chỉ người vừa yêu cầu giữ token thô", không phải lọc theo dòng), `ShareLink`/`DownloadEvent` (L2, RLS).
+- **3 lỗ hổng RLS thật phát hiện qua chính integration test, không phải qua review** (xem ADR-020):
+  `product_files` và `products` thiếu nhánh "customer" (khách đã mua vẫn không đọc được file/sản phẩm của
+  chính mình nếu sản phẩm không còn `PUBLISHED`), và `consumeShareLinkDownload()` đọc `share_links` qua
+  `getPrismaClient()` trần thay vì `withPublic()` — cùng lớp lỗi với M8's `payment-process.ts`. Cả 3 sửa
+  bằng migration RLS riêng, xác minh lại bằng test thật (không mock).
+- `apps/web/lib/download.ts`: `requestDownload`/`consumeDownloadToken` — 2 bước đúng đặc tả, cả hai bước
+  đều có một lớp atomic-claim (`updateMany`/raw SQL có điều kiện) làm ranh giới thật, không chỉ dựa vào lần
+  đọc trước đó — cùng mẫu chống-đua đã dùng cho coupon ở M8.
+- `apps/web/lib/share-link.ts`: CRUD + `resolveShareLink`/`consumeShareLinkDownload` (public, không đăng
+  nhập) — `fileIds` rỗng/null = mọi file đang bán, đúng mẫu `Coupon.productIds` (M6).
+- `apps/web/lib/library.ts`, `entitlement.ts`: thư viện gom theo tenant, lịch sử đơn hàng, tenant cấp thêm
+  lượt/thu hồi entitlement.
+- Trang: `/account/library` (hoàn thiện từ stub M1), `/account/orders` (mới), `/s/[token]` (công khai, có ô
+  mật khẩu khi cần), `/studio/[tenantSlug]/products/[productId]/share-links` (tạo/thu hồi, token hiện đúng
+  một lần), nối "cấp thêm lượt"/"thu hồi" vào trang chi tiết đơn hàng Studio (M8) đã có sẵn.
+- Route: `POST /api/downloads`, `GET /api/downloads/{token}`, `POST /api/share-links/{token}/download` — rate
+  limit 20 lượt/10 phút mỗi user cho tải thường, 20 lượt/10 phút mỗi token cho tải qua share link (chống dò
+  mật khẩu).
+
+**Đã xác minh chạy được trong phiên này:** `pnpm lint/typecheck/test/build` xanh toàn bộ (87/91 unit, 44/50
+integration cộng dồn); cả 5 integration test M9 chạy thật trên Neon với RLS thật (bao gồm việc bắt được và
+sửa 3 lỗ hổng RLS thật nêu trên ngay trong lần chạy test đầu tiên). **Chưa verify được**: luồng thật qua
+trình duyệt (bấm tải trong `/account/library`, mở link `/s/{token}` thật) — cần R2 thật.
+
 ## Câu hỏi còn mở (đã chọn phương án an toàn, xem ADR tương ứng)
 
 - ID strategy: cuid2 (ADR-001).
@@ -318,5 +359,10 @@ duyệt (chọn sản phẩm → mua → quét QR → polling), vì cần R2 + p
   (ADR-018) — đúng phương án dự phòng đặc tả đã gợi ý.
 - `order.sweep` chạy mỗi 5 phút thay vì mỗi giờ như các job sweep khác, vì TTL đơn PENDING ngắn hơn nhiều so
   với chu kỳ subscription (ADR-019).
+- `DownloadToken` là bảng L1 (không RLS), `ShareLink`/`DownloadEvent` là L2 — và 3 policy RLS đã có
+  (`products`, `product_files` từ M4/M5) được sửa thêm nhánh "customer" ở M9 sau khi chính test thật bắt
+  được lỗ hổng (ADR-020).
+- Hash mật khẩu share link dùng argon2 riêng trong `packages/core` (không gọi lại `packages/auth`'s
+  password functions) để giữ đúng chiều phụ thuộc package — `core` không bao giờ phụ thuộc `auth` (ADR-020).
 - Chưa hỏi người dùng các quyết định ảnh hưởng tiền/bảo mật/dữ liệu cá nhân — sẽ dừng lại đúng lúc theo mục
   0.6 khi gặp.

@@ -9,6 +9,7 @@ import {
   type S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { buildAttachmentDisposition, clampDownloadTtlSeconds } from "./download-disposition";
 
 /** §"M5": "file > 50MB dùng multipart". */
 const MULTIPART_THRESHOLD_BYTES = 50 * 1024 * 1024;
@@ -111,7 +112,7 @@ export async function createPresignedDownload(
   const command = new GetObjectCommand({
     Bucket: args.bucket,
     Key: args.key,
-    ResponseContentDisposition: `attachment; filename="${args.fileName}"`,
+    ResponseContentDisposition: buildAttachmentDisposition(args.fileName),
   });
-  return getSignedUrl(client, command, { expiresIn: args.ttlSeconds });
+  return getSignedUrl(client, command, { expiresIn: clampDownloadTtlSeconds(args.ttlSeconds) });
 }

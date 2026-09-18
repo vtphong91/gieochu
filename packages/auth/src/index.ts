@@ -12,7 +12,7 @@ export {
 } from "./tokens/access-token";
 export type { AccessTokenClaims, JwtContext, VerifiedAccessToken } from "./tokens/access-token";
 
-export { generateOpaqueToken, hashOpaqueToken } from "./tokens/random-token";
+export { generateOpaqueToken, hashOpaqueToken } from "@gieochu/core";
 
 export { createRefreshToken, evaluateRefreshToken, rotateRefreshToken } from "./tokens/refresh-token";
 export type { NewRefreshToken, RefreshTokenRecord, RefreshTokenStatus } from "./tokens/refresh-token";

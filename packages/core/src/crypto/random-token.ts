@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 
-/** Shared by refresh tokens, verification tokens, share-link tokens, etc. */
+/** Shared by refresh tokens, verification tokens, download tokens, share-link tokens. */
 export function generateOpaqueToken(byteLength = 32): string {
   return randomBytes(byteLength).toString("base64url");
 }

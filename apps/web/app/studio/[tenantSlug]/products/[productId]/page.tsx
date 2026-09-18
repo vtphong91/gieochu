@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { AppError } from "@gieochu/core";
 import { requireTenantMemberPage } from "../../../../../lib/page-guards";
 import { getProduct } from "../../../../../lib/product";
@@ -109,6 +110,19 @@ export default async function EditProductPage({
             ))}
           </ul>
         ) : null}
+      </section>
+
+      <section className="mt-8">
+        <h2 className="text-lg font-semibold">Link chia sẻ private</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Tạo link tải riêng cho một người, không cần đăng nhập.
+        </p>
+        <Link
+          href={`/studio/${tenantSlug}/products/${productId}/share-links`}
+          className="mt-2 inline-block rounded border px-3 py-1 text-sm text-[var(--color-primary)]"
+        >
+          Quản lý link chia sẻ
+        </Link>
       </section>
     </main>
   );

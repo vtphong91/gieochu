@@ -218,3 +218,34 @@ lộ ra 2 lỗi cả 2 đều tồn tại từ trước, không riêng module n�
   ("Sản phẩm bán chạy", "Đánh giá mới") vẫn để "Cần M5/M6"/"Cần M10" — ô "Sản phẩm bán chạy" đáng lẽ có thể
   nối được luôn từ `order_items` (M8), nhưng chưa làm vì không nằm trong phạm vi hàm M8 phải xây; dễ hoàn
   thành sau bằng một `groupBy` đơn giản trên `OrderItem`.
+- **Phát hiện muộn khi dựng M9 — trang `/studio/[tenantSlug]/customers` (M8) thiếu 3 việc đặc tả M8 có
+  yêu cầu**: đặc tả mục M8 ghi rõ "ghi chú nội bộ [cho khách hàng], xem các đơn của khách đó tại tenant này.
+  Xuất CSV" — cột `TenantCustomer.note` đã có trong schema từ M8 nhưng chưa có UI đọc/ghi; trang customers
+  hiện chỉ liệt kê, chưa link sang danh sách đơn của riêng khách đó; chưa có nút xuất CSV. Bỏ sót khi viết
+  `docs/modules/M8.md` (không được ghi vào BACKLOG lúc đó) — ghi nhận lại ở đây khi rà soát lại trong lúc
+  làm M9. Chưa làm ngay vì ngoài phạm vi M9.
+
+## Phát sinh trong lúc dựng M9
+
+- **Chưa có luồng test/chạy thật qua trình duyệt**: bấm "Tải xuống" trong `/account/library`, mở
+  `/s/{token}` thật, tạo link chia sẻ qua UI Studio — code đã đủ và 5 integration test chạy thật trên Neon
+  (bao gồm ký thật, RLS thật), nhưng chưa verify tay qua trình duyệt (cần R2 thật, xem ghi chú tương tự ở
+  M5/M8).
+- **`DEFAULT_DOWNLOAD_LIMIT` (env, M5) không được dùng lại ở M9**: `Entitlement.downloadLimit` là snapshot
+  của `Product.downloadLimit` lúc mua (đặt trong M8's `markOrderPaid`), không đọc lại biến env này — đúng
+  thiết kế, chỉ ghi chú để không nhầm là bỏ sót.
+- **`grantExtraDownloads`/`revokeEntitlement` chưa ghi audit**: đặc tả ghi "(audit)" cạnh 2 hành động này —
+  cùng lý do mọi hành động "audit" khác trong dự án tới giờ (M6's `COUPON_OVERUSED`, M8's manual confirm):
+  chưa có bảng `audit_logs` (M12). Sẽ nối khi M12 xây xong.
+- **4 route/action mới của M9 chưa có rate limit theo IP** (chỉ có rate limit theo user/token, không theo
+  IP) và **chưa kiểm tra header `Origin`** (mục 7.7) — cùng khoảng trống có sẵn từ M5/M8, áp dụng luôn cho
+  route mới của M9; chờ đợt rà soát chung.
+- **`/s/[token]` không giới hạn tần suất thử mật khẩu theo IP, chỉ theo token**: một token bị lộ vẫn có thể
+  bị dò mật khẩu từ nhiều IP khác nhau cho tới khi chạm giới hạn 20 lượt/10 phút của chính token đó — chấp
+  nhận được cho MVP (không có cách nào phân biệt "người nhận hợp lệ đang thử lại" khỏi "kẻ tấn công" theo
+  IP một cách đáng tin cậy khi không bắt buộc đăng nhập); cân nhắc CAPTCHA hoặc giảm giới hạn nếu bị lạm
+  dụng thật.
+- **Chưa có UI xem thống kê chi tiết theo share link** (đặc tả: "xem thống kê lượt tải theo link"):
+  `getShareLinkDetail()` đã trả về `downloadEvents` đầy đủ, nhưng trang Studio share-links hiện chỉ hiện
+  `usedCount` tổng, chưa có trang chi tiết riêng từng link liệt kê từng lượt tải (thời gian, IP). Hàm lib đã
+  sẵn sàng, chỉ thiếu trang.

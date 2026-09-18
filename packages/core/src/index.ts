@@ -15,6 +15,7 @@ export { createLogger, logger, loggerWithRequestId } from "./logger";
 export type { CreateLoggerOptions } from "./logger";
 
 export { decryptSecret, encryptSecret, maskSecret } from "./crypto/encryption";
+export { generateOpaqueToken, hashOpaqueToken } from "./crypto/random-token";
 
 export { isReservedSlug, RESERVED_SLUGS, slugify } from "./tenant/slug";
 export { generateOrderCodePrefix, isValidOrderCodePrefix } from "./tenant/order-code-prefix";
@@ -61,6 +62,14 @@ export { canPurchaseProduct } from "./order/purchase-guard";
 export type { PurchaseBlockReason, PurchaseGuardResult } from "./order/purchase-guard";
 export { applyOrderToCustomerStats } from "./order/customer-stats";
 export type { TenantCustomerStats } from "./order/customer-stats";
+
+export { createDownloadToken, evaluateDownloadToken } from "./download/token";
+export type { DownloadTokenRecord, DownloadTokenStatus, NewDownloadToken } from "./download/token";
+export { canDownloadEntitlement } from "./download/entitlement-guard";
+export type { DownloadBlockReason, DownloadGuardResult, EntitlementSnapshot } from "./download/entitlement-guard";
+export { isShareLinkUsable } from "./download/share-link";
+export type { ShareLinkBlockReason, ShareLinkSnapshot, ShareLinkUsability } from "./download/share-link";
+export { hashSharePassword, verifySharePassword } from "./download/share-link-password";
 
 export { decideLockUser } from "./admin/user-lock";
 export type { LockRejectReason, LockTargetUser, LockUserDecision } from "./admin/user-lock";

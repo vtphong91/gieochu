@@ -259,6 +259,8 @@ export type EntitlementWhereInput = {
   tenant?: Prisma.XOR<Prisma.TenantScalarRelationFilter, Prisma.TenantWhereInput>
   product?: Prisma.XOR<Prisma.ProductScalarRelationFilter, Prisma.ProductWhereInput>
   orderItem?: Prisma.XOR<Prisma.OrderItemScalarRelationFilter, Prisma.OrderItemWhereInput>
+  downloadTokens?: Prisma.DownloadTokenListRelationFilter
+  downloadEvents?: Prisma.DownloadEventListRelationFilter
 }
 
 export type EntitlementOrderByWithRelationInput = {
@@ -275,6 +277,8 @@ export type EntitlementOrderByWithRelationInput = {
   tenant?: Prisma.TenantOrderByWithRelationInput
   product?: Prisma.ProductOrderByWithRelationInput
   orderItem?: Prisma.OrderItemOrderByWithRelationInput
+  downloadTokens?: Prisma.DownloadTokenOrderByRelationAggregateInput
+  downloadEvents?: Prisma.DownloadEventOrderByRelationAggregateInput
 }
 
 export type EntitlementWhereUniqueInput = Prisma.AtLeast<{
@@ -294,6 +298,8 @@ export type EntitlementWhereUniqueInput = Prisma.AtLeast<{
   tenant?: Prisma.XOR<Prisma.TenantScalarRelationFilter, Prisma.TenantWhereInput>
   product?: Prisma.XOR<Prisma.ProductScalarRelationFilter, Prisma.ProductWhereInput>
   orderItem?: Prisma.XOR<Prisma.OrderItemScalarRelationFilter, Prisma.OrderItemWhereInput>
+  downloadTokens?: Prisma.DownloadTokenListRelationFilter
+  downloadEvents?: Prisma.DownloadEventListRelationFilter
 }, "id" | "orderItemId">
 
 export type EntitlementOrderByWithAggregationInput = {
@@ -338,6 +344,8 @@ export type EntitlementCreateInput = {
   tenant: Prisma.TenantCreateNestedOneWithoutEntitlementsInput
   product: Prisma.ProductCreateNestedOneWithoutEntitlementsInput
   orderItem: Prisma.OrderItemCreateNestedOneWithoutEntitlementInput
+  downloadTokens?: Prisma.DownloadTokenCreateNestedManyWithoutEntitlementInput
+  downloadEvents?: Prisma.DownloadEventCreateNestedManyWithoutEntitlementInput
 }
 
 export type EntitlementUncheckedCreateInput = {
@@ -350,6 +358,8 @@ export type EntitlementUncheckedCreateInput = {
   downloadLimit: number
   revokedAt?: Date | string | null
   createdAt?: Date | string
+  downloadTokens?: Prisma.DownloadTokenUncheckedCreateNestedManyWithoutEntitlementInput
+  downloadEvents?: Prisma.DownloadEventUncheckedCreateNestedManyWithoutEntitlementInput
 }
 
 export type EntitlementUpdateInput = {
@@ -362,6 +372,8 @@ export type EntitlementUpdateInput = {
   tenant?: Prisma.TenantUpdateOneRequiredWithoutEntitlementsNestedInput
   product?: Prisma.ProductUpdateOneRequiredWithoutEntitlementsNestedInput
   orderItem?: Prisma.OrderItemUpdateOneRequiredWithoutEntitlementNestedInput
+  downloadTokens?: Prisma.DownloadTokenUpdateManyWithoutEntitlementNestedInput
+  downloadEvents?: Prisma.DownloadEventUpdateManyWithoutEntitlementNestedInput
 }
 
 export type EntitlementUncheckedUpdateInput = {
@@ -374,6 +386,8 @@ export type EntitlementUncheckedUpdateInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  downloadTokens?: Prisma.DownloadTokenUncheckedUpdateManyWithoutEntitlementNestedInput
+  downloadEvents?: Prisma.DownloadEventUncheckedUpdateManyWithoutEntitlementNestedInput
 }
 
 export type EntitlementCreateManyInput = {
@@ -467,6 +481,11 @@ export type EntitlementMinOrderByAggregateInput = {
 export type EntitlementSumOrderByAggregateInput = {
   downloadsUsed?: Prisma.SortOrder
   downloadLimit?: Prisma.SortOrder
+}
+
+export type EntitlementScalarRelationFilter = {
+  is?: Prisma.EntitlementWhereInput
+  isNot?: Prisma.EntitlementWhereInput
 }
 
 export type EntitlementCreateNestedManyWithoutUserInput = {
@@ -627,6 +646,36 @@ export type EntitlementUncheckedUpdateOneWithoutOrderItemNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.EntitlementUpdateToOneWithWhereWithoutOrderItemInput, Prisma.EntitlementUpdateWithoutOrderItemInput>, Prisma.EntitlementUncheckedUpdateWithoutOrderItemInput>
 }
 
+export type EntitlementCreateNestedOneWithoutDownloadTokensInput = {
+  create?: Prisma.XOR<Prisma.EntitlementCreateWithoutDownloadTokensInput, Prisma.EntitlementUncheckedCreateWithoutDownloadTokensInput>
+  connectOrCreate?: Prisma.EntitlementCreateOrConnectWithoutDownloadTokensInput
+  connect?: Prisma.EntitlementWhereUniqueInput
+}
+
+export type EntitlementUpdateOneRequiredWithoutDownloadTokensNestedInput = {
+  create?: Prisma.XOR<Prisma.EntitlementCreateWithoutDownloadTokensInput, Prisma.EntitlementUncheckedCreateWithoutDownloadTokensInput>
+  connectOrCreate?: Prisma.EntitlementCreateOrConnectWithoutDownloadTokensInput
+  upsert?: Prisma.EntitlementUpsertWithoutDownloadTokensInput
+  connect?: Prisma.EntitlementWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.EntitlementUpdateToOneWithWhereWithoutDownloadTokensInput, Prisma.EntitlementUpdateWithoutDownloadTokensInput>, Prisma.EntitlementUncheckedUpdateWithoutDownloadTokensInput>
+}
+
+export type EntitlementCreateNestedOneWithoutDownloadEventsInput = {
+  create?: Prisma.XOR<Prisma.EntitlementCreateWithoutDownloadEventsInput, Prisma.EntitlementUncheckedCreateWithoutDownloadEventsInput>
+  connectOrCreate?: Prisma.EntitlementCreateOrConnectWithoutDownloadEventsInput
+  connect?: Prisma.EntitlementWhereUniqueInput
+}
+
+export type EntitlementUpdateOneWithoutDownloadEventsNestedInput = {
+  create?: Prisma.XOR<Prisma.EntitlementCreateWithoutDownloadEventsInput, Prisma.EntitlementUncheckedCreateWithoutDownloadEventsInput>
+  connectOrCreate?: Prisma.EntitlementCreateOrConnectWithoutDownloadEventsInput
+  upsert?: Prisma.EntitlementUpsertWithoutDownloadEventsInput
+  disconnect?: Prisma.EntitlementWhereInput | boolean
+  delete?: Prisma.EntitlementWhereInput | boolean
+  connect?: Prisma.EntitlementWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.EntitlementUpdateToOneWithWhereWithoutDownloadEventsInput, Prisma.EntitlementUpdateWithoutDownloadEventsInput>, Prisma.EntitlementUncheckedUpdateWithoutDownloadEventsInput>
+}
+
 export type EntitlementCreateWithoutUserInput = {
   id?: string
   downloadsUsed?: number
@@ -636,6 +685,8 @@ export type EntitlementCreateWithoutUserInput = {
   tenant: Prisma.TenantCreateNestedOneWithoutEntitlementsInput
   product: Prisma.ProductCreateNestedOneWithoutEntitlementsInput
   orderItem: Prisma.OrderItemCreateNestedOneWithoutEntitlementInput
+  downloadTokens?: Prisma.DownloadTokenCreateNestedManyWithoutEntitlementInput
+  downloadEvents?: Prisma.DownloadEventCreateNestedManyWithoutEntitlementInput
 }
 
 export type EntitlementUncheckedCreateWithoutUserInput = {
@@ -647,6 +698,8 @@ export type EntitlementUncheckedCreateWithoutUserInput = {
   downloadLimit: number
   revokedAt?: Date | string | null
   createdAt?: Date | string
+  downloadTokens?: Prisma.DownloadTokenUncheckedCreateNestedManyWithoutEntitlementInput
+  downloadEvents?: Prisma.DownloadEventUncheckedCreateNestedManyWithoutEntitlementInput
 }
 
 export type EntitlementCreateOrConnectWithoutUserInput = {
@@ -699,6 +752,8 @@ export type EntitlementCreateWithoutTenantInput = {
   user: Prisma.UserCreateNestedOneWithoutEntitlementsInput
   product: Prisma.ProductCreateNestedOneWithoutEntitlementsInput
   orderItem: Prisma.OrderItemCreateNestedOneWithoutEntitlementInput
+  downloadTokens?: Prisma.DownloadTokenCreateNestedManyWithoutEntitlementInput
+  downloadEvents?: Prisma.DownloadEventCreateNestedManyWithoutEntitlementInput
 }
 
 export type EntitlementUncheckedCreateWithoutTenantInput = {
@@ -710,6 +765,8 @@ export type EntitlementUncheckedCreateWithoutTenantInput = {
   downloadLimit: number
   revokedAt?: Date | string | null
   createdAt?: Date | string
+  downloadTokens?: Prisma.DownloadTokenUncheckedCreateNestedManyWithoutEntitlementInput
+  downloadEvents?: Prisma.DownloadEventUncheckedCreateNestedManyWithoutEntitlementInput
 }
 
 export type EntitlementCreateOrConnectWithoutTenantInput = {
@@ -747,6 +804,8 @@ export type EntitlementCreateWithoutProductInput = {
   user: Prisma.UserCreateNestedOneWithoutEntitlementsInput
   tenant: Prisma.TenantCreateNestedOneWithoutEntitlementsInput
   orderItem: Prisma.OrderItemCreateNestedOneWithoutEntitlementInput
+  downloadTokens?: Prisma.DownloadTokenCreateNestedManyWithoutEntitlementInput
+  downloadEvents?: Prisma.DownloadEventCreateNestedManyWithoutEntitlementInput
 }
 
 export type EntitlementUncheckedCreateWithoutProductInput = {
@@ -758,6 +817,8 @@ export type EntitlementUncheckedCreateWithoutProductInput = {
   downloadLimit: number
   revokedAt?: Date | string | null
   createdAt?: Date | string
+  downloadTokens?: Prisma.DownloadTokenUncheckedCreateNestedManyWithoutEntitlementInput
+  downloadEvents?: Prisma.DownloadEventUncheckedCreateNestedManyWithoutEntitlementInput
 }
 
 export type EntitlementCreateOrConnectWithoutProductInput = {
@@ -795,6 +856,8 @@ export type EntitlementCreateWithoutOrderItemInput = {
   user: Prisma.UserCreateNestedOneWithoutEntitlementsInput
   tenant: Prisma.TenantCreateNestedOneWithoutEntitlementsInput
   product: Prisma.ProductCreateNestedOneWithoutEntitlementsInput
+  downloadTokens?: Prisma.DownloadTokenCreateNestedManyWithoutEntitlementInput
+  downloadEvents?: Prisma.DownloadEventCreateNestedManyWithoutEntitlementInput
 }
 
 export type EntitlementUncheckedCreateWithoutOrderItemInput = {
@@ -806,6 +869,8 @@ export type EntitlementUncheckedCreateWithoutOrderItemInput = {
   downloadLimit: number
   revokedAt?: Date | string | null
   createdAt?: Date | string
+  downloadTokens?: Prisma.DownloadTokenUncheckedCreateNestedManyWithoutEntitlementInput
+  downloadEvents?: Prisma.DownloadEventUncheckedCreateNestedManyWithoutEntitlementInput
 }
 
 export type EntitlementCreateOrConnectWithoutOrderItemInput = {
@@ -833,6 +898,8 @@ export type EntitlementUpdateWithoutOrderItemInput = {
   user?: Prisma.UserUpdateOneRequiredWithoutEntitlementsNestedInput
   tenant?: Prisma.TenantUpdateOneRequiredWithoutEntitlementsNestedInput
   product?: Prisma.ProductUpdateOneRequiredWithoutEntitlementsNestedInput
+  downloadTokens?: Prisma.DownloadTokenUpdateManyWithoutEntitlementNestedInput
+  downloadEvents?: Prisma.DownloadEventUpdateManyWithoutEntitlementNestedInput
 }
 
 export type EntitlementUncheckedUpdateWithoutOrderItemInput = {
@@ -844,6 +911,144 @@ export type EntitlementUncheckedUpdateWithoutOrderItemInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  downloadTokens?: Prisma.DownloadTokenUncheckedUpdateManyWithoutEntitlementNestedInput
+  downloadEvents?: Prisma.DownloadEventUncheckedUpdateManyWithoutEntitlementNestedInput
+}
+
+export type EntitlementCreateWithoutDownloadTokensInput = {
+  id?: string
+  downloadsUsed?: number
+  downloadLimit: number
+  revokedAt?: Date | string | null
+  createdAt?: Date | string
+  user: Prisma.UserCreateNestedOneWithoutEntitlementsInput
+  tenant: Prisma.TenantCreateNestedOneWithoutEntitlementsInput
+  product: Prisma.ProductCreateNestedOneWithoutEntitlementsInput
+  orderItem: Prisma.OrderItemCreateNestedOneWithoutEntitlementInput
+  downloadEvents?: Prisma.DownloadEventCreateNestedManyWithoutEntitlementInput
+}
+
+export type EntitlementUncheckedCreateWithoutDownloadTokensInput = {
+  id?: string
+  userId: string
+  tenantId: string
+  productId: string
+  orderItemId: string
+  downloadsUsed?: number
+  downloadLimit: number
+  revokedAt?: Date | string | null
+  createdAt?: Date | string
+  downloadEvents?: Prisma.DownloadEventUncheckedCreateNestedManyWithoutEntitlementInput
+}
+
+export type EntitlementCreateOrConnectWithoutDownloadTokensInput = {
+  where: Prisma.EntitlementWhereUniqueInput
+  create: Prisma.XOR<Prisma.EntitlementCreateWithoutDownloadTokensInput, Prisma.EntitlementUncheckedCreateWithoutDownloadTokensInput>
+}
+
+export type EntitlementUpsertWithoutDownloadTokensInput = {
+  update: Prisma.XOR<Prisma.EntitlementUpdateWithoutDownloadTokensInput, Prisma.EntitlementUncheckedUpdateWithoutDownloadTokensInput>
+  create: Prisma.XOR<Prisma.EntitlementCreateWithoutDownloadTokensInput, Prisma.EntitlementUncheckedCreateWithoutDownloadTokensInput>
+  where?: Prisma.EntitlementWhereInput
+}
+
+export type EntitlementUpdateToOneWithWhereWithoutDownloadTokensInput = {
+  where?: Prisma.EntitlementWhereInput
+  data: Prisma.XOR<Prisma.EntitlementUpdateWithoutDownloadTokensInput, Prisma.EntitlementUncheckedUpdateWithoutDownloadTokensInput>
+}
+
+export type EntitlementUpdateWithoutDownloadTokensInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  downloadsUsed?: Prisma.IntFieldUpdateOperationsInput | number
+  downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
+  revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user?: Prisma.UserUpdateOneRequiredWithoutEntitlementsNestedInput
+  tenant?: Prisma.TenantUpdateOneRequiredWithoutEntitlementsNestedInput
+  product?: Prisma.ProductUpdateOneRequiredWithoutEntitlementsNestedInput
+  orderItem?: Prisma.OrderItemUpdateOneRequiredWithoutEntitlementNestedInput
+  downloadEvents?: Prisma.DownloadEventUpdateManyWithoutEntitlementNestedInput
+}
+
+export type EntitlementUncheckedUpdateWithoutDownloadTokensInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  tenantId?: Prisma.StringFieldUpdateOperationsInput | string
+  productId?: Prisma.StringFieldUpdateOperationsInput | string
+  orderItemId?: Prisma.StringFieldUpdateOperationsInput | string
+  downloadsUsed?: Prisma.IntFieldUpdateOperationsInput | number
+  downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
+  revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  downloadEvents?: Prisma.DownloadEventUncheckedUpdateManyWithoutEntitlementNestedInput
+}
+
+export type EntitlementCreateWithoutDownloadEventsInput = {
+  id?: string
+  downloadsUsed?: number
+  downloadLimit: number
+  revokedAt?: Date | string | null
+  createdAt?: Date | string
+  user: Prisma.UserCreateNestedOneWithoutEntitlementsInput
+  tenant: Prisma.TenantCreateNestedOneWithoutEntitlementsInput
+  product: Prisma.ProductCreateNestedOneWithoutEntitlementsInput
+  orderItem: Prisma.OrderItemCreateNestedOneWithoutEntitlementInput
+  downloadTokens?: Prisma.DownloadTokenCreateNestedManyWithoutEntitlementInput
+}
+
+export type EntitlementUncheckedCreateWithoutDownloadEventsInput = {
+  id?: string
+  userId: string
+  tenantId: string
+  productId: string
+  orderItemId: string
+  downloadsUsed?: number
+  downloadLimit: number
+  revokedAt?: Date | string | null
+  createdAt?: Date | string
+  downloadTokens?: Prisma.DownloadTokenUncheckedCreateNestedManyWithoutEntitlementInput
+}
+
+export type EntitlementCreateOrConnectWithoutDownloadEventsInput = {
+  where: Prisma.EntitlementWhereUniqueInput
+  create: Prisma.XOR<Prisma.EntitlementCreateWithoutDownloadEventsInput, Prisma.EntitlementUncheckedCreateWithoutDownloadEventsInput>
+}
+
+export type EntitlementUpsertWithoutDownloadEventsInput = {
+  update: Prisma.XOR<Prisma.EntitlementUpdateWithoutDownloadEventsInput, Prisma.EntitlementUncheckedUpdateWithoutDownloadEventsInput>
+  create: Prisma.XOR<Prisma.EntitlementCreateWithoutDownloadEventsInput, Prisma.EntitlementUncheckedCreateWithoutDownloadEventsInput>
+  where?: Prisma.EntitlementWhereInput
+}
+
+export type EntitlementUpdateToOneWithWhereWithoutDownloadEventsInput = {
+  where?: Prisma.EntitlementWhereInput
+  data: Prisma.XOR<Prisma.EntitlementUpdateWithoutDownloadEventsInput, Prisma.EntitlementUncheckedUpdateWithoutDownloadEventsInput>
+}
+
+export type EntitlementUpdateWithoutDownloadEventsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  downloadsUsed?: Prisma.IntFieldUpdateOperationsInput | number
+  downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
+  revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user?: Prisma.UserUpdateOneRequiredWithoutEntitlementsNestedInput
+  tenant?: Prisma.TenantUpdateOneRequiredWithoutEntitlementsNestedInput
+  product?: Prisma.ProductUpdateOneRequiredWithoutEntitlementsNestedInput
+  orderItem?: Prisma.OrderItemUpdateOneRequiredWithoutEntitlementNestedInput
+  downloadTokens?: Prisma.DownloadTokenUpdateManyWithoutEntitlementNestedInput
+}
+
+export type EntitlementUncheckedUpdateWithoutDownloadEventsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  tenantId?: Prisma.StringFieldUpdateOperationsInput | string
+  productId?: Prisma.StringFieldUpdateOperationsInput | string
+  orderItemId?: Prisma.StringFieldUpdateOperationsInput | string
+  downloadsUsed?: Prisma.IntFieldUpdateOperationsInput | number
+  downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
+  revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  downloadTokens?: Prisma.DownloadTokenUncheckedUpdateManyWithoutEntitlementNestedInput
 }
 
 export type EntitlementCreateManyUserInput = {
@@ -866,6 +1071,8 @@ export type EntitlementUpdateWithoutUserInput = {
   tenant?: Prisma.TenantUpdateOneRequiredWithoutEntitlementsNestedInput
   product?: Prisma.ProductUpdateOneRequiredWithoutEntitlementsNestedInput
   orderItem?: Prisma.OrderItemUpdateOneRequiredWithoutEntitlementNestedInput
+  downloadTokens?: Prisma.DownloadTokenUpdateManyWithoutEntitlementNestedInput
+  downloadEvents?: Prisma.DownloadEventUpdateManyWithoutEntitlementNestedInput
 }
 
 export type EntitlementUncheckedUpdateWithoutUserInput = {
@@ -877,6 +1084,8 @@ export type EntitlementUncheckedUpdateWithoutUserInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  downloadTokens?: Prisma.DownloadTokenUncheckedUpdateManyWithoutEntitlementNestedInput
+  downloadEvents?: Prisma.DownloadEventUncheckedUpdateManyWithoutEntitlementNestedInput
 }
 
 export type EntitlementUncheckedUpdateManyWithoutUserInput = {
@@ -910,6 +1119,8 @@ export type EntitlementUpdateWithoutTenantInput = {
   user?: Prisma.UserUpdateOneRequiredWithoutEntitlementsNestedInput
   product?: Prisma.ProductUpdateOneRequiredWithoutEntitlementsNestedInput
   orderItem?: Prisma.OrderItemUpdateOneRequiredWithoutEntitlementNestedInput
+  downloadTokens?: Prisma.DownloadTokenUpdateManyWithoutEntitlementNestedInput
+  downloadEvents?: Prisma.DownloadEventUpdateManyWithoutEntitlementNestedInput
 }
 
 export type EntitlementUncheckedUpdateWithoutTenantInput = {
@@ -921,6 +1132,8 @@ export type EntitlementUncheckedUpdateWithoutTenantInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  downloadTokens?: Prisma.DownloadTokenUncheckedUpdateManyWithoutEntitlementNestedInput
+  downloadEvents?: Prisma.DownloadEventUncheckedUpdateManyWithoutEntitlementNestedInput
 }
 
 export type EntitlementUncheckedUpdateManyWithoutTenantInput = {
@@ -954,6 +1167,8 @@ export type EntitlementUpdateWithoutProductInput = {
   user?: Prisma.UserUpdateOneRequiredWithoutEntitlementsNestedInput
   tenant?: Prisma.TenantUpdateOneRequiredWithoutEntitlementsNestedInput
   orderItem?: Prisma.OrderItemUpdateOneRequiredWithoutEntitlementNestedInput
+  downloadTokens?: Prisma.DownloadTokenUpdateManyWithoutEntitlementNestedInput
+  downloadEvents?: Prisma.DownloadEventUpdateManyWithoutEntitlementNestedInput
 }
 
 export type EntitlementUncheckedUpdateWithoutProductInput = {
@@ -965,6 +1180,8 @@ export type EntitlementUncheckedUpdateWithoutProductInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  downloadTokens?: Prisma.DownloadTokenUncheckedUpdateManyWithoutEntitlementNestedInput
+  downloadEvents?: Prisma.DownloadEventUncheckedUpdateManyWithoutEntitlementNestedInput
 }
 
 export type EntitlementUncheckedUpdateManyWithoutProductInput = {
@@ -978,6 +1195,44 @@ export type EntitlementUncheckedUpdateManyWithoutProductInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
+
+/**
+ * Count Type EntitlementCountOutputType
+ */
+
+export type EntitlementCountOutputType = {
+  downloadTokens: number
+  downloadEvents: number
+}
+
+export type EntitlementCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  downloadTokens?: boolean | EntitlementCountOutputTypeCountDownloadTokensArgs
+  downloadEvents?: boolean | EntitlementCountOutputTypeCountDownloadEventsArgs
+}
+
+/**
+ * EntitlementCountOutputType without action
+ */
+export type EntitlementCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the EntitlementCountOutputType
+   */
+  select?: Prisma.EntitlementCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * EntitlementCountOutputType without action
+ */
+export type EntitlementCountOutputTypeCountDownloadTokensArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.DownloadTokenWhereInput
+}
+
+/**
+ * EntitlementCountOutputType without action
+ */
+export type EntitlementCountOutputTypeCountDownloadEventsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.DownloadEventWhereInput
+}
 
 
 export type EntitlementSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -994,6 +1249,9 @@ export type EntitlementSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
   orderItem?: boolean | Prisma.OrderItemDefaultArgs<ExtArgs>
+  downloadTokens?: boolean | Prisma.Entitlement$downloadTokensArgs<ExtArgs>
+  downloadEvents?: boolean | Prisma.Entitlement$downloadEventsArgs<ExtArgs>
+  _count?: boolean | Prisma.EntitlementCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["entitlement"]>
 
 export type EntitlementSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1046,6 +1304,9 @@ export type EntitlementInclude<ExtArgs extends runtime.Types.Extensions.Internal
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
   orderItem?: boolean | Prisma.OrderItemDefaultArgs<ExtArgs>
+  downloadTokens?: boolean | Prisma.Entitlement$downloadTokensArgs<ExtArgs>
+  downloadEvents?: boolean | Prisma.Entitlement$downloadEventsArgs<ExtArgs>
+  _count?: boolean | Prisma.EntitlementCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type EntitlementIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -1067,6 +1328,8 @@ export type $EntitlementPayload<ExtArgs extends runtime.Types.Extensions.Interna
     tenant: Prisma.$TenantPayload<ExtArgs>
     product: Prisma.$ProductPayload<ExtArgs>
     orderItem: Prisma.$OrderItemPayload<ExtArgs>
+    downloadTokens: Prisma.$DownloadTokenPayload<ExtArgs>[]
+    downloadEvents: Prisma.$DownloadEventPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1476,6 +1739,8 @@ export interface Prisma__EntitlementClient<T, Null = never, ExtArgs extends runt
   tenant<T extends Prisma.TenantDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.TenantDefaultArgs<ExtArgs>>): Prisma.Prisma__TenantClient<runtime.Types.Result.GetResult<Prisma.$TenantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   product<T extends Prisma.ProductDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ProductDefaultArgs<ExtArgs>>): Prisma.Prisma__ProductClient<runtime.Types.Result.GetResult<Prisma.$ProductPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   orderItem<T extends Prisma.OrderItemDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.OrderItemDefaultArgs<ExtArgs>>): Prisma.Prisma__OrderItemClient<runtime.Types.Result.GetResult<Prisma.$OrderItemPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  downloadTokens<T extends Prisma.Entitlement$downloadTokensArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Entitlement$downloadTokensArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DownloadTokenPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  downloadEvents<T extends Prisma.Entitlement$downloadEventsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Entitlement$downloadEventsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DownloadEventPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1912,6 +2177,54 @@ export type EntitlementDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.I
    * Limit how many Entitlements to delete.
    */
   limit?: number
+}
+
+/**
+ * Entitlement.downloadTokens
+ */
+export type Entitlement$downloadTokensArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the DownloadToken
+   */
+  select?: Prisma.DownloadTokenSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the DownloadToken
+   */
+  omit?: Prisma.DownloadTokenOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DownloadTokenInclude<ExtArgs> | null
+  where?: Prisma.DownloadTokenWhereInput
+  orderBy?: Prisma.DownloadTokenOrderByWithRelationInput | Prisma.DownloadTokenOrderByWithRelationInput[]
+  cursor?: Prisma.DownloadTokenWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.DownloadTokenScalarFieldEnum | Prisma.DownloadTokenScalarFieldEnum[]
+}
+
+/**
+ * Entitlement.downloadEvents
+ */
+export type Entitlement$downloadEventsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the DownloadEvent
+   */
+  select?: Prisma.DownloadEventSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the DownloadEvent
+   */
+  omit?: Prisma.DownloadEventOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DownloadEventInclude<ExtArgs> | null
+  where?: Prisma.DownloadEventWhereInput
+  orderBy?: Prisma.DownloadEventOrderByWithRelationInput | Prisma.DownloadEventOrderByWithRelationInput[]
+  cursor?: Prisma.DownloadEventWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.DownloadEventScalarFieldEnum | Prisma.DownloadEventScalarFieldEnum[]
 }
 
 /**

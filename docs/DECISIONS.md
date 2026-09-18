@@ -280,3 +280,38 @@
   sửa M3 ngoài phạm vi công việc đang làm là rủi ro không cần thiết cho một module đã ổn định — nếu cần đồng
   bộ hoá cả hai, làm như một thay đổi riêng, có xin ý kiến người dùng trước (ảnh hưởng luồng thanh toán đã
   chạy thật).
+
+## ADR-020 — M9: `DownloadToken` L1 (không RLS), 3 policy RLS có sẵn (`products`/`product_files`) thêm nhánh "customer", mật khẩu share link dùng argon2 riêng trong `core`
+
+- **Bối cảnh 1 (DownloadToken):** §"M9" cần một token dùng-một-lần bắc cầu giữa `POST /api/downloads` và
+  `GET /api/downloads/{token}` — không có trong ERD gốc (chỉ `download_tokens`/`download_events` được nhắc
+  ở sơ đồ kiến trúc, không có cột chi tiết). Thiết kế theo đúng mẫu `RefreshToken`/`VerificationToken` (M1):
+  chỉ lưu hash, có `expiresAt`/`usedAt`.
+- **Quyết định 1:** `DownloadToken` là bảng **L1, không RLS** — ranh giới bảo mật ở đây là "chỉ người vừa
+  yêu cầu tải giữ token thô" (như email-verify/reset-password link), không phải lọc theo `tenantId`/`userId`
+  ở tầng DB. Thêm cột `tenantId` denormalize từ `entitlement.tenantId` lúc tạo, để `consumeDownloadToken()`
+  mở đúng một `withTenant()` ngay từ đầu mà không cần một lượt đọc RLS-scoped riêng chỉ để biết tenant nào.
+- **Bối cảnh 2 (RLS thiếu nhánh customer):** Khi viết `requestDownload()`/`listLibraryEntitlements()`, phát
+  hiện `product_files` (RLS từ M5) và `products` (RLS từ M4) chỉ có nhánh tenant/public(PUBLISHED)/system_job
+  — không có cách nào cho một **khách hàng đã mua** đọc file/sản phẩm của chính họ một khi sản phẩm không
+  còn `PUBLISHED` (gỡ xuống/lưu trữ sau khi bán). Test tích hợp đầu tiên chạy thật bắt đúng lỗi này (đọc trả
+  về `null`/entitlement rỗng), không phải phát hiện qua review code.
+- **Quyết định 2:** Thêm nhánh thứ 4 vào cả hai policy: `app.scope='customer' AND EXISTS (... entitlements
+  WHERE productId = ... AND userId = current_setting('app.user_id'))` — 2 migration RLS riêng
+  (`rls_m9_product_files_customer`, `rls_m9_products_customer`), không sửa lại policy gốc trong migration cũ
+  (giữ lịch sử migration bất biến, đúng nguyên tắc Prisma). Cùng lúc phát hiện `consumeShareLinkDownload()`
+  đọc `share_links` qua `getPrismaClient()` trần thay vì `withPublic()` — RLS chặn hẳn (không silent-filter
+  vì đây là bảng có FORCE ROW LEVEL SECURITY), sửa bằng cách bọc lại qua `withPublic()`. Cả 3 lỗ hổng cùng
+  một lớp lỗi đã gặp ở M8's `payment-process.ts` — bằng chứng thêm rằng đây là loại lỗi cần cảnh giác thường
+  trực, không phải sự cố riêng lẻ.
+- **Bối cảnh 3 (mật khẩu share link):** §"M9" cần hash/verify mật khẩu tuỳ chọn cho share link — cùng thuật
+  toán argon2id đã dùng cho mật khẩu tài khoản (`packages/auth`), nhưng `packages/core` không được phép phụ
+  thuộc `packages/auth` (chiều phụ thuộc ngược — mọi package khác *phụ thuộc vào* `core`, không phải ngược
+  lại).
+- **Quyết định 3:** Thêm `argon2` làm dependency riêng của `packages/core`, viết `hashSharePassword`/
+  `verifySharePassword` độc lập trong `packages/core/src/download/share-link-password.ts` — trùng thuật toán
+  với `packages/auth/src/password.ts` nhưng không dùng chung code, giữ đúng chiều phụ thuộc package.
+- **Lý do chung:** Cả 3 quyết định đều ưu tiên giữ đúng ranh giới layer đã thiết lập từ đầu dự án (L1 vs L2
+  RLS, chiều phụ thuộc package) hơn là tiện lợi ngắn hạn — và quan trọng hơn, 2 lỗ hổng RLS + 1 lỗi bỏ sót
+  `withPublic()` đều được **sửa trước khi merge**, phát hiện bằng chính kỷ luật viết integration test chạy
+  thật trên Neon (không mock DB) đã áp dụng xuyên suốt dự án.

@@ -51,6 +51,8 @@ model User {
   orders             Order[]
   entitlements       Entitlement[]
   tenantCustomerOf   TenantCustomer[]
+  downloadTokens     DownloadToken[]
+  downloadEvents     DownloadEvent[]
 
   @@map("users")
 }
@@ -234,6 +236,8 @@ model Tenant {
   transactions        TenantPaymentTransaction[]
   customers           TenantCustomer[]
   entitlements        Entitlement[]
+  shareLinks          ShareLink[]
+  downloadEvents      DownloadEvent[]
 
   @@map("tenants")
 }
@@ -314,6 +318,7 @@ model Product {
   files        ProductFile[]
   orderItems   OrderItem[]
   entitlements Entitlement[]
+  shareLinks   ShareLink[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -346,6 +351,9 @@ model ProductFile {
   isPreview  Boolean               @default(false)
   removedAt  DateTime?
   createdAt  DateTime              @default(now())
+
+  downloadTokens DownloadToken[]
+  downloadEvents DownloadEvent[]
 
   @@index([productId])
   @@index([tenantId])
@@ -716,7 +724,90 @@ model Entitlement {
   revokedAt     DateTime?
   createdAt     DateTime  @default(now())
 
+  downloadTokens DownloadToken[]
+  downloadEvents DownloadEvent[]
+
   @@index([userId])
   @@index([tenantId])
   @@map("entitlements")
+}
+
+/// §"M9" — single-use, 60s-TTL token bridging `POST /api/downloads` (creates
+/// it) and `GET /api/downloads/{token}` (consumes it). Same shape as
+/// RefreshToken/VerificationToken (hash stored, never the raw token) and,
+/// like them, **L1 — no RLS**: the security boundary is "only the customer
+/// who just requested it holds the raw token", not a tenant/user row filter,
+/// so a plain `getPrismaClient()` lookup by `tokenHash` is correct here.
+model DownloadToken {
+  id            String    @id @default(cuid(2))
+  tokenHash     String    @unique
+  entitlementId String
+  entitlement   Entitlement @relation(fields: [entitlementId], references: [id], onDelete: Cascade)
+  fileId        String
+  file          ProductFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Denormalized from `entitlement.tenantId` at creation — lets `consumeDownloadToken()`
+  /// open one `withTenant()` transaction immediately, without an extra RLS-scoped lookup
+  /// just to learn which tenant scope to use.
+  tenantId      String
+  expiresAt     DateTime
+  usedAt        DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([entitlementId])
+  @@map("download_tokens")
+}
+
+/// §"M9" — L2, RLS: tenantId match (owner manages/reads stats) OR
+/// app.scope='public' (anonymous `/s/{token}` lookup by tokenHash — the row
+/// is readable even when revoked/expired so the app can tell "never
+/// existed" (404) apart from "no longer usable" (410), same reasoning as
+/// Order's customer-scope clause not filtering by status either).
+/// `fileIds` null/empty = every file currently sold for the product
+/// (same "empty = no restriction" convention as Coupon.productIds, M6).
+model ShareLink {
+  id           String    @id @default(cuid(2))
+  tenantId     String
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tokenHash    String    @unique
+  label        String
+  passwordHash String?
+  fileIds      Json?
+  maxUses      Int?
+  usedCount    Int       @default(0)
+  expiresAt    DateTime?
+  revokedAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  downloadEvents DownloadEvent[]
+
+  @@index([tenantId])
+  @@map("share_links")
+}
+
+/// §"M9" — L2, RLS by tenantId only (audit trail for the owner; no
+/// customer-facing read of raw events, unlike Entitlement). Exactly one of
+/// `entitlementId`/`shareLinkId` is set per row — a logged-in customer's own
+/// download vs. an anonymous share-link download.
+model DownloadEvent {
+  id            String       @id @default(cuid(2))
+  tenantId      String
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  fileId        String
+  file          ProductFile  @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  entitlementId String?
+  entitlement   Entitlement? @relation(fields: [entitlementId], references: [id])
+  shareLinkId   String?
+  shareLink     ShareLink?   @relation(fields: [shareLinkId], references: [id])
+  userId        String?
+  user          User?        @relation(fields: [userId], references: [id])
+  ip            String?
+  createdAt     DateTime     @default(now())
+
+  @@index([tenantId])
+  @@index([fileId])
+  @@map("download_events")
 }

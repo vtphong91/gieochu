@@ -15,7 +15,7 @@ import { assertPlanLimit } from "./plan-limits";
 import { getDecryptedSystemStorageConfig } from "./system-storage";
 import { enqueueFileScan } from "./jobs";
 
-async function requireStorageConfig() {
+export async function requireStorageConfig() {
   const config = await getDecryptedSystemStorageConfig();
   if (!config) {
     throw new AppError({ code: "STORAGE_NOT_CONFIGURED", message: "Chưa cấu hình lưu trữ file.", httpStatus: 503 });

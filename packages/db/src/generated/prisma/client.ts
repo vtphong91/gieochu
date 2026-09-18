@@ -255,3 +255,32 @@ export type TenantCustomer = Prisma.TenantCustomerModel
  * never retroactively changes what an existing buyer already has.
  */
 export type Entitlement = Prisma.EntitlementModel
+/**
+ * Model DownloadToken
+ * §"M9" — single-use, 60s-TTL token bridging `POST /api/downloads` (creates
+ * it) and `GET /api/downloads/{token}` (consumes it). Same shape as
+ * RefreshToken/VerificationToken (hash stored, never the raw token) and,
+ * like them, **L1 — no RLS**: the security boundary is "only the customer
+ * who just requested it holds the raw token", not a tenant/user row filter,
+ * so a plain `getPrismaClient()` lookup by `tokenHash` is correct here.
+ */
+export type DownloadToken = Prisma.DownloadTokenModel
+/**
+ * Model ShareLink
+ * §"M9" — L2, RLS: tenantId match (owner manages/reads stats) OR
+ * app.scope='public' (anonymous `/s/{token}` lookup by tokenHash — the row
+ * is readable even when revoked/expired so the app can tell "never
+ * existed" (404) apart from "no longer usable" (410), same reasoning as
+ * Order's customer-scope clause not filtering by status either).
+ * `fileIds` null/empty = every file currently sold for the product
+ * (same "empty = no restriction" convention as Coupon.productIds, M6).
+ */
+export type ShareLink = Prisma.ShareLinkModel
+/**
+ * Model DownloadEvent
+ * §"M9" — L2, RLS by tenantId only (audit trail for the owner; no
+ * customer-facing read of raw events, unlike Entitlement). Exactly one of
+ * `entitlementId`/`shareLinkId` is set per row — a logged-in customer's own
+ * download vs. an anonymous share-link download.
+ */
+export type DownloadEvent = Prisma.DownloadEventModel

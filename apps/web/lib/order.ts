@@ -432,7 +432,7 @@ export async function getOrderDetail(tenantId: string, orderId: string) {
   const order = await withTenant(tenantId, (tx) =>
     tx.order.findUnique({
       where: { id: orderId },
-      include: { customer: { select: { email: true } }, items: true, transactions: true },
+      include: { customer: { select: { email: true } }, items: { include: { entitlement: true } }, transactions: true },
     }),
   );
   if (!order || order.tenantId !== tenantId) throw notFound("Không tìm thấy đơn hàng.");

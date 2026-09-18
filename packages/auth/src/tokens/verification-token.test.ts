@@ -1,4 +1,4 @@
-import { hashOpaqueToken } from "./random-token";
+import { hashOpaqueToken } from "@gieochu/core";
 import { createVerificationToken, evaluateVerificationToken } from "./verification-token";
 
 describe("M1 verification token", () => {

@@ -17,6 +17,7 @@
     "test:integration": "echo \"no integration tests in @gieochu/auth\""
   },
   "dependencies": {
+    "@gieochu/core": "workspace:*",
     "argon2": "0.45.1",
     "jose": "6.2.12"
   },

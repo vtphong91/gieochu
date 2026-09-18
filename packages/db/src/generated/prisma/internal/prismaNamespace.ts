@@ -423,7 +423,10 @@ export const ModelName = {
   OrderItem: 'OrderItem',
   TenantPaymentTransaction: 'TenantPaymentTransaction',
   TenantCustomer: 'TenantCustomer',
-  Entitlement: 'Entitlement'
+  Entitlement: 'Entitlement',
+  DownloadToken: 'DownloadToken',
+  ShareLink: 'ShareLink',
+  DownloadEvent: 'DownloadEvent'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -439,7 +442,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userProfile" | "refreshToken" | "verificationToken" | "plan" | "cmsPage" | "subscription" | "tenant" | "tenantMember" | "tenantSlugHistory" | "product" | "productFile" | "systemSettings" | "systemStorageConfig" | "tenantPaymentConfig" | "platformPaymentConfig" | "subscriptionInvoice" | "platformPaymentTransaction" | "webhookEvent" | "bankBin" | "coupon" | "couponRedemption" | "order" | "orderItem" | "tenantPaymentTransaction" | "tenantCustomer" | "entitlement"
+    modelProps: "user" | "userProfile" | "refreshToken" | "verificationToken" | "plan" | "cmsPage" | "subscription" | "tenant" | "tenantMember" | "tenantSlugHistory" | "product" | "productFile" | "systemSettings" | "systemStorageConfig" | "tenantPaymentConfig" | "platformPaymentConfig" | "subscriptionInvoice" | "platformPaymentTransaction" | "webhookEvent" | "bankBin" | "coupon" | "couponRedemption" | "order" | "orderItem" | "tenantPaymentTransaction" | "tenantCustomer" | "entitlement" | "downloadToken" | "shareLink" | "downloadEvent"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2441,6 +2444,228 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    DownloadToken: {
+      payload: Prisma.$DownloadTokenPayload<ExtArgs>
+      fields: Prisma.DownloadTokenFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.DownloadTokenFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DownloadTokenPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.DownloadTokenFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DownloadTokenPayload>
+        }
+        findFirst: {
+          args: Prisma.DownloadTokenFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DownloadTokenPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.DownloadTokenFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DownloadTokenPayload>
+        }
+        findMany: {
+          args: Prisma.DownloadTokenFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DownloadTokenPayload>[]
+        }
+        create: {
+          args: Prisma.DownloadTokenCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DownloadTokenPayload>
+        }
+        createMany: {
+          args: Prisma.DownloadTokenCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.DownloadTokenCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DownloadTokenPayload>[]
+        }
+        delete: {
+          args: Prisma.DownloadTokenDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DownloadTokenPayload>
+        }
+        update: {
+          args: Prisma.DownloadTokenUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DownloadTokenPayload>
+        }
+        deleteMany: {
+          args: Prisma.DownloadTokenDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.DownloadTokenUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.DownloadTokenUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DownloadTokenPayload>[]
+        }
+        upsert: {
+          args: Prisma.DownloadTokenUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DownloadTokenPayload>
+        }
+        aggregate: {
+          args: Prisma.DownloadTokenAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateDownloadToken>
+        }
+        groupBy: {
+          args: Prisma.DownloadTokenGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DownloadTokenGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.DownloadTokenCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DownloadTokenCountAggregateOutputType> | number
+        }
+      }
+    }
+    ShareLink: {
+      payload: Prisma.$ShareLinkPayload<ExtArgs>
+      fields: Prisma.ShareLinkFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ShareLinkFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShareLinkPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ShareLinkFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShareLinkPayload>
+        }
+        findFirst: {
+          args: Prisma.ShareLinkFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShareLinkPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ShareLinkFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShareLinkPayload>
+        }
+        findMany: {
+          args: Prisma.ShareLinkFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShareLinkPayload>[]
+        }
+        create: {
+          args: Prisma.ShareLinkCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShareLinkPayload>
+        }
+        createMany: {
+          args: Prisma.ShareLinkCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ShareLinkCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShareLinkPayload>[]
+        }
+        delete: {
+          args: Prisma.ShareLinkDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShareLinkPayload>
+        }
+        update: {
+          args: Prisma.ShareLinkUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShareLinkPayload>
+        }
+        deleteMany: {
+          args: Prisma.ShareLinkDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ShareLinkUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ShareLinkUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShareLinkPayload>[]
+        }
+        upsert: {
+          args: Prisma.ShareLinkUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShareLinkPayload>
+        }
+        aggregate: {
+          args: Prisma.ShareLinkAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateShareLink>
+        }
+        groupBy: {
+          args: Prisma.ShareLinkGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ShareLinkGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ShareLinkCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ShareLinkCountAggregateOutputType> | number
+        }
+      }
+    }
+    DownloadEvent: {
+      payload: Prisma.$DownloadEventPayload<ExtArgs>
+      fields: Prisma.DownloadEventFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.DownloadEventFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DownloadEventPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.DownloadEventFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DownloadEventPayload>
+        }
+        findFirst: {
+          args: Prisma.DownloadEventFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DownloadEventPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.DownloadEventFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DownloadEventPayload>
+        }
+        findMany: {
+          args: Prisma.DownloadEventFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DownloadEventPayload>[]
+        }
+        create: {
+          args: Prisma.DownloadEventCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DownloadEventPayload>
+        }
+        createMany: {
+          args: Prisma.DownloadEventCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.DownloadEventCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DownloadEventPayload>[]
+        }
+        delete: {
+          args: Prisma.DownloadEventDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DownloadEventPayload>
+        }
+        update: {
+          args: Prisma.DownloadEventUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DownloadEventPayload>
+        }
+        deleteMany: {
+          args: Prisma.DownloadEventDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.DownloadEventUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.DownloadEventUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DownloadEventPayload>[]
+        }
+        upsert: {
+          args: Prisma.DownloadEventUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DownloadEventPayload>
+        }
+        aggregate: {
+          args: Prisma.DownloadEventAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateDownloadEvent>
+        }
+        groupBy: {
+          args: Prisma.DownloadEventGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DownloadEventGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.DownloadEventCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DownloadEventCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -2887,6 +3112,53 @@ export const EntitlementScalarFieldEnum = {
 } as const
 
 export type EntitlementScalarFieldEnum = (typeof EntitlementScalarFieldEnum)[keyof typeof EntitlementScalarFieldEnum]
+
+
+export const DownloadTokenScalarFieldEnum = {
+  id: 'id',
+  tokenHash: 'tokenHash',
+  entitlementId: 'entitlementId',
+  fileId: 'fileId',
+  userId: 'userId',
+  tenantId: 'tenantId',
+  expiresAt: 'expiresAt',
+  usedAt: 'usedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type DownloadTokenScalarFieldEnum = (typeof DownloadTokenScalarFieldEnum)[keyof typeof DownloadTokenScalarFieldEnum]
+
+
+export const ShareLinkScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  productId: 'productId',
+  tokenHash: 'tokenHash',
+  label: 'label',
+  passwordHash: 'passwordHash',
+  fileIds: 'fileIds',
+  maxUses: 'maxUses',
+  usedCount: 'usedCount',
+  expiresAt: 'expiresAt',
+  revokedAt: 'revokedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type ShareLinkScalarFieldEnum = (typeof ShareLinkScalarFieldEnum)[keyof typeof ShareLinkScalarFieldEnum]
+
+
+export const DownloadEventScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  fileId: 'fileId',
+  entitlementId: 'entitlementId',
+  shareLinkId: 'shareLinkId',
+  userId: 'userId',
+  ip: 'ip',
+  createdAt: 'createdAt'
+} as const
+
+export type DownloadEventScalarFieldEnum = (typeof DownloadEventScalarFieldEnum)[keyof typeof DownloadEventScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -3435,6 +3707,9 @@ export type GlobalOmitConfig = {
   tenantPaymentTransaction?: Prisma.TenantPaymentTransactionOmit
   tenantCustomer?: Prisma.TenantCustomerOmit
   entitlement?: Prisma.EntitlementOmit
+  downloadToken?: Prisma.DownloadTokenOmit
+  shareLink?: Prisma.ShareLinkOmit
+  downloadEvent?: Prisma.DownloadEventOmit
 }
 
 /* Types for Logging */
