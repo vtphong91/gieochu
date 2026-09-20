@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createVerificationToken, normalizeEmail } from "@gieochu/auth";
+import { logger } from "@gieochu/core";
 import { getEnv } from "@gieochu/config";
 import { getPrismaClient } from "@gieochu/db";
 import { renderResetPasswordEmailTemplate } from "@gieochu/email";
 import { getRequestId, handleApiError, parseJsonBody } from "../../../../lib/api-response";
 import { checkRateLimit } from "../../../../lib/rate-limit";
-import { enqueueEmail } from "../../../../lib/jobs";
+import { sendEmailNow } from "../../../../lib/email-dispatch";
 
 const forgotPasswordSchema = z.object({ email: z.string().email("Email không hợp lệ.") });
 const GENERIC_MESSAGE = "Nếu email tồn tại, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu.";
@@ -36,7 +37,10 @@ export async function POST(request: Request) {
         });
         const resetUrl = `${env.APP_URL}/reset-password?token=${verification.token}`;
         const rendered = renderResetPasswordEmailTemplate({ appName: env.APP_NAME, resetUrl });
-        await enqueueEmail({ to: user.email, subject: rendered.subject, html: rendered.html, text: rendered.text });
+        const sent = await sendEmailNow({ type: "reset_password", to: user.email, subject: rendered.subject, html: rendered.html, text: rendered.text });
+        if (!sent.ok) {
+          logger.warn({ email: user.email, error: sent.error }, "forgot-password: gửi email thất bại");
+        }
       }
     }
 

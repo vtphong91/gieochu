@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { AppError } from "@gieochu/core";
 import type { CheckoutResult } from "@gieochu/payments";
-import { requireCompleteAccountAccess } from "../../../../lib/page-guards";
+import { requireVerifiedAccess } from "../../../../lib/page-guards";
 import { getOrderForCustomer } from "../../../../lib/order";
 import { getEnabledProviders } from "../../../../lib/tenant-payment";
 import { CheckoutPoll } from "./checkout-poll";
@@ -24,7 +24,7 @@ function formatVnDateTime(date: Date): string {
 
 export default async function CheckoutPage({ params }: { params: Promise<{ tenantSlug: string; orderCode: string }> }) {
   const { tenantSlug, orderCode } = await params;
-  const user = await requireCompleteAccountAccess(`/${tenantSlug}/checkout/${orderCode}`);
+  const user = await requireVerifiedAccess(`/${tenantSlug}/checkout/${orderCode}`);
 
   let order;
   try {

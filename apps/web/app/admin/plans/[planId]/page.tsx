@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getPrismaClient } from "@gieochu/db";
 import { requireAdminAccess } from "../../../../lib/page-guards";
+import { AdminPageHeader, SettingsGrid } from "../../_ui/kit";
 import { EditPlanForm } from "./edit-plan-form";
 import type { PlanFormValues } from "../plan-form";
 
@@ -26,9 +27,11 @@ export default async function AdminEditPlanPage({ params }: { params: Promise<{ 
   };
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-10">
-      <h1 className="text-2xl font-bold">Sửa gói — {plan.name}</h1>
-      <EditPlanForm planId={planId} initial={initial} />
+    <main className="px-5 py-8 lg:px-8">
+      <AdminPageHeader title={`Sửa gói — ${plan.name}`} />
+      <SettingsGrid>
+        <EditPlanForm planId={planId} initial={initial} />
+      </SettingsGrid>
     </main>
   );
 }

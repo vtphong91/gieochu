@@ -14,3 +14,7 @@ npm-debug.log*
 pnpm-debug.log*
 .DS_Store
 Thumbs.db
+
+# Ghi chú nội bộ nhạy cảm — không bao giờ commit (ví dụ: sơ đồ phân quyền chi
+# tiết, thông tin vận hành không dành cho public repo).
+docs/private/

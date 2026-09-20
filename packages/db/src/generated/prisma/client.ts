@@ -49,9 +49,11 @@ export type User = Prisma.UserModel
 /**
  * Model UserProfile
  * §5.1 Layer System — USER_PROFILES. Created at registration with just
- * fullName + consentAt; phone/occupation/province start null and are filled
- * in during the mandatory profile-completion step (isProfileComplete()
- * checks all four — see packages/auth/src/profile.ts).
+ * fullName + consentAt; phone/province tự nguyện điền sau qua /account/profile
+ * (không còn là cổng bắt buộc trước khi dùng hệ thống — xem
+ * packages/auth/src/profile.ts isProfileComplete()). `occupation` không còn
+ * dùng (từng trùng lựa chọn loại tài khoản lúc đăng ký) — giữ cột nullable,
+ * không migrate xoá.
  */
 export type UserProfile = Prisma.UserProfileModel
 /**
@@ -78,8 +80,34 @@ export type VerificationToken = Prisma.VerificationTokenModel
  */
 export type Plan = Prisma.PlanModel
 /**
+ * Model Role
+ * L1 — nguồn sự thật cho "tier này được làm gì", thay các hàm hardcode TS
+ * (`canManageTenant()`...). Role là định nghĩa toàn cục (không phải row
+ * theo từng tenant) — mọi OWNER/STAFF của mọi tenant cùng trỏ về 1 Role qua
+ * `code`, đối chiếu với `User.systemRole` / `TenantMember.role` (giữ
+ * nguyên làm nhãn định danh, không đổi thành FK — xem ADR-022) lúc đọc.
+ * `code` khớp enum theo quy ước seed: SYSTEM_ADMIN, TENANT_OWNER,
+ * TENANT_STAFF.
+ */
+export type Role = Prisma.RoleModel
+/**
+ * Model Permission
+ * 1 row / hành động có thể cấp quyền, namespace kiểu "system:manage_users",
+ * "tenant:manage_products".
+ */
+export type Permission = Prisma.PermissionModel
+/**
+ * Model RolePermission
+ * 
+ */
+export type RolePermission = Prisma.RolePermissionModel
+/**
  * Model CmsPage
  * §5.1 Layer System — cms_pages (marketing content blocks)
+ * `blocks` là bản LIVE (đang hiển thị công khai). `blocksDraft` là bản đang
+ * sửa dở — null nghĩa là chưa có nháp nào khác bản live. Lưu nháp chỉ ghi
+ * `blocksDraft`, không đụng `blocks`; Publish copy blocksDraft -> blocks rồi
+ * xoá blocksDraft; "Khôi phục live" xoá blocksDraft để quay lại đúng bản live.
  */
 export type CmsPage = Prisma.CmsPageModel
 /**
@@ -156,6 +184,52 @@ export type SystemSettings = Prisma.SystemSettingsModel
  * `encryptedSecrets` holds { accessKeyId, secretAccessKey }.
  */
 export type SystemStorageConfig = Prisma.SystemStorageConfigModel
+/**
+ * Model SystemCloudinaryConfig
+ * Tài khoản Cloudinary dùng để upload ảnh cho CMS (khác hẳn
+ * SystemStorageConfig — đó là R2, dùng cho file tài liệu/ảnh bìa sản phẩm).
+ * Cùng pattern mã hoá AES-256-GCM với SystemStorageConfig (§7.3).
+ */
+export type SystemCloudinaryConfig = Prisma.SystemCloudinaryConfigModel
+/**
+ * Model SystemSmtpConfig
+ * Cấu hình gửi email hệ thống (System Admin, /admin/settings/smtp) — bắt đầu với
+ * SMTP chuẩn (Gmail App Password). Các provider email khác (Resend, SES...) sẽ có
+ * bảng riêng sau, theo đúng mẫu SystemStorageConfig/SystemCloudinaryConfig (mỗi
+ * integration 1 bảng, không dồn chung 1 bảng đa-provider để tránh JSON lẫn lộn
+ * field giữa các provider khác nhau).
+ */
+export type SystemSmtpConfig = Prisma.SystemSmtpConfigModel
+/**
+ * Model EmailSendLog
+ * Lịch sử gửi email CẤP PLATFORM (System Admin, tab "Lịch sử gửi" trong
+ * /admin/settings/smtp) — CHỈ ghi email hệ thống: xác thực tài khoản, reset mật
+ * khẩu, billing/subscription gửi cho CHỦ tenant, soát file, email test SMTP...
+ * KHÔNG BAO GIỜ ghi email order_paid/new_sale (gửi tới khách hàng cuối của
+ * tenant) — loại trừ ngay từ lúc ghi log (xem apps/web/lib/email-dispatch.ts),
+ * không lọc lúc hiển thị, để giữ đúng ranh giới "System admin không đọc chi tiết
+ * đơn hàng/khách hàng của tenant" (CLAUDE.md §7.9).
+ */
+export type EmailSendLog = Prisma.EmailSendLogModel
+/**
+ * Model DocumentCategory
+ * Danh mục tài liệu — taxonomy CẤP PLATFORM do System Admin tạo trước
+ * (/admin/categories), KHÔNG phải danh mục riêng của từng tenant. Việc gán
+ * sản phẩm vào danh mục này là module sau (chưa làm ở đây). Bảng L1 (không
+ * tenantId), không cần RLS — cùng lớp với SystemBranding/Plan.
+ */
+export type DocumentCategory = Prisma.DocumentCategoryModel
+/**
+ * Model SystemBranding
+ * Nhận diện thương hiệu nền tảng (không phải branding riêng của từng
+ * tenant — đó là `Tenant.branding`). Tất cả field đều nullable: null nghĩa
+ * là "dùng mặc định" — brandName/brandSlogan rỗng thì `getEffectiveBrand()`
+ * (apps/web/lib/branding.ts) rơi về `getBrand()` (env, §"packages/config").
+ * Không đặt bảng này trong @gieochu/config vì package đó không được phép
+ * phụ thuộc @gieochu/db (packages/db mới là bên phụ thuộc config, ngược lại
+ * sẽ tạo circular dependency).
+ */
+export type SystemBranding = Prisma.SystemBrandingModel
 /**
  * Model TenantPaymentConfig
  * §5.2 — TENANT_PAYMENT_CONFIGS. L2 (tenantId), RLS-protected like

@@ -1,6 +1,5 @@
 import { createJobQueue, QUEUE_NAMES, type JobQueue } from "@gieochu/jobs";
 import { getEnv } from "@gieochu/config";
-import type { EmailMessage } from "@gieochu/email";
 import type { PaymentProviderId } from "@gieochu/payments";
 
 let queue: JobQueue | undefined;
@@ -18,17 +17,11 @@ async function getStartedQueue(): Promise<JobQueue> {
   if (!started) {
     started = queue
       .start()
-      .then(() => queue!.ensureQueue(QUEUE_NAMES.EMAIL_SEND))
       .then(() => queue!.ensureQueue(QUEUE_NAMES.FILE_SCAN))
       .then(() => queue!.ensureQueue(QUEUE_NAMES.PAYMENT_PROCESS));
   }
   await started;
   return queue;
-}
-
-export async function enqueueEmail(message: EmailMessage): Promise<void> {
-  const q = await getStartedQueue();
-  await q.send(QUEUE_NAMES.EMAIL_SEND, message);
 }
 
 export interface FileScanJobData {

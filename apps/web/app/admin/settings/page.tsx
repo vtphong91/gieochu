@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getEnv } from "@gieochu/config";
 import { getPrismaClient } from "@gieochu/db";
 import { requireAdminAccess } from "../../../lib/page-guards";
+import { AdminPageHeader, SettingsGrid } from "../_ui/kit";
 import { SettingsForm } from "./settings-form";
 
 export default async function AdminSettingsPage() {
@@ -12,18 +13,22 @@ export default async function AdminSettingsPage() {
   const env = getEnv();
 
   return (
-    <main className="mx-auto max-w-md px-4 py-10">
-      <h1 className="text-2xl font-bold">Cấu hình hệ thống</h1>
-      <SettingsForm
-        initial={{
-          platformName: settings?.platformName ?? env.APP_NAME,
-          supportEmail: settings?.supportEmail ?? "",
-          trialDays: settings?.trialDays ?? env.TRIAL_DAYS,
-          graceDays: settings?.graceDays ?? env.GRACE_DAYS,
-        }}
-      />
+    <main className="px-5 py-8 lg:px-8">
+      <AdminPageHeader title="Cấu hình hệ thống" subtitle="Thông tin nền tảng, thời hạn dùng thử/gia hạn, và các cấu hình vận hành khác." />
+
+      <SettingsGrid>
+        <SettingsForm
+          initial={{
+            platformName: settings?.platformName ?? env.APP_NAME,
+            supportEmail: settings?.supportEmail ?? "",
+            trialDays: settings?.trialDays ?? env.TRIAL_DAYS,
+            graceDays: settings?.graceDays ?? env.GRACE_DAYS,
+          }}
+        />
+      </SettingsGrid>
+
       <p className="mt-6 text-sm">
-        <Link href="/admin/settings/storage" className="text-[var(--color-primary)] underline">
+        <Link href="/admin/settings/storage" className="font-medium text-[#0F3B82] underline">
           Cấu hình lưu trữ file (S3-compatible) →
         </Link>
       </p>

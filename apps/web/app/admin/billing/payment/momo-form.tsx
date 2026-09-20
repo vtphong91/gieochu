@@ -2,6 +2,8 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { saveMomoAction, testMomoConnectionAction, type PlatformPaymentActionState } from "./actions";
+import { Badge, ConfigCard, FormBanner, GhostButton, PrimaryButton, SelectField, TextField, Toggle } from "../../_ui/kit";
+import { IconWallet } from "../../_ui/icons";
 
 const initialState: PlatformPaymentActionState = {};
 
@@ -15,55 +17,54 @@ export function MomoForm({
   const [isTesting, startTest] = useTransition();
 
   return (
-    <section className="rounded border p-4">
-      <h2 className="text-lg font-semibold">MoMo (tài khoản Tani)</h2>
-      <p className="mt-1 text-xs text-amber-600">
-        Đổi partner code hoặc secret key sẽ tự tắt phương thức này — lưu lại lần nữa (đã tích &quot;Bật&quot;) để xác nhận.
-      </p>
-      {initial.lastVerifiedAt ? (
-        <p className="mt-1 text-xs text-green-700">Đã kiểm tra kết nối thành công lúc {initial.lastVerifiedAt}.</p>
-      ) : null}
-      <form action={formAction} className="mt-3 space-y-3">
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="isEnabled" defaultChecked={initial.isEnabled} />
-          Bật phương thức này
-        </label>
-        <input name="partnerCode" defaultValue={initial.partnerCode} placeholder="Partner Code" required className="w-full rounded border px-3 py-2" />
-        <input name="accessKey" defaultValue={initial.accessKey} placeholder="Access Key" required className="w-full rounded border px-3 py-2" />
-        <select name="environment" defaultValue={initial.environment || "sandbox"} className="w-full rounded border px-3 py-2">
+    <form action={formAction}>
+      <ConfigCard
+        icon={<IconWallet className="h-5 w-5" />}
+        title="MoMo"
+        badges={
+          <>
+            <Badge tone={initial.isEnabled ? "success" : "neutral"}>{initial.isEnabled ? "Đang bật" : "Đang tắt"}</Badge>
+            {initial.lastVerifiedAt ? <Badge tone="info">Đã xác minh</Badge> : null}
+          </>
+        }
+        description={initial.lastVerifiedAt ? `Đã kiểm tra kết nối thành công lúc ${initial.lastVerifiedAt}.` : "Ví điện tử MoMo — xác nhận tự động qua API chính thức."}
+        toggle={<Toggle name="isEnabled" defaultChecked={initial.isEnabled} label="Bật" />}
+        footer={
+          <p className="text-xs" style={{ color: "#B45309" }}>
+            Đổi partner code hoặc secret key sẽ tự tắt phương thức này — lưu lại lần nữa (đã tích &quot;Bật&quot;) để xác nhận.
+          </p>
+        }
+      >
+        <TextField id="momo-partnerCode" label="Partner Code" name="partnerCode" defaultValue={initial.partnerCode} required />
+        <TextField id="momo-accessKey" label="Access Key" name="accessKey" defaultValue={initial.accessKey} required />
+        <SelectField id="momo-environment" label="Môi trường" name="environment" defaultValue={initial.environment || "sandbox"}>
           <option value="sandbox">Sandbox (thử nghiệm)</option>
           <option value="production">Production</option>
-        </select>
-        <input
+        </SelectField>
+        <TextField
+          id="momo-secretKey"
+          label="Secret Key"
           name="secretKey"
           type="password"
-          placeholder={initial.maskedSecret ? `Secret hiện tại: ${initial.maskedSecret} — để trống nếu giữ nguyên` : "Secret Key"}
-          className="w-full rounded border px-3 py-2"
+          placeholder={initial.maskedSecret ? `Secret hiện tại: ${initial.maskedSecret} — để trống nếu giữ nguyên` : undefined}
         />
-        {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
-        {state.success ? <p className="text-sm text-green-700">Đã lưu.</p> : null}
-        <button type="submit" disabled={isPending} className="rounded bg-[var(--color-primary)] px-4 py-2 text-white disabled:opacity-50">
-          {isPending ? "Đang lưu..." : "Lưu"}
-        </button>
-      </form>
-      <button
-        type="button"
-        disabled={isTesting}
-        onClick={() =>
-          startTest(async () => {
-            const result = await testMomoConnectionAction();
-            setTestResult(result.testResult ?? null);
-          })
-        }
-        className="mt-3 rounded border px-4 py-2 text-sm disabled:opacity-50"
-      >
-        {isTesting ? "Đang kiểm tra..." : "Kiểm tra kết nối"}
-      </button>
-      {testResult ? (
-        <p className={`mt-2 text-sm ${testResult.ok ? "text-green-700" : "text-red-600"}`}>
-          {testResult.ok ? "Kết nối thành công." : (testResult.message ?? "Kết nối thất bại.")}
-        </p>
-      ) : null}
-    </section>
+        <FormBanner ok={Boolean(state.success)} message={state.error ?? (state.success ? "Đã lưu." : undefined)} />
+        <div className="flex flex-wrap gap-3">
+          <PrimaryButton loading={isPending}>{isPending ? "Đang lưu..." : "Lưu cấu hình"}</PrimaryButton>
+          <GhostButton
+            disabled={isTesting}
+            onClick={() =>
+              startTest(async () => {
+                const result = await testMomoConnectionAction();
+                setTestResult(result.testResult ?? null);
+              })
+            }
+          >
+            {isTesting ? "Đang kiểm tra..." : "Kiểm tra kết nối"}
+          </GhostButton>
+        </div>
+        {testResult ? <FormBanner ok={testResult.ok} message={testResult.ok ? "Kết nối thành công." : (testResult.message ?? "Kết nối thất bại.")} /> : null}
+      </ConfigCard>
+    </form>
   );
 }

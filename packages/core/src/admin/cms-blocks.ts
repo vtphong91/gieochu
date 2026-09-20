@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 /**
- * §"M2" CMS block schema: hero, features, pricingTable (sourced from
+ * §"M2" CMS block schema, extended for multi-page CMS (§"Brand Identity"
+ * proposal): hero, features, stats, testimonials, pricingTable (sourced from
  * `plans`), faq, richText, cta — all optional, unknown extra keys rejected
  * so the editor can't silently save typo'd block names.
  */
@@ -18,6 +19,23 @@ export const cmsBlocksSchema = z
         z.object({
           title: z.string().min(1),
           description: z.string().optional(),
+        }),
+      )
+      .optional(),
+    stats: z
+      .array(
+        z.object({
+          value: z.string().min(1),
+          label: z.string().min(1),
+        }),
+      )
+      .optional(),
+    testimonials: z
+      .array(
+        z.object({
+          quote: z.string().min(1),
+          name: z.string().min(1),
+          role: z.string().optional(),
         }),
       )
       .optional(),

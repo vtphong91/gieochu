@@ -1,10 +1,104 @@
 @import "tailwindcss";
 
+/* Design tokens theo docs/GIEOCHU_BRAND_IDENTITY_PRODUCT_PROPOSAL_V1.0.md §28.
+   --brand-* được app/layout.tsx tiêm động từ SystemBranding (System Admin ->
+   Nhận diện thương hiệu); --color-* giữ lại tên cũ cho các chỗ đã dùng
+   var(--color-primary) từ trước, chỉ còn là alias trỏ sang --brand-* (fallback
+   hex y hệt giá trị mặc định khi chưa cấu hình gì). */
 :root {
-  --color-primary: #2563eb;
-  --color-accent: #16a34a;
+  --color-primary: var(--brand-primary, #0f3b82);
+  --color-accent: var(--brand-accent, #d97706);
+  --color-secondary: var(--brand-secondary, #16a34a);
 }
 
 body {
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+/* Style nội dung rich text từ TiptapEditor (apps/web/app/_ui/editor) — dùng
+   CHUNG 1 class cho cả vùng đang sửa (.gieochu-editor-content, ProseMirror)
+   lẫn nơi hiển thị tĩnh nội dung đã lưu (trang sản phẩm công khai, sau này
+   Blog) để WYSIWYG khớp giữa lúc sửa và lúc xem — đúng nguyên tắc đã ghi
+   nhận ở docs/bao-cao-ky-thuat-tiptap-editor-content-creator-2026-09-19.md §2.9. */
+.gieochu-editor-content,
+.gieochu-rich-content {
+  color: #12213a;
+  font-size: 15px;
+  line-height: 1.7;
+}
+.gieochu-editor-content :is(h1, h2, h3, h4),
+.gieochu-rich-content :is(h1, h2, h3, h4) {
+  font-family: var(--font-heading, inherit);
+  font-weight: 700;
+  margin: 1.2em 0 0.5em;
+  line-height: 1.3;
+}
+.gieochu-editor-content h1,
+.gieochu-rich-content h1 {
+  font-size: 1.6em;
+}
+.gieochu-editor-content h2,
+.gieochu-rich-content h2 {
+  font-size: 1.35em;
+}
+.gieochu-editor-content h3,
+.gieochu-rich-content h3 {
+  font-size: 1.15em;
+}
+.gieochu-editor-content h4,
+.gieochu-rich-content h4 {
+  font-size: 1em;
+}
+.gieochu-editor-content p,
+.gieochu-rich-content p {
+  margin: 0.6em 0;
+}
+.gieochu-editor-content :is(ul, ol),
+.gieochu-rich-content :is(ul, ol) {
+  margin: 0.6em 0;
+  padding-left: 1.4em;
+}
+.gieochu-editor-content blockquote,
+.gieochu-rich-content blockquote {
+  border-left: 3px solid var(--color-primary);
+  margin: 0.8em 0;
+  padding: 0.2em 0 0.2em 1em;
+  color: #55607a;
+}
+.gieochu-editor-content code,
+.gieochu-rich-content code {
+  background: #f3f4f6;
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  font-size: 0.9em;
+}
+.gieochu-editor-content a,
+.gieochu-rich-content a {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+.gieochu-editor-content img,
+.gieochu-rich-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 0.6em 0;
+}
+.gieochu-editor-content mark,
+.gieochu-rich-content mark {
+  background: #fef08a;
+  border-radius: 2px;
+}
+.gieochu-editor-content hr,
+.gieochu-rich-content hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 1.2em 0;
+}
+.gieochu-editor-content p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  float: left;
+  height: 0;
+  pointer-events: none;
 }

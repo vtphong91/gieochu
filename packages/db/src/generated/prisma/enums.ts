@@ -42,6 +42,14 @@ export const PlanInterval = {
 export type PlanInterval = (typeof PlanInterval)[keyof typeof PlanInterval]
 
 
+export const RoleScope = {
+  SYSTEM: 'SYSTEM',
+  TENANT: 'TENANT'
+} as const
+
+export type RoleScope = (typeof RoleScope)[keyof typeof RoleScope]
+
+
 export const CmsPageStatus = {
   DRAFT: 'DRAFT',
   PUBLISHED: 'PUBLISHED'

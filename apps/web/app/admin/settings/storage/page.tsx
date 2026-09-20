@@ -1,5 +1,6 @@
 import { requireAdminAccess } from "../../../../lib/page-guards";
 import { getSystemStorageConfig } from "../../../../lib/system-storage";
+import { AdminPageHeader, SettingsGrid } from "../../_ui/kit";
 import { StorageForm } from "./storage-form";
 
 export default async function AdminStorageSettingsPage() {
@@ -8,14 +9,13 @@ export default async function AdminStorageSettingsPage() {
   const config = await getSystemStorageConfig();
 
   return (
-    <main className="mx-auto max-w-md px-4 py-10">
-      <h1 className="text-2xl font-bold">Lưu trữ file</h1>
-      <p className="mt-2 text-sm text-gray-500">
-        Cấu hình tài khoản S3-compatible (Cloudflare R2) dùng để lưu file tài liệu (bucket private) và ảnh bìa
-        (bucket public) của toàn nền tảng.
-      </p>
+    <main className="px-5 py-8 lg:px-8">
+      <AdminPageHeader
+        title="Lưu trữ file"
+        subtitle="Cấu hình tài khoản S3-compatible (Cloudflare R2) dùng để lưu file tài liệu và ảnh bìa của toàn nền tảng."
+      />
 
-      <div className="mt-6">
+      <SettingsGrid>
         <StorageForm
           initial={{
             endpoint: config?.publicConfig.endpoint ?? "",
@@ -31,7 +31,7 @@ export default async function AdminStorageSettingsPage() {
               : null,
           }}
         />
-      </div>
+      </SettingsGrid>
     </main>
   );
 }

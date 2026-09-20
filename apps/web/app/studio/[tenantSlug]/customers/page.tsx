@@ -1,5 +1,7 @@
 import { requireTenantMemberPage } from "../../../../lib/page-guards";
 import { listTenantCustomers } from "../../../../lib/order";
+import { AdminPageHeader, DataTable, EmptyState, Td, Tr } from "../../../admin/_ui/kit";
+import { IconUsers } from "../../../admin/_ui/icons";
 
 function formatVnDate(date: Date): string {
   return date.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
@@ -12,24 +14,25 @@ export default async function StudioCustomersPage({ params }: { params: Promise<
   const customers = await listTenantCustomers(tenant.id);
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-10">
-      <h1 className="text-2xl font-bold">Khách hàng</h1>
+    <main className="px-5 py-8 lg:px-8">
+      <AdminPageHeader title="Khách hàng" subtitle="Danh sách khách hàng đã từng mua tài liệu của bạn." />
 
-      <ul className="mt-6 divide-y rounded border">
-        {customers.length === 0 ? <li className="p-4 text-sm text-gray-500">Chưa có khách hàng nào.</li> : null}
-        {customers.map((customer) => (
-          <li key={customer.userId} className="flex items-center justify-between p-4 text-sm">
-            <div>
-              <p className="font-medium">{customer.user.email}</p>
-              <p className="text-gray-500">
-                {customer.ordersCount} đơn · mua lần đầu{" "}
-                {customer.firstOrderAt ? formatVnDate(customer.firstOrderAt) : "—"}
-              </p>
-            </div>
-            <span className="font-medium">{customer.totalSpentVnd.toLocaleString("vi-VN")}đ</span>
-          </li>
-        ))}
-      </ul>
+      <div className="mt-6">
+        {customers.length === 0 ? (
+          <EmptyState icon={<IconUsers className="h-6 w-6" />} title="Chưa có khách hàng nào" />
+        ) : (
+          <DataTable head={["Email", "Số đơn", "Mua lần đầu", "Tổng chi tiêu"]}>
+            {customers.map((customer) => (
+              <Tr key={customer.userId}>
+                <Td className="font-medium">{customer.user.email}</Td>
+                <Td className="text-gray-500">{customer.ordersCount}</Td>
+                <Td className="text-gray-500">{customer.firstOrderAt ? formatVnDate(customer.firstOrderAt) : "—"}</Td>
+                <Td className="font-medium">{customer.totalSpentVnd.toLocaleString("vi-VN")}đ</Td>
+              </Tr>
+            ))}
+          </DataTable>
+        )}
+      </div>
     </main>
   );
 }

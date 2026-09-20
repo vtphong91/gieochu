@@ -1,8 +1,8 @@
-import { computeGraceEndsAt, transitionSubscriptionStatus, type SubscriptionStatus } from "@gieochu/core";
+import { computeGraceEndsAt, logger, transitionSubscriptionStatus, type SubscriptionStatus } from "@gieochu/core";
 import { getPrismaClient, type Tenant } from "@gieochu/db";
 import { renderSubscriptionStatusEmail, type SubscriptionEmailStage } from "@gieochu/email";
 import { getEnv } from "@gieochu/config";
-import { enqueueEmail } from "./jobs";
+import { sendEmailNow } from "./email-dispatch";
 
 const REMINDER_DAYS = { EARLY: 7, LATE: 1 } as const;
 
@@ -22,7 +22,11 @@ async function notify(tenant: Pick<Tenant, "name" | "slug" | "ownerId">, stage: 
     billingUrl: `${env.APP_URL}/studio/${tenant.slug}/billing`,
     periodEndDisplay: periodEnd ? formatVnDate(periodEnd) : undefined,
   });
-  await enqueueEmail({ to: owner.email, subject: rendered.subject, html: rendered.html, text: rendered.text });
+  const type = `subscription_${stage.toLowerCase()}`;
+  const sent = await sendEmailNow({ type, to: owner.email, subject: rendered.subject, html: rendered.html, text: rendered.text });
+  if (!sent.ok) {
+    logger.warn({ tenantSlug: tenant.slug, type, email: owner.email, error: sent.error }, "subscription.sweep: gửi email thất bại");
+  }
 }
 
 /**

@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { cancelOrderAction, markOrderRefundedAction, type OrderActionState } from "./actions";
+import { GhostButton } from "../../../../admin/_ui/kit";
 
 const initialState: OrderActionState = {};
 
@@ -11,10 +12,14 @@ export function CancelOrderButton({ tenantSlug, orderId }: { tenantSlug: string;
 
   return (
     <form action={formAction}>
-      <button type="submit" disabled={isPending} className="rounded border px-4 py-2 text-sm text-red-600 disabled:opacity-50">
+      <GhostButton type="submit" disabled={isPending} style={{ color: "#DC2626", borderColor: "#FCA5A5" }}>
         {isPending ? "Đang huỷ..." : "Huỷ đơn"}
-      </button>
-      {state.error ? <p className="mt-1 text-sm text-red-600">{state.error}</p> : null}
+      </GhostButton>
+      {state.error ? (
+        <p className="mt-1 text-sm" style={{ color: "#DC2626" }}>
+          {state.error}
+        </p>
+      ) : null}
     </form>
   );
 }
@@ -25,10 +30,14 @@ export function MarkRefundedButton({ tenantSlug, orderId }: { tenantSlug: string
 
   return (
     <form action={formAction}>
-      <button type="submit" disabled={isPending} className="rounded border px-4 py-2 text-sm disabled:opacity-50">
+      <GhostButton type="submit" disabled={isPending}>
         {isPending ? "Đang xử lý..." : "Đánh dấu đã hoàn tiền"}
-      </button>
-      {state.error ? <p className="mt-1 text-sm text-red-600">{state.error}</p> : null}
+      </GhostButton>
+      {state.error ? (
+        <p className="mt-1 text-sm" style={{ color: "#DC2626" }}>
+          {state.error}
+        </p>
+      ) : null}
     </form>
   );
 }

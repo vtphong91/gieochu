@@ -78,5 +78,7 @@ export type { LockRejectReason, LockTargetUser, LockUserDecision } from "./admin
 export { isValidPlanInput } from "./admin/plan-validation";
 export type { PlanInput } from "./admin/plan-validation";
 export { cmsBlocksSchema, isValidCmsBlocks } from "./admin/cms-blocks";
+export { homeSectionsSchema, homeSectionSchema, isValidHomeSections, HOME_SECTION_LABELS } from "./admin/home-sections";
+export type { HomeSection, HomeSectionType } from "./admin/home-sections";
 export { buildAdminDashboardSummary } from "./admin/dashboard-summary";
 export type { AdminDashboardCounts, AdminDashboardSummary } from "./admin/dashboard-summary";

@@ -1,6 +1,13 @@
 import nodemailer from "nodemailer";
 
 export interface EmailMessage {
+  /**
+   * Nhãn loại email (vd: "verify_email", "reset_password",
+   * "subscription_grace", "order_paid"...) — dùng để ghi Lịch sử gửi ở System
+   * Admin (apps/web/lib/email-dispatch.ts). Loại `order_paid`/`new_sale` (gửi
+   * tới khách hàng cuối của tenant) bị loại trừ khỏi log đó theo thiết kế.
+   */
+  type: string;
   to: string;
   subject: string;
   html: string;
@@ -12,12 +19,26 @@ export interface EmailSender {
   send(message: EmailMessage): Promise<void>;
 }
 
-export function createSmtpSender(options: { host: string; port: number; from: string }): EmailSender {
-  const transporter = nodemailer.createTransport({ host: options.host, port: options.port });
+export interface SmtpConnectionOptions {
+  host: string;
+  port: number;
+  /** true = SSL/TLS trực tiếp (port 465), false = STARTTLS hoặc không mã hoá (port 587/25, Mailpit dev). */
+  secure?: boolean;
+  auth?: { user: string; pass: string };
+}
+
+export function createSmtpSender(options: SmtpConnectionOptions & { from: string; replyTo?: string }): EmailSender {
+  const transporter = nodemailer.createTransport({
+    host: options.host,
+    port: options.port,
+    secure: options.secure,
+    auth: options.auth,
+  });
   return {
     async send(message) {
       await transporter.sendMail({
         from: options.from,
+        replyTo: options.replyTo,
         to: message.to,
         subject: message.subject,
         html: message.html,
@@ -25,6 +46,17 @@ export function createSmtpSender(options: { host: string; port: number; from: st
       });
     },
   };
+}
+
+/** Xác thực kết nối + đăng nhập SMTP thật (dùng cho "Kiểm tra kết nối" ở System Admin) — không gửi email. */
+export async function verifySmtpConnection(options: SmtpConnectionOptions): Promise<void> {
+  const transporter = nodemailer.createTransport({
+    host: options.host,
+    port: options.port,
+    secure: options.secure,
+    auth: options.auth,
+  });
+  await transporter.verify();
 }
 
 export function createResendSender(options: { apiKey: string; from: string }): EmailSender {

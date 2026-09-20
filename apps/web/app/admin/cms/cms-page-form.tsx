@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 import { saveCmsPageAction, type CmsActionState } from "./actions";
+import { ConfigCard, FormBanner, PrimaryButton, SelectField, TextField } from "../_ui/kit";
+import { IconDoc } from "../_ui/icons";
 
 const initialState: CmsActionState = {};
 
@@ -18,74 +20,55 @@ export function CmsPageForm({ initial, slugEditable }: { initial: CmsPageFormVal
   const [state, formAction, isPending] = useActionState(saveCmsPageAction, initialState);
 
   return (
-    <form action={formAction} className="mt-6 space-y-4">
-      <div>
-        <label className="block text-sm font-medium" htmlFor="slug">
-          Slug (đường dẫn, ví dụ &quot;pricing&quot; cho /p/pricing)
-        </label>
-        <input
-          id="slug"
+    <form action={formAction}>
+      <ConfigCard icon={<IconDoc className="h-5 w-5" />} title="Nội dung trang" description={'Chỉ hiển thị công khai khi trạng thái là "Xuất bản".'}>
+
+        <TextField
+          id="cms-slug"
+          label="Slug (đường dẫn)"
           name="slug"
           defaultValue={initial.slug}
           readOnly={!slugEditable}
           required
-          className="mt-1 w-full rounded border px-3 py-2 disabled:bg-gray-100"
+          hint={slugEditable ? `Trang sẽ hiện ở /p/${initial.slug || "<slug>"}` : undefined}
         />
-      </div>
-      <div>
-        <label className="block text-sm font-medium" htmlFor="title">
-          Tiêu đề
-        </label>
-        <input id="title" name="title" defaultValue={initial.title} required className="mt-1 w-full rounded border px-3 py-2" />
-      </div>
-      <div>
-        <label className="block text-sm font-medium" htmlFor="blocksJson">
-          Nội dung block (JSON — hero/features/pricingTable/faq/richText/cta)
-        </label>
-        <textarea
-          id="blocksJson"
-          name="blocksJson"
-          defaultValue={initial.blocksJson}
-          rows={10}
-          required
-          className="mt-1 w-full rounded border px-3 py-2 font-mono text-xs"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium" htmlFor="seoTitle">
-          SEO title
-        </label>
-        <input id="seoTitle" name="seoTitle" defaultValue={initial.seoTitle} className="mt-1 w-full rounded border px-3 py-2" />
-      </div>
-      <div>
-        <label className="block text-sm font-medium" htmlFor="seoDescription">
-          SEO description
-        </label>
-        <textarea
-          id="seoDescription"
-          name="seoDescription"
-          defaultValue={initial.seoDescription}
-          rows={2}
-          className="mt-1 w-full rounded border px-3 py-2"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium" htmlFor="status">
-          Trạng thái
-        </label>
-        <select id="status" name="status" defaultValue={initial.status} className="mt-1 w-full rounded border px-3 py-2">
+        <TextField id="cms-title" label="Tiêu đề" name="title" defaultValue={initial.title} required />
+        <div>
+          <label htmlFor="cms-blocksJson" className="block text-sm font-medium" style={{ color: "#12213A" }}>
+            Nội dung block (JSON)
+          </label>
+          <textarea
+            id="cms-blocksJson"
+            name="blocksJson"
+            defaultValue={initial.blocksJson}
+            rows={12}
+            required
+            className="mt-1.5 w-full rounded-lg border bg-white px-3.5 py-2.5 font-mono text-xs outline-none focus:border-[#0F3B82] focus:ring-2 focus:ring-[#0F3B82]/15"
+            style={{ borderColor: "#E5E7EB" }}
+          />
+          <p className="mt-1.5 text-xs text-gray-500">hero / features / stats / testimonials / pricingTable / faq / richText / cta</p>
+        </div>
+        <TextField id="cms-seoTitle" label="SEO title" name="seoTitle" defaultValue={initial.seoTitle} />
+        <div>
+          <label htmlFor="cms-seoDescription" className="block text-sm font-medium" style={{ color: "#12213A" }}>
+            SEO description
+          </label>
+          <textarea
+            id="cms-seoDescription"
+            name="seoDescription"
+            defaultValue={initial.seoDescription}
+            rows={2}
+            className="mt-1.5 w-full rounded-lg border bg-white px-3.5 py-2.5 text-[15px] outline-none focus:border-[#0F3B82] focus:ring-2 focus:ring-[#0F3B82]/15"
+            style={{ borderColor: "#E5E7EB" }}
+          />
+        </div>
+        <SelectField id="cms-status" label="Trạng thái" name="status" defaultValue={initial.status}>
           <option value="DRAFT">Nháp</option>
           <option value="PUBLISHED">Xuất bản</option>
-        </select>
-      </div>
-      {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
-      <button
-        type="submit"
-        disabled={isPending}
-        className="rounded bg-[var(--color-primary)] px-4 py-2 text-white disabled:opacity-50"
-      >
-        {isPending ? "Đang lưu..." : "Lưu"}
-      </button>
+        </SelectField>
+        <FormBanner ok={false} message={state.error} />
+        <PrimaryButton loading={isPending}>{isPending ? "Đang lưu..." : "Lưu"}</PrimaryButton>
+      </ConfigCard>
     </form>
   );
 }

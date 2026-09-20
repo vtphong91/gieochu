@@ -8,28 +8,32 @@ import { getPrismaClient } from "@gieochu/db";
 import { requireUser } from "../../../lib/session";
 import { getAccessTokenTtlSeconds, getJwtContext } from "../../../lib/jwt-context";
 import { ACCESS_COOKIE_NAME } from "../../../lib/cookies";
+import { toSafeRedirect } from "../../../lib/safe-redirect";
 
 const profileSchema = z.object({
   fullName: z.string().trim().min(1),
   phone: z.string().trim().min(1),
-  occupation: z.string().trim().min(1),
   province: z.string().trim().min(1),
   next: z.string().optional(),
 });
 
-/** Server Action backing /account/profile — §"M1" "Chặn hoàn thiện hồ sơ" flow. */
+/**
+ * Server Action backing /account/profile — trang cập nhật hồ sơ bình thường,
+ * không còn là cổng chặn bắt buộc trước khi dùng hệ thống (đã bỏ "Bạn là"/
+ * occupation vì trùng lựa chọn loại tài khoản đã chọn lúc đăng ký, và bỏ
+ * redirect ép hoàn thiện hồ sơ — xem lib/page-guards.ts).
+ */
 export async function completeProfileAction(formData: FormData): Promise<void> {
   const currentUser = await requireUser();
   const parsed = profileSchema.safeParse({
     fullName: formData.get("fullName"),
     phone: formData.get("phone"),
-    occupation: formData.get("occupation"),
     province: formData.get("province"),
     next: formData.get("next") ?? undefined,
   });
 
   if (!parsed.success) {
-    redirect("/account/profile?complete=1&error=1");
+    redirect("/account/profile?error=1");
   }
 
   const { next, ...profileData } = parsed.data;
@@ -70,9 +74,5 @@ export async function completeProfileAction(formData: FormData): Promise<void> {
     maxAge: accessTtl,
   });
 
-  if (!complete) {
-    redirect("/account/profile?complete=1");
-  }
-  const destination = next && next.startsWith("/") ? next : "/account/library";
-  redirect(destination);
+  redirect(toSafeRedirect(next, "/account/profile"));
 }

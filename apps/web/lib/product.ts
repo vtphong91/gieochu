@@ -15,6 +15,7 @@ export interface CreateProductInput {
   title: string;
   slug?: string;
   type?: ProductType;
+  description?: string;
 }
 
 /** §"M5": DRAFT product, slug suggested (base/base-2/base-3...) on collision within the tenant. */
@@ -35,7 +36,9 @@ export async function createProduct(tenantId: string, input: CreateProductInput)
   );
 
   return withTenant(tenantId, (tx) =>
-    tx.product.create({ data: { tenantId, slug, title: input.title, type: input.type ?? "OTHER", status: "DRAFT" } }),
+    tx.product.create({
+      data: { tenantId, slug, title: input.title, description: input.description, type: input.type ?? "OTHER", status: "DRAFT" },
+    }),
   );
 }
 

@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { AppError } from "@gieochu/core";
-import { requireVerifiedAndProfileComplete } from "../../lib/session";
+import { requireVerified } from "../../lib/session";
 import { createTenantForUser } from "../../lib/create-tenant";
 
 const createTenantSchema = z.object({
@@ -20,7 +20,7 @@ export async function createTenantAction(
   _prevState: CreateTenantActionState,
   formData: FormData,
 ): Promise<CreateTenantActionState> {
-  const user = await requireVerifiedAndProfileComplete();
+  const user = await requireVerified();
 
   const parsed = createTenantSchema.safeParse({
     name: formData.get("name"),

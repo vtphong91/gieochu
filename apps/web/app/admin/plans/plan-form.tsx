@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 import type { PlanActionState } from "./actions";
+import { ConfigCard, FormBanner, PrimaryButton, SelectField, TextField, Toggle } from "../_ui/kit";
+import { IconPackage } from "../_ui/icons";
 
 const initialState: PlanActionState = {};
 
@@ -39,63 +41,42 @@ export function PlanForm({
   const [state, formAction, isPending] = useActionState(action, initialState);
 
   return (
-    <form action={formAction} className="mt-6 grid grid-cols-2 gap-3 rounded border p-4 sm:grid-cols-4">
-      <input name="code" defaultValue={initial.code} placeholder="Mã gói (VD: PRO)" required className="rounded border px-3 py-2" />
-      <input name="name" defaultValue={initial.name} placeholder="Tên gói" required className="rounded border px-3 py-2" />
-      <input name="priceVnd" type="number" defaultValue={initial.priceVnd} placeholder="Giá (VNĐ)" required className="rounded border px-3 py-2" />
-      <select name="interval" defaultValue={initial.interval} className="rounded border px-3 py-2">
-        <option value="MONTH">Tháng</option>
-        <option value="YEAR">Năm</option>
-      </select>
-      <input
-        name="intervalCount"
-        type="number"
-        defaultValue={initial.intervalCount}
-        placeholder="Số chu kỳ"
-        required
-        className="rounded border px-3 py-2"
-      />
-      <input
-        name="maxProducts"
-        type="number"
-        defaultValue={initial.maxProducts}
-        placeholder="Giới hạn sản phẩm"
-        required
-        className="rounded border px-3 py-2"
-      />
-      <input name="storageMb" type="number" defaultValue={initial.storageMb} placeholder="Dung lượng (MB)" required className="rounded border px-3 py-2" />
-      <input
-        name="maxFileMb"
-        type="number"
-        defaultValue={initial.maxFileMb}
-        placeholder="Kích thước file tối đa (MB)"
-        required
-        className="rounded border px-3 py-2"
-      />
+    <form action={formAction}>
+      <ConfigCard icon={<IconPackage className="h-5 w-5" />} title="Thông tin gói" description="Số liệu ở đây điều khiển giới hạn thật của tenant dùng gói này.">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField id="plan-code" label="Mã gói" name="code" defaultValue={initial.code} placeholder="VD: PRO" required />
+          <TextField id="plan-name" label="Tên gói" name="name" defaultValue={initial.name} required />
+          <TextField id="plan-priceVnd" label="Giá (VNĐ)" name="priceVnd" type="number" defaultValue={initial.priceVnd} required />
+          <SelectField id="plan-interval" label="Chu kỳ" name="interval" defaultValue={initial.interval}>
+            <option value="MONTH">Tháng</option>
+            <option value="YEAR">Năm</option>
+          </SelectField>
+          <TextField id="plan-intervalCount" label="Số chu kỳ" name="intervalCount" type="number" defaultValue={initial.intervalCount} required />
+          <TextField id="plan-maxProducts" label="Giới hạn sản phẩm" name="maxProducts" type="number" defaultValue={initial.maxProducts} required />
+          <TextField id="plan-storageMb" label="Dung lượng (MB)" name="storageMb" type="number" defaultValue={initial.storageMb} required />
+          <TextField id="plan-maxFileMb" label="Kích thước file tối đa (MB)" name="maxFileMb" type="number" defaultValue={initial.maxFileMb} required />
+        </div>
 
-      <label className="col-span-2 flex items-center gap-2 text-sm sm:col-span-4">
-        <input type="checkbox" name="isFree" defaultChecked={initial.isFree} />
-        Gói Free — gán tự động cho tenant mới, không bao giờ hết hạn (chỉ được 1 gói Free đang bật)
-      </label>
+        <div className="rounded-lg border bg-gray-50 px-3.5 py-3" style={{ borderColor: "#E5E7EB" }}>
+          <Toggle name="isFree" defaultChecked={initial.isFree} label="Gói Free — gán tự động cho tenant mới, không bao giờ hết hạn" />
+          <p className="mt-1 pl-[52px] text-xs text-gray-500">Chỉ được 1 gói Free đang bật tại một thời điểm.</p>
+        </div>
 
-      <fieldset className="col-span-2 grid grid-cols-2 gap-2 rounded border p-3 text-sm sm:col-span-4 sm:grid-cols-3">
-        <legend className="px-1 text-xs text-gray-500">Tính năng</legend>
-        {Object.entries(FEATURE_LABELS).map(([key, label]) => (
-          <label key={key} className="flex items-center gap-2">
-            <input type="checkbox" name={`feature_${key}`} defaultChecked={initial.features[key] === true} />
-            {label}
-          </label>
-        ))}
-      </fieldset>
+        <fieldset className="rounded-lg border p-3.5" style={{ borderColor: "#E5E7EB" }}>
+          <legend className="px-1 text-xs font-medium text-gray-500">Tính năng</legend>
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            {Object.entries(FEATURE_LABELS).map(([key, label]) => (
+              <label key={key} className="flex items-center gap-2.5 text-sm">
+                <input type="checkbox" name={`feature_${key}`} defaultChecked={initial.features[key] === true} className="h-4 w-4 rounded" />
+                {label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
 
-      <button
-        type="submit"
-        disabled={isPending}
-        className="col-span-2 rounded bg-[var(--color-primary)] px-4 py-2 text-white disabled:opacity-50 sm:col-span-4"
-      >
-        {isPending ? "Đang lưu..." : submitLabel}
-      </button>
-      {state.error ? <p className="col-span-2 text-sm text-red-600 sm:col-span-4">{state.error}</p> : null}
+        <FormBanner ok={false} message={state.error} />
+        <PrimaryButton loading={isPending}>{isPending ? "Đang lưu..." : submitLabel}</PrimaryButton>
+      </ConfigCard>
     </form>
   );
 }

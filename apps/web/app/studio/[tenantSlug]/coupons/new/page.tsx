@@ -2,6 +2,7 @@ import { requireTenantMemberPage } from "../../../../../lib/page-guards";
 import { listProducts } from "../../../../../lib/product";
 import { CouponForm } from "../coupon-form";
 import { createCouponAction } from "../actions";
+import { AdminPageHeader, SettingsGrid } from "../../../../admin/_ui/kit";
 
 export default async function NewCouponPage({ params }: { params: Promise<{ tenantSlug: string }> }) {
   const { tenantSlug } = await params;
@@ -10,9 +11,9 @@ export default async function NewCouponPage({ params }: { params: Promise<{ tena
   const products = await listProducts(tenant.id);
 
   return (
-    <main className="mx-auto max-w-md px-4 py-10">
-      <h1 className="text-2xl font-bold">Tạo mã giảm giá</h1>
-      <div className="mt-6">
+    <main className="px-5 py-8 lg:px-8">
+      <AdminPageHeader title="Tạo mã giảm giá" subtitle="Thiết lập điều kiện áp dụng và giới hạn sử dụng." />
+      <SettingsGrid>
         <CouponForm
           action={createCouponAction.bind(null, tenantSlug)}
           submitLabel="Tạo mã"
@@ -31,7 +32,7 @@ export default async function NewCouponPage({ params }: { params: Promise<{ tena
             isEnabled: true,
           }}
         />
-      </div>
+      </SettingsGrid>
     </main>
   );
 }

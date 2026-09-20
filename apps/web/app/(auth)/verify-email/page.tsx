@@ -4,6 +4,10 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
+import { toSafeRedirect } from "../../../lib/safe-redirect";
+import { AuthCard } from "../_ui/auth-card";
+import { ErrorBanner, InfoBanner, SubmitButton, TextField } from "../_ui/fields";
+import { INK, INK_SOFT } from "../_ui/colors";
 
 type VerifyStatus = "idle" | "verifying" | "success" | "error";
 
@@ -22,9 +26,16 @@ export default function VerifyEmailPage() {
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
+  // `next` được register API gắn vào link kích hoạt (TENANT -> /studio,
+  // CUSTOMER -> /) — giữ nguyên qua bước verify rồi truyền tiếp cho /login.
+  const next = toSafeRedirect(searchParams.get("next"));
   const [status, setStatus] = useState<VerifyStatus>(token ? "verifying" : "idle");
   const [message, setMessage] = useState<string | null>(null);
-  const { register, handleSubmit, formState: { isSubmitting } } = useForm<ResendFormValues>();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<ResendFormValues>();
   const [resendMessage, setResendMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -57,40 +68,40 @@ function VerifyEmailContent() {
   }
 
   return (
-    <main className="mx-auto max-w-md px-4 py-16 text-center">
-      <h1 className="text-2xl font-bold">Kích hoạt tài khoản</h1>
-
-      {status === "verifying" ? <p className="mt-4 text-gray-600">Đang kích hoạt...</p> : null}
+    <AuthCard title="Kích hoạt tài khoản">
+      {status === "verifying" ? (
+        <p className="text-sm" style={{ color: INK_SOFT }}>
+          Đang kích hoạt...
+        </p>
+      ) : null}
       {status === "success" ? (
-        <p className="mt-4 text-green-700">
-          Kích hoạt thành công! Bạn có thể{" "}
-          <Link href="/login" className="text-[var(--color-primary)]">
-            đăng nhập
+        <p className="text-sm font-medium" style={{ color: "#166B3F" }}>
+          Kích hoạt thành công!{" "}
+          <Link href={`/login?next=${encodeURIComponent(next)}`} className="underline" style={{ color: "#0F3B82" }}>
+            Đăng nhập ngay
           </Link>
           .
         </p>
       ) : null}
-      {status === "error" ? <p className="mt-4 text-red-600">{message}</p> : null}
+      {status === "error" ? <ErrorBanner message={message} /> : null}
 
-      <div className="mt-8 text-left">
-        <h2 className="text-lg font-semibold">Chưa nhận được email kích hoạt?</h2>
+      <div className="mt-8">
+        <h2 className="text-base font-semibold" style={{ color: INK }}>
+          Chưa nhận được email kích hoạt?
+        </h2>
         <form onSubmit={handleSubmit(onResend)} className="mt-3 space-y-3">
-          <input
+          <TextField
+            id="resend-email"
             type="email"
-            placeholder="Email của bạn"
-            className="w-full rounded border px-3 py-2"
-            {...register("email", { required: true })}
+            label="Email của bạn"
+            autoComplete="email"
+            error={errors.email?.message}
+            {...register("email", { required: "Vui lòng nhập email." })}
           />
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded bg-[var(--color-primary)] px-4 py-2 text-white disabled:opacity-50"
-          >
-            Gửi lại email kích hoạt
-          </button>
-          {resendMessage ? <p className="text-sm text-gray-600">{resendMessage}</p> : null}
+          <SubmitButton loading={isSubmitting}>Gửi lại email kích hoạt</SubmitButton>
+          <InfoBanner message={resendMessage} />
         </form>
       </div>
-    </main>
+    </AuthCard>
   );
 }

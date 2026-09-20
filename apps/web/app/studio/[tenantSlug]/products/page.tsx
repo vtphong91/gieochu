@@ -1,11 +1,19 @@
 import Link from "next/link";
 import { requireTenantMemberPage } from "../../../../lib/page-guards";
 import { listProducts } from "../../../../lib/product";
+import { AdminPageHeader, Badge, DataTable, EmptyState, PrimaryLinkButton, Td, Tr } from "../../../admin/_ui/kit";
+import { IconPackage, IconPlus } from "../../../admin/_ui/icons";
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "Nháp",
   PUBLISHED: "Đã xuất bản",
   ARCHIVED: "Đã lưu trữ",
+};
+
+const STATUS_TONE: Record<string, "success" | "warning" | "neutral"> = {
+  PUBLISHED: "success",
+  DRAFT: "warning",
+  ARCHIVED: "neutral",
 };
 
 export default async function StudioProductsPage({ params }: { params: Promise<{ tenantSlug: string }> }) {
@@ -15,31 +23,40 @@ export default async function StudioProductsPage({ params }: { params: Promise<{
   const products = await listProducts(tenant.id);
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Sản phẩm</h1>
-        <Link
-          href={`/studio/${tenantSlug}/products/new`}
-          className="rounded bg-[var(--color-primary)] px-4 py-2 text-sm text-white"
-        >
-          + Tạo sản phẩm
-        </Link>
-      </div>
+    <main className="px-5 py-8 lg:px-8">
+      <AdminPageHeader
+        title="Sản phẩm"
+        subtitle="Quản lý tài liệu đang bán — nháp, xuất bản, lưu trữ."
+        action={
+          <PrimaryLinkButton href={`/studio/${tenantSlug}/products/new`}>
+            <IconPlus className="h-4 w-4" /> Tạo sản phẩm
+          </PrimaryLinkButton>
+        }
+      />
 
-      <ul className="mt-6 divide-y rounded border">
-        {products.length === 0 ? <li className="p-4 text-sm text-gray-500">Chưa có sản phẩm nào.</li> : null}
-        {products.map((product) => (
-          <li key={product.id} className="flex items-center justify-between p-4 text-sm">
-            <div>
-              <Link href={`/studio/${tenantSlug}/products/${product.id}`} className="font-medium hover:underline">
-                {product.title}
-              </Link>
-              <p className="text-gray-500">/{product.slug}</p>
-            </div>
-            <span>{STATUS_LABEL[product.status] ?? product.status}</span>
-          </li>
-        ))}
-      </ul>
+      {products.length === 0 ? (
+        <div className="mt-6">
+          <EmptyState icon={<IconPackage className="h-6 w-6" />} title="Chưa có sản phẩm nào" description="Tạo sản phẩm đầu tiên để bắt đầu bán tài liệu." />
+        </div>
+      ) : (
+        <div className="mt-6">
+          <DataTable head={["Sản phẩm", "Đường dẫn", "Trạng thái"]}>
+            {products.map((product) => (
+              <Tr key={product.id}>
+                <Td>
+                  <Link href={`/studio/${tenantSlug}/products/${product.id}`} className="font-medium hover:underline">
+                    {product.title}
+                  </Link>
+                </Td>
+                <Td className="font-mono text-xs text-gray-500">/{product.slug}</Td>
+                <Td>
+                  <Badge tone={STATUS_TONE[product.status] ?? "neutral"}>{STATUS_LABEL[product.status] ?? product.status}</Badge>
+                </Td>
+              </Tr>
+            ))}
+          </DataTable>
+        </div>
+      )}
     </main>
   );
 }

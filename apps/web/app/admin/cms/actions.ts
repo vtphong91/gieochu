@@ -35,7 +35,7 @@ export async function saveCmsPageAction(_prevState: CmsActionState, formData: Fo
     return { error: "Nội dung block phải là JSON hợp lệ." };
   }
   if (!isValidCmsBlocks(blocks)) {
-    return { error: "Cấu trúc block không hợp lệ (chỉ chấp nhận hero/features/pricingTable/faq/richText/cta)." };
+    return { error: "Cấu trúc block không hợp lệ (chỉ chấp nhận hero/features/stats/testimonials/pricingTable/faq/richText/cta)." };
   }
 
   const prisma = getPrismaClient();

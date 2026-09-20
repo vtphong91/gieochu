@@ -41,7 +41,13 @@ export async function POST(request: Request) {
     const passwordHash = await hashPassword(body.newPassword);
     await prisma.$transaction([
       prisma.verificationToken.update({ where: { id: record.id }, data: { usedAt: now } }),
-      prisma.user.update({ where: { id: record.userId }, data: { passwordHash } }),
+      // Đặt lại mật khẩu thành công cũng gỡ khoá tạm do đăng nhập sai quá
+      // nhiều lần (nếu có) — đây chính là lối thoát duy nhất khỏi trạng thái
+      // đó, xem apps/web/app/api/auth/login/route.ts.
+      prisma.user.update({
+        where: { id: record.userId },
+        data: { passwordHash, failedLoginAttempts: 0, passwordResetRequired: false },
+      }),
       // §M1: đặt lại mật khẩu thành công thu hồi mọi refresh token đang hoạt động.
       prisma.refreshToken.updateMany({ where: { userId: record.userId, revokedAt: null }, data: { revokedAt: now } }),
     ]);

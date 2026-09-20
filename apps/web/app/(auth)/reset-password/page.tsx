@@ -4,6 +4,11 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
+import { AuthCard } from "../_ui/auth-card";
+import { ErrorBanner, PasswordField, SubmitButton } from "../_ui/fields";
+import { INK_SOFT } from "../_ui/colors";
+
+const HAS_LETTER_AND_DIGIT = /^(?=.*[A-Za-z])(?=.*\d).+$/;
 
 interface ResetPasswordFormValues {
   newPassword: string;
@@ -23,7 +28,7 @@ function ResetPasswordForm() {
   const {
     register,
     handleSubmit,
-    formState: { isSubmitting },
+    formState: { errors, isSubmitting },
   } = useForm<ResetPasswordFormValues>();
   const [message, setMessage] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -48,44 +53,36 @@ function ResetPasswordForm() {
 
   if (success) {
     return (
-      <main className="mx-auto max-w-md px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold">Đặt lại mật khẩu thành công</h1>
-        <p className="mt-4 text-gray-600">
+      <AuthCard title="Đặt lại mật khẩu thành công">
+        <p className="text-sm" style={{ color: INK_SOFT }}>
           Vui lòng{" "}
-          <Link href="/login" className="text-[var(--color-primary)]">
+          <Link href="/login" className="font-medium" style={{ color: "#0F3B82" }}>
             đăng nhập
           </Link>{" "}
           lại với mật khẩu mới.
         </p>
-      </main>
+      </AuthCard>
     );
   }
 
   return (
-    <main className="mx-auto max-w-md px-4 py-16">
-      <h1 className="text-2xl font-bold">Đặt lại mật khẩu</h1>
-      <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-4">
-        <div>
-          <label className="block text-sm font-medium" htmlFor="newPassword">
-            Mật khẩu mới
-          </label>
-          <input
-            id="newPassword"
-            type="password"
-            className="mt-1 w-full rounded border px-3 py-2"
-            {...register("newPassword", { required: true, minLength: 8 })}
-          />
-          <p className="mt-1 text-xs text-gray-500">Ít nhất 8 ký tự, gồm cả chữ và số.</p>
-        </div>
-        {message ? <p className="text-sm text-red-600">{message}</p> : null}
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full rounded bg-[var(--color-primary)] px-4 py-2 text-white disabled:opacity-50"
-        >
-          {isSubmitting ? "Đang xử lý..." : "Đặt lại mật khẩu"}
-        </button>
+    <AuthCard title="Đặt lại mật khẩu">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+        <PasswordField
+          id="newPassword"
+          label="Mật khẩu mới"
+          autoComplete="new-password"
+          hint="Ít nhất 8 ký tự, gồm cả chữ và số."
+          error={errors.newPassword?.message}
+          {...register("newPassword", {
+            required: "Vui lòng nhập mật khẩu mới.",
+            minLength: { value: 8, message: "Mật khẩu cần ít nhất 8 ký tự." },
+            validate: (value) => HAS_LETTER_AND_DIGIT.test(value) || "Mật khẩu cần có cả chữ và số.",
+          })}
+        />
+        <ErrorBanner message={message} />
+        <SubmitButton loading={isSubmitting}>{isSubmitting ? "Đang xử lý..." : "Đặt lại mật khẩu"}</SubmitButton>
       </form>
-    </main>
+    </AuthCard>
   );
 }

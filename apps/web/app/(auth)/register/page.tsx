@@ -3,29 +3,40 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
+import { AccountTypeSelect, type AccountType } from "../_ui/account-type";
+import { AuthCard } from "../_ui/auth-card";
+import { ErrorBanner, PasswordField, SubmitButton, TextField } from "../_ui/fields";
+import { INK_SOFT } from "../_ui/colors";
+
+// Mirror của packages/auth/src/password.ts isValidPassword — chỉ để phản hồi
+// sớm trên client, quy tắc thật vẫn do server enforce lại.
+const HAS_LETTER_AND_DIGIT = /^(?=.*[A-Za-z])(?=.*\d).+$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface RegisterFormValues {
+  fullName: string;
   email: string;
   password: string;
-  fullName: string;
   consent: boolean;
 }
 
 export default function RegisterPage() {
+  const [accountType, setAccountType] = useState<AccountType | null>(null);
   const {
     register,
     handleSubmit,
-    formState: { isSubmitting },
+    formState: { errors, isSubmitting },
   } = useForm<RegisterFormValues>();
   const [serverError, setServerError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   async function onSubmit(data: RegisterFormValues) {
+    if (!accountType) return;
     setServerError(null);
     const response = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ ...data, accountType }),
     });
     if (!response.ok) {
       const body = await response.json();
@@ -37,73 +48,85 @@ export default function RegisterPage() {
 
   if (success) {
     return (
-      <main className="mx-auto max-w-md px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold">Kiểm tra email của bạn</h1>
-        <p className="mt-4 text-gray-600">
-          Chúng tôi đã gửi liên kết kích hoạt tài khoản. Vui lòng kiểm tra hộp thư (và mục spam).
+      <AuthCard title="Kiểm tra email của bạn">
+        <p className="text-sm" style={{ color: INK_SOFT }}>
+          Chúng tôi đã gửi liên kết kích hoạt tài khoản tới email bạn vừa đăng ký. Vui lòng kiểm tra hộp thư
+          (và mục spam) để tiếp tục.
         </p>
-      </main>
+      </AuthCard>
     );
   }
 
   return (
-    <main className="mx-auto max-w-md px-4 py-16">
-      <h1 className="text-2xl font-bold">Đăng ký</h1>
-      <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-4">
-        <div>
-          <label className="block text-sm font-medium" htmlFor="fullName">
-            Họ và tên
-          </label>
-          <input
-            id="fullName"
-            className="mt-1 w-full rounded border px-3 py-2"
-            {...register("fullName", { required: true })}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium" htmlFor="email">
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            className="mt-1 w-full rounded border px-3 py-2"
-            {...register("email", { required: true })}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium" htmlFor="password">
-            Mật khẩu
-          </label>
-          <input
-            id="password"
-            type="password"
-            className="mt-1 w-full rounded border px-3 py-2"
-            {...register("password", { required: true, minLength: 8 })}
-          />
-          <p className="mt-1 text-xs text-gray-500">Ít nhất 8 ký tự, gồm cả chữ và số.</p>
-        </div>
-        <div className="flex items-start gap-2">
-          <input id="consent" type="checkbox" className="mt-1" {...register("consent", { required: true })} />
-          <label htmlFor="consent" className="text-sm">
-            Tôi đồng ý với điều khoản sử dụng và chính sách xử lý dữ liệu cá nhân.
-          </label>
-        </div>
-        {serverError ? <p className="text-sm text-red-600">{serverError}</p> : null}
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full rounded bg-[var(--color-primary)] px-4 py-2 text-white disabled:opacity-50"
-        >
-          {isSubmitting ? "Đang xử lý..." : "Đăng ký"}
-        </button>
-      </form>
-      <p className="mt-4 text-sm text-gray-600">
-        Đã có tài khoản?{" "}
-        <Link href="/login" className="text-[var(--color-primary)]">
-          Đăng nhập
-        </Link>
-      </p>
-    </main>
+    <AuthCard
+      title="Tạo tài khoản"
+      subtitle="Chọn loại tài khoản phù hợp để bắt đầu."
+      footer={
+        <>
+          Đã có tài khoản?{" "}
+          <Link href="/login" className="font-medium" style={{ color: "#0F3B82" }}>
+            Đăng nhập
+          </Link>
+        </>
+      }
+    >
+      <div className="space-y-5">
+        <AccountTypeSelect value={accountType} onChange={setAccountType} />
+
+        {accountType ? (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+            <TextField
+              id="fullName"
+              label="Họ và tên"
+              autoComplete="name"
+              error={errors.fullName?.message}
+              {...register("fullName", { required: "Vui lòng nhập họ tên." })}
+            />
+            <TextField
+              id="email"
+              type="email"
+              label="Email"
+              autoComplete="email"
+              error={errors.email?.message}
+              {...register("email", {
+                required: "Vui lòng nhập email.",
+                pattern: { value: EMAIL_PATTERN, message: "Email không hợp lệ." },
+              })}
+            />
+            <PasswordField
+              id="password"
+              label="Mật khẩu"
+              autoComplete="new-password"
+              hint="Ít nhất 8 ký tự, gồm cả chữ và số."
+              error={errors.password?.message}
+              {...register("password", {
+                required: "Vui lòng nhập mật khẩu.",
+                minLength: { value: 8, message: "Mật khẩu cần ít nhất 8 ký tự." },
+                validate: (value) => HAS_LETTER_AND_DIGIT.test(value) || "Mật khẩu cần có cả chữ và số.",
+              })}
+            />
+            <div>
+              <label className="flex items-start gap-2.5 text-sm" style={{ color: INK_SOFT }}>
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded"
+                  {...register("consent", { required: true })}
+                />
+                Tôi đồng ý với điều khoản sử dụng và chính sách xử lý dữ liệu cá nhân.
+              </label>
+              {errors.consent ? (
+                <p role="alert" className="mt-1.5 text-sm" style={{ color: "#DC2626" }}>
+                  Bạn cần đồng ý điều khoản trước khi tiếp tục.
+                </p>
+              ) : null}
+            </div>
+            <ErrorBanner message={serverError} />
+            <SubmitButton loading={isSubmitting}>
+              {isSubmitting ? "Đang xử lý..." : accountType === "TENANT" ? "Tạo tài khoản & mở gian hàng" : "Tạo tài khoản"}
+            </SubmitButton>
+          </form>
+        ) : null}
+      </div>
+    </AuthCard>
   );
 }

@@ -24,9 +24,19 @@ export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const csp = [
     "default-src 'self'",
-    "img-src 'self' data: blob:",
+    // res.cloudinary.com: hiển thị ảnh đã upload (secure_url trả về từ Cloudinary).
+    "img-src 'self' data: blob: https://res.cloudinary.com",
+    // Next.js nhúng font tối ưu (Be Vietnam Pro/Inter) dạng data: URI — không khai
+    // riêng thì rơi về default-src 'self' (không có data:), trình duyệt chặn im
+    // lặng và chữ hiện font hệ thống thay vì đúng font thương hiệu.
+    "font-src 'self' data:",
     "style-src 'self' 'unsafe-inline'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${SCRIPT_EVAL_SOURCE}`,
+    // api.cloudinary.com: browser upload thẳng lên Cloudinary (ImageUploadField) —
+    // default-src 'self' vốn áp cho fetch() luôn (connect-src rơi về default-src nếu
+    // không khai riêng), thiếu dòng này khiến mọi request upload bị CSP chặn im lặng
+    // (fetch throw TypeError, UI chỉ thấy "Upload thất bại — kiểm tra kết nối mạng").
+    "connect-src 'self' https://api.cloudinary.com",
   ].join("; ");
 
   const requestHeaders = new Headers(request.headers);

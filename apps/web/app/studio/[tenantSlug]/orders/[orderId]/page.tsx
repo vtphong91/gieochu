@@ -5,6 +5,7 @@ import { getOrderDetail } from "../../../../../lib/order";
 import { ConfirmForm } from "./confirm-form";
 import { CancelOrderButton, MarkRefundedButton } from "./order-status-actions";
 import { GrantExtraDownloadsForm, RevokeEntitlementButton } from "./entitlement-actions";
+import { AdminPageHeader, Badge } from "../../../../admin/_ui/kit";
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING: "Chờ thanh toán",
@@ -13,6 +14,15 @@ const STATUS_LABEL: Record<string, string> = {
   EXPIRED: "Đã hết hạn",
   CANCELED: "Đã huỷ",
   REFUNDED: "Đã hoàn tiền",
+};
+
+const STATUS_TONE: Record<string, "success" | "warning" | "danger" | "neutral" | "info"> = {
+  PENDING: "warning",
+  PAID: "info",
+  FULFILLED: "success",
+  EXPIRED: "neutral",
+  CANCELED: "danger",
+  REFUNDED: "neutral",
 };
 
 const MATCH_STATUS_LABEL: Record<string, string> = {
@@ -47,13 +57,14 @@ export default async function StudioOrderDetailPage({
   const canRefund = order.status === "FULFILLED";
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-2xl font-bold">Đơn hàng {order.code}</h1>
-      <p className="mt-1 text-sm text-gray-500">
-        {order.customer.email} · {STATUS_LABEL[order.status] ?? order.status}
-      </p>
+    <main className="px-5 py-8 lg:px-8">
+      <AdminPageHeader
+        title={`Đơn hàng ${order.code}`}
+        subtitle={order.customer.email}
+        action={<Badge tone={STATUS_TONE[order.status] ?? "neutral"}>{STATUS_LABEL[order.status] ?? order.status}</Badge>}
+      />
 
-      <section className="mt-6 rounded border p-4">
+      <section className="mt-6 max-w-[960px] rounded-2xl border bg-white p-5" style={{ borderColor: "#E5E7EB" }}>
         <ul className="space-y-2 text-sm">
           {order.items.map((item) => (
             <li key={item.id}>
@@ -101,27 +112,31 @@ export default async function StudioOrderDetailPage({
       </section>
 
       {order.transactions.length > 0 ? (
-        <section className="mt-6">
-          <h2 className="text-lg font-semibold">Giao dịch</h2>
-          <ul className="mt-2 divide-y rounded border">
+        <section className="mt-6 max-w-[960px]">
+          <h2 className="font-[family-name:var(--font-heading)] font-semibold" style={{ color: "#12213A" }}>
+            Giao dịch
+          </h2>
+          <ul className="mt-2 divide-y rounded-2xl border bg-white" style={{ borderColor: "#E5E7EB" }}>
             {order.transactions.map((txn) => (
-              <li key={txn.id} className="flex items-center justify-between p-3 text-sm">
+              <li key={txn.id} className="flex items-center justify-between p-3.5 text-sm" style={{ borderColor: "#E5E7EB" }}>
                 <span>
                   {txn.provider} · {txn.providerTxnId}
                 </span>
                 <span>{txn.amountVnd.toLocaleString("vi-VN")}đ</span>
-                <span>{MATCH_STATUS_LABEL[txn.matchStatus] ?? txn.matchStatus}</span>
+                <span className="text-gray-500">{MATCH_STATUS_LABEL[txn.matchStatus] ?? txn.matchStatus}</span>
               </li>
             ))}
           </ul>
         </section>
       ) : null}
 
-      <section className="mt-6 flex flex-wrap gap-3">
+      <section className="mt-6 flex max-w-[960px] flex-wrap items-start gap-3">
         {canConfirm ? (
-          <div className="w-full rounded border p-4">
-            <h2 className="text-sm font-semibold">Xác nhận thanh toán thủ công</h2>
-            <div className="mt-2">
+          <div className="w-full rounded-2xl border bg-white p-5" style={{ borderColor: "#E5E7EB" }}>
+            <h2 className="font-[family-name:var(--font-heading)] text-sm font-semibold" style={{ color: "#12213A" }}>
+              Xác nhận thanh toán thủ công
+            </h2>
+            <div className="mt-3">
               <ConfirmForm tenantSlug={tenantSlug} orderId={orderId} />
             </div>
           </div>

@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 import type { CouponActionState } from "./actions";
+import { ConfigCard, FormBanner, PrimaryButton, SelectField, TextField, Toggle } from "../../../admin/_ui/kit";
+import { IconTag } from "../../../admin/_ui/icons";
 
 const initialState: CouponActionState = {};
 
@@ -38,93 +40,100 @@ export function CouponForm({
   const [state, formAction, isPending] = useActionState(action, initialState);
 
   return (
-    <form action={formAction} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium" htmlFor="code">
-          Mã giảm giá
-        </label>
-        <input id="code" name="code" defaultValue={initial.code} required className="mt-1 w-full rounded border px-3 py-2 uppercase" />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium" htmlFor="type">
-            Loại
-          </label>
-          <select id="type" name="type" defaultValue={initial.type} className="mt-1 w-full rounded border px-3 py-2">
+    <form action={formAction}>
+      <ConfigCard
+        icon={<IconTag className="h-5 w-5" />}
+        title="Thông tin mã giảm giá"
+        toggle={<Toggle name="isEnabled" defaultChecked={initial.isEnabled} label="Bật" />}
+      >
+        <TextField id="code" label="Mã giảm giá" name="code" defaultValue={initial.code} required hint="Không phân biệt hoa thường khi khách nhập." />
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <SelectField id="type" label="Loại" name="type" defaultValue={initial.type}>
             <option value="PERCENT">Phần trăm (%)</option>
             <option value="FIXED">Số tiền cố định (VND)</option>
-          </select>
+          </SelectField>
+          <TextField id="value" label="Giá trị" name="value" type="number" min={0} defaultValue={initial.value} required />
         </div>
-        <div>
-          <label className="block text-sm font-medium" htmlFor="value">
-            Giá trị
-          </label>
-          <input id="value" name="value" type="number" min={0} defaultValue={initial.value} required className="mt-1 w-full rounded border px-3 py-2" />
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField
+            id="maxDiscountVnd"
+            label="Giảm tối đa (VND)"
+            name="maxDiscountVnd"
+            type="number"
+            min={0}
+            defaultValue={initial.maxDiscountVnd}
+            hint="Chỉ áp dụng %, để trống nếu không giới hạn."
+          />
+          <TextField
+            id="minOrderVnd"
+            label="Đơn tối thiểu (VND)"
+            name="minOrderVnd"
+            type="number"
+            min={0}
+            defaultValue={initial.minOrderVnd}
+            hint="Để trống nếu không giới hạn."
+          />
         </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium" htmlFor="maxDiscountVnd">
-            Giảm tối đa (VND, chỉ áp dụng % — để trống nếu không giới hạn)
-          </label>
-          <input id="maxDiscountVnd" name="maxDiscountVnd" type="number" min={0} defaultValue={initial.maxDiscountVnd} className="mt-1 w-full rounded border px-3 py-2" />
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField
+            id="usageLimit"
+            label="Tổng lượt dùng"
+            name="usageLimit"
+            type="number"
+            min={0}
+            defaultValue={initial.usageLimit}
+            hint="Để trống nếu không giới hạn."
+          />
+          <TextField
+            id="perCustomerLimit"
+            label="Lượt/khách"
+            name="perCustomerLimit"
+            type="number"
+            min={0}
+            defaultValue={initial.perCustomerLimit}
+            hint="Để trống nếu không giới hạn."
+          />
         </div>
-        <div>
-          <label className="block text-sm font-medium" htmlFor="minOrderVnd">
-            Đơn tối thiểu (VND, để trống nếu không giới hạn)
-          </label>
-          <input id="minOrderVnd" name="minOrderVnd" type="number" min={0} defaultValue={initial.minOrderVnd} className="mt-1 w-full rounded border px-3 py-2" />
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField
+            id="startsAt"
+            label="Bắt đầu"
+            name="startsAt"
+            type="datetime-local"
+            defaultValue={initial.startsAt}
+            hint="Để trống nếu áp dụng ngay."
+          />
+          <TextField
+            id="endsAt"
+            label="Kết thúc"
+            name="endsAt"
+            type="datetime-local"
+            defaultValue={initial.endsAt}
+            hint="Để trống nếu không hết hạn."
+          />
         </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium" htmlFor="usageLimit">
-            Tổng lượt dùng (để trống nếu không giới hạn)
-          </label>
-          <input id="usageLimit" name="usageLimit" type="number" min={0} defaultValue={initial.usageLimit} className="mt-1 w-full rounded border px-3 py-2" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium" htmlFor="perCustomerLimit">
-            Lượt/khách (để trống nếu không giới hạn)
-          </label>
-          <input id="perCustomerLimit" name="perCustomerLimit" type="number" min={0} defaultValue={initial.perCustomerLimit} className="mt-1 w-full rounded border px-3 py-2" />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium" htmlFor="startsAt">
-            Bắt đầu (để trống nếu áp dụng ngay)
-          </label>
-          <input id="startsAt" name="startsAt" type="datetime-local" defaultValue={initial.startsAt} className="mt-1 w-full rounded border px-3 py-2" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium" htmlFor="endsAt">
-            Kết thúc (để trống nếu không hết hạn)
-          </label>
-          <input id="endsAt" name="endsAt" type="datetime-local" defaultValue={initial.endsAt} className="mt-1 w-full rounded border px-3 py-2" />
-        </div>
-      </div>
-      {products.length > 0 ? (
-        <fieldset className="rounded border p-3">
-          <legend className="px-1 text-sm font-medium">Áp dụng cho sản phẩm (bỏ trống = áp dụng tất cả)</legend>
-          <div className="max-h-40 space-y-1 overflow-y-auto text-sm">
-            {products.map((product) => (
-              <label key={product.id} className="flex items-center gap-2">
-                <input type="checkbox" name="productIds" value={product.id} defaultChecked={initial.productIds.includes(product.id)} />
-                {product.title}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-      ) : null}
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="isEnabled" defaultChecked={initial.isEnabled} />
-        Bật mã này
-      </label>
-      {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
-      <button type="submit" disabled={isPending} className="rounded bg-[var(--color-primary)] px-4 py-2 text-white disabled:opacity-50">
-        {isPending ? "Đang lưu..." : submitLabel}
-      </button>
+
+        {products.length > 0 ? (
+          <fieldset className="rounded-lg border p-3.5" style={{ borderColor: "#E5E7EB" }}>
+            <legend className="px-1 text-xs font-medium text-gray-500">Áp dụng cho sản phẩm (bỏ trống = áp dụng tất cả)</legend>
+            <div className="max-h-40 space-y-1.5 overflow-y-auto text-sm">
+              {products.map((product) => (
+                <label key={product.id} className="flex items-center gap-2" style={{ color: "#12213A" }}>
+                  <input type="checkbox" name="productIds" value={product.id} defaultChecked={initial.productIds.includes(product.id)} className="h-4 w-4" />
+                  {product.title}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        ) : null}
+
+        <FormBanner ok={false} message={state.error} />
+        <PrimaryButton loading={isPending}>{isPending ? "Đang lưu..." : submitLabel}</PrimaryButton>
+      </ConfigCard>
     </form>
   );
 }

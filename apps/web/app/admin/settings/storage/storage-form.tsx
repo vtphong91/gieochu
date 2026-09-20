@@ -2,6 +2,8 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { saveStorageConfigAction, testStorageConnectionAction, type StorageActionState } from "./actions";
+import { Badge, ConfigCard, FormBanner, GhostButton, PrimaryButton, TextField, Toggle } from "../../_ui/kit";
+import { IconDatabase } from "../../_ui/icons";
 
 const initialState: StorageActionState = {};
 
@@ -23,88 +25,66 @@ export function StorageForm({ initial }: { initial: StorageFormInitial }) {
   const [isTesting, startTest] = useTransition();
 
   return (
-    <section className="rounded border p-4">
-      <h2 className="text-lg font-semibold">Tài khoản lưu trữ file (S3-compatible — Cloudflare R2)</h2>
-      <p className="mt-1 text-xs text-amber-600">
-        Đổi endpoint/bucket/access key sẽ tự tắt kết nối này — lưu lại lần nữa (đã tích &quot;Bật&quot;) hoặc bấm
-        &quot;Kiểm tra kết nối&quot; để xác nhận.
-      </p>
-      {initial.lastVerifiedAt ? (
-        <p className="mt-1 text-xs text-green-700">Đã kiểm tra kết nối thành công lúc {initial.lastVerifiedAt}.</p>
-      ) : null}
-      <form action={formAction} className="mt-3 space-y-3">
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="isEnabled" defaultChecked={initial.isEnabled} />
-          Bật (dùng cho upload file thật)
-        </label>
-        <input
-          name="endpoint"
-          defaultValue={initial.endpoint}
-          placeholder="Endpoint (https://<account-id>.r2.cloudflarestorage.com)"
-          required
-          className="w-full rounded border px-3 py-2"
-        />
-        <input name="region" defaultValue={initial.region || "auto"} placeholder="Region" required className="w-full rounded border px-3 py-2" />
-        <input
-          name="bucketPrivate"
-          defaultValue={initial.bucketPrivate}
-          placeholder="Bucket private (file tài liệu)"
-          required
-          className="w-full rounded border px-3 py-2"
-        />
-        <input
-          name="bucketPublic"
-          defaultValue={initial.bucketPublic}
-          placeholder="Bucket public (ảnh bìa)"
-          required
-          className="w-full rounded border px-3 py-2"
-        />
-        <input
+    <form action={formAction}>
+      <ConfigCard
+        icon={<IconDatabase className="h-5 w-5" />}
+        title="S3-compatible (Cloudflare R2)"
+        badges={
+          <>
+            <Badge tone={initial.isEnabled ? "success" : "neutral"}>{initial.isEnabled ? "Đang bật" : "Đang tắt"}</Badge>
+            {initial.lastVerifiedAt ? <Badge tone="info">Đã xác minh</Badge> : null}
+          </>
+        }
+        description={initial.lastVerifiedAt ? `Đã kiểm tra kết nối thành công lúc ${initial.lastVerifiedAt}.` : "Lưu file tài liệu (bucket private) và ảnh bìa (bucket public) của toàn nền tảng."}
+        toggle={<Toggle name="isEnabled" defaultChecked={initial.isEnabled} label="Bật" />}
+        footer={
+          <p className="text-xs" style={{ color: "#B45309" }}>
+            Đổi endpoint/bucket/access key sẽ tự tắt kết nối này — lưu lại lần nữa (đã tích &quot;Bật&quot;) hoặc bấm &quot;Kiểm tra kết nối&quot; để xác nhận.
+          </p>
+        }
+      >
+        <TextField id="storage-endpoint" label="Endpoint" name="endpoint" defaultValue={initial.endpoint} placeholder="https://<account-id>.r2.cloudflarestorage.com" required />
+        <TextField id="storage-region" label="Region" name="region" defaultValue={initial.region || "auto"} required />
+        <TextField id="storage-bucketPrivate" label="Bucket private (file tài liệu)" name="bucketPrivate" defaultValue={initial.bucketPrivate} required />
+        <TextField id="storage-bucketPublic" label="Bucket public (ảnh bìa)" name="bucketPublic" defaultValue={initial.bucketPublic} required />
+        <TextField
+          id="storage-publicBaseUrl"
+          label="URL công khai của bucket public"
           name="publicBaseUrl"
           defaultValue={initial.publicBaseUrl}
-          placeholder="URL công khai của bucket public (VD: https://pub-xxxx.r2.dev)"
-          className="w-full rounded border px-3 py-2"
+          placeholder="https://pub-xxxx.r2.dev"
         />
-        <input
+        <TextField
+          id="storage-accessKeyId"
+          label="Access Key ID"
           name="accessKeyId"
           type="password"
-          placeholder={initial.maskedAccessKeyId ? `Access Key ID hiện tại: ${initial.maskedAccessKeyId} — để trống nếu giữ nguyên` : "Access Key ID"}
-          className="w-full rounded border px-3 py-2"
+          placeholder={initial.maskedAccessKeyId ? `Hiện tại: ${initial.maskedAccessKeyId} — để trống nếu giữ nguyên` : undefined}
         />
-        <input
+        <TextField
+          id="storage-secretAccessKey"
+          label="Secret Access Key"
           name="secretAccessKey"
           type="password"
-          placeholder={
-            initial.maskedSecretAccessKey
-              ? `Secret hiện tại: ${initial.maskedSecretAccessKey} — để trống nếu giữ nguyên`
-              : "Secret Access Key"
-          }
-          className="w-full rounded border px-3 py-2"
+          placeholder={initial.maskedSecretAccessKey ? `Hiện tại: ${initial.maskedSecretAccessKey} — để trống nếu giữ nguyên` : undefined}
         />
-        {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
-        {state.success ? <p className="text-sm text-green-700">Đã lưu.</p> : null}
-        <button type="submit" disabled={isPending} className="rounded bg-[var(--color-primary)] px-4 py-2 text-white disabled:opacity-50">
-          {isPending ? "Đang lưu..." : "Lưu"}
-        </button>
-      </form>
-      <button
-        type="button"
-        disabled={isTesting}
-        onClick={() =>
-          startTest(async () => {
-            const result = await testStorageConnectionAction();
-            setTestResult(result.testResult ?? null);
-          })
-        }
-        className="mt-3 rounded border px-4 py-2 text-sm disabled:opacity-50"
-      >
-        {isTesting ? "Đang kiểm tra..." : "Kiểm tra kết nối"}
-      </button>
-      {testResult ? (
-        <p className={`mt-2 text-sm ${testResult.ok ? "text-green-700" : "text-red-600"}`}>
-          {testResult.ok ? "Kết nối thành công." : (testResult.message ?? "Kết nối thất bại.")}
-        </p>
-      ) : null}
-    </section>
+        <FormBanner ok={Boolean(state.success)} message={state.error ?? (state.success ? "Đã lưu." : undefined)} />
+        <div className="flex flex-wrap gap-3">
+          <PrimaryButton loading={isPending}>{isPending ? "Đang lưu..." : "Lưu cấu hình"}</PrimaryButton>
+          <GhostButton
+            disabled={isTesting}
+            onClick={() =>
+              startTest(async () => {
+                const result = await testStorageConnectionAction();
+                setTestResult(result.testResult ?? null);
+              })
+            }
+          >
+            {isTesting ? "Đang kiểm tra..." : "Kiểm tra kết nối"}
+          </GhostButton>
+        </div>
+        {testResult ? <FormBanner ok={testResult.ok} message={testResult.ok ? "Kết nối thành công." : (testResult.message ?? "Kết nối thất bại.")} /> : null}
+      </ConfigCard>
+    </form>
   );
 }

@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createVerificationToken, isValidPassword, hashPassword, normalizeEmail } from "@gieochu/auth";
-import { AppError, conflict } from "@gieochu/core";
+import { AppError, conflict, logger } from "@gieochu/core";
 import { getEnv } from "@gieochu/config";
 import { getPrismaClient } from "@gieochu/db";
 import { renderVerifyEmailTemplate } from "@gieochu/email";
 import { getRequestId, handleApiError, parseJsonBody } from "../../../../lib/api-response";
 import { checkRateLimit } from "../../../../lib/rate-limit";
 import { getClientIp } from "../../../../lib/request-meta";
-import { enqueueEmail } from "../../../../lib/jobs";
+import { sendEmailNow } from "../../../../lib/email-dispatch";
 
 const registerSchema = z.object({
   email: z.string().email("Email không hợp lệ."),
@@ -17,6 +17,11 @@ const registerSchema = z.object({
   consent: z.boolean().refine((value) => value === true, {
     message: "Bạn cần đồng ý điều khoản và xử lý dữ liệu cá nhân.",
   }),
+  // Không lưu vào DB — chỉ dùng để chọn nơi đưa user tới sau khi kích hoạt
+  // email + hoàn thiện hồ sơ (TENANT -> mở gian hàng /studio, CUSTOMER -> trang
+  // chủ). Trở thành Tenant vẫn là một hành động riêng, tự nguyện (tạo Tenant
+  // row qua /studio) — trường này không gán role/tạo bản ghi gì cả.
+  accountType: z.enum(["TENANT", "CUSTOMER"]),
 });
 
 const EMAIL_VERIFY_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
@@ -73,9 +78,15 @@ export async function POST(request: Request) {
       return created;
     });
 
-    const verifyUrl = `${env.APP_URL}/verify-email?token=${verification.token}`;
+    const next = body.accountType === "TENANT" ? "/studio" : "/";
+    const verifyUrl = `${env.APP_URL}/verify-email?token=${verification.token}&next=${encodeURIComponent(next)}`;
     const rendered = renderVerifyEmailTemplate({ appName: env.APP_NAME, verifyUrl });
-    await enqueueEmail({ to: user.email, subject: rendered.subject, html: rendered.html, text: rendered.text });
+    // Gửi SMTP đồng bộ ngay — không qua hàng đợi/worker. Không chặn đăng ký nếu gửi
+    // lỗi (tài khoản vẫn tạo thành công, user có thể tự bấm "Gửi lại email kích hoạt").
+    const sent = await sendEmailNow({ type: "verify_email", to: user.email, subject: rendered.subject, html: rendered.html, text: rendered.text });
+    if (!sent.ok) {
+      logger.warn({ email: user.email, error: sent.error }, "register: gửi email kích hoạt thất bại");
+    }
 
     return NextResponse.json({ message: "Đăng ký thành công. Vui lòng kiểm tra email để kích hoạt tài khoản." }, {
       status: 201,

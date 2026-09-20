@@ -5,6 +5,8 @@ import { getSubscriptionOverview } from "../../../../lib/subscription-billing";
 import { getEnabledPlatformProviders } from "../../../../lib/platform-payment";
 import { RenewForm } from "./renew-form";
 import { BillingPoll } from "./billing-poll";
+import { AdminPageHeader, Badge, ConfigCard, DataTable, EmptyState, Td, Tr } from "../../../admin/_ui/kit";
+import { IconCard, IconReceipt } from "../../../admin/_ui/icons";
 
 const STATUS_LABEL: Record<string, string> = {
   ACTIVE: "Đang hoạt động",
@@ -19,6 +21,13 @@ const INVOICE_STATUS_LABEL: Record<string, string> = {
   VOID: "Đã huỷ",
 };
 
+const INVOICE_STATUS_TONE: Record<string, "success" | "warning" | "neutral" | "danger"> = {
+  PENDING: "warning",
+  PAID: "success",
+  EXPIRED: "neutral",
+  VOID: "danger",
+};
+
 const UPGRADE_TRIGGER_RATIO = 0.8;
 
 function formatVnDate(date: Date): string {
@@ -29,7 +38,7 @@ function UsageBar({ label, used, limit, unit }: { label: string; used: number; l
   const unlimited = limit === 0;
   const ratio = unlimited ? 0 : Math.min(1, used / limit);
   return (
-    <div className="mt-2">
+    <div className="mt-3">
       <div className="flex justify-between text-xs text-gray-500">
         <span>{label}</span>
         <span>
@@ -37,10 +46,10 @@ function UsageBar({ label, used, limit, unit }: { label: string; used: number; l
         </span>
       </div>
       {!unlimited ? (
-        <div className="mt-1 h-2 rounded bg-gray-100">
+        <div className="mt-1.5 h-2 overflow-hidden rounded-full" style={{ background: "#F3F4F6" }}>
           <div
-            className={`h-2 rounded ${ratio >= UPGRADE_TRIGGER_RATIO ? "bg-amber-500" : "bg-[var(--color-primary)]"}`}
-            style={{ width: `${ratio * 100}%` }}
+            className="h-2 rounded-full transition-all"
+            style={{ width: `${ratio * 100}%`, background: ratio >= UPGRADE_TRIGGER_RATIO ? "#D97706" : "#0F3B82" }}
           />
         </div>
       ) : null}
@@ -69,92 +78,97 @@ export default async function StudioBillingPage({ params }: { params: Promise<{ 
   const nearLimit = productRatio >= UPGRADE_TRIGGER_RATIO || storageRatio >= UPGRADE_TRIGGER_RATIO;
 
   return (
-    <main className="mx-auto max-w-md px-4 py-10">
+    <main className="px-5 py-8 lg:px-8">
       <BillingPoll active={Boolean(pendingInvoice)} />
-      <h1 className="text-2xl font-bold">Gói dịch vụ</h1>
+      <AdminPageHeader title="Gói dịch vụ" subtitle="Theo dõi hạn mức gói hiện tại, gia hạn hoặc nâng cấp." />
 
-      <section className="mt-6 rounded border p-4">
-        <p className="text-sm font-medium">
-          {plan.name} {plan.isFree ? <span className="text-xs font-normal text-gray-500">(không bao giờ hết hạn)</span> : null}
-        </p>
-        {!plan.isFree ? (
-          <>
-            <p className="mt-1 text-sm text-gray-500">Trạng thái: {STATUS_LABEL[subscription.status] ?? subscription.status}</p>
-            <p className="mt-1 text-sm text-gray-500">Hết hạn kỳ hiện tại: {formatVnDate(subscription.currentPeriodEnd)}</p>
-            {subscription.graceEndsAt ? (
-              <p className="mt-1 text-sm text-red-600">
-                Hạn ân hạn: {formatVnDate(subscription.graceEndsAt)} — hết hạn mà chưa gia hạn, trang sẽ tự động chuyển về gói Free.
-              </p>
-            ) : null}
-          </>
-        ) : null}
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <ConfigCard
+          icon={<IconCard className="h-5 w-5" />}
+          title={plan.name}
+          badges={plan.isFree ? <Badge tone="info">Không bao giờ hết hạn</Badge> : <Badge tone={subscription.status === "ACTIVE" ? "success" : "warning"}>{STATUS_LABEL[subscription.status] ?? subscription.status}</Badge>}
+        >
+          {!plan.isFree ? (
+            <>
+              <p className="text-sm text-gray-500">Hết hạn kỳ hiện tại: {formatVnDate(subscription.currentPeriodEnd)}</p>
+              {subscription.graceEndsAt ? (
+                <p className="text-sm" style={{ color: "#DC2626" }}>
+                  Hạn ân hạn: {formatVnDate(subscription.graceEndsAt)} — hết hạn mà chưa gia hạn, trang sẽ tự động chuyển về gói Free.
+                </p>
+              ) : null}
+            </>
+          ) : null}
 
-        <UsageBar label="Sản phẩm" used={publishedCount} limit={plan.maxProducts} unit="sản phẩm" />
-        <UsageBar label="Dung lượng" used={storageUsedMb} limit={plan.storageMb} unit="MB" />
+          <UsageBar label="Sản phẩm" used={publishedCount} limit={plan.maxProducts} unit="sản phẩm" />
+          <UsageBar label="Dung lượng" used={storageUsedMb} limit={plan.storageMb} unit="MB" />
 
-        {nearLimit ? (
-          <p className="mt-3 rounded bg-amber-50 p-2 text-xs text-amber-800">
-            Bạn sắp chạm giới hạn của gói {plan.name}. Nâng cấp để có thêm sản phẩm/dung lượng.
-          </p>
-        ) : null}
-      </section>
+          {nearLimit ? (
+            <p className="rounded-lg px-3.5 py-2.5 text-xs" style={{ background: "#FFFBEB", color: "#92400E" }}>
+              Bạn sắp chạm giới hạn của gói {plan.name}. Nâng cấp để có thêm sản phẩm/dung lượng.
+            </p>
+          ) : null}
+        </ConfigCard>
 
-      {pendingInvoice ? (
-        <section className="mt-6 rounded border p-4">
-          <h2 className="text-lg font-semibold">Hoá đơn đang chờ thanh toán</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Mã: {pendingInvoice.code} · {pendingInvoice.amountVnd.toLocaleString("vi-VN")}đ · hạn{" "}
-            {pendingInvoice.dueAt.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}
-          </p>
-          {(() => {
-            const checkout = pendingInvoice.checkoutPayload as CheckoutResult | null;
-            if (!checkout) return null;
-            if (checkout.kind === "QR") {
+        {pendingInvoice ? (
+          <ConfigCard icon={<IconReceipt className="h-5 w-5" />} title="Hoá đơn đang chờ thanh toán">
+            <p className="text-sm text-gray-500">
+              Mã: {pendingInvoice.code} · {pendingInvoice.amountVnd.toLocaleString("vi-VN")}đ · hạn{" "}
+              {pendingInvoice.dueAt.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}
+            </p>
+            {(() => {
+              const checkout = pendingInvoice.checkoutPayload as CheckoutResult | null;
+              if (!checkout) return null;
+              if (checkout.kind === "QR") {
+                return (
+                  <div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={checkout.qrImageDataUrl} alt="QR thanh toán" className="h-48 w-48" />
+                    <p className="mt-2 text-sm">
+                      {checkout.bank.accountName} — {checkout.bank.accountNo}
+                    </p>
+                    <p className="text-sm text-gray-500">Nội dung: {checkout.content}</p>
+                  </div>
+                );
+              }
               return (
-                <div className="mt-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={checkout.qrImageDataUrl} alt="QR thanh toán" className="h-48 w-48" />
-                  <p className="mt-2 text-sm">
-                    {checkout.bank.accountName} — {checkout.bank.accountNo}
-                  </p>
-                  <p className="text-sm text-gray-500">Nội dung: {checkout.content}</p>
-                </div>
+                <a href={checkout.url} className="inline-block text-sm font-semibold" style={{ color: "#0F3B82" }}>
+                  Mở trang thanh toán
+                </a>
               );
-            }
-            return (
-              <a href={checkout.url} className="mt-3 inline-block text-[var(--color-primary)] underline">
-                Mở trang thanh toán
-              </a>
-            );
-          })()}
-        </section>
-      ) : (
-        <section className="mt-6 rounded border p-4">
-          <h2 className="text-lg font-semibold">{plan.isFree ? "Nâng cấp" : "Gia hạn / Nâng cấp"}</h2>
-          <div className="mt-3">
+            })()}
+          </ConfigCard>
+        ) : (
+          <ConfigCard icon={<IconCard className="h-5 w-5" />} title={plan.isFree ? "Nâng cấp" : "Gia hạn / Nâng cấp"}>
             <RenewForm
               tenantSlug={tenant.slug}
               plans={plans.filter((p) => !p.isFree).map((p) => ({ id: p.id, name: p.name, priceVnd: p.priceVnd }))}
               currentPlanId={subscription.planId}
               enabledProviders={enabledProviders}
             />
-          </div>
-        </section>
-      )}
+          </ConfigCard>
+        )}
+      </div>
 
-      <section className="mt-6">
-        <h2 className="text-lg font-semibold">Lịch sử hoá đơn</h2>
-        <ul className="mt-2 divide-y rounded border">
-          {invoices.length === 0 ? <li className="p-3 text-sm text-gray-500">Chưa có hoá đơn.</li> : null}
-          {invoices.map((invoice) => (
-            <li key={invoice.id} className="flex items-center justify-between p-3 text-sm">
-              <span>{invoice.code}</span>
-              <span>{invoice.amountVnd.toLocaleString("vi-VN")}đ</span>
-              <span>{INVOICE_STATUS_LABEL[invoice.status] ?? invoice.status}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <div className="mt-6">
+        <h2 className="font-[family-name:var(--font-heading)] mb-3 font-semibold" style={{ color: "#12213A" }}>
+          Lịch sử hoá đơn
+        </h2>
+        {invoices.length === 0 ? (
+          <EmptyState icon={<IconReceipt className="h-6 w-6" />} title="Chưa có hoá đơn nào" />
+        ) : (
+          <DataTable head={["Mã hoá đơn", "Số tiền", "Trạng thái"]}>
+            {invoices.map((invoice) => (
+              <Tr key={invoice.id}>
+                <Td className="font-mono text-xs">{invoice.code}</Td>
+                <Td className="font-medium">{invoice.amountVnd.toLocaleString("vi-VN")}đ</Td>
+                <Td>
+                  <Badge tone={INVOICE_STATUS_TONE[invoice.status] ?? "neutral"}>{INVOICE_STATUS_LABEL[invoice.status] ?? invoice.status}</Badge>
+                </Td>
+              </Tr>
+            ))}
+          </DataTable>
+        )}
+      </div>
     </main>
   );
 }

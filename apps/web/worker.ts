@@ -1,7 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { config as loadEnv } from "dotenv";
 import { createJobQueue, QUEUE_NAMES } from "@gieochu/jobs";
-import { createEmailSenderFromEnv, type EmailMessage } from "@gieochu/email";
 import { getEnv } from "@gieochu/config";
 import { logger } from "@gieochu/core";
 import { runSubscriptionSweep } from "./lib/subscription-sweep";
@@ -10,15 +9,21 @@ import { runOrderSweep } from "./lib/order";
 import { processPaymentEvent } from "./lib/payment-process";
 import type { FileScanJobData, PaymentProcessJobData } from "./lib/jobs";
 
+// Email KHÔNG còn qua hàng đợi/worker — gửi đồng bộ ngay trong Server
+// Action/route qua sendEmailNow() (lib/email-dispatch.ts). Quyết định đổi
+// hướng: hàng đợi từng khiến email "biến mất" âm thầm nếu quên chạy
+// `pnpm worker` (ghi job luôn thành công, không ai xử lý thì cũng không có
+// lỗi nào hiện ra) — gửi trực tiếp cho phép thành công/thất bại phản hồi
+// ngay cho người dùng. worker.ts vẫn cần chạy cho các job KHÔNG phải email
+// (subscription sweep, file scan, payment process, order sweep).
+
 async function main() {
   loadEnv({ path: fileURLToPath(new URL("../../.env", import.meta.url)) });
 
   const env = getEnv();
   const queue = createJobQueue(env.DIRECT_URL);
-  const sender = createEmailSenderFromEnv(env);
 
   await queue.start();
-  await queue.ensureQueue(QUEUE_NAMES.EMAIL_SEND);
   await queue.ensureQueue(QUEUE_NAMES.SUBSCRIPTION_SWEEP);
   await queue.schedule(QUEUE_NAMES.SUBSCRIPTION_SWEEP, "0 * * * *");
   await queue.ensureQueue(QUEUE_NAMES.FILE_SCAN);
@@ -27,11 +32,6 @@ async function main() {
   // Every 5 min, not hourly like subscription.sweep — ORDER_PENDING_TTL_MINUTES defaults to
   // 60, so an hourly cadence could leave an expired order showing PENDING for up to an hour.
   await queue.schedule(QUEUE_NAMES.ORDER_SWEEP, "*/5 * * * *");
-
-  await queue.work<EmailMessage>(QUEUE_NAMES.EMAIL_SEND, async (message) => {
-    await sender.send(message);
-    logger.info({ to: message.to, subject: message.subject }, "email sent");
-  });
 
   await queue.work<Record<string, never>>(QUEUE_NAMES.SUBSCRIPTION_SWEEP, async () => {
     await runSubscriptionSweep();

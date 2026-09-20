@@ -2,16 +2,16 @@
 
 import { redirect } from "next/navigation";
 import { AppError } from "@gieochu/core";
-import { requireCompleteAccountAccess } from "../../../../lib/page-guards";
+import { requireVerifiedAccess } from "../../../../lib/page-guards";
 import { createOrder } from "../../../../lib/order";
 
 export interface BuyActionState {
   error?: string;
 }
 
-/** §"M8" "Mua ngay": gated the same way `/studio/*` and `/account/*` are — not logged in -> /login, unverified -> /verify-email, incomplete profile -> /account/profile. */
+/** §"M8" "Mua ngay": gated the same way `/studio/*` and `/account/*` are — not logged in -> /login, unverified -> /verify-email. */
 export async function buyProductAction(tenantSlug: string, productId: string, productSlug: string): Promise<BuyActionState> {
-  const user = await requireCompleteAccountAccess(`/${tenantSlug}/products/${productSlug}`);
+  const user = await requireVerifiedAccess(`/${tenantSlug}/products/${productSlug}`);
 
   let order;
   try {

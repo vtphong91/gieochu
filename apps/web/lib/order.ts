@@ -24,7 +24,7 @@ import { getEnv } from "@gieochu/config";
 import { renderNewSaleEmail, renderOrderPaidEmail } from "@gieochu/email";
 import { assertTenantCanWrite } from "./tenant-write-guard";
 import { toCouponSnapshot } from "./coupon";
-import { enqueueEmail } from "./jobs";
+import { sendEmailNow } from "./email-dispatch";
 
 const ORDER_CODE_RETRIES = 10;
 
@@ -122,7 +122,7 @@ export async function markOrderPaid(tx: Tx, orderId: string, source: MarkOrderPa
   return { fulfilled: true };
 }
 
-/** Enqueues the buyer + owner emails — called by the caller *after* the markOrderPaid transaction commits, never from inside it (matches subscription-sweep.ts's notify-after-write pattern). */
+/** Sends the buyer + owner emails (SMTP đồng bộ, không hàng đợi) — called by the caller *after* the markOrderPaid transaction commits, never from inside it (giữ transaction ngắn, không chờ SMTP bên trong). */
 async function sendOrderPaidEmails(orderId: string): Promise<void> {
   const prisma = getPrismaClient();
   const env = getEnv();
@@ -139,7 +139,10 @@ async function sendOrderPaidEmails(orderId: string): Promise<void> {
     totalVndDisplay: formatVnd(order.totalVnd),
     downloadsUrl,
   });
-  await enqueueEmail({ to: order.customer.email, subject: buyerEmail.subject, html: buyerEmail.html, text: buyerEmail.text });
+  const buyerSent = await sendEmailNow({ type: "order_paid", to: order.customer.email, subject: buyerEmail.subject, html: buyerEmail.html, text: buyerEmail.text });
+  if (!buyerSent.ok) {
+    logger.warn({ orderId, email: order.customer.email, error: buyerSent.error }, "order.paid: gửi email cho khách hàng thất bại");
+  }
 
   const orderUrl = `${env.APP_URL}/studio/${order.tenant.slug}/orders/${order.id}`;
   const productTitle = order.items[0]?.titleSnapshot ?? "";
@@ -150,7 +153,10 @@ async function sendOrderPaidEmails(orderId: string): Promise<void> {
     totalVndDisplay: formatVnd(order.totalVnd),
     orderUrl,
   });
-  await enqueueEmail({ to: order.tenant.owner.email, subject: ownerEmail.subject, html: ownerEmail.html, text: ownerEmail.text });
+  const ownerSent = await sendEmailNow({ type: "new_sale", to: order.tenant.owner.email, subject: ownerEmail.subject, html: ownerEmail.html, text: ownerEmail.text });
+  if (!ownerSent.ok) {
+    logger.warn({ orderId, email: order.tenant.owner.email, error: ownerSent.error }, "order.paid: gửi email báo owner thất bại");
+  }
 }
 
 /**

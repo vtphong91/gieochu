@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { requireCompleteAccountAccess } from "../../../lib/page-guards";
+import { requireVerifiedAccess } from "../../../lib/page-guards";
 import { listLibraryEntitlements } from "../../../lib/library";
 import { DownloadButton } from "./download-button";
 
 /** §"M9": entitlements from every tenant, grouped by tenant. */
 export default async function LibraryPage() {
-  const user = await requireCompleteAccountAccess("/account/library");
+  const user = await requireVerifiedAccess("/account/library");
   const groups = await listLibraryEntitlements(user.userId);
 
   return (

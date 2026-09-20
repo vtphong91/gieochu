@@ -94,14 +94,18 @@ export function UploadFileForm({ tenantSlug, productId }: { tenantSlug: string; 
   }
 
   return (
-    <div className="rounded border border-dashed p-4">
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={isPreview} onChange={(e) => setIsPreview(e.target.checked)} disabled={isUploading} />
+    <div className="rounded-lg border border-dashed p-4" style={{ borderColor: "#E5E7EB" }}>
+      <label className="flex items-center gap-2 text-sm" style={{ color: "#12213A" }}>
+        <input type="checkbox" checked={isPreview} onChange={(e) => setIsPreview(e.target.checked)} disabled={isUploading} className="h-4 w-4" />
         File xem trước (công khai, không cần mua)
       </label>
       <input type="file" onChange={handleFileChange} disabled={isUploading} className="mt-2 text-sm" />
       {isUploading ? <p className="mt-2 text-sm text-gray-500">Đang tải lên...</p> : null}
-      {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+      {error ? (
+        <p className="mt-2 text-sm" style={{ color: "#DC2626" }}>
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

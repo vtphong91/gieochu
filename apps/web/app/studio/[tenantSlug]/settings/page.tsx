@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireTenantMemberPage } from "../../../../lib/page-guards";
 import { BrandingForm } from "./branding-form";
 import { SlugForm } from "./slug-form";
+import { AdminPageHeader, SettingsGrid } from "../../../admin/_ui/kit";
 
 interface TenantBranding {
   primaryColor?: string;
@@ -17,31 +18,33 @@ export default async function StudioSettingsPage({ params }: { params: Promise<{
   const socialLinks = branding.socialLinks ?? {};
 
   return (
-    <main className="mx-auto max-w-md px-4 py-10">
-      <h1 className="text-2xl font-bold">Cài đặt trang</h1>
+    <main className="px-5 py-8 lg:px-8">
+      <AdminPageHeader title="Cài đặt trang" subtitle="Thương hiệu, đường dẫn và các cấu hình khác của trang bạn." />
 
-      <BrandingForm
-        tenantSlug={tenant.slug}
-        initial={{
-          name: tenant.name,
-          bio: tenant.bio ?? "",
-          primaryColor: branding.primaryColor ?? "#2563eb",
-          accentColor: branding.accentColor ?? "#16a34a",
-          facebook: socialLinks.facebook ?? "",
-          youtube: socialLinks.youtube ?? "",
-          tiktok: socialLinks.tiktok ?? "",
-          zalo: socialLinks.zalo ?? "",
-          website: socialLinks.website ?? "",
-        }}
-      />
+      <SettingsGrid>
+        <BrandingForm
+          tenantSlug={tenant.slug}
+          initial={{
+            name: tenant.name,
+            bio: tenant.bio ?? "",
+            primaryColor: branding.primaryColor ?? "#2563eb",
+            accentColor: branding.accentColor ?? "#16a34a",
+            facebook: socialLinks.facebook ?? "",
+            youtube: socialLinks.youtube ?? "",
+            tiktok: socialLinks.tiktok ?? "",
+            zalo: socialLinks.zalo ?? "",
+            website: socialLinks.website ?? "",
+          }}
+        />
 
-      <SlugForm tenantSlug={tenant.slug} />
+        <SlugForm tenantSlug={tenant.slug} />
+      </SettingsGrid>
 
-      <div className="mt-10 border-t pt-6">
-        <Link href={`/studio/${tenant.slug}/settings/payments`} className="text-[var(--color-primary)]">
+      <p className="mt-6 text-sm">
+        <Link href={`/studio/${tenant.slug}/settings/payments`} className="font-medium" style={{ color: "#0F3B82" }}>
           Cấu hình thanh toán →
         </Link>
-      </div>
+      </p>
     </main>
   );
 }

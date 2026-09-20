@@ -1,19 +1,38 @@
 import type { Metadata } from "next";
-import { getBrand } from "@gieochu/config/brand";
+import { getEffectiveBrand, getEffectiveBrandColors, getEffectiveLogos } from "../lib/branding";
+import { darkenHex, lightenHex } from "../lib/color-utils";
+import { SessionRefresh } from "./_ui/session-refresh";
 import "./globals.css";
 
-export function generateMetadata(): Metadata {
-  const brand = getBrand();
+export async function generateMetadata(): Promise<Metadata> {
+  const [brand, logos] = await Promise.all([getEffectiveBrand(), getEffectiveLogos()]);
   return {
     title: brand.name,
     description: brand.slogan,
+    icons: logos.faviconUrl ? { icon: logos.faviconUrl } : undefined,
+    openGraph: logos.ogImageUrl ? { images: [{ url: logos.ogImageUrl, width: 1200, height: 630 }] } : undefined,
   };
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const colors = await getEffectiveBrandColors();
+  // System Admin chỉ chọn 3 màu gốc (primary/accent/secondary) ở
+  // /admin/settings/branding — 2 sắc dẫn xuất (đậm hơn cho gradient/hover,
+  // nhạt hơn cho nền badge) tính tự động từ đó, không cần chọn thêm.
+  const primaryDeep = darkenHex(colors.primary, 0.45);
+  const accentSoft = lightenHex(colors.accent, 0.12);
+
+  const cssVars = `:root{--brand-primary:${colors.primary};--brand-primary-deep:${primaryDeep};--brand-accent:${colors.accent};--brand-accent-soft:${accentSoft};--brand-secondary:${colors.secondary};}`;
+
   return (
     <html lang="vi">
-      <body>{children}</body>
+      <head>
+        <style>{cssVars}</style>
+      </head>
+      <body>
+        <SessionRefresh />
+        {children}
+      </body>
     </html>
   );
 }

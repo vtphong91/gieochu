@@ -57,16 +57,20 @@ export function CoverImageUpload({ tenantSlug, productId, currentUrl }: { tenant
   }
 
   return (
-    <div className="rounded border p-3">
+    <div className="rounded-lg border p-3" style={{ borderColor: "#E5E7EB" }}>
       {currentUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={currentUrl} alt="Ảnh bìa" className="h-32 w-full rounded object-cover" />
+        <img src={currentUrl} alt="Ảnh bìa" className="h-32 w-full rounded-lg object-cover" />
       ) : (
         <p className="text-sm text-gray-500">Chưa có ảnh bìa.</p>
       )}
       <input type="file" accept="image/png,image/jpeg" onChange={handleFileChange} disabled={isUploading} className="mt-2 text-sm" />
       {isUploading ? <p className="mt-1 text-sm text-gray-500">Đang tải lên...</p> : null}
-      {error ? <p className="mt-1 text-sm text-red-600">{error}</p> : null}
+      {error ? (
+        <p className="mt-1 text-sm" style={{ color: "#DC2626" }}>
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

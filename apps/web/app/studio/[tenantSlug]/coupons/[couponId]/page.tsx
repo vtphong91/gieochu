@@ -5,6 +5,7 @@ import { getCoupon } from "../../../../../lib/coupon";
 import { listProducts } from "../../../../../lib/product";
 import { CouponForm } from "../coupon-form";
 import { updateCouponAction } from "../actions";
+import { AdminPageHeader, SettingsGrid } from "../../../../admin/_ui/kit";
 
 /** Wall-clock time in Asia/Ho_Chi_Minh for a `datetime-local` input's defaultValue — same helper as the product edit page. */
 function toDatetimeLocal(date: Date | null): string {
@@ -41,13 +42,12 @@ export default async function EditCouponPage({
   const productIds = (coupon.productIds as string[] | null) ?? [];
 
   return (
-    <main className="mx-auto max-w-md px-4 py-10">
-      <h1 className="text-2xl font-bold">Sửa mã &quot;{coupon.code}&quot;</h1>
-      <p className="mt-1 text-sm text-gray-500">
-        Đã dùng {coupon.usedCount}
-        {coupon.usageLimit != null ? ` / ${coupon.usageLimit}` : ""} lượt.
-      </p>
-      <div className="mt-6">
+    <main className="px-5 py-8 lg:px-8">
+      <AdminPageHeader
+        title={`Sửa mã "${coupon.code}"`}
+        subtitle={`Đã dùng ${coupon.usedCount}${coupon.usageLimit != null ? ` / ${coupon.usageLimit}` : ""} lượt.`}
+      />
+      <SettingsGrid>
         <CouponForm
           action={updateCouponAction.bind(null, tenantSlug, couponId)}
           submitLabel="Lưu"
@@ -66,7 +66,7 @@ export default async function EditCouponPage({
             isEnabled: coupon.isEnabled,
           }}
         />
-      </div>
+      </SettingsGrid>
     </main>
   );
 }

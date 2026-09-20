@@ -2,8 +2,9 @@ export {
   createEmailSenderFromEnv,
   createResendSender,
   createSmtpSender,
+  verifySmtpConnection,
 } from "./sender";
-export type { EmailEnv, EmailMessage, EmailSender } from "./sender";
+export type { EmailEnv, EmailMessage, EmailSender, SmtpConnectionOptions } from "./sender";
 
 export { renderVerifyEmailTemplate } from "./templates/verify-email";
 export type { RenderedEmail, VerifyEmailTemplateData } from "./templates/verify-email";

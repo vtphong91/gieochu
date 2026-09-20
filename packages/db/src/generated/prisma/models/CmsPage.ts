@@ -15,6 +15,10 @@ import type * as Prisma from "../internal/prismaNamespace"
 /**
  * Model CmsPage
  * §5.1 Layer System — cms_pages (marketing content blocks)
+ * `blocks` là bản LIVE (đang hiển thị công khai). `blocksDraft` là bản đang
+ * sửa dở — null nghĩa là chưa có nháp nào khác bản live. Lưu nháp chỉ ghi
+ * `blocksDraft`, không đụng `blocks`; Publish copy blocksDraft -> blocks rồi
+ * xoá blocksDraft; "Khôi phục live" xoá blocksDraft để quay lại đúng bản live.
  */
 export type CmsPageModel = runtime.Types.Result.DefaultSelection<Prisma.$CmsPagePayload>
 
@@ -51,6 +55,7 @@ export type CmsPageCountAggregateOutputType = {
   slug: number
   title: number
   blocks: number
+  blocksDraft: number
   status: number
   seoTitle: number
   seoDescription: number
@@ -87,6 +92,7 @@ export type CmsPageCountAggregateInputType = {
   slug?: true
   title?: true
   blocks?: true
+  blocksDraft?: true
   status?: true
   seoTitle?: true
   seoDescription?: true
@@ -172,6 +178,7 @@ export type CmsPageGroupByOutputType = {
   slug: string
   title: string
   blocks: runtime.JsonValue
+  blocksDraft: runtime.JsonValue | null
   status: $Enums.CmsPageStatus
   seoTitle: string | null
   seoDescription: string | null
@@ -205,6 +212,7 @@ export type CmsPageWhereInput = {
   slug?: Prisma.StringFilter<"CmsPage"> | string
   title?: Prisma.StringFilter<"CmsPage"> | string
   blocks?: Prisma.JsonFilter<"CmsPage">
+  blocksDraft?: Prisma.JsonNullableFilter<"CmsPage">
   status?: Prisma.EnumCmsPageStatusFilter<"CmsPage"> | $Enums.CmsPageStatus
   seoTitle?: Prisma.StringNullableFilter<"CmsPage"> | string | null
   seoDescription?: Prisma.StringNullableFilter<"CmsPage"> | string | null
@@ -217,6 +225,7 @@ export type CmsPageOrderByWithRelationInput = {
   slug?: Prisma.SortOrder
   title?: Prisma.SortOrder
   blocks?: Prisma.SortOrder
+  blocksDraft?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   seoTitle?: Prisma.SortOrderInput | Prisma.SortOrder
   seoDescription?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -232,6 +241,7 @@ export type CmsPageWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.CmsPageWhereInput | Prisma.CmsPageWhereInput[]
   title?: Prisma.StringFilter<"CmsPage"> | string
   blocks?: Prisma.JsonFilter<"CmsPage">
+  blocksDraft?: Prisma.JsonNullableFilter<"CmsPage">
   status?: Prisma.EnumCmsPageStatusFilter<"CmsPage"> | $Enums.CmsPageStatus
   seoTitle?: Prisma.StringNullableFilter<"CmsPage"> | string | null
   seoDescription?: Prisma.StringNullableFilter<"CmsPage"> | string | null
@@ -244,6 +254,7 @@ export type CmsPageOrderByWithAggregationInput = {
   slug?: Prisma.SortOrder
   title?: Prisma.SortOrder
   blocks?: Prisma.SortOrder
+  blocksDraft?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   seoTitle?: Prisma.SortOrderInput | Prisma.SortOrder
   seoDescription?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -262,6 +273,7 @@ export type CmsPageScalarWhereWithAggregatesInput = {
   slug?: Prisma.StringWithAggregatesFilter<"CmsPage"> | string
   title?: Prisma.StringWithAggregatesFilter<"CmsPage"> | string
   blocks?: Prisma.JsonWithAggregatesFilter<"CmsPage">
+  blocksDraft?: Prisma.JsonNullableWithAggregatesFilter<"CmsPage">
   status?: Prisma.EnumCmsPageStatusWithAggregatesFilter<"CmsPage"> | $Enums.CmsPageStatus
   seoTitle?: Prisma.StringNullableWithAggregatesFilter<"CmsPage"> | string | null
   seoDescription?: Prisma.StringNullableWithAggregatesFilter<"CmsPage"> | string | null
@@ -274,6 +286,7 @@ export type CmsPageCreateInput = {
   slug: string
   title: string
   blocks: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  blocksDraft?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: $Enums.CmsPageStatus
   seoTitle?: string | null
   seoDescription?: string | null
@@ -286,6 +299,7 @@ export type CmsPageUncheckedCreateInput = {
   slug: string
   title: string
   blocks: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  blocksDraft?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: $Enums.CmsPageStatus
   seoTitle?: string | null
   seoDescription?: string | null
@@ -298,6 +312,7 @@ export type CmsPageUpdateInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   blocks?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  blocksDraft?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: Prisma.EnumCmsPageStatusFieldUpdateOperationsInput | $Enums.CmsPageStatus
   seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -310,6 +325,7 @@ export type CmsPageUncheckedUpdateInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   blocks?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  blocksDraft?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: Prisma.EnumCmsPageStatusFieldUpdateOperationsInput | $Enums.CmsPageStatus
   seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -322,6 +338,7 @@ export type CmsPageCreateManyInput = {
   slug: string
   title: string
   blocks: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  blocksDraft?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: $Enums.CmsPageStatus
   seoTitle?: string | null
   seoDescription?: string | null
@@ -334,6 +351,7 @@ export type CmsPageUpdateManyMutationInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   blocks?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  blocksDraft?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: Prisma.EnumCmsPageStatusFieldUpdateOperationsInput | $Enums.CmsPageStatus
   seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -346,6 +364,7 @@ export type CmsPageUncheckedUpdateManyInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   blocks?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  blocksDraft?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: Prisma.EnumCmsPageStatusFieldUpdateOperationsInput | $Enums.CmsPageStatus
   seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -358,6 +377,7 @@ export type CmsPageCountOrderByAggregateInput = {
   slug?: Prisma.SortOrder
   title?: Prisma.SortOrder
   blocks?: Prisma.SortOrder
+  blocksDraft?: Prisma.SortOrder
   status?: Prisma.SortOrder
   seoTitle?: Prisma.SortOrder
   seoDescription?: Prisma.SortOrder
@@ -398,6 +418,7 @@ export type CmsPageSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   slug?: boolean
   title?: boolean
   blocks?: boolean
+  blocksDraft?: boolean
   status?: boolean
   seoTitle?: boolean
   seoDescription?: boolean
@@ -410,6 +431,7 @@ export type CmsPageSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   slug?: boolean
   title?: boolean
   blocks?: boolean
+  blocksDraft?: boolean
   status?: boolean
   seoTitle?: boolean
   seoDescription?: boolean
@@ -422,6 +444,7 @@ export type CmsPageSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   slug?: boolean
   title?: boolean
   blocks?: boolean
+  blocksDraft?: boolean
   status?: boolean
   seoTitle?: boolean
   seoDescription?: boolean
@@ -434,6 +457,7 @@ export type CmsPageSelectScalar = {
   slug?: boolean
   title?: boolean
   blocks?: boolean
+  blocksDraft?: boolean
   status?: boolean
   seoTitle?: boolean
   seoDescription?: boolean
@@ -441,7 +465,7 @@ export type CmsPageSelectScalar = {
   updatedAt?: boolean
 }
 
-export type CmsPageOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "slug" | "title" | "blocks" | "status" | "seoTitle" | "seoDescription" | "createdAt" | "updatedAt", ExtArgs["result"]["cmsPage"]>
+export type CmsPageOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "slug" | "title" | "blocks" | "blocksDraft" | "status" | "seoTitle" | "seoDescription" | "createdAt" | "updatedAt", ExtArgs["result"]["cmsPage"]>
 
 export type $CmsPagePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "CmsPage"
@@ -451,6 +475,7 @@ export type $CmsPagePayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     slug: string
     title: string
     blocks: runtime.JsonValue
+    blocksDraft: runtime.JsonValue | null
     status: $Enums.CmsPageStatus
     seoTitle: string | null
     seoDescription: string | null
@@ -883,6 +908,7 @@ export interface CmsPageFieldRefs {
   readonly slug: Prisma.FieldRef<"CmsPage", 'String'>
   readonly title: Prisma.FieldRef<"CmsPage", 'String'>
   readonly blocks: Prisma.FieldRef<"CmsPage", 'Json'>
+  readonly blocksDraft: Prisma.FieldRef<"CmsPage", 'Json'>
   readonly status: Prisma.FieldRef<"CmsPage", 'CmsPageStatus'>
   readonly seoTitle: Prisma.FieldRef<"CmsPage", 'String'>
   readonly seoDescription: Prisma.FieldRef<"CmsPage", 'String'>

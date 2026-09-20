@@ -29,19 +29,27 @@ enum UserStatus {
 
 /// §5.1 Layer System — USERS
 model User {
-  id                 String     @id @default(cuid(2))
-  email              String     @unique
-  passwordHash       String
-  systemRole         SystemRole @default(USER)
-  status             UserStatus @default(PENDING)
+  id                    String     @id @default(cuid(2))
+  email                 String     @unique
+  passwordHash          String
+  systemRole            SystemRole @default(USER)
+  status                UserStatus @default(PENDING)
   /// §"M2": only the seeded super admin can be granted/locked with no further
   /// checks bypassed — the *one* admin nobody (incl. other admins) can lock.
-  isSuperAdmin       Boolean    @default(false)
-  emailVerifiedAt    DateTime?
-  profileCompletedAt DateTime?
-  lastLoginAt        DateTime?
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
+  isSuperAdmin          Boolean    @default(false)
+  emailVerifiedAt       DateTime?
+  profileCompletedAt    DateTime?
+  lastLoginAt           DateTime?
+  /// Đếm liên tiếp số lần sai mật khẩu (chỉ khi email có thật — xem
+  /// apps/web/app/api/auth/login/route.ts). Về 0 khi đăng nhập thành công
+  /// hoặc khi đặt lại mật khẩu thành công. Đạt 5 -> `passwordResetRequired`.
+  failedLoginAttempts   Int        @default(0)
+  /// True khi `failedLoginAttempts` chạm ngưỡng — chặn đăng nhập (kể cả đúng
+  /// mật khẩu) cho tới khi đặt lại mật khẩu qua /forgot-password, KHÔNG liên
+  /// quan `status` (đó là khoá admin/email-chưa-xác-minh, khác concern).
+  passwordResetRequired Boolean    @default(false)
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
 
   profile            UserProfile?
   refreshTokens      RefreshToken[]
@@ -58,9 +66,11 @@ model User {
 }
 
 /// §5.1 Layer System — USER_PROFILES. Created at registration with just
-/// fullName + consentAt; phone/occupation/province start null and are filled
-/// in during the mandatory profile-completion step (isProfileComplete()
-/// checks all four — see packages/auth/src/profile.ts).
+/// fullName + consentAt; phone/province tự nguyện điền sau qua /account/profile
+/// (không còn là cổng bắt buộc trước khi dùng hệ thống — xem
+/// packages/auth/src/profile.ts isProfileComplete()). `occupation` không còn
+/// dùng (từng trùng lựa chọn loại tài khoản lúc đăng ký) — giữ cột nullable,
+/// không migrate xoá.
 model UserProfile {
   userId     String   @id
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -149,17 +159,71 @@ model Plan {
   @@map("plans")
 }
 
+enum RoleScope {
+  SYSTEM
+  TENANT
+}
+
+/// L1 — nguồn sự thật cho "tier này được làm gì", thay các hàm hardcode TS
+/// (`canManageTenant()`...). Role là định nghĩa toàn cục (không phải row
+/// theo từng tenant) — mọi OWNER/STAFF của mọi tenant cùng trỏ về 1 Role qua
+/// `code`, đối chiếu với `User.systemRole` / `TenantMember.role` (giữ
+/// nguyên làm nhãn định danh, không đổi thành FK — xem ADR-022) lúc đọc.
+/// `code` khớp enum theo quy ước seed: SYSTEM_ADMIN, TENANT_OWNER,
+/// TENANT_STAFF.
+model Role {
+  id          String    @id @default(cuid(2))
+  code        String    @unique
+  scope       RoleScope
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+/// 1 row / hành động có thể cấp quyền, namespace kiểu "system:manage_users",
+/// "tenant:manage_products".
+model Permission {
+  id          String   @id @default(cuid(2))
+  code        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
 enum CmsPageStatus {
   DRAFT
   PUBLISHED
 }
 
 /// §5.1 Layer System — cms_pages (marketing content blocks)
+/// `blocks` là bản LIVE (đang hiển thị công khai). `blocksDraft` là bản đang
+/// sửa dở — null nghĩa là chưa có nháp nào khác bản live. Lưu nháp chỉ ghi
+/// `blocksDraft`, không đụng `blocks`; Publish copy blocksDraft -> blocks rồi
+/// xoá blocksDraft; "Khôi phục live" xoá blocksDraft để quay lại đúng bản live.
 model CmsPage {
   id             String        @id @default(cuid(2))
   slug           String        @unique
   title          String
   blocks         Json
+  blocksDraft    Json?
   status         CmsPageStatus @default(DRAFT)
   seoTitle       String?
   seoDescription String?
@@ -187,22 +251,22 @@ enum SubscriptionStatus {
 /// PlatformInvoiceStatus.VOID in the TaniGos report used to design this
 /// module; left in place rather than removed in case a later phase needs it.
 model Subscription {
-  id                 String             @id @default(cuid(2))
-  tenantId           String             @unique
-  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  planId             String
-  plan               Plan               @relation(fields: [planId], references: [id])
-  status             SubscriptionStatus @default(TRIALING)
-  currentPeriodStart DateTime
-  currentPeriodEnd   DateTime
-  graceEndsAt        DateTime?
+  id                     String             @id @default(cuid(2))
+  tenantId               String             @unique
+  tenant                 Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  planId                 String
+  plan                   Plan               @relation(fields: [planId], references: [id])
+  status                 SubscriptionStatus @default(TRIALING)
+  currentPeriodStart     DateTime
+  currentPeriodEnd       DateTime
+  graceEndsAt            DateTime?
   /// Which pre-expiry reminder (7 or 1 day) was last sent for the CURRENT
   /// period — null means none yet. Reset to null on every period renewal
   /// (subscription-billing.ts markInvoicePaid) and on entering GRACE, so a
   /// later period's reminders always start fresh instead of skipping.
   periodEndReminderStage Int?
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
 
   @@map("subscriptions")
 }
@@ -234,19 +298,19 @@ model Tenant {
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
-  members             TenantMember[]
-  slugHistory         TenantSlugHistory[]
-  subscription        Subscription?
-  products            Product[]
-  paymentConfigs      TenantPaymentConfig[]
+  members              TenantMember[]
+  slugHistory          TenantSlugHistory[]
+  subscription         Subscription?
+  products             Product[]
+  paymentConfigs       TenantPaymentConfig[]
   subscriptionInvoices SubscriptionInvoice[]
-  coupons             Coupon[]
-  orders              Order[]
-  transactions        TenantPaymentTransaction[]
-  customers           TenantCustomer[]
-  entitlements        Entitlement[]
-  shareLinks          ShareLink[]
-  downloadEvents      DownloadEvent[]
+  coupons              Coupon[]
+  orders               Order[]
+  transactions         TenantPaymentTransaction[]
+  customers            TenantCustomer[]
+  entitlements         Entitlement[]
+  shareLinks           ShareLink[]
+  downloadEvents       DownloadEvent[]
 
   @@map("tenants")
 }
@@ -306,23 +370,23 @@ enum ProductType {
 /// `ratingCount` are deliberately NOT added here — nothing in M5 writes
 /// them; M10 adds those columns when it adds review aggregation.
 model Product {
-  id              String        @id @default(cuid(2))
-  tenantId        String
-  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  slug            String
-  title           String
-  description     String?
-  type            ProductType   @default(OTHER)
-  coverImageKey   String?
-  tags            String[]      @default([])
-  priceVnd        Int           @default(0)
-  salePriceVnd    Int?
-  saleStartsAt    DateTime?
-  saleEndsAt      DateTime?
-  downloadLimit   Int           @default(5)
-  status          ProductStatus @default(DRAFT)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id            String        @id @default(cuid(2))
+  tenantId      String
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  slug          String
+  title         String
+  description   String?
+  type          ProductType   @default(OTHER)
+  coverImageKey String?
+  tags          String[]      @default([])
+  priceVnd      Int           @default(0)
+  salePriceVnd  Int?
+  saleStartsAt  DateTime?
+  saleEndsAt    DateTime?
+  downloadLimit Int           @default(5)
+  status        ProductStatus @default(DRAFT)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   files        ProductFile[]
   orderItems   OrderItem[]
@@ -403,6 +467,109 @@ model SystemStorageConfig {
   updatedAt        DateTime  @updatedAt
 
   @@map("system_storage_config")
+}
+
+/// Tài khoản Cloudinary dùng để upload ảnh cho CMS (khác hẳn
+/// SystemStorageConfig — đó là R2, dùng cho file tài liệu/ảnh bìa sản phẩm).
+/// Cùng pattern mã hoá AES-256-GCM với SystemStorageConfig (§7.3).
+model SystemCloudinaryConfig {
+  id               String    @id @default("default")
+  isEnabled        Boolean   @default(false)
+  publicConfig     Json
+  encryptedSecrets String
+  lastVerifiedAt   DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("system_cloudinary_config")
+}
+
+/// Cấu hình gửi email hệ thống (System Admin, /admin/settings/smtp) — bắt đầu với
+/// SMTP chuẩn (Gmail App Password). Các provider email khác (Resend, SES...) sẽ có
+/// bảng riêng sau, theo đúng mẫu SystemStorageConfig/SystemCloudinaryConfig (mỗi
+/// integration 1 bảng, không dồn chung 1 bảng đa-provider để tránh JSON lẫn lộn
+/// field giữa các provider khác nhau).
+model SystemSmtpConfig {
+  id               String    @id @default("default")
+  isEnabled        Boolean   @default(false)
+  publicConfig     Json
+  encryptedSecrets String
+  lastVerifiedAt   DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("system_smtp_config")
+}
+
+/// Lịch sử gửi email CẤP PLATFORM (System Admin, tab "Lịch sử gửi" trong
+/// /admin/settings/smtp) — CHỈ ghi email hệ thống: xác thực tài khoản, reset mật
+/// khẩu, billing/subscription gửi cho CHỦ tenant, soát file, email test SMTP...
+/// KHÔNG BAO GIỜ ghi email order_paid/new_sale (gửi tới khách hàng cuối của
+/// tenant) — loại trừ ngay từ lúc ghi log (xem apps/web/lib/email-dispatch.ts),
+/// không lọc lúc hiển thị, để giữ đúng ranh giới "System admin không đọc chi tiết
+/// đơn hàng/khách hàng của tenant" (CLAUDE.md §7.9).
+model EmailSendLog {
+  id           String   @id @default(cuid(2))
+  type         String
+  recipient    String
+  subject      String
+  status       String
+  errorMessage String?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("email_send_log")
+}
+
+/// Danh mục tài liệu — taxonomy CẤP PLATFORM do System Admin tạo trước
+/// (/admin/categories), KHÔNG phải danh mục riêng của từng tenant. Việc gán
+/// sản phẩm vào danh mục này là module sau (chưa làm ở đây). Bảng L1 (không
+/// tenantId), không cần RLS — cùng lớp với SystemBranding/Plan.
+model DocumentCategory {
+  id               String   @id @default(cuid(2))
+  slug             String   @unique
+  name             String
+  shortDescription String?
+  /// Rich text (HTML từ TiptapEditor, sanitize trước khi lưu — xem
+  /// packages/core/src/content/sanitize-html.ts).
+  description      String?
+  imageUrl         String?
+  seoTitle         String?
+  seoDescription   String?
+  /// Ảnh chia sẻ mạng xã hội — khuyến nghị 1200x630px.
+  ogImageUrl       String?
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("document_categories")
+}
+
+/// Nhận diện thương hiệu nền tảng (không phải branding riêng của từng
+/// tenant — đó là `Tenant.branding`). Tất cả field đều nullable: null nghĩa
+/// là "dùng mặc định" — brandName/brandSlogan rỗng thì `getEffectiveBrand()`
+/// (apps/web/lib/branding.ts) rơi về `getBrand()` (env, §"packages/config").
+/// Không đặt bảng này trong @gieochu/config vì package đó không được phép
+/// phụ thuộc @gieochu/db (packages/db mới là bên phụ thuộc config, ngược lại
+/// sẽ tạo circular dependency).
+model SystemBranding {
+  id                 String   @id @default("default")
+  logoLightUrl       String?
+  logoDarkUrl        String?
+  logoSquareUrl      String?
+  logoSidebarUrl     String?
+  logoFooterUrl      String?
+  faviconUrl         String?
+  ogImageUrl         String?
+  brandName          String?
+  brandSlogan        String?
+  primaryColorHex    String?
+  accentColorHex     String?
+  secondaryColorHex  String?
+  navbarLogoHeightPx Int      @default(56)
+  updatedAt          DateTime @updatedAt
+
+  @@map("system_branding")
 }
 
 enum PaymentProviderId {
@@ -614,31 +781,31 @@ enum OrderStatus {
 /// MVP is "mỗi đơn 1 sản phẩm" but `OrderItem` stays its own table (the
 /// spec's own forward note) so a future cart just adds more rows.
 model Order {
-  id            String      @id @default(cuid(2))
-  tenantId      String
-  tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  customerId    String
-  customer      User        @relation(fields: [customerId], references: [id])
-  code          String      @unique
-  status        OrderStatus @default(PENDING)
-  subtotalVnd   Int
-  discountVnd   Int         @default(0)
-  totalVnd      Int
-  couponCode    String?
-  provider      PaymentProviderId?
+  id              String             @id @default(cuid(2))
+  tenantId        String
+  tenant          Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customerId      String
+  customer        User               @relation(fields: [customerId], references: [id])
+  code            String             @unique
+  status          OrderStatus        @default(PENDING)
+  subtotalVnd     Int
+  discountVnd     Int                @default(0)
+  totalVnd        Int
+  couponCode      String?
+  provider        PaymentProviderId?
   /// CheckoutResult (packages/payments) captured once the customer picks a
   /// provider on the checkout page — read back instead of re-calling the
   /// provider (MoMo's createCheckout hits their API), same as
   /// SubscriptionInvoice.checkoutPayload (M3).
   checkoutPayload Json?
-  proofImageKey String?
+  proofImageKey   String?
   /// Ghi chú bắt buộc khi owner xác nhận thủ công (§"M8"), cùng mẫu với
   /// SubscriptionInvoice.confirmNote (M3).
-  confirmNote   String?
-  expiresAt     DateTime
-  paidAt        DateTime?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  confirmNote     String?
+  expiresAt       DateTime
+  paidAt          DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
 
   items             OrderItem[]
   transactions      TenantPaymentTransaction[]
@@ -748,21 +915,21 @@ model Entitlement {
 /// who just requested it holds the raw token", not a tenant/user row filter,
 /// so a plain `getPrismaClient()` lookup by `tokenHash` is correct here.
 model DownloadToken {
-  id            String    @id @default(cuid(2))
-  tokenHash     String    @unique
+  id            String      @id @default(cuid(2))
+  tokenHash     String      @unique
   entitlementId String
   entitlement   Entitlement @relation(fields: [entitlementId], references: [id], onDelete: Cascade)
   fileId        String
   file          ProductFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
   userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// Denormalized from `entitlement.tenantId` at creation — lets `consumeDownloadToken()`
   /// open one `withTenant()` transaction immediately, without an extra RLS-scoped lookup
   /// just to learn which tenant scope to use.
   tenantId      String
   expiresAt     DateTime
   usedAt        DateTime?
-  createdAt     DateTime  @default(now())
+  createdAt     DateTime    @default(now())
 
   @@index([entitlementId])
   @@map("download_tokens")

@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createVerificationToken, normalizeEmail } from "@gieochu/auth";
-import { rateLimited } from "@gieochu/core";
+import { logger, rateLimited } from "@gieochu/core";
 import { getEnv } from "@gieochu/config";
 import { getPrismaClient } from "@gieochu/db";
 import { renderVerifyEmailTemplate } from "@gieochu/email";
 import { getRequestId, handleApiError, parseJsonBody } from "../../../../lib/api-response";
 import { checkRateLimit } from "../../../../lib/rate-limit";
-import { enqueueEmail } from "../../../../lib/jobs";
+import { sendEmailNow } from "../../../../lib/email-dispatch";
 
 const resendSchema = z.object({ email: z.string().email("Email không hợp lệ.") });
 const RESEND_LIMIT = 3;
@@ -39,7 +39,10 @@ export async function POST(request: Request) {
       });
       const verifyUrl = `${env.APP_URL}/verify-email?token=${verification.token}`;
       const rendered = renderVerifyEmailTemplate({ appName: env.APP_NAME, verifyUrl });
-      await enqueueEmail({ to: user.email, subject: rendered.subject, html: rendered.html, text: rendered.text });
+      const sent = await sendEmailNow({ type: "verify_email", to: user.email, subject: rendered.subject, html: rendered.html, text: rendered.text });
+      if (!sent.ok) {
+        logger.warn({ email: user.email, error: sent.error }, "resend-verification: gửi email thất bại");
+      }
     }
 
     // Same response whether the email exists or not, to avoid enumeration.

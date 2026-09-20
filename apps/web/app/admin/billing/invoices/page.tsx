@@ -1,52 +1,57 @@
+import { getBrand } from "@gieochu/config/brand";
 import { requireAdminAccess } from "../../../../lib/page-guards";
 import { listPendingManualInvoices } from "../../../../lib/subscription-billing";
+import { AdminPageHeader, EmptyState } from "../../_ui/kit";
+import { IconDoc } from "../../_ui/icons";
 import { ConfirmButton } from "./confirm-button";
 
 export default async function AdminBillingInvoicesPage() {
   await requireAdminAccess("/admin/billing/invoices");
+  const brand = getBrand();
 
   const invoices = await listPendingManualInvoices();
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-2xl font-bold">Hoá đơn QR thủ công chờ đối soát</h1>
-      <p className="mt-2 text-sm text-gray-500">
-        Kiểm tra sao kê ngân hàng của Tani rồi xác nhận từng hoá đơn khớp nội dung chuyển khoản.
-      </p>
+    <main className="px-5 py-8 lg:px-8">
+      <AdminPageHeader
+        title="Hoá đơn QR thủ công chờ đối soát"
+        subtitle={`Kiểm tra sao kê ngân hàng của ${brand.name} rồi xác nhận từng hoá đơn khớp nội dung chuyển khoản.`}
+      />
 
-      <table className="mt-6 w-full text-sm">
-        <thead>
-          <tr className="border-b text-left">
-            <th className="py-2">Trang</th>
-            <th className="py-2">Gói</th>
-            <th className="py-2">Mã hoá đơn</th>
-            <th className="py-2">Số tiền</th>
-            <th className="py-2">Hạn</th>
-            <th className="py-2"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {invoices.length === 0 ? (
-            <tr>
-              <td colSpan={6} className="py-4 text-gray-500">
-                Không có hoá đơn nào đang chờ.
-              </td>
-            </tr>
-          ) : null}
-          {invoices.map((invoice) => (
-            <tr key={invoice.id} className="border-b">
-              <td className="py-2">{invoice.tenant.name}</td>
-              <td className="py-2">{invoice.plan.name}</td>
-              <td className="py-2">{invoice.code}</td>
-              <td className="py-2">{invoice.amountVnd.toLocaleString("vi-VN")}đ</td>
-              <td className="py-2">{invoice.dueAt.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}</td>
-              <td className="py-2">
-                <ConfirmButton invoiceId={invoice.id} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {invoices.length === 0 ? (
+        <div className="mt-6">
+          <EmptyState icon={<IconDoc className="h-6 w-6" />} title="Không có hoá đơn nào đang chờ" description="Mọi hoá đơn QR thủ công đã được đối soát." />
+        </div>
+      ) : (
+        <div className="mt-6 overflow-x-auto rounded-2xl border bg-white" style={{ borderColor: "#E5E7EB" }}>
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b text-gray-500" style={{ borderColor: "#E5E7EB" }}>
+                <th className="px-4 py-3 font-medium">Trang</th>
+                <th className="px-4 py-3 font-medium">Gói</th>
+                <th className="px-4 py-3 font-medium">Mã hoá đơn</th>
+                <th className="px-4 py-3 font-medium">Số tiền</th>
+                <th className="px-4 py-3 font-medium">Hạn</th>
+                <th className="px-4 py-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {invoices.map((invoice) => (
+                <tr key={invoice.id} className="border-b last:border-0" style={{ borderColor: "#E5E7EB" }}>
+                  <td className="px-4 py-3">{invoice.tenant.name}</td>
+                  <td className="px-4 py-3">{invoice.plan.name}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{invoice.code}</td>
+                  <td className="px-4 py-3 font-semibold">{invoice.amountVnd.toLocaleString("vi-VN")}đ</td>
+                  <td className="px-4 py-3 text-gray-500">{invoice.dueAt.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}</td>
+                  <td className="px-4 py-3">
+                    <ConfirmButton invoiceId={invoice.id} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </main>
   );
 }

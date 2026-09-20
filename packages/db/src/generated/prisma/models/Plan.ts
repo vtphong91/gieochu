@@ -591,14 +591,6 @@ export type PlanScalarRelationFilter = {
   isNot?: Prisma.PlanWhereInput
 }
 
-export type IntFieldUpdateOperationsInput = {
-  set?: number
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
-}
-
 export type EnumPlanIntervalFieldUpdateOperationsInput = {
   set?: $Enums.PlanInterval
 }

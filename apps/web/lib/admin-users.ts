@@ -3,7 +3,7 @@ import { AppError, decideLockUser, forbidden, notFound } from "@gieochu/core";
 import { getEnv } from "@gieochu/config";
 import { getPrismaClient } from "@gieochu/db";
 import { renderVerifyEmailTemplate } from "@gieochu/email";
-import { enqueueEmail } from "./jobs";
+import { sendEmailNow } from "./email-dispatch";
 import type { CurrentUser } from "./session";
 
 /** §"M2" Khoá user: từ chối tự khoá/khoá super admin, thu hồi mọi refresh token khi cho phép. */
@@ -48,7 +48,10 @@ export async function resendVerificationForUser(targetUserId: string): Promise<v
   });
   const verifyUrl = `${env.APP_URL}/verify-email?token=${verification.token}`;
   const rendered = renderVerifyEmailTemplate({ appName: env.APP_NAME, verifyUrl });
-  await enqueueEmail({ to: user.email, subject: rendered.subject, html: rendered.html, text: rendered.text });
+  const result = await sendEmailNow({ type: "verify_email", to: user.email, subject: rendered.subject, html: rendered.html, text: rendered.text });
+  if (!result.ok) {
+    throw new AppError({ code: "EMAIL_SEND_FAILED", message: `Gửi email thất bại: ${result.error}`, httpStatus: 502 });
+  }
 }
 
 /** §"M2": chỉ super admin mới được cấp quyền SYSTEM_ADMIN. */

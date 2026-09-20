@@ -1,4 +1,5 @@
 import { requireTenantMemberPage } from "../../../../../lib/page-guards";
+import { AdminPageHeader, SettingsGrid } from "../../../../admin/_ui/kit";
 import { CreateProductForm } from "./create-form";
 
 export default async function NewProductPage({ params }: { params: Promise<{ tenantSlug: string }> }) {
@@ -6,9 +7,11 @@ export default async function NewProductPage({ params }: { params: Promise<{ ten
   await requireTenantMemberPage(tenantSlug, `/studio/${tenantSlug}/products/new`);
 
   return (
-    <main className="mx-auto max-w-md px-4 py-10">
-      <h1 className="text-2xl font-bold">Tạo sản phẩm mới</h1>
-      <CreateProductForm tenantSlug={tenantSlug} />
+    <main className="px-5 py-8 lg:px-8">
+      <AdminPageHeader title="Tạo sản phẩm mới" subtitle="Điền thông tin cơ bản — có thể bổ sung mô tả, ảnh, file sau." />
+      <SettingsGrid>
+        <CreateProductForm tenantSlug={tenantSlug} />
+      </SettingsGrid>
     </main>
   );
 }

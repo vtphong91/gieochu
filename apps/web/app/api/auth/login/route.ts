@@ -9,6 +9,7 @@ import { applyAuthCookies } from "../../../../lib/cookies";
 import { getRequestId, handleApiError, parseJsonBody } from "../../../../lib/api-response";
 import { checkRateLimit } from "../../../../lib/rate-limit";
 import { getClientIp } from "../../../../lib/request-meta";
+import { resolveLandingPath } from "../../../../lib/landing-path";
 
 const loginSchema = z.object({
   email: z.string().email("Email không hợp lệ."),
@@ -19,6 +20,18 @@ const INVALID_CREDENTIALS = new AppError({
   code: "INVALID_CREDENTIALS",
   message: "Email hoặc mật khẩu không đúng.",
   httpStatus: 401,
+});
+
+// Ngưỡng khoá tạm sau nhiều lần sai mật khẩu liên tiếp — chỉ đếm khi email có
+// thật (không đếm cho email không tồn tại, tránh tạo cớ khoá tài khoản người
+// khác chỉ bằng cách đoán email). Đạt ngưỡng -> bắt buộc qua /forgot-password,
+// không mở lại được chỉ bằng cách nhập đúng mật khẩu cũ nữa.
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+
+const PASSWORD_RESET_REQUIRED = new AppError({
+  code: "PASSWORD_RESET_REQUIRED",
+  message: "Tài khoản đã bị khoá tạm thời do đăng nhập sai quá nhiều lần. Vui lòng đặt lại mật khẩu để tiếp tục.",
+  httpStatus: 403,
 });
 
 export async function POST(request: Request) {
@@ -39,8 +52,20 @@ export async function POST(request: Request) {
       throw new AppError({ code: "ACCOUNT_LOCKED", message: "Tài khoản đã bị khoá.", httpStatus: 403 });
     }
 
+    if (user.passwordResetRequired) {
+      throw PASSWORD_RESET_REQUIRED;
+    }
+
     const passwordOk = await verifyPassword(user.passwordHash, body.password);
-    if (!passwordOk) throw INVALID_CREDENTIALS;
+    if (!passwordOk) {
+      const failedLoginAttempts = user.failedLoginAttempts + 1;
+      const lockedOut = failedLoginAttempts >= MAX_FAILED_LOGIN_ATTEMPTS;
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { failedLoginAttempts, passwordResetRequired: lockedOut },
+      });
+      throw lockedOut ? PASSWORD_RESET_REQUIRED : INVALID_CREDENTIALS;
+    }
 
     if (user.status === "PENDING") {
       throw new AppError({
@@ -69,7 +94,7 @@ export async function POST(request: Request) {
         },
       }),
       prisma.userProfile.findUnique({ where: { userId: user.id } }),
-      prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: now } }),
+      prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: now, failedLoginAttempts: 0 } }),
     ]);
 
     const profileCompleted = isProfileComplete(profile);
@@ -80,8 +105,9 @@ export async function POST(request: Request) {
       accessTtl,
     );
 
+    const landingPath = await resolveLandingPath({ userId: user.id, role: user.systemRole });
     const response = NextResponse.json({
-      user: { id: user.id, email: user.email, role: user.systemRole, profileCompleted },
+      user: { id: user.id, email: user.email, role: user.systemRole, profileCompleted, landingPath },
     });
     applyAuthCookies(response, {
       accessToken,

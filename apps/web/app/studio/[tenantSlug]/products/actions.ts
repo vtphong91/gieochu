@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { AppError } from "@gieochu/core";
+import { sanitizeRichTextHtml } from "@gieochu/core/content/sanitize-html";
 import type { ProductType } from "@gieochu/db";
 import { requireTenantMember } from "../../../../lib/tenant";
 import {
@@ -33,6 +34,7 @@ const createSchema = z.object({
   title: z.string().trim().min(1),
   slug: z.string().trim().optional(),
   type: z.enum(PRODUCT_TYPES as [ProductType, ...ProductType[]]),
+  description: z.string().trim().optional(),
 });
 
 export async function createProductAction(
@@ -45,12 +47,16 @@ export async function createProductAction(
     title: formData.get("title"),
     slug: formData.get("slug") || undefined,
     type: formData.get("type"),
+    description: formData.get("description") || undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ." };
 
+  // Sanitize server-side — cùng nguyên tắc với updateProductAction bên dưới.
+  const description = parsed.data.description ? sanitizeRichTextHtml(parsed.data.description) : undefined;
+
   let product;
   try {
-    product = await createProduct(tenant.id, parsed.data);
+    product = await createProduct(tenant.id, { ...parsed.data, description });
   } catch (error) {
     if (error instanceof AppError) return { error: error.message };
     throw error;
@@ -105,10 +111,14 @@ export async function updateProductAction(
     }
   }
 
+  // Sanitize server-side — không tin HTML client gửi lên dù chính TiptapEditor sinh ra
+  // (paste từ Word/web ngoài vẫn có thể mang theo script/on*-handler/javascript: link).
+  const description = parsed.data.description ? sanitizeRichTextHtml(parsed.data.description) : undefined;
+
   try {
     await updateProduct(tenant.id, productId, {
       title: parsed.data.title,
-      description: parsed.data.description || undefined,
+      description,
       type: parsed.data.type,
       tags,
       priceVnd: parsed.data.priceVnd,

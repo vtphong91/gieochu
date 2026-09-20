@@ -5,6 +5,7 @@ import { listBankBins, listTenantProviderConfigs } from "../../../../../lib/tena
 import { ManualQrForm } from "./manual-qr-form";
 import { SepayForm } from "./sepay-form";
 import { MomoForm } from "./momo-form";
+import { AdminPageHeader, SettingsGrid } from "../../../../admin/_ui/kit";
 
 export default async function StudioPaymentsSettingsPage({
   params,
@@ -24,13 +25,13 @@ export default async function StudioPaymentsSettingsPage({
   const webhookUrl = buildWebhookNotifyUrl(env.APP_URL, { kind: "TENANT", tenantId: tenant.id }, "SEPAY");
 
   return (
-    <main className="mx-auto max-w-md px-4 py-10">
-      <h1 className="text-2xl font-bold">Cấu hình thanh toán</h1>
-      <p className="mt-2 text-sm text-gray-500">
-        Bật ít nhất một phương thức để xuất bản sản phẩm có giá &gt; 0. Tiền về thẳng tài khoản của bạn.
-      </p>
+    <main className="px-5 py-8 lg:px-8">
+      <AdminPageHeader
+        title="Cấu hình thanh toán"
+        subtitle="Bật ít nhất một phương thức để xuất bản sản phẩm có giá > 0. Tiền về thẳng tài khoản của bạn."
+      />
 
-      <div className="mt-6 space-y-6">
+      <SettingsGrid>
         <ManualQrForm
           tenantSlug={tenant.slug}
           banks={banks}
@@ -67,6 +68,14 @@ export default async function StudioPaymentsSettingsPage({
             maskedSecret: momo?.maskedSecrets.secretKey,
           }}
         />
+      </SettingsGrid>
+
+      <div className="mt-8 rounded-2xl border bg-gray-50 p-5 text-sm text-gray-600" style={{ borderColor: "#E5E7EB" }}>
+        <p className="font-medium text-gray-800">Bảo mật thông tin</p>
+        <ul className="mt-2 list-disc space-y-1 pl-5">
+          <li>Secret/API key được mã hoá AES-256-GCM trước khi lưu vào cơ sở dữ liệu.</li>
+          <li>Key đã lưu không bao giờ hiển thị lại — hệ thống chỉ cho biết đã cấu hình hay chưa. Nhập key mới để ghi đè.</li>
+        </ul>
       </div>
     </main>
   );

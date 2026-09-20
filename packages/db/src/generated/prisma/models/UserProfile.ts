@@ -15,9 +15,11 @@ import type * as Prisma from "../internal/prismaNamespace"
 /**
  * Model UserProfile
  * §5.1 Layer System — USER_PROFILES. Created at registration with just
- * fullName + consentAt; phone/occupation/province start null and are filled
- * in during the mandatory profile-completion step (isProfileComplete()
- * checks all four — see packages/auth/src/profile.ts).
+ * fullName + consentAt; phone/province tự nguyện điền sau qua /account/profile
+ * (không còn là cổng bắt buộc trước khi dùng hệ thống — xem
+ * packages/auth/src/profile.ts isProfileComplete()). `occupation` không còn
+ * dùng (từng trùng lựa chọn loại tài khoản lúc đăng ký) — giữ cột nullable,
+ * không migrate xoá.
  */
 export type UserProfileModel = runtime.Types.Result.DefaultSelection<Prisma.$UserProfilePayload>
 

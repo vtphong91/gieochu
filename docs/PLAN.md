@@ -128,8 +128,8 @@ hàm); `docker compose up` cho MinIO/Mailpit vẫn chưa test trong phiên này.
   admin → 200, user thường → 404, chưa đăng nhập → 307).
 
 **Đã xác minh chạy được trong phiên này:** `pnpm lint/typecheck/test/build` xanh toàn bộ (30/91 unit, 17/50
-integration cộng dồn); đăng nhập thật qua `curl` với user seed (`admin@gieochu.net`) xem `/admin` thật, và
-với user thường xác nhận bị 404.
+integration cộng dồn); đăng nhập thật qua `curl` với user seed super admin xem `/admin` thật, và với user
+thường xác nhận bị 404.
 
 ## M7 — Việc đã làm (xem docs/modules/M7.md để có sơ đồ và danh sách test đầy đủ)
 

@@ -26,12 +26,15 @@ function jsonRequest(url: string, body: unknown, cookie?: string): NextRequest {
   return new NextRequest(url, { method: "POST", headers, body: JSON.stringify(body) });
 }
 
-async function registerUser(overrides: Partial<{ email: string; password: string; fullName: string }> = {}) {
+async function registerUser(
+  overrides: Partial<{ email: string; password: string; fullName: string; accountType: "TENANT" | "CUSTOMER" }> = {},
+) {
   const email = overrides.email ?? nextEmail();
   const password = overrides.password ?? "Str0ngPass!";
   const fullName = overrides.fullName ?? "Người Test";
+  const accountType = overrides.accountType ?? "CUSTOMER";
   const response = await register(
-    jsonRequest("http://localhost/api/auth/register", { email, password, fullName, consent: true }),
+    jsonRequest("http://localhost/api/auth/register", { email, password, fullName, consent: true, accountType }),
   );
   return { email, password, fullName, response };
 }
@@ -45,7 +48,7 @@ describe("M1 auth", () => {
     await prisma.user.deleteMany({ where: { email: { startsWith: RUN_PREFIX } } });
   });
 
-  it("registration creates a PENDING user and enqueues the activation email", async () => {
+  it("registration creates a PENDING user and sends the activation email synchronously (no queue/worker)", async () => {
     const email = nextEmail();
     const { response } = await registerUser({ email });
     expect(response.status).toBe(201);
@@ -53,10 +56,11 @@ describe("M1 auth", () => {
     const user = await prisma.user.findUnique({ where: { email } });
     expect(user?.status).toBe("PENDING");
 
-    const jobs = await prisma.$queryRaw<{ id: string }[]>`
-      SELECT id FROM pgboss.job WHERE name = 'email.send' AND data->>'to' = ${email}
-    `;
-    expect(jobs.length).toBeGreaterThan(0);
+    // §"Đổi kiến trúc email" (2026-09-20): không còn hàng đợi pg-boss, register gọi
+    // sendEmailNow() đồng bộ và ghi log vào email_send_log — kiểm tra đúng nguồn thật
+    // thay vì bảng hàng đợi cũ.
+    const log = await prisma.emailSendLog.findFirst({ where: { type: "verify_email", recipient: email } });
+    expect(log).not.toBeNull();
   });
 
   it("registering a duplicate email returns 409", async () => {
@@ -170,12 +174,15 @@ describe("M1 auth", () => {
     expect(activeAfter).toBe(0);
   });
 
-  describe("incomplete profile redirects away from /account/library", () => {
+  describe("an incomplete profile no longer blocks /account/library", () => {
     beforeEach(() => {
       vi.resetModules();
     });
 
-    it("redirects to /account/profile?complete=1 when the profile is incomplete", async () => {
+    // §"đơn giản hoá đăng ký/đăng nhập" (2026-09-20): đã bỏ cổng bắt buộc hoàn
+    // thiện hồ sơ trước khi dùng hệ thống — verified là đủ, pc:false không còn
+    // redirect đi đâu cả (trước đây test này kiểm tra ngược lại, hành vi cũ).
+    it("a verified user with pc:false (incomplete profile) is granted access immediately, no redirect", async () => {
       const { email } = await registerUser();
       await activateUser(email);
       const user = await prisma.user.findUniqueOrThrow({ where: { email } });
@@ -192,11 +199,10 @@ describe("M1 auth", () => {
         }),
       }));
 
-      const { requireCompleteAccountAccess } = await import("../../lib/page-guards");
+      const { requireVerifiedAccess } = await import("../../lib/page-guards");
 
-      await expect(requireCompleteAccountAccess("/account/library")).rejects.toMatchObject({
-        digest: expect.stringContaining("/account/profile?complete=1"),
-      });
+      const result = await requireVerifiedAccess("/account/library");
+      expect(result.userId).toBe(user.id);
 
       vi.doUnmock("next/headers");
     });

@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { renewSubscriptionAction, type BillingActionState } from "./actions";
+import { FormBanner, PrimaryButton, SelectField } from "../../../admin/_ui/kit";
 
 const initialState: BillingActionState = {};
 
@@ -36,39 +37,23 @@ export function RenewForm({
   }
 
   return (
-    <form action={formAction} className="space-y-3">
-      <div>
-        <label className="block text-sm font-medium" htmlFor="planId">
-          Gói dịch vụ
-        </label>
-        <select id="planId" name="planId" defaultValue={currentPlanId} className="mt-1 w-full rounded border px-3 py-2">
-          {plans.map((plan) => (
-            <option key={plan.id} value={plan.id}>
-              {plan.name} — {plan.priceVnd.toLocaleString("vi-VN")}đ
-            </option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="block text-sm font-medium" htmlFor="provider">
-          Phương thức thanh toán
-        </label>
-        <select id="provider" name="provider" className="mt-1 w-full rounded border px-3 py-2">
-          {enabledProviders.map((provider) => (
-            <option key={provider} value={provider}>
-              {PROVIDER_LABEL[provider] ?? provider}
-            </option>
-          ))}
-        </select>
-      </div>
-      {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
-      <button
-        type="submit"
-        disabled={isPending}
-        className="rounded bg-[var(--color-primary)] px-4 py-2 text-white disabled:opacity-50"
-      >
-        {isPending ? "Đang tạo hoá đơn..." : "Gia hạn / Nâng cấp"}
-      </button>
+    <form action={formAction} className="space-y-4">
+      <SelectField id="planId" label="Gói dịch vụ" name="planId" defaultValue={currentPlanId}>
+        {plans.map((plan) => (
+          <option key={plan.id} value={plan.id}>
+            {plan.name} — {plan.priceVnd.toLocaleString("vi-VN")}đ
+          </option>
+        ))}
+      </SelectField>
+      <SelectField id="provider" label="Phương thức thanh toán" name="provider">
+        {enabledProviders.map((provider) => (
+          <option key={provider} value={provider}>
+            {PROVIDER_LABEL[provider] ?? provider}
+          </option>
+        ))}
+      </SelectField>
+      <FormBanner ok={false} message={state.error} />
+      <PrimaryButton loading={isPending}>{isPending ? "Đang tạo hoá đơn..." : "Gia hạn / Nâng cấp"}</PrimaryButton>
     </form>
   );
 }

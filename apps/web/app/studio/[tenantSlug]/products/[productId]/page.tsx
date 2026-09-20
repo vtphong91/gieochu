@@ -9,11 +9,19 @@ import { ProductStatusActions } from "./status-actions";
 import { RemoveFileButton } from "./remove-file-button";
 import { UploadFileForm } from "./upload-file-form";
 import { CoverImageUpload } from "./cover-image-upload";
+import { AdminPageHeader, Badge } from "../../../../admin/_ui/kit";
+import { IconExternalLink } from "../../../../admin/_ui/icons";
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "Nháp",
   PUBLISHED: "Đã xuất bản",
   ARCHIVED: "Đã lưu trữ",
+};
+
+const STATUS_TONE: Record<string, "success" | "warning" | "neutral"> = {
+  PUBLISHED: "success",
+  DRAFT: "warning",
+  ARCHIVED: "neutral",
 };
 
 /** For a `datetime-local` input's defaultValue — wall-clock time in Asia/Ho_Chi_Minh, no timezone suffix. */
@@ -54,76 +62,81 @@ export default async function EditProductPage({
   const coverUrl = product.coverImageKey && publicBaseUrl ? `${publicBaseUrl}/${product.coverImageKey}` : null;
 
   return (
-    <main className="mx-auto max-w-md px-4 py-10">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{product.title}</h1>
-        <span className="text-sm text-gray-500">{STATUS_LABEL[product.status] ?? product.status}</span>
+    <main className="px-5 py-8 lg:px-8">
+      <AdminPageHeader
+        title={product.title}
+        subtitle={`/${product.slug}`}
+        action={
+          <div className="flex items-center gap-3">
+            <Badge tone={STATUS_TONE[product.status] ?? "neutral"}>{STATUS_LABEL[product.status] ?? product.status}</Badge>
+            <ProductStatusActions tenantSlug={tenantSlug} productId={productId} status={product.status} />
+          </div>
+        }
+      />
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[280px_1fr]">
+        <div className="space-y-6">
+          <section className="rounded-2xl border bg-white p-5" style={{ borderColor: "#E5E7EB" }}>
+            <h2 className="font-[family-name:var(--font-heading)] font-semibold" style={{ color: "#12213A" }}>
+              Ảnh bìa
+            </h2>
+            <div className="mt-3">
+              <CoverImageUpload tenantSlug={tenantSlug} productId={productId} currentUrl={coverUrl} />
+            </div>
+          </section>
+
+          <section className="rounded-2xl border bg-white p-5" style={{ borderColor: "#E5E7EB" }}>
+            <h2 className="font-[family-name:var(--font-heading)] font-semibold" style={{ color: "#12213A" }}>
+              File tài liệu
+            </h2>
+            <div className="mt-3">
+              <UploadFileForm tenantSlug={tenantSlug} productId={productId} />
+            </div>
+            {files.length > 0 ? (
+              <ul className="mt-3 divide-y rounded-lg border text-sm" style={{ borderColor: "#E5E7EB" }}>
+                {files.map((file) => (
+                  <li key={file.id} className="flex items-center justify-between p-2.5">
+                    <span className="min-w-0 truncate text-gray-600" title={file.fileName}>
+                      {file.fileName} — {file.scanStatus} {file.isPreview ? "(preview)" : ""}
+                    </span>
+                    <RemoveFileButton tenantSlug={tenantSlug} productId={productId} fileId={file.id} />
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </section>
+
+          <section className="rounded-2xl border bg-white p-5" style={{ borderColor: "#E5E7EB" }}>
+            <h2 className="font-[family-name:var(--font-heading)] font-semibold" style={{ color: "#12213A" }}>
+              Link chia sẻ private
+            </h2>
+            <p className="mt-1 text-sm text-gray-500">Tạo link tải riêng cho một người, không cần đăng nhập.</p>
+            <Link
+              href={`/studio/${tenantSlug}/products/${productId}/share-links`}
+              className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold"
+              style={{ color: "#0F3B82" }}
+            >
+              Quản lý link chia sẻ <IconExternalLink className="h-3.5 w-3.5" />
+            </Link>
+          </section>
+        </div>
+
+        <EditProductForm
+          tenantSlug={tenantSlug}
+          productId={productId}
+          initial={{
+            title: product.title,
+            description: product.description ?? "",
+            type: product.type,
+            tags: product.tags.join(", "),
+            priceVnd: product.priceVnd,
+            salePriceVnd: product.salePriceVnd?.toString() ?? "",
+            saleStartsAt: toDatetimeLocal(product.saleStartsAt),
+            saleEndsAt: toDatetimeLocal(product.saleEndsAt),
+            downloadLimit: product.downloadLimit,
+          }}
+        />
       </div>
-      <p className="mt-1 text-sm text-gray-500">/{product.slug}</p>
-
-      <div className="mt-4">
-        <ProductStatusActions tenantSlug={tenantSlug} productId={productId} status={product.status} />
-      </div>
-
-      <section className="mt-8">
-        <h2 className="text-lg font-semibold">Ảnh bìa</h2>
-        <div className="mt-3">
-          <CoverImageUpload tenantSlug={tenantSlug} productId={productId} currentUrl={coverUrl} />
-        </div>
-      </section>
-
-      <section className="mt-8">
-        <h2 className="text-lg font-semibold">Thông tin sản phẩm</h2>
-        <div className="mt-3">
-          <EditProductForm
-            tenantSlug={tenantSlug}
-            productId={productId}
-            initial={{
-              title: product.title,
-              description: product.description ?? "",
-              type: product.type,
-              tags: product.tags.join(", "),
-              priceVnd: product.priceVnd,
-              salePriceVnd: product.salePriceVnd?.toString() ?? "",
-              saleStartsAt: toDatetimeLocal(product.saleStartsAt),
-              saleEndsAt: toDatetimeLocal(product.saleEndsAt),
-              downloadLimit: product.downloadLimit,
-            }}
-          />
-        </div>
-      </section>
-
-      <section className="mt-8">
-        <h2 className="text-lg font-semibold">File tài liệu</h2>
-        <div className="mt-3">
-          <UploadFileForm tenantSlug={tenantSlug} productId={productId} />
-        </div>
-        {files.length > 0 ? (
-          <ul className="mt-2 divide-y rounded border text-sm">
-            {files.map((file) => (
-              <li key={file.id} className="flex items-center justify-between p-2">
-                <span>
-                  {file.fileName} — {file.scanStatus} {file.isPreview ? "(preview)" : ""}
-                </span>
-                <RemoveFileButton tenantSlug={tenantSlug} productId={productId} fileId={file.id} />
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </section>
-
-      <section className="mt-8">
-        <h2 className="text-lg font-semibold">Link chia sẻ private</h2>
-        <p className="mt-1 text-sm text-gray-500">
-          Tạo link tải riêng cho một người, không cần đăng nhập.
-        </p>
-        <Link
-          href={`/studio/${tenantSlug}/products/${productId}/share-links`}
-          className="mt-2 inline-block rounded border px-3 py-1 text-sm text-[var(--color-primary)]"
-        >
-          Quản lý link chia sẻ
-        </Link>
-      </section>
     </main>
   );
 }

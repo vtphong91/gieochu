@@ -7,7 +7,10 @@ Việc ngoài phạm vi M0–M12 (mục 2.2 và mục 12 của đặc tả), ho�
 
 - Tên miền riêng cho tenant (custom domain), subdomain wildcard.
 - PDF stamping, watermark.
-- Nhân viên tenant (staff) với phân quyền chi tiết — schema chừa sẵn `role STAFF` nhưng UI chỉ cho owner.
+- Nhân viên tenant (staff) với phân quyền chi tiết — schema chừa sẵn `role STAFF`; ADR-022 đã thêm lớp
+  `Role`/`Permission` (seed sẵn tập quyền khởi đầu cho `TENANT_STAFF`) nên phần "được làm gì" không còn thiếu,
+  nhưng vẫn chưa có luồng mời staff / tạo row `TenantMember` role STAFF thật, và chưa có UI chỉnh ma trận
+  quyền — UI vẫn chỉ cho owner.
 - Bundle, flash sale theo khung giờ, license nhiều người dùng.
 - Affiliate, email marketing, chat.
 - Hoàn tiền tự động qua cổng thanh toán (MVP chỉ ghi nhận hoàn tiền thủ công).

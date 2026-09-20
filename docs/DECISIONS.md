@@ -353,3 +353,36 @@
 - **Lý do:** Đạt đúng mục tiêu kinh doanh báo cáo đề ra (giảm friction onboarding, subscription là "động cơ
   tăng trưởng" chứ không phải "vé vào cửa") với diff nhỏ nhất có thể lên schema/code đã build và test — tái
   dùng tối đa hạ tầng M3 v1 đã ổn định thay vì viết lại toàn bộ theo đúng khung 4-bảng của báo cáo gốc.
+
+## ADR-022 — Bảng `Role`/`Permission` (RBAC) là nguồn sự thật cho quyền truy cập module; giữ nguyên `SystemRole`/`TenantMemberRole` làm nhãn định danh
+
+- **Bối cảnh:** Bug báo cáo — đăng nhập bằng tài khoản chủ tenant bị redirect về trang chủ khách hàng thay vì
+  `/studio/{slug}`, vì `app/(auth)/login/page.tsx` chỉ rẽ nhánh `role === "SYSTEM_ADMIN" ? "/admin" : "/"`,
+  không hề biết user có sở hữu tenant hay không. Người dùng chỉ ra đây là triệu chứng của việc hệ thống thiếu
+  một nơi rõ ràng để trả lời "user này được vào module nào", và yêu cầu bổ sung bảng role thật (không phải chỉ
+  1 hàm gộp tạm — đã hỏi lại và người dùng chọn rõ hướng RBAC đầy đủ thay vì bản tối giản).
+- **Quyết định:** Thêm 3 bảng L1 mới — `Role`, `Permission`, `RolePermission` (`packages/db/prisma/schema.prisma`)
+  — dùng chung 1 `RoleScope` (SYSTEM | TENANT), seed sao cho `Role.code` khớp 1-1 với giá trị enum hiện có
+  (`SYSTEM_ADMIN`, `TENANT_OWNER`, `TENANT_STAFF`). **Không** đổi `User.systemRole`/`TenantMember.role` (2 enum
+  hiện có) thành FK — chúng tiếp tục là nhãn định danh nhẹ trong JWT/DB, còn Role/Permission trở thành nguồn sự
+  thật duy nhất cho "tier này được làm gì" (`apps/web/lib/permissions.ts`: `hasSystemPermission`/
+  `hasTenantPermission`), thay cho hàm hardcode TypeScript trước đây.
+  - Sửa bug cụ thể: `apps/web/lib/landing-path.ts`'s `resolveLandingPath()` — kiểm tra quyền
+    `system:view_admin_dashboard` trước, sau đó tra `Tenant.ownerId` để lấy `tenant.slug` (không bao giờ dùng
+    `user.id` trong URL), cuối cùng fallback `/`. Login route trả thêm `landingPath` trong response, login page
+    dùng trực tiếp thay vì tự suy role.
+- **Vì sao không đổi enum thành FK ngay:** `SystemRole` chỉ có 2 giá trị thật (+ `isSuperAdmin` bolt-on ngoài
+  enum); chuẩn hoá thành bảng join không mang lại gì mà buộc đổi shape JWT (`AccessTokenClaims.role`), chữ ký
+  `requireRole()`, và ~54 call site (`requireRole`/`requireAdminAccess`/`requireTenantMember`/
+  `requireTenantMemberPage`) trong 1 lần — đi ngược nguyên tắc không over-engineer. Các guard này **giữ nguyên
+  không đổi** trong việc này.
+- **Không làm trong đợt này:** migrate 54 call site sang gọi permission-code trực tiếp; UI chỉnh ma trận quyền
+  STAFF (`RolePermission` — chỉ seed tập khởi đầu: `tenant:access_studio`/`manage_products`/`manage_orders`);
+  luồng mời STAFF/tạo row `TenantMember` role STAFF thật; resolve landing path cho STAFF (chưa có row thật);
+  đụng RLS policies hay `withTenant`/`withCustomer`/`withPublic`/`withSystemJob` (RBAC là lớp tách biệt, chạy
+  trước/song song RLS, không thay thế nó); xoá `packages/auth/src/rbac.ts`'s `can()`/`SystemAction` cũ (dead
+  code vô hại, có unit test riêng — xoá sẽ đổi số test cố định phải hỏi lại người dùng trước).
+- **Lý do:** Đáp ứng đúng yêu cầu "bảng role thật, fetch rõ ràng phân quyền, log vào đúng module" với diff nhỏ
+  nhất — 3 bảng cộng thêm, không đụng guard/JWT/54 call site hiện có, đồng thời khiến `TENANT_STAFF` không còn
+  "chết" về mặt cấu trúc (schema đã chừa sẵn từ M4, xem `docs/BACKLOG.md`) dù luồng mời staff thật vẫn là việc
+  sau này.

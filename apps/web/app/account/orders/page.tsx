@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireCompleteAccountAccess } from "../../../lib/page-guards";
+import { requireVerifiedAccess } from "../../../lib/page-guards";
 import { listCustomerOrders } from "../../../lib/library";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -17,7 +17,7 @@ function formatVnDateTime(date: Date): string {
 
 /** §"M9": "Lịch sử đơn hàng ... mở lại trang checkout cho đơn PENDING". */
 export default async function AccountOrdersPage() {
-  const user = await requireCompleteAccountAccess("/account/orders");
+  const user = await requireVerifiedAccess("/account/orders");
   const orders = await listCustomerOrders(user.userId);
 
   return (

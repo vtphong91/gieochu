@@ -48,14 +48,16 @@ export async function requireRole(role: SystemRole): Promise<CurrentUser> {
   return user;
 }
 
-/** Gates /account/*, /studio/* and checkout per the M1 flowchart. */
-export async function requireVerifiedAndProfileComplete(): Promise<CurrentUser> {
+/**
+ * Server Action guard cho /account/*, /studio/* và checkout — chỉ yêu cầu đã
+ * xác minh email, KHÔNG còn chặn theo hồ sơ đầy đủ (đã bỏ cổng bắt buộc điền
+ * hồ sơ trước khi dùng, cùng thay đổi với requireVerifiedAccess ở
+ * page-guards.ts).
+ */
+export async function requireVerified(): Promise<CurrentUser> {
   const user = await requireUser();
   if (!user.emailVerified) {
     throw forbidden("Vui lòng xác minh email trước khi tiếp tục.");
-  }
-  if (!user.profileCompleted) {
-    throw forbidden("Vui lòng hoàn thiện hồ sơ trước khi tiếp tục.");
   }
   return user;
 }

@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { OrderStatus } from "@gieochu/core";
 import { requireTenantMemberPage } from "../../../../lib/page-guards";
 import { listOrders, type OrderListFilters } from "../../../../lib/order";
+import { AdminPageHeader, Badge, DataTable, EmptyState, Td, Tr } from "../../../admin/_ui/kit";
+import { IconReceipt } from "../../../admin/_ui/icons";
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING: "Chờ thanh toán",
@@ -10,6 +12,15 @@ const STATUS_LABEL: Record<string, string> = {
   EXPIRED: "Đã hết hạn",
   CANCELED: "Đã huỷ",
   REFUNDED: "Đã hoàn tiền",
+};
+
+const STATUS_TONE: Record<string, "success" | "warning" | "danger" | "neutral" | "info"> = {
+  PENDING: "warning",
+  PAID: "info",
+  FULFILLED: "success",
+  EXPIRED: "neutral",
+  CANCELED: "danger",
+  REFUNDED: "neutral",
 };
 
 const VALID_STATUSES: OrderStatus[] = ["PENDING", "PAID", "FULFILLED", "EXPIRED", "CANCELED", "REFUNDED"];
@@ -31,43 +42,52 @@ export default async function StudioOrdersPage({
   const orders = await listOrders(tenant.id, filters);
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-10">
-      <h1 className="text-2xl font-bold">Đơn hàng</h1>
+    <main className="px-5 py-8 lg:px-8">
+      <AdminPageHeader title="Đơn hàng" subtitle="Danh sách đơn hàng — lọc theo trạng thái." />
 
-      <div className="mt-4 flex flex-wrap gap-2 text-sm">
-        <Link href={`/studio/${tenantSlug}/orders`} className={!status ? "font-semibold underline" : "text-gray-500"}>
+      <div className="mt-6 flex flex-wrap gap-2">
+        <Link
+          href={`/studio/${tenantSlug}/orders`}
+          className="rounded-full px-4 py-1.5 text-sm font-semibold transition"
+          style={!status ? { background: "#D97706", color: "white" } : { background: "white", color: "#4B5563", border: "1px solid #E5E7EB" }}
+        >
           Tất cả
         </Link>
         {VALID_STATUSES.map((s) => (
           <Link
             key={s}
             href={`/studio/${tenantSlug}/orders?status=${s}`}
-            className={status === s ? "font-semibold underline" : "text-gray-500"}
+            className="rounded-full px-4 py-1.5 text-sm font-semibold transition"
+            style={status === s ? { background: "#D97706", color: "white" } : { background: "white", color: "#4B5563", border: "1px solid #E5E7EB" }}
           >
             {STATUS_LABEL[s]}
           </Link>
         ))}
       </div>
 
-      <ul className="mt-6 divide-y rounded border">
-        {orders.length === 0 ? <li className="p-4 text-sm text-gray-500">Chưa có đơn hàng nào.</li> : null}
-        {orders.map((order) => (
-          <li key={order.id} className="flex items-center justify-between p-4 text-sm">
-            <div>
-              <Link href={`/studio/${tenantSlug}/orders/${order.id}`} className="font-medium hover:underline">
-                {order.code}
-              </Link>
-              <p className="text-gray-500">
-                {order.customer.email} · {order.items.map((item) => item.titleSnapshot).join(", ")}
-              </p>
-            </div>
-            <div className="text-right">
-              <p>{order.totalVnd.toLocaleString("vi-VN")}đ</p>
-              <p className="text-gray-500">{STATUS_LABEL[order.status] ?? order.status}</p>
-            </div>
-          </li>
-        ))}
-      </ul>
+      <div className="mt-4">
+        {orders.length === 0 ? (
+          <EmptyState icon={<IconReceipt className="h-6 w-6" />} title="Chưa có đơn hàng nào" />
+        ) : (
+          <DataTable head={["Mã đơn", "Khách hàng", "Sản phẩm", "Tổng tiền", "Trạng thái"]}>
+            {orders.map((order) => (
+              <Tr key={order.id}>
+                <Td>
+                  <Link href={`/studio/${tenantSlug}/orders/${order.id}`} className="font-mono text-xs font-semibold hover:underline">
+                    {order.code}
+                  </Link>
+                </Td>
+                <Td className="text-gray-500">{order.customer.email}</Td>
+                <Td className="max-w-[220px] truncate text-gray-500">{order.items.map((item) => item.titleSnapshot).join(", ")}</Td>
+                <Td className="font-medium">{order.totalVnd.toLocaleString("vi-VN")}đ</Td>
+                <Td>
+                  <Badge tone={STATUS_TONE[order.status] ?? "neutral"}>{STATUS_LABEL[order.status] ?? order.status}</Badge>
+                </Td>
+              </Tr>
+            ))}
+          </DataTable>
+        )}
+      </div>
     </main>
   );
 }

@@ -5,7 +5,6 @@ import { PgBoss } from "pg-boss";
  * Jobs" danh sách job). Grows as later modules add their own jobs.
  */
 export const QUEUE_NAMES = {
-  EMAIL_SEND: "email.send",
   /** §"M3" — hourly sweep: subscription GRACE/EXPIRED transitions, reminder emails, invoice expiry. */
   SUBSCRIPTION_SWEEP: "subscription.sweep",
   /** §"M5" — after `complete`: magic-byte + sha256 check, CLEAN or REJECTED. */

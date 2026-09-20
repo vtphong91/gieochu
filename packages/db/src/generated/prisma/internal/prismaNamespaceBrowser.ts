@@ -56,6 +56,9 @@ export const ModelName = {
   RefreshToken: 'RefreshToken',
   VerificationToken: 'VerificationToken',
   Plan: 'Plan',
+  Role: 'Role',
+  Permission: 'Permission',
+  RolePermission: 'RolePermission',
   CmsPage: 'CmsPage',
   Subscription: 'Subscription',
   Tenant: 'Tenant',
@@ -65,6 +68,11 @@ export const ModelName = {
   ProductFile: 'ProductFile',
   SystemSettings: 'SystemSettings',
   SystemStorageConfig: 'SystemStorageConfig',
+  SystemCloudinaryConfig: 'SystemCloudinaryConfig',
+  SystemSmtpConfig: 'SystemSmtpConfig',
+  EmailSendLog: 'EmailSendLog',
+  DocumentCategory: 'DocumentCategory',
+  SystemBranding: 'SystemBranding',
   TenantPaymentConfig: 'TenantPaymentConfig',
   PlatformPaymentConfig: 'PlatformPaymentConfig',
   SubscriptionInvoice: 'SubscriptionInvoice',
@@ -109,6 +117,8 @@ export const UserScalarFieldEnum = {
   emailVerifiedAt: 'emailVerifiedAt',
   profileCompletedAt: 'profileCompletedAt',
   lastLoginAt: 'lastLoginAt',
+  failedLoginAttempts: 'failedLoginAttempts',
+  passwordResetRequired: 'passwordResetRequired',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -178,11 +188,43 @@ export const PlanScalarFieldEnum = {
 export type PlanScalarFieldEnum = (typeof PlanScalarFieldEnum)[keyof typeof PlanScalarFieldEnum]
 
 
+export const RoleScalarFieldEnum = {
+  id: 'id',
+  code: 'code',
+  scope: 'scope',
+  name: 'name',
+  description: 'description',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type RoleScalarFieldEnum = (typeof RoleScalarFieldEnum)[keyof typeof RoleScalarFieldEnum]
+
+
+export const PermissionScalarFieldEnum = {
+  id: 'id',
+  code: 'code',
+  description: 'description',
+  createdAt: 'createdAt'
+} as const
+
+export type PermissionScalarFieldEnum = (typeof PermissionScalarFieldEnum)[keyof typeof PermissionScalarFieldEnum]
+
+
+export const RolePermissionScalarFieldEnum = {
+  roleId: 'roleId',
+  permissionId: 'permissionId'
+} as const
+
+export type RolePermissionScalarFieldEnum = (typeof RolePermissionScalarFieldEnum)[keyof typeof RolePermissionScalarFieldEnum]
+
+
 export const CmsPageScalarFieldEnum = {
   id: 'id',
   slug: 'slug',
   title: 'title',
   blocks: 'blocks',
+  blocksDraft: 'blocksDraft',
   status: 'status',
   seoTitle: 'seoTitle',
   seoDescription: 'seoDescription',
@@ -311,6 +353,84 @@ export const SystemStorageConfigScalarFieldEnum = {
 } as const
 
 export type SystemStorageConfigScalarFieldEnum = (typeof SystemStorageConfigScalarFieldEnum)[keyof typeof SystemStorageConfigScalarFieldEnum]
+
+
+export const SystemCloudinaryConfigScalarFieldEnum = {
+  id: 'id',
+  isEnabled: 'isEnabled',
+  publicConfig: 'publicConfig',
+  encryptedSecrets: 'encryptedSecrets',
+  lastVerifiedAt: 'lastVerifiedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SystemCloudinaryConfigScalarFieldEnum = (typeof SystemCloudinaryConfigScalarFieldEnum)[keyof typeof SystemCloudinaryConfigScalarFieldEnum]
+
+
+export const SystemSmtpConfigScalarFieldEnum = {
+  id: 'id',
+  isEnabled: 'isEnabled',
+  publicConfig: 'publicConfig',
+  encryptedSecrets: 'encryptedSecrets',
+  lastVerifiedAt: 'lastVerifiedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SystemSmtpConfigScalarFieldEnum = (typeof SystemSmtpConfigScalarFieldEnum)[keyof typeof SystemSmtpConfigScalarFieldEnum]
+
+
+export const EmailSendLogScalarFieldEnum = {
+  id: 'id',
+  type: 'type',
+  recipient: 'recipient',
+  subject: 'subject',
+  status: 'status',
+  errorMessage: 'errorMessage',
+  createdAt: 'createdAt'
+} as const
+
+export type EmailSendLogScalarFieldEnum = (typeof EmailSendLogScalarFieldEnum)[keyof typeof EmailSendLogScalarFieldEnum]
+
+
+export const DocumentCategoryScalarFieldEnum = {
+  id: 'id',
+  slug: 'slug',
+  name: 'name',
+  shortDescription: 'shortDescription',
+  description: 'description',
+  imageUrl: 'imageUrl',
+  seoTitle: 'seoTitle',
+  seoDescription: 'seoDescription',
+  ogImageUrl: 'ogImageUrl',
+  isActive: 'isActive',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type DocumentCategoryScalarFieldEnum = (typeof DocumentCategoryScalarFieldEnum)[keyof typeof DocumentCategoryScalarFieldEnum]
+
+
+export const SystemBrandingScalarFieldEnum = {
+  id: 'id',
+  logoLightUrl: 'logoLightUrl',
+  logoDarkUrl: 'logoDarkUrl',
+  logoSquareUrl: 'logoSquareUrl',
+  logoSidebarUrl: 'logoSidebarUrl',
+  logoFooterUrl: 'logoFooterUrl',
+  faviconUrl: 'faviconUrl',
+  ogImageUrl: 'ogImageUrl',
+  brandName: 'brandName',
+  brandSlogan: 'brandSlogan',
+  primaryColorHex: 'primaryColorHex',
+  accentColorHex: 'accentColorHex',
+  secondaryColorHex: 'secondaryColorHex',
+  navbarLogoHeightPx: 'navbarLogoHeightPx',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SystemBrandingScalarFieldEnum = (typeof SystemBrandingScalarFieldEnum)[keyof typeof SystemBrandingScalarFieldEnum]
 
 
 export const TenantPaymentConfigScalarFieldEnum = {

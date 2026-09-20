@@ -1,10 +1,25 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import Link from "next/link";
+import { Be_Vietnam_Pro, Inter } from "next/font/google";
 import { getPrismaClient } from "@gieochu/db";
+import { getBrand } from "@gieochu/config/brand";
+import { brandColors } from "@gieochu/config/theme";
+import { getActivePlans } from "../../../lib/pricing";
+
+const beVietnamPro = Be_Vietnam_Pro({
+  subsets: ["latin", "vietnamese"],
+  weight: ["500", "600", "700", "800"],
+  variable: "--font-heading",
+});
+const inter = Inter({ subsets: ["latin", "vietnamese"], weight: ["400", "500", "600", "700"], variable: "--font-body" });
 
 interface CmsBlocks {
   hero?: { title: string; subtitle?: string };
   features?: { title: string; description?: string }[];
+  stats?: { value: string; label: string }[];
+  testimonials?: { quote: string; name: string; role?: string }[];
+  pricingTable?: { source: "plans" };
   faq?: { question: string; answer: string }[];
   richText?: string;
   cta?: { label: string; href: string };
@@ -24,59 +39,162 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return { title: page.seoTitle ?? page.title, description: page.seoDescription ?? undefined };
 }
 
-export default async function CmsPage({ params }: { params: Promise<{ slug: string }> }) {
+function IconCheck({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 12.5 9.5 18 20 6" />
+    </svg>
+  );
+}
+
+export default async function CmsRenderedPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const page = await getPublishedPage(slug);
   if (!page) notFound();
 
+  const brand = getBrand();
   const blocks = page.blocks as CmsBlocks;
+  const plans = blocks.pricingTable?.source === "plans" ? await getActivePlans() : null;
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-16">
-      {blocks.hero ? (
-        <header>
-          <h1 className="text-3xl font-bold">{blocks.hero.title}</h1>
-          {blocks.hero.subtitle ? <p className="mt-2 text-gray-600">{blocks.hero.subtitle}</p> : null}
-        </header>
-      ) : (
-        <h1 className="text-3xl font-bold">{page.title}</h1>
-      )}
+    <div
+      className={`${beVietnamPro.variable} ${inter.variable} min-h-dvh font-[family-name:var(--font-body)]`}
+      style={{ background: brandColors.background, color: brandColors.ink }}
+    >
+      <header className="flex h-16 items-center justify-between border-b px-5 sm:px-10 lg:px-24" style={{ borderColor: brandColors.line }}>
+        <Link href="/" className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-[9px] text-sm font-bold text-white" style={{ background: brandColors.primary }}>
+            G
+          </span>
+          <span className="font-[family-name:var(--font-heading)] text-base font-semibold">{brand.name}</span>
+        </Link>
+        <Link href="/login" className="text-sm font-semibold" style={{ color: brandColors.primary }}>
+          Đăng nhập
+        </Link>
+      </header>
 
-      {blocks.features?.length ? (
-        <section className="mt-8 space-y-4">
-          {blocks.features.map((feature, i) => (
-            <div key={i}>
-              <h2 className="font-semibold">{feature.title}</h2>
-              {feature.description ? <p className="text-sm text-gray-600">{feature.description}</p> : null}
+      <main className="mx-auto max-w-3xl px-5 py-14 sm:px-10 sm:py-20">
+        {blocks.hero ? (
+          <header>
+            <h1 className="font-[family-name:var(--font-heading)] text-3xl leading-tight font-semibold sm:text-4xl">
+              {blocks.hero.title}
+            </h1>
+            {blocks.hero.subtitle ? (
+              <p className="mt-3 text-base leading-relaxed sm:text-lg" style={{ color: brandColors.inkSoft }}>
+                {blocks.hero.subtitle}
+              </p>
+            ) : null}
+          </header>
+        ) : (
+          <h1 className="font-[family-name:var(--font-heading)] text-3xl font-semibold">{page.title}</h1>
+        )}
+
+        {blocks.stats?.length ? (
+          <section className="mt-10 grid grid-cols-2 gap-6 rounded-2xl border p-6 sm:grid-cols-4" style={{ borderColor: brandColors.line, background: "white" }}>
+            {blocks.stats.map((stat, i) => (
+              <div key={i}>
+                <div className="font-[family-name:var(--font-heading)] text-2xl font-bold" style={{ color: brandColors.primary }}>
+                  {stat.value}
+                </div>
+                <div className="mt-0.5 text-xs" style={{ color: brandColors.inkSoft }}>
+                  {stat.label}
+                </div>
+              </div>
+            ))}
+          </section>
+        ) : null}
+
+        {blocks.features?.length ? (
+          <section className="mt-12 grid gap-5 sm:grid-cols-2">
+            {blocks.features.map((feature, i) => (
+              <div key={i} className="rounded-2xl border p-5" style={{ borderColor: brandColors.line, background: "white" }}>
+                <span
+                  className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg"
+                  style={{ background: brandColors.surface, color: brandColors.primary }}
+                >
+                  <IconCheck className="h-4 w-4" />
+                </span>
+                <h2 className="font-[family-name:var(--font-heading)] font-semibold">{feature.title}</h2>
+                {feature.description ? (
+                  <p className="mt-1 text-sm" style={{ color: brandColors.inkSoft }}>
+                    {feature.description}
+                  </p>
+                ) : null}
+              </div>
+            ))}
+          </section>
+        ) : null}
+
+        {blocks.richText ? (
+          <section className="mt-12 max-w-2xl text-[15px] leading-[1.75] whitespace-pre-line" style={{ color: brandColors.ink }}>
+            {blocks.richText}
+          </section>
+        ) : null}
+
+        {plans ? (
+          <section className="mt-12">
+            <h2 className="font-[family-name:var(--font-heading)] text-xl font-semibold">Bảng giá</h2>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {plans.map((plan) => (
+                <div
+                  key={plan.id}
+                  className="rounded-2xl border p-5"
+                  style={{ borderColor: plan.isFree ? brandColors.primary : brandColors.line, background: "white" }}
+                >
+                  <h3 className="font-[family-name:var(--font-heading)] font-semibold">{plan.name}</h3>
+                  <p className="mt-1.5 text-xl font-bold">
+                    {plan.priceVnd === 0 ? "Miễn phí" : `${plan.priceVnd.toLocaleString("vi-VN")}đ`}
+                  </p>
+                </div>
+              ))}
             </div>
-          ))}
-        </section>
-      ) : null}
+          </section>
+        ) : null}
 
-      {blocks.richText ? (
-        <section className="prose mt-8 whitespace-pre-line text-sm text-gray-700">{blocks.richText}</section>
-      ) : null}
+        {blocks.testimonials?.length ? (
+          <section className="mt-12 grid gap-5 sm:grid-cols-2">
+            {blocks.testimonials.map((t, i) => (
+              <div key={i} className="rounded-2xl p-5" style={{ background: brandColors.surface }}>
+                <p className="text-sm leading-relaxed" style={{ color: brandColors.ink }}>
+                  &ldquo;{t.quote}&rdquo;
+                </p>
+                <p className="mt-3 text-xs font-semibold">{t.name}</p>
+                {t.role ? (
+                  <p className="text-xs" style={{ color: brandColors.inkSoft }}>
+                    {t.role}
+                  </p>
+                ) : null}
+              </div>
+            ))}
+          </section>
+        ) : null}
 
-      {blocks.faq?.length ? (
-        <section className="mt-8 space-y-4">
-          <h2 className="text-lg font-semibold">Câu hỏi thường gặp</h2>
-          {blocks.faq.map((item, i) => (
-            <div key={i}>
-              <p className="font-medium">{item.question}</p>
-              <p className="text-sm text-gray-600">{item.answer}</p>
+        {blocks.faq?.length ? (
+          <section className="mt-12">
+            <h2 className="font-[family-name:var(--font-heading)] text-xl font-semibold">Câu hỏi thường gặp</h2>
+            <div className="mt-5 space-y-5">
+              {blocks.faq.map((item, i) => (
+                <div key={i}>
+                  <p className="font-medium">{item.question}</p>
+                  <p className="mt-1 text-sm" style={{ color: brandColors.inkSoft }}>
+                    {item.answer}
+                  </p>
+                </div>
+              ))}
             </div>
-          ))}
-        </section>
-      ) : null}
+          </section>
+        ) : null}
 
-      {blocks.cta ? (
-        <a
-          href={blocks.cta.href}
-          className="mt-8 inline-block rounded bg-[var(--color-primary)] px-4 py-2 text-white"
-        >
-          {blocks.cta.label}
-        </a>
-      ) : null}
-    </main>
+        {blocks.cta ? (
+          <Link
+            href={blocks.cta.href}
+            className="mt-12 inline-block rounded-full px-7 py-3 text-sm font-bold text-white"
+            style={{ background: brandColors.accent }}
+          >
+            {blocks.cta.label}
+          </Link>
+        ) : null}
+      </main>
+    </div>
   );
 }
