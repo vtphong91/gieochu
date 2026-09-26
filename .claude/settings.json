@@ -24,15 +24,16 @@
       "Bash(pnpm --filter web exec tsc -p tsconfig.json --noEmit)",
       "Bash(pnpm --filter web exec eslint app/api/auth/login app/\\\\\\(auth\\\\\\)/login lib/permissions.ts lib/landing-path.ts --max-warnings=0)",
       "Bash(pnpm --filter web run build)",
-      "Bash(cat > *)",
       "Bash(pnpm --filter @gieochu/db exec prisma format)",
       "Bash(pnpm --filter @gieochu/db exec prisma migrate dev --name user_login_lockout)",
       "Bash(pnpm --filter web exec eslint app/page.tsx --max-warnings=0)",
-      "Bash(pnpm --filter web exec eslint app/page.tsx app/_ui/account-menu.tsx --max-warnings=0)"
+      "Bash(pnpm --filter web exec eslint app/page.tsx app/_ui/account-menu.tsx --max-warnings=0)",
+      "Bash(git log *)"
     ],
     "additionalDirectories": [
       "F:\\VSCODE\\gieochu\\apps\\web\\app\\admin\\plans",
-      "\\tmp"
+      "\\tmp",
+      "F:\\VSCODE\\gieochu\\docs\\obsidian-knowledge-base\\00-Index"
     ]
   }
 }

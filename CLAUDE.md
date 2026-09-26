@@ -7,6 +7,27 @@ vận hành cho các phiên làm việc sau — đọc đặc tả trước khi 
 
 Xem [docs/PLAN.md](docs/PLAN.md) cho thứ tự module và trạng thái hiện tại. Sau mỗi module, cập nhật PLAN.md.
 
+## Sub-agent & điều phối
+
+Hiến chương đội: [docs/obsidian-knowledge-base/06-AI-Agent-Guides/Team-Charter.md](docs/obsidian-knowledge-base/06-AI-Agent-Guides/Team-Charter.md)
+(bảng vai trò A01–A08 + 11 quy tắc riêng của dự án). Phiên chính (root session) giữ vai A01 Architect, A02 BA,
+A06 QA, A07 DevOps. Hai sub-agent thường trực project-local trong `.claude/agents/`:
+
+| Agent (`subagent_type`) | Vai trò | Được ghi | Không được sửa |
+|---|---|---|---|
+| `engineer` | A03 Backend + A04 Frontend + A05 Data | `apps/web/**`, `packages/**`, `prisma/**`, test | `docs/**` |
+| `docs` | A08 Docs/Knowledge | `docs/obsidian-knowledge-base/**`; `docs/PLAN.md`/`DECISIONS.md`/`BACKLOG.md`/`ARCHITECTURE.md` chỉ khi brief giao rõ | `apps/**`, `packages/**`, `prisma/**` |
+
+- **Chính sách:** Proportional Delegation, cộng giao việc theo vai trò cho 2 vùng trên. Task nhỏ (1–2 file, nghiệp
+  vụ rõ) root session có thể tự làm; task vừa/lớn trong vùng code → giao `engineer`; cập nhật knowledge base sau
+  khi thay đổi đã ổn định → giao `docs`. Không đẩy task qua nhiều vai hơn mức cần thiết.
+- **Trước khi giao `engineer`:** đã chốt phạm vi với chủ dự án (quy tắc "hỏi trước khi code").
+- **Brief** theo mẫu `06-AI-Agent-Guides/skills/CLAUDE-ORCHESTRATOR-TEMPLATE.md` §3: TASK, READ_REQUIRED,
+  CONSTRAINTS, OUTPUT_EXPECTED, DO_NOT_TOUCH, VERIFY_REQUIRED.
+- **Sau mỗi lượt sub-agent:** root session kiểm tra `git diff`/`git status` — ranh giới vùng ghi chỉ ràng buộc bằng
+  chỉ dẫn, không phải cơ chế công cụ — và tự chạy lại verify (lint/typecheck/test liên quan) trước khi báo xong.
+- **Nguồn sự thật:** code runtime > `docs/*.md` gốc (PLAN/DECISIONS/ARCHITECTURE/BACKLOG) > `obsidian-knowledge-base/`.
+
 ## Lệnh chạy (từ root, pnpm workspaces + Turborepo)
 
 | Lệnh | Việc làm |
