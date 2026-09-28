@@ -7,7 +7,8 @@ Nguồn: [GIEOCHU_PROMPT_MVP_PHASE1.md](GIEOCHU_PROMPT_MVP_PHASE1.md). Cập nh�
 Theo gợi ý ở mục 10 của đặc tả:
 
 M0 → M1 (kèm khung email M11) → M4 → M2 (phần cơ bản) → M7 → M3 → M5 → M6 → M8 → M9 → M3 v2 (Hybrid
-Monetization, xen giữa theo yêu cầu người dùng) → M10 → M12 → hoàn thiện M2.
+Monetization, xen giữa theo yêu cầu người dùng) → M10 (tách M10a Đánh giá → M10b Bài viết theo ADR-029; M10c sang
+BACKLOG) → M12 → hoàn thiện M2.
 
 ## Trạng thái module
 
@@ -20,13 +21,13 @@ Monetization, xen giữa theo yêu cầu người dùng) → M10 → M12 → ho�
 | M7 | Cấu hình Tenant Payment | ✅ Xong | `packages/payments` | 10 / 4 |
 | M3 | Billing, Subscription & Entitlements (v2 — Hybrid Monetization) | ✅ Xong | `apps/web/lib/subscription-billing.ts`, `subscription-sweep.ts`, `platform-payment.ts`, `packages/core/src/billing` | 11 / 7 |
 | M5 | Sản phẩm và File tài liệu | 🟡 Code xong (CRUD + upload/presign/file.scan) — chờ verify với R2 thật | `packages/storage`, `apps/web/lib/{product,product-upload,file-scan}.ts` | 6 / 3 (+1 chờ storage thật) |
-| M6 | Giá và Khuyến mãi | 🟡 Engine + Coupon CRUD xong — 1 test chờ Order (M8) | `packages/core/src/pricing`, `apps/web/lib/coupon.ts` | 14 / 1 (+1 chờ M8) |
+| M6 | Giá và Khuyến mãi | ✅ Xong — test integration hoãn đã hoàn thành ở M8 | `packages/core/src/pricing`, `apps/web/lib/coupon.ts` | 14 / 1 (+1 tính trong M8) |
 | M8 | Checkout và Đơn hàng | ✅ Xong | `apps/web/lib/{order,payment-process}.ts`, `packages/core/src/order` | 10 / 9 |
 | M9 | Thư viện, Tải xuống, Share link | ✅ Xong | `apps/web/lib/{download,share-link,library,entitlement}.ts`, `packages/core/src/download` | 7 / 5 |
-| M10 | Social Feed và Đánh giá | ⬜ Chưa làm | posts/comments/reviews | 4 / 3 |
+| M10 | Social Feed và Đánh giá (tách theo ADR-029) | 🟡 **GĐ1 hoàn tất code** (nợ test): **M10a Đánh giá: xong code** (verify thủ công) · **M10b Bài viết tối giản: xong code** (verify thủ công) · M10c (bình luận/thả tim/theo dõi): chuyển `docs/BACKLOG.md` | M10a: `apps/web/lib/review.ts`, `packages/core/src/review`, `apps/web/app/studio/[tenantSlug]/reviews`; M10b: `apps/web/lib/post.ts`, `packages/core/src/content/post.ts`, `apps/web/app/studio/[tenantSlug]/posts`, `apps/web/app/[tenantSlug]/posts` | 4 / 3 (ngân sách gốc — chưa dùng, ADR-029 chọn chưa thêm test) |
 | M11 | Email và Background Jobs | 🟡 Khung đã có (cùng M1) — job/worker còn lại thêm khi có nghiệp vụ tương ứng | `packages/jobs`, `packages/email`, `apps/web/worker.ts` | 0 / 0 (tính trong module khác) |
 | M12 | Audit Log, Thống kê, Báo cáo vi phạm | ⬜ Chưa làm | audit + stats + reports | 0 / 2 |
-| | **Tổng** | | | **91 / 50** |
+| | **Tổng** | | | Trần gốc mục 9: **91 / 50** · trần hiện **94 / 53** (ADR-026) · thực **93 / 52** (`pnpm test:count` 2026-09-28). Cộng cột theo module ra 92 / 51 — cột là ngân sách gốc từng module, không phải số thực |
 
 ## M0 — Việc đã làm (bản đầu, xem docs/modules/M0.md để có sơ đồ)
 
@@ -310,7 +311,7 @@ tồn tại → 404.
   chặn hẳn (lỗi `42501`). 3/9 integration test đầu tiên fail đúng vào lỗi này — sửa bằng cách bọc toàn bộ hàm
   trong một `withTenant(data.tenantId, ...)` duy nhất (đã biết tenantId từ webhook route, không cần
   `withSystemJob`).
-- Trang công khai `/[tenantSlug]/products/[productSlug]` (chi tiết sản phẩm, nút "Mua ngay" — mở lại quyết
+- Trang công khai `/[tenantSlug]/products/[productSlug]` (từ ADR-030 đổi thành `/[tenantSlug]/[productSlug]`, URL cũ 301) (chi tiết sản phẩm, nút "Mua ngay" — mở lại quyết
   định hoãn từ M5) và `/[tenantSlug]/checkout/[orderCode]` (tóm tắt đơn, nhập mã giảm giá, chọn phương thức
   thanh toán, hiện QR/redirect, polling 3 giây — cùng mẫu `BillingPoll` của M3's `/studio/.../billing`).
 - Trang Studio `/studio/[tenantSlug]/orders` (danh sách lọc theo trạng thái, chi tiết, xác nhận thủ công/huỷ/
@@ -366,6 +367,156 @@ duyệt (chọn sản phẩm → mua → quét QR → polling), vì cần R2 + p
 integration cộng dồn); cả 5 integration test M9 chạy thật trên Neon với RLS thật (bao gồm việc bắt được và
 sửa 3 lỗ hổng RLS thật nêu trên ngay trong lần chạy test đầu tiên). **Chưa verify được**: luồng thật qua
 trình duyệt (bấm tải trong `/account/library`, mở link `/s/{token}` thật) — cần R2 thật.
+
+## Storefront CMS (ADR-023) + chuẩn layout (ADR-024) — 2026-09-26
+
+Không phải module mới trong bảng mục 9 — mở rộng storefront M4 theo yêu cầu chủ dự án. **Đã xong phần code**;
+chưa có test riêng (chủ dự án chốt không thêm test đợt này — nợ test ghi trong ADR-023 và `docs/BACKLOG.md`).
+
+- Storefront `/[tenantSlug]` theo 5 section CMS (hero, services, products, testimonials, contact) — schema
+  `packages/core/src/tenant/storefront-sections.ts` (lọc href/ảnh ngay ở schema), lưu `tenants.storefrontSections`
+  (live) / `storefrontSectionsDraft` (nháp); nội dung demo khi chưa xuất bản (khách không thấy đánh giá demo).
+- Studio `/studio/[tenantSlug]/storefront` (lưu nháp / xuất bản / khôi phục, upload ảnh Cloudinary hệ thống theo
+  folder tenant) và `/studio/[tenantSlug]/messages` (hộp thư: đọc/lưu trữ/xoá).
+- Form liên hệ: Server Action `submitStorefrontContactAction` (honeypot, zod, rate limit in-memory 3 tin/10 phút
+  theo IP-hash + 50 tin/giờ theo tenant), lưu bảng L2 mới `storefront_messages` (RLS tách policy theo lệnh:
+  public chỉ INSERT, tenant SELECT/UPDATE/DELETE, không nhánh admin) rồi email báo chủ trang qua `after()`.
+- Migration `20260926090000_storefront_cms_messages`, `20260926090100_rls_storefront_messages`.
+- ADR-024: 3 utility `container-page` (1280px) / `container-prose` / `container-narrow` trong `globals.css`; đã áp
+  cho trang chủ, storefront, trang chi tiết sản phẩm (2 cột), `/pricing`, `/p/[slug]`, checkout.
+
+**Số test:** `pnpm test:count` = **88/91 unit, 46/50 integration** — giữ nguyên, không thêm/bớt. **Chưa verify**:
+RLS `storefront_messages` trên Neon thật, email báo thật, upload Cloudinary thật, trang sản phẩm/checkout với dữ
+liệu thật (DB chưa có sản phẩm).
+
+## Editor sản phẩm GĐ1 (ADR-026/027) — 2026-09-26/27
+
+Mở rộng M5 theo yêu cầu chủ dự án (không phải module mới trong bảng mục 9). **Đã xong phần code.**
+
+- **Sửa bảo mật upload (ADR-026 §1):** `complete`/`cover-complete` kiểm `objectKey` thuộc đúng tenant/sản phẩm
+  (`isProductObjectKeyFor`, `packages/storage`) trước mọi lời gọi storage (`INVALID_OBJECT_KEY` 400); `complete` từ chối
+  key đã ghi nhận (`UPLOAD_ALREADY_COMPLETED` 409), xoá object khi dung lượng thật lệch khai báo (`UPLOAD_SIZE_MISMATCH`
+  400) hoặc vượt gói (kiểm lại bằng dung lượng HeadObject); `storageUsedBytes` cộng theo dung lượng thật.
+- **Danh mục (ADR-026 §2):** `Product.categoryId` → `DocumentCategory` (`SET NULL`); nháp được trống, xuất bản bắt buộc
+  danh mục `isActive`.
+- **Link tài liệu ngoài (ADR-026 §3):** `product_files.sourceKind FILE | EXTERNAL_URL` + `externalUrl` (CHECK
+  `product_files_source_shape`), allowlist https (`normalizeExternalDocumentUrl`, `packages/core`); chỉ giao cho khách có
+  entitlement qua `/api/downloads` (302 tới link, `DOWNLOAD_SOURCE_UNAVAILABLE` 410 nếu link không còn hợp lệ); share link
+  không giao link ngoài; RLS `product_files` viết lại (public chỉ FILE+preview+CLEAN, customer thêm EXTERNAL_URL).
+- **Điều kiện xuất bản (ADR-026 §4):** `canPublishProduct` → `{ allowed, reasons, checklist }` (danh mục, ảnh bìa, ≥1
+  file bán CLEAN hoặc link hợp lệ, giá, tenant ACTIVE, giới hạn gói).
+- **Editor Tạo/Sửa 2 cột dùng chung + ADR-027:** mô tả ngắn `Product.summary` (≤300), ảnh bìa Cloudinary
+  `Product.coverImageUrl` (fallback `coverImageKey` R2), chế độ hiển thị Công khai/Riêng tư = PUBLISHED/DRAFT, trang
+  Xem trước `/studio/[tenantSlug]/products/[productId]/preview` (noindex, chỉ thành viên tenant).
+- Migration `20260926120000_adr026_product_category_external_links`, `20260926120100_rls_adr026_product_files`,
+  `20260927090000_adr027_product_summary_cover_url`.
+
+**Số test:** `pnpm test:count` = **91/94 unit, 50/53 integration** (trần nâng lên 94/53 theo ADR-026; ADR-027 không nâng).
+**Chưa verify:** các trang cần đăng nhập bằng trình duyệt, upload Cloudinary/R2 thật, mở link ngoài từ Thư viện thật.
+Việc còn lại: `docs/BACKLOG.md` mục "Phát sinh trong đợt Editor sản phẩm GĐ1 (ADR-026/027)".
+
+**Cập nhật editor sau ADR-027 (2026-09-27):**
+
+- Bỏ thanh hành động dính đáy; card xuất bản `PublishCard` (chế độ hiển thị → checklist → trạng thái lưu → nút) đứng đầu
+  sidebar và dính khi cuộn (≥ xl); khung `max-w-[1440px]`, sidebar 360px; cột chính Thông tin → Giá & khuyến mãi → Ảnh
+  đại diện → Tệp. Dưới xl: card ở cuối form + thanh lưu nhanh `.studio-save-bar`.
+- Chưa công khai: nút [Xuất bản] luôn hiện + [Xem trước | Lưu nháp], gửi theo nút bấm (radio đồng bộ theo nút), Enter =
+  Lưu nháp.
+- "Sửa đổi ADR-027 §4": trang Tạo không khoá Tệp — thêm file/link đầu tiên tự tạo bản nháp (`ensureProductId`, một
+  promise dùng chung, tiêu đề bắt buộc), giữ URL `/new` trong phiên; `addProductLinkAction`/`updateProductLinkAction`
+  trả thêm `link`.
+- Trang Tạo/Sửa bỏ `<main>` lồng (dùng `<div>`); 14 trang Studio khác còn `<main>` lồng (BACKLOG).
+
+## Ảnh Cloudinary hệ thống + hạn mức ảnh (ADR-028) — 2026-09-27
+
+**Đã xong phần code.**
+
+- Chữ ký dùng chung `getCloudinaryUploadSignatureAction` chỉ `SYSTEM_ADMIN` (+ `allowed_formats`). Chữ ký tenant
+  (`lib/tenant-media.ts`) ký `public_id` đầy đủ `tenants/<id>/<content|products|storefront>/<24 hex>`, png/jpg/jpeg/webp,
+  incoming transformation ≤2000px; giữ chỗ 5MB lúc ký, `registerTenantImageAction` đọc bytes thật qua Cloudinary Admin
+  API, đối soát lười ≤3 dòng giữ chỗ quá 1 giờ.
+- Hạn mức `Plan.imageStorageMb` (FREE 100, CREATOR 1024, PRO 2048, BUSINESS 5120 — sửa ở `/admin/plans`), bảng L2
+  `tenant_media_assets` (RLS `tenant_isolation` + nhánh `system_job`); vượt → `IMAGE_QUOTA_EXCEEDED`.
+- TiptapEditor upload ảnh (bỏ chèn bằng URL): PNG/JPEG/WebP ≤5MB, kéo-thả/dán, tiến độ, nút "Alt", thông báo quota.
+- `cloudinaryDeliveryUrl` (`f_auto,q_auto,c_limit,w_<N>`, N ≤1600) cho ảnh bìa/storefront/mô tả; sanitizer chỉ giữ
+  `<img>` của cloud hệ thống, `isCloudinaryImageUrl` kiểm cloud name.
+- Migration `20260927110000_adr028_image_quota_media_assets`, `20260927110100_rls_adr028_media_assets`.
+- Integration test chụp/khôi phục cấu hình dùng chung (`tests/integration/shared-config-snapshot.ts`) thay vì xoá.
+
+**Số test:** `pnpm test:count` = **93/94 unit, 52/53 integration** (+2/+2, không nâng trần). **Chưa verify:** upload
+Cloudinary thật + Admin API thật, hiển thị ảnh `f_auto` qua CSP trên trình duyệt. Việc còn lại: `docs/BACKLOG.md` mục
+"Phát sinh trong đợt ADR-028".
+
+## M10a — Đánh giá sản phẩm + siết RLS ghi (ADR-029) — 2026-09-27
+
+M10 tách theo ADR-029: **M10a Đánh giá** (đợt này) → **M10b Bài viết tối giản** (chưa làm) → M10c bình luận/thả tim/theo dõi
+(`docs/BACKLOG.md`). **Đã xong phần code M10a**; chủ dự án chọn **chưa thêm test** (nợ trong `docs/BACKLOG.md`), verify thủ
+công trên DB dev qua role `gieochu_app`.
+
+- **Siết RLS trước M10 (ADR-029 mục 0):** migration `20260927130000_rls_adr029_split_write_policies` đổi 7 bảng `products`,
+  `product_files`, `coupons`, `share_links`, `orders`, `order_items`, `entitlements` từ 1 policy `tenant_isolation` FOR ALL sang
+  `select_access` (giữ điều kiện đọc cũ) + `write_insert/update/delete` chỉ tenant hoặc `system_job` (`order_items` qua đơn cha).
+  Quy tắc mới: bảng L2 có nhánh public/customer phải tách policy theo lệnh, không FOR ALL.
+- **Bảng `reviews`** (L2): 1 đánh giá/khách/sản phẩm, gắn `orderItemId`, sao 1–5, nội dung văn bản thuần ≤2000, tên hiển thị
+  "Minh N.", `VISIBLE`/`HIDDEN` + lý do, trả lời của tenant; 6 CHECK; RLS tách theo lệnh (không nhánh admin); trigger
+  `reviews_guard_columns` giới hạn cột theo scope. Cache điểm số nguyên `products.ratingSum/ratingCount`, tính lại toàn phần dưới
+  `system_job` + advisory lock. Migration `20260927150000_m10a_reviews`, `20260927150100_rls_m10a_reviews`.
+- **Khách:** viết/sửa/xoá trên trang chi tiết tài liệu (`upsertMyReviewAction`, `deleteMyReviewAction`; rate limit 5 lần/10
+  phút/user); link đánh giá ở Thư viện. Hoàn tiền/thu hồi entitlement → đánh giá tự ẩn (`REFUNDED`, tenant không khôi phục
+  được); mua lại rồi gửi lại → tự hiện lại.
+- **Tenant:** Studio → Đánh giá (trả lời — rỗng = xoá, ẩn có lý do, khôi phục), badge sidebar "Đánh giá (N)" = số chưa trả
+  lời, ô "Đánh giá mới" (7 ngày) ở Tổng quan; email `review_new` cho chủ tenant (không ghi `EmailSendLog`); tenant `READ_ONLY`
+  vẫn nhận/kiểm duyệt.
+- **Storefront:** section mới `reviews` ("Đánh giá", đánh giá thật, ghim trước rồi tự bù theo `minRating`/`requireBody`,
+  rỗng → không render, anchor `#danh-gia`); section `testimonials` hiển thị là "Cảm nhận", bỏ sao, anchor `#cam-nhan`. Thẻ tài
+  liệu hiện sao từ 1 đánh giá.
+- **Ghi chú đặc tả:** đặc tả gốc M4 (`docs/GIEOCHU_PROMPT_MVP_PHASE1.md`) mô tả storefront có "tab Bài viết / Tài liệu / Đánh
+  giá" — đã bị ADR-023 (storefront theo section CMS) và ADR-025 (trang con là trang hệ thống) thay thế; đánh giá nay là section
+  `reviews` + khối trên trang chi tiết tài liệu, bài viết (M10b) sẽ là trang hệ thống `/{tenantSlug}/posts`.
+
+**Số test:** `pnpm test:count` = **93/94 unit, 52/53 integration** — không thêm/bớt. **Chưa verify:** RLS 7 bảng + `reviews`
++ trigger bằng integration test trên Neon thật, email `review_new` thật, giao diện với dữ liệu đánh giá thật (DB dev chưa có
+dữ liệu demo). Việc còn lại: `docs/BACKLOG.md` mục "Phát sinh trong đợt M10a (ADR-029)".
+
+## M10b — Bài viết tối giản (ADR-029) — 2026-09-28
+
+**Đã xong phần code M10b → M10 giai đoạn 1 (M10a + M10b) hoàn tất code.** Chủ dự án chọn **chưa thêm test** (nợ trong
+`docs/BACKLOG.md`), verify thủ công. Quyết định chi tiết: ADR-029 mục 5, 6 + "Bổ sung ADR-029 M10b theo triển khai".
+
+- **Bảng `posts`** (L2): tiêu đề tuỳ chọn ≤200, nội dung Tiptap sanitize theo cloud Cloudinary hệ thống (khi lưu và lại khi
+  render), trích đoạn văn bản thuần ≤300 tự sinh, ≤6 ảnh (usage `POST`, thư mục `tenants/<id>/posts`, tính hạn mức ảnh
+  ADR-028), gắn tối đa 1 sản phẩm cùng tenant chưa ARCHIVED, `DRAFT`/`PUBLISHED`/`HIDDEN` (HIDDEN chỉ `system_job` đặt — tenant
+  chỉ xoá), ghim 1 bài/tenant, `publishedAt` giữ lần đăng đầu, không `authorId`. RLS tách lệnh (public chỉ `PUBLISHED` của tenant
+  không LOCKED, không nhánh customer/admin), trigger `posts_guard_product_tenant` + `posts_guard_columns`, 6 CHECK. Migration
+  `20260928090000_m10b_posts`, `20260928090100_rls_m10b_posts`. **Partial unique index ghim chỉ có trong SQL** — cẩn thận khi
+  chạy `prisma migrate dev`.
+- **Tenant:** Studio → Bài viết (sidebar sau "Sản phẩm", tổng 11 mục) — danh sách thẻ lọc theo trạng thái, editor bài viết
+  (Đăng bài/Lưu nháp, Lưu thay đổi/Gỡ bài, ghim, gắn tài liệu); tenant `READ_ONLY`/`LOCKED` không tạo/sửa/xoá/ghim.
+- **Công khai:** trang hệ thống `/{tenantSlug}/posts` và `/{tenantSlug}/posts/{postId}` (ADR-025), section storefront `posts`
+  ("Bài viết", anchor `#bai-viet`, 3–9 bài, bài ghim đứng đầu tuỳ chọn, rỗng → không render; dữ liệu section cũ được editor tự
+  chèn section ẩn).
+- **Script dữ liệu demo cho DB dev** (`apps/web/scripts/demo-reviews.ts`, `ALLOW_DEMO_SEED=1 pnpm --filter @gieochu/db run
+  demo:seed|demo:clean`): 3 sản phẩm demo trên `phongweb`, 5 khách `demo+...@gieochu.test`, đơn FULFILLED, 9 đánh giá — chỉ cho
+  dev, có chốt an toàn (xem KB `04-Operations-Runbooks/Dev-Demo-Data-Runbook.md`).
+
+**Số test:** `pnpm test:count` = **93/94 unit, 52/53 integration** — không thêm/bớt. **Chưa verify:** RLS `posts` + trigger bằng
+integration test trên Neon thật, upload ảnh bài viết thật, giao diện với dữ liệu bài viết thật. Việc còn lại: `docs/BACKLOG.md`
+mục "Phát sinh trong đợt M10b (ADR-029)".
+
+## URL tài liệu rút gọn + bỏ card xuất bản dính (ADR-030) — 2026-09-28
+
+**Đã xong code.** Quyết định chi tiết: ADR-030 + "Bổ sung ADR-030 theo triển khai".
+
+- **URL chuẩn trang tài liệu** `/{tenantSlug}/{productSlug}` (`app/[tenantSlug]/[productSlug]/`); URL cũ
+  `/{tenantSlug}/products/{productSlug}` → **301** bằng Route Handler `app/[tenantSlug]/products/[productSlug]/route.ts` (giữ
+  query; không dùng `permanentRedirect` vì Next trả 308); `/{tenantSlug}/products` → 404; canonical là URL tuyệt đối.
+- **Hàm dựng URL duy nhất** `productPath`/`productUrl` + **23 slug dành riêng** `RESERVED_PRODUCT_SLUGS`
+  (`packages/core/src/product/path.ts`, subpath client `@gieochu/core/product-path`). Slug tự nhập trùng → `INVALID_SLUG`; slug
+  tự sinh trùng → thêm hậu tố. Action sản phẩm revalidate cả trang tài liệu và storefront.
+- **Editor Studio** (sản phẩm + bài viết): card xuất bản không còn dính khi cuộn; thanh lưu nhanh dưới xl giữ nguyên.
+
+**Số test:** `pnpm test:count` = **93/94 unit, 52/53 integration** — không đổi. **Trước deploy prod:** quét slug sản phẩm trùng
+từ dành riêng. Nợ test redirect 301 + chặn slug dành riêng: `docs/BACKLOG.md` mục "Phát sinh trong đợt ADR-030".
 
 ## Câu hỏi còn mở (đã chọn phương án an toàn, xem ADR tương ứng)
 

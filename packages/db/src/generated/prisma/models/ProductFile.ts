@@ -20,6 +20,15 @@ import type * as Prisma from "../internal/prismaNamespace"
  * that removing a file from a product that already has buyers must never
  * delete the underlying object (§5.2), so a real S3 delete only ever
  * happens from the file.scan job rejecting a file that was never CLEAN.
+ * 
+ * ADR-026: cùng bảng lưu cả **link tài liệu ngoài** (`sourceKind =
+ * EXTERNAL_URL`). Dòng link: `externalUrl` có giá trị, `fileName` là nhãn
+ * hiển thị, `objectKey`/`mimeType`/`scanStatus` = NULL (không quét, không có
+ * object — NULL không vi phạm `@unique`), `sizeBytes = 0` (không tính dung
+ * lượng), `isPreview = false`. CHECK constraint `product_files_source_shape`
+ * (migration 20260926120000) ép đúng hình dạng này ở tầng DB. Mọi luồng file
+ * cũ lọc `scanStatus = 'CLEAN'` nên tự loại dòng link; RLS nhánh public chỉ
+ * cho `sourceKind = 'FILE'`.
  */
 export type ProductFileModel = runtime.Types.Result.DefaultSelection<Prisma.$ProductFilePayload>
 
@@ -43,6 +52,8 @@ export type ProductFileMinAggregateOutputType = {
   id: string | null
   productId: string | null
   tenantId: string | null
+  sourceKind: $Enums.ProductFileSource | null
+  externalUrl: string | null
   objectKey: string | null
   fileName: string | null
   mimeType: string | null
@@ -58,6 +69,8 @@ export type ProductFileMaxAggregateOutputType = {
   id: string | null
   productId: string | null
   tenantId: string | null
+  sourceKind: $Enums.ProductFileSource | null
+  externalUrl: string | null
   objectKey: string | null
   fileName: string | null
   mimeType: string | null
@@ -73,6 +86,8 @@ export type ProductFileCountAggregateOutputType = {
   id: number
   productId: number
   tenantId: number
+  sourceKind: number
+  externalUrl: number
   objectKey: number
   fileName: number
   mimeType: number
@@ -98,6 +113,8 @@ export type ProductFileMinAggregateInputType = {
   id?: true
   productId?: true
   tenantId?: true
+  sourceKind?: true
+  externalUrl?: true
   objectKey?: true
   fileName?: true
   mimeType?: true
@@ -113,6 +130,8 @@ export type ProductFileMaxAggregateInputType = {
   id?: true
   productId?: true
   tenantId?: true
+  sourceKind?: true
+  externalUrl?: true
   objectKey?: true
   fileName?: true
   mimeType?: true
@@ -128,6 +147,8 @@ export type ProductFileCountAggregateInputType = {
   id?: true
   productId?: true
   tenantId?: true
+  sourceKind?: true
+  externalUrl?: true
   objectKey?: true
   fileName?: true
   mimeType?: true
@@ -230,12 +251,14 @@ export type ProductFileGroupByOutputType = {
   id: string
   productId: string
   tenantId: string
-  objectKey: string
+  sourceKind: $Enums.ProductFileSource
+  externalUrl: string | null
+  objectKey: string | null
   fileName: string
-  mimeType: string
+  mimeType: string | null
   sizeBytes: number
   sha256: string | null
-  scanStatus: $Enums.ProductFileScanStatus
+  scanStatus: $Enums.ProductFileScanStatus | null
   isPreview: boolean
   removedAt: Date | null
   createdAt: Date
@@ -268,12 +291,14 @@ export type ProductFileWhereInput = {
   id?: Prisma.StringFilter<"ProductFile"> | string
   productId?: Prisma.StringFilter<"ProductFile"> | string
   tenantId?: Prisma.StringFilter<"ProductFile"> | string
-  objectKey?: Prisma.StringFilter<"ProductFile"> | string
+  sourceKind?: Prisma.EnumProductFileSourceFilter<"ProductFile"> | $Enums.ProductFileSource
+  externalUrl?: Prisma.StringNullableFilter<"ProductFile"> | string | null
+  objectKey?: Prisma.StringNullableFilter<"ProductFile"> | string | null
   fileName?: Prisma.StringFilter<"ProductFile"> | string
-  mimeType?: Prisma.StringFilter<"ProductFile"> | string
+  mimeType?: Prisma.StringNullableFilter<"ProductFile"> | string | null
   sizeBytes?: Prisma.IntFilter<"ProductFile"> | number
   sha256?: Prisma.StringNullableFilter<"ProductFile"> | string | null
-  scanStatus?: Prisma.EnumProductFileScanStatusFilter<"ProductFile"> | $Enums.ProductFileScanStatus
+  scanStatus?: Prisma.EnumProductFileScanStatusNullableFilter<"ProductFile"> | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFilter<"ProductFile"> | boolean
   removedAt?: Prisma.DateTimeNullableFilter<"ProductFile"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"ProductFile"> | Date | string
@@ -286,12 +311,14 @@ export type ProductFileOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
   tenantId?: Prisma.SortOrder
-  objectKey?: Prisma.SortOrder
+  sourceKind?: Prisma.SortOrder
+  externalUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  objectKey?: Prisma.SortOrderInput | Prisma.SortOrder
   fileName?: Prisma.SortOrder
-  mimeType?: Prisma.SortOrder
+  mimeType?: Prisma.SortOrderInput | Prisma.SortOrder
   sizeBytes?: Prisma.SortOrder
   sha256?: Prisma.SortOrderInput | Prisma.SortOrder
-  scanStatus?: Prisma.SortOrder
+  scanStatus?: Prisma.SortOrderInput | Prisma.SortOrder
   isPreview?: Prisma.SortOrder
   removedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -308,11 +335,13 @@ export type ProductFileWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.ProductFileWhereInput | Prisma.ProductFileWhereInput[]
   productId?: Prisma.StringFilter<"ProductFile"> | string
   tenantId?: Prisma.StringFilter<"ProductFile"> | string
+  sourceKind?: Prisma.EnumProductFileSourceFilter<"ProductFile"> | $Enums.ProductFileSource
+  externalUrl?: Prisma.StringNullableFilter<"ProductFile"> | string | null
   fileName?: Prisma.StringFilter<"ProductFile"> | string
-  mimeType?: Prisma.StringFilter<"ProductFile"> | string
+  mimeType?: Prisma.StringNullableFilter<"ProductFile"> | string | null
   sizeBytes?: Prisma.IntFilter<"ProductFile"> | number
   sha256?: Prisma.StringNullableFilter<"ProductFile"> | string | null
-  scanStatus?: Prisma.EnumProductFileScanStatusFilter<"ProductFile"> | $Enums.ProductFileScanStatus
+  scanStatus?: Prisma.EnumProductFileScanStatusNullableFilter<"ProductFile"> | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFilter<"ProductFile"> | boolean
   removedAt?: Prisma.DateTimeNullableFilter<"ProductFile"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"ProductFile"> | Date | string
@@ -325,12 +354,14 @@ export type ProductFileOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
   tenantId?: Prisma.SortOrder
-  objectKey?: Prisma.SortOrder
+  sourceKind?: Prisma.SortOrder
+  externalUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  objectKey?: Prisma.SortOrderInput | Prisma.SortOrder
   fileName?: Prisma.SortOrder
-  mimeType?: Prisma.SortOrder
+  mimeType?: Prisma.SortOrderInput | Prisma.SortOrder
   sizeBytes?: Prisma.SortOrder
   sha256?: Prisma.SortOrderInput | Prisma.SortOrder
-  scanStatus?: Prisma.SortOrder
+  scanStatus?: Prisma.SortOrderInput | Prisma.SortOrder
   isPreview?: Prisma.SortOrder
   removedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -348,12 +379,14 @@ export type ProductFileScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"ProductFile"> | string
   productId?: Prisma.StringWithAggregatesFilter<"ProductFile"> | string
   tenantId?: Prisma.StringWithAggregatesFilter<"ProductFile"> | string
-  objectKey?: Prisma.StringWithAggregatesFilter<"ProductFile"> | string
+  sourceKind?: Prisma.EnumProductFileSourceWithAggregatesFilter<"ProductFile"> | $Enums.ProductFileSource
+  externalUrl?: Prisma.StringNullableWithAggregatesFilter<"ProductFile"> | string | null
+  objectKey?: Prisma.StringNullableWithAggregatesFilter<"ProductFile"> | string | null
   fileName?: Prisma.StringWithAggregatesFilter<"ProductFile"> | string
-  mimeType?: Prisma.StringWithAggregatesFilter<"ProductFile"> | string
+  mimeType?: Prisma.StringNullableWithAggregatesFilter<"ProductFile"> | string | null
   sizeBytes?: Prisma.IntWithAggregatesFilter<"ProductFile"> | number
   sha256?: Prisma.StringNullableWithAggregatesFilter<"ProductFile"> | string | null
-  scanStatus?: Prisma.EnumProductFileScanStatusWithAggregatesFilter<"ProductFile"> | $Enums.ProductFileScanStatus
+  scanStatus?: Prisma.EnumProductFileScanStatusNullableWithAggregatesFilter<"ProductFile"> | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolWithAggregatesFilter<"ProductFile"> | boolean
   removedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"ProductFile"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"ProductFile"> | Date | string
@@ -362,12 +395,14 @@ export type ProductFileScalarWhereWithAggregatesInput = {
 export type ProductFileCreateInput = {
   id?: string
   tenantId: string
-  objectKey: string
+  sourceKind?: $Enums.ProductFileSource
+  externalUrl?: string | null
+  objectKey?: string | null
   fileName: string
-  mimeType: string
+  mimeType?: string | null
   sizeBytes: number
   sha256?: string | null
-  scanStatus?: $Enums.ProductFileScanStatus
+  scanStatus?: $Enums.ProductFileScanStatus | null
   isPreview?: boolean
   removedAt?: Date | string | null
   createdAt?: Date | string
@@ -380,12 +415,14 @@ export type ProductFileUncheckedCreateInput = {
   id?: string
   productId: string
   tenantId: string
-  objectKey: string
+  sourceKind?: $Enums.ProductFileSource
+  externalUrl?: string | null
+  objectKey?: string | null
   fileName: string
-  mimeType: string
+  mimeType?: string | null
   sizeBytes: number
   sha256?: string | null
-  scanStatus?: $Enums.ProductFileScanStatus
+  scanStatus?: $Enums.ProductFileScanStatus | null
   isPreview?: boolean
   removedAt?: Date | string | null
   createdAt?: Date | string
@@ -396,12 +433,14 @@ export type ProductFileUncheckedCreateInput = {
 export type ProductFileUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   tenantId?: Prisma.StringFieldUpdateOperationsInput | string
-  objectKey?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceKind?: Prisma.EnumProductFileSourceFieldUpdateOperationsInput | $Enums.ProductFileSource
+  externalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  objectKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.StringFieldUpdateOperationsInput | string
-  mimeType?: Prisma.StringFieldUpdateOperationsInput | string
+  mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  scanStatus?: Prisma.EnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus
+  scanStatus?: Prisma.NullableEnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFieldUpdateOperationsInput | boolean
   removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -414,12 +453,14 @@ export type ProductFileUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   tenantId?: Prisma.StringFieldUpdateOperationsInput | string
-  objectKey?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceKind?: Prisma.EnumProductFileSourceFieldUpdateOperationsInput | $Enums.ProductFileSource
+  externalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  objectKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.StringFieldUpdateOperationsInput | string
-  mimeType?: Prisma.StringFieldUpdateOperationsInput | string
+  mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  scanStatus?: Prisma.EnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus
+  scanStatus?: Prisma.NullableEnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFieldUpdateOperationsInput | boolean
   removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -431,12 +472,14 @@ export type ProductFileCreateManyInput = {
   id?: string
   productId: string
   tenantId: string
-  objectKey: string
+  sourceKind?: $Enums.ProductFileSource
+  externalUrl?: string | null
+  objectKey?: string | null
   fileName: string
-  mimeType: string
+  mimeType?: string | null
   sizeBytes: number
   sha256?: string | null
-  scanStatus?: $Enums.ProductFileScanStatus
+  scanStatus?: $Enums.ProductFileScanStatus | null
   isPreview?: boolean
   removedAt?: Date | string | null
   createdAt?: Date | string
@@ -445,12 +488,14 @@ export type ProductFileCreateManyInput = {
 export type ProductFileUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   tenantId?: Prisma.StringFieldUpdateOperationsInput | string
-  objectKey?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceKind?: Prisma.EnumProductFileSourceFieldUpdateOperationsInput | $Enums.ProductFileSource
+  externalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  objectKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.StringFieldUpdateOperationsInput | string
-  mimeType?: Prisma.StringFieldUpdateOperationsInput | string
+  mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  scanStatus?: Prisma.EnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus
+  scanStatus?: Prisma.NullableEnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFieldUpdateOperationsInput | boolean
   removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -460,12 +505,14 @@ export type ProductFileUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   tenantId?: Prisma.StringFieldUpdateOperationsInput | string
-  objectKey?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceKind?: Prisma.EnumProductFileSourceFieldUpdateOperationsInput | $Enums.ProductFileSource
+  externalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  objectKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.StringFieldUpdateOperationsInput | string
-  mimeType?: Prisma.StringFieldUpdateOperationsInput | string
+  mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  scanStatus?: Prisma.EnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus
+  scanStatus?: Prisma.NullableEnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFieldUpdateOperationsInput | boolean
   removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -485,6 +532,8 @@ export type ProductFileCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
   tenantId?: Prisma.SortOrder
+  sourceKind?: Prisma.SortOrder
+  externalUrl?: Prisma.SortOrder
   objectKey?: Prisma.SortOrder
   fileName?: Prisma.SortOrder
   mimeType?: Prisma.SortOrder
@@ -504,6 +553,8 @@ export type ProductFileMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
   tenantId?: Prisma.SortOrder
+  sourceKind?: Prisma.SortOrder
+  externalUrl?: Prisma.SortOrder
   objectKey?: Prisma.SortOrder
   fileName?: Prisma.SortOrder
   mimeType?: Prisma.SortOrder
@@ -519,6 +570,8 @@ export type ProductFileMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
   tenantId?: Prisma.SortOrder
+  sourceKind?: Prisma.SortOrder
+  externalUrl?: Prisma.SortOrder
   objectKey?: Prisma.SortOrder
   fileName?: Prisma.SortOrder
   mimeType?: Prisma.SortOrder
@@ -581,8 +634,12 @@ export type ProductFileUncheckedUpdateManyWithoutProductNestedInput = {
   deleteMany?: Prisma.ProductFileScalarWhereInput | Prisma.ProductFileScalarWhereInput[]
 }
 
-export type EnumProductFileScanStatusFieldUpdateOperationsInput = {
-  set?: $Enums.ProductFileScanStatus
+export type EnumProductFileSourceFieldUpdateOperationsInput = {
+  set?: $Enums.ProductFileSource
+}
+
+export type NullableEnumProductFileScanStatusFieldUpdateOperationsInput = {
+  set?: $Enums.ProductFileScanStatus | null
 }
 
 export type ProductFileCreateNestedOneWithoutDownloadTokensInput = {
@@ -616,12 +673,14 @@ export type ProductFileUpdateOneRequiredWithoutDownloadEventsNestedInput = {
 export type ProductFileCreateWithoutProductInput = {
   id?: string
   tenantId: string
-  objectKey: string
+  sourceKind?: $Enums.ProductFileSource
+  externalUrl?: string | null
+  objectKey?: string | null
   fileName: string
-  mimeType: string
+  mimeType?: string | null
   sizeBytes: number
   sha256?: string | null
-  scanStatus?: $Enums.ProductFileScanStatus
+  scanStatus?: $Enums.ProductFileScanStatus | null
   isPreview?: boolean
   removedAt?: Date | string | null
   createdAt?: Date | string
@@ -632,12 +691,14 @@ export type ProductFileCreateWithoutProductInput = {
 export type ProductFileUncheckedCreateWithoutProductInput = {
   id?: string
   tenantId: string
-  objectKey: string
+  sourceKind?: $Enums.ProductFileSource
+  externalUrl?: string | null
+  objectKey?: string | null
   fileName: string
-  mimeType: string
+  mimeType?: string | null
   sizeBytes: number
   sha256?: string | null
-  scanStatus?: $Enums.ProductFileScanStatus
+  scanStatus?: $Enums.ProductFileScanStatus | null
   isPreview?: boolean
   removedAt?: Date | string | null
   createdAt?: Date | string
@@ -678,12 +739,14 @@ export type ProductFileScalarWhereInput = {
   id?: Prisma.StringFilter<"ProductFile"> | string
   productId?: Prisma.StringFilter<"ProductFile"> | string
   tenantId?: Prisma.StringFilter<"ProductFile"> | string
-  objectKey?: Prisma.StringFilter<"ProductFile"> | string
+  sourceKind?: Prisma.EnumProductFileSourceFilter<"ProductFile"> | $Enums.ProductFileSource
+  externalUrl?: Prisma.StringNullableFilter<"ProductFile"> | string | null
+  objectKey?: Prisma.StringNullableFilter<"ProductFile"> | string | null
   fileName?: Prisma.StringFilter<"ProductFile"> | string
-  mimeType?: Prisma.StringFilter<"ProductFile"> | string
+  mimeType?: Prisma.StringNullableFilter<"ProductFile"> | string | null
   sizeBytes?: Prisma.IntFilter<"ProductFile"> | number
   sha256?: Prisma.StringNullableFilter<"ProductFile"> | string | null
-  scanStatus?: Prisma.EnumProductFileScanStatusFilter<"ProductFile"> | $Enums.ProductFileScanStatus
+  scanStatus?: Prisma.EnumProductFileScanStatusNullableFilter<"ProductFile"> | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFilter<"ProductFile"> | boolean
   removedAt?: Prisma.DateTimeNullableFilter<"ProductFile"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"ProductFile"> | Date | string
@@ -692,12 +755,14 @@ export type ProductFileScalarWhereInput = {
 export type ProductFileCreateWithoutDownloadTokensInput = {
   id?: string
   tenantId: string
-  objectKey: string
+  sourceKind?: $Enums.ProductFileSource
+  externalUrl?: string | null
+  objectKey?: string | null
   fileName: string
-  mimeType: string
+  mimeType?: string | null
   sizeBytes: number
   sha256?: string | null
-  scanStatus?: $Enums.ProductFileScanStatus
+  scanStatus?: $Enums.ProductFileScanStatus | null
   isPreview?: boolean
   removedAt?: Date | string | null
   createdAt?: Date | string
@@ -709,12 +774,14 @@ export type ProductFileUncheckedCreateWithoutDownloadTokensInput = {
   id?: string
   productId: string
   tenantId: string
-  objectKey: string
+  sourceKind?: $Enums.ProductFileSource
+  externalUrl?: string | null
+  objectKey?: string | null
   fileName: string
-  mimeType: string
+  mimeType?: string | null
   sizeBytes: number
   sha256?: string | null
-  scanStatus?: $Enums.ProductFileScanStatus
+  scanStatus?: $Enums.ProductFileScanStatus | null
   isPreview?: boolean
   removedAt?: Date | string | null
   createdAt?: Date | string
@@ -740,12 +807,14 @@ export type ProductFileUpdateToOneWithWhereWithoutDownloadTokensInput = {
 export type ProductFileUpdateWithoutDownloadTokensInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   tenantId?: Prisma.StringFieldUpdateOperationsInput | string
-  objectKey?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceKind?: Prisma.EnumProductFileSourceFieldUpdateOperationsInput | $Enums.ProductFileSource
+  externalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  objectKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.StringFieldUpdateOperationsInput | string
-  mimeType?: Prisma.StringFieldUpdateOperationsInput | string
+  mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  scanStatus?: Prisma.EnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus
+  scanStatus?: Prisma.NullableEnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFieldUpdateOperationsInput | boolean
   removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -757,12 +826,14 @@ export type ProductFileUncheckedUpdateWithoutDownloadTokensInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   tenantId?: Prisma.StringFieldUpdateOperationsInput | string
-  objectKey?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceKind?: Prisma.EnumProductFileSourceFieldUpdateOperationsInput | $Enums.ProductFileSource
+  externalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  objectKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.StringFieldUpdateOperationsInput | string
-  mimeType?: Prisma.StringFieldUpdateOperationsInput | string
+  mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  scanStatus?: Prisma.EnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus
+  scanStatus?: Prisma.NullableEnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFieldUpdateOperationsInput | boolean
   removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -772,12 +843,14 @@ export type ProductFileUncheckedUpdateWithoutDownloadTokensInput = {
 export type ProductFileCreateWithoutDownloadEventsInput = {
   id?: string
   tenantId: string
-  objectKey: string
+  sourceKind?: $Enums.ProductFileSource
+  externalUrl?: string | null
+  objectKey?: string | null
   fileName: string
-  mimeType: string
+  mimeType?: string | null
   sizeBytes: number
   sha256?: string | null
-  scanStatus?: $Enums.ProductFileScanStatus
+  scanStatus?: $Enums.ProductFileScanStatus | null
   isPreview?: boolean
   removedAt?: Date | string | null
   createdAt?: Date | string
@@ -789,12 +862,14 @@ export type ProductFileUncheckedCreateWithoutDownloadEventsInput = {
   id?: string
   productId: string
   tenantId: string
-  objectKey: string
+  sourceKind?: $Enums.ProductFileSource
+  externalUrl?: string | null
+  objectKey?: string | null
   fileName: string
-  mimeType: string
+  mimeType?: string | null
   sizeBytes: number
   sha256?: string | null
-  scanStatus?: $Enums.ProductFileScanStatus
+  scanStatus?: $Enums.ProductFileScanStatus | null
   isPreview?: boolean
   removedAt?: Date | string | null
   createdAt?: Date | string
@@ -820,12 +895,14 @@ export type ProductFileUpdateToOneWithWhereWithoutDownloadEventsInput = {
 export type ProductFileUpdateWithoutDownloadEventsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   tenantId?: Prisma.StringFieldUpdateOperationsInput | string
-  objectKey?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceKind?: Prisma.EnumProductFileSourceFieldUpdateOperationsInput | $Enums.ProductFileSource
+  externalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  objectKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.StringFieldUpdateOperationsInput | string
-  mimeType?: Prisma.StringFieldUpdateOperationsInput | string
+  mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  scanStatus?: Prisma.EnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus
+  scanStatus?: Prisma.NullableEnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFieldUpdateOperationsInput | boolean
   removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -837,12 +914,14 @@ export type ProductFileUncheckedUpdateWithoutDownloadEventsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   tenantId?: Prisma.StringFieldUpdateOperationsInput | string
-  objectKey?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceKind?: Prisma.EnumProductFileSourceFieldUpdateOperationsInput | $Enums.ProductFileSource
+  externalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  objectKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.StringFieldUpdateOperationsInput | string
-  mimeType?: Prisma.StringFieldUpdateOperationsInput | string
+  mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  scanStatus?: Prisma.EnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus
+  scanStatus?: Prisma.NullableEnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFieldUpdateOperationsInput | boolean
   removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -852,12 +931,14 @@ export type ProductFileUncheckedUpdateWithoutDownloadEventsInput = {
 export type ProductFileCreateManyProductInput = {
   id?: string
   tenantId: string
-  objectKey: string
+  sourceKind?: $Enums.ProductFileSource
+  externalUrl?: string | null
+  objectKey?: string | null
   fileName: string
-  mimeType: string
+  mimeType?: string | null
   sizeBytes: number
   sha256?: string | null
-  scanStatus?: $Enums.ProductFileScanStatus
+  scanStatus?: $Enums.ProductFileScanStatus | null
   isPreview?: boolean
   removedAt?: Date | string | null
   createdAt?: Date | string
@@ -866,12 +947,14 @@ export type ProductFileCreateManyProductInput = {
 export type ProductFileUpdateWithoutProductInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   tenantId?: Prisma.StringFieldUpdateOperationsInput | string
-  objectKey?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceKind?: Prisma.EnumProductFileSourceFieldUpdateOperationsInput | $Enums.ProductFileSource
+  externalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  objectKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.StringFieldUpdateOperationsInput | string
-  mimeType?: Prisma.StringFieldUpdateOperationsInput | string
+  mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  scanStatus?: Prisma.EnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus
+  scanStatus?: Prisma.NullableEnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFieldUpdateOperationsInput | boolean
   removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -882,12 +965,14 @@ export type ProductFileUpdateWithoutProductInput = {
 export type ProductFileUncheckedUpdateWithoutProductInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   tenantId?: Prisma.StringFieldUpdateOperationsInput | string
-  objectKey?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceKind?: Prisma.EnumProductFileSourceFieldUpdateOperationsInput | $Enums.ProductFileSource
+  externalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  objectKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.StringFieldUpdateOperationsInput | string
-  mimeType?: Prisma.StringFieldUpdateOperationsInput | string
+  mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  scanStatus?: Prisma.EnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus
+  scanStatus?: Prisma.NullableEnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFieldUpdateOperationsInput | boolean
   removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -898,12 +983,14 @@ export type ProductFileUncheckedUpdateWithoutProductInput = {
 export type ProductFileUncheckedUpdateManyWithoutProductInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   tenantId?: Prisma.StringFieldUpdateOperationsInput | string
-  objectKey?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceKind?: Prisma.EnumProductFileSourceFieldUpdateOperationsInput | $Enums.ProductFileSource
+  externalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  objectKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.StringFieldUpdateOperationsInput | string
-  mimeType?: Prisma.StringFieldUpdateOperationsInput | string
+  mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  scanStatus?: Prisma.EnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus
+  scanStatus?: Prisma.NullableEnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFieldUpdateOperationsInput | boolean
   removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -953,6 +1040,8 @@ export type ProductFileSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   id?: boolean
   productId?: boolean
   tenantId?: boolean
+  sourceKind?: boolean
+  externalUrl?: boolean
   objectKey?: boolean
   fileName?: boolean
   mimeType?: boolean
@@ -972,6 +1061,8 @@ export type ProductFileSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   id?: boolean
   productId?: boolean
   tenantId?: boolean
+  sourceKind?: boolean
+  externalUrl?: boolean
   objectKey?: boolean
   fileName?: boolean
   mimeType?: boolean
@@ -988,6 +1079,8 @@ export type ProductFileSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   id?: boolean
   productId?: boolean
   tenantId?: boolean
+  sourceKind?: boolean
+  externalUrl?: boolean
   objectKey?: boolean
   fileName?: boolean
   mimeType?: boolean
@@ -1004,6 +1097,8 @@ export type ProductFileSelectScalar = {
   id?: boolean
   productId?: boolean
   tenantId?: boolean
+  sourceKind?: boolean
+  externalUrl?: boolean
   objectKey?: boolean
   fileName?: boolean
   mimeType?: boolean
@@ -1015,7 +1110,7 @@ export type ProductFileSelectScalar = {
   createdAt?: boolean
 }
 
-export type ProductFileOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "productId" | "tenantId" | "objectKey" | "fileName" | "mimeType" | "sizeBytes" | "sha256" | "scanStatus" | "isPreview" | "removedAt" | "createdAt", ExtArgs["result"]["productFile"]>
+export type ProductFileOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "productId" | "tenantId" | "sourceKind" | "externalUrl" | "objectKey" | "fileName" | "mimeType" | "sizeBytes" | "sha256" | "scanStatus" | "isPreview" | "removedAt" | "createdAt", ExtArgs["result"]["productFile"]>
 export type ProductFileInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
   downloadTokens?: boolean | Prisma.ProductFile$downloadTokensArgs<ExtArgs>
@@ -1040,12 +1135,14 @@ export type $ProductFilePayload<ExtArgs extends runtime.Types.Extensions.Interna
     id: string
     productId: string
     tenantId: string
-    objectKey: string
+    sourceKind: $Enums.ProductFileSource
+    externalUrl: string | null
+    objectKey: string | null
     fileName: string
-    mimeType: string
+    mimeType: string | null
     sizeBytes: number
     sha256: string | null
-    scanStatus: $Enums.ProductFileScanStatus
+    scanStatus: $Enums.ProductFileScanStatus | null
     isPreview: boolean
     removedAt: Date | null
     createdAt: Date
@@ -1478,6 +1575,8 @@ export interface ProductFileFieldRefs {
   readonly id: Prisma.FieldRef<"ProductFile", 'String'>
   readonly productId: Prisma.FieldRef<"ProductFile", 'String'>
   readonly tenantId: Prisma.FieldRef<"ProductFile", 'String'>
+  readonly sourceKind: Prisma.FieldRef<"ProductFile", 'ProductFileSource'>
+  readonly externalUrl: Prisma.FieldRef<"ProductFile", 'String'>
   readonly objectKey: Prisma.FieldRef<"ProductFile", 'String'>
   readonly fileName: Prisma.FieldRef<"ProductFile", 'String'>
   readonly mimeType: Prisma.FieldRef<"ProductFile", 'String'>

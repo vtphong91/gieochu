@@ -1,13 +1,16 @@
 import { randomUUID } from "node:crypto";
-import { AppError } from "@gieochu/core";
+import { AppError, logger } from "@gieochu/core";
 import {
   buildProductFileKey,
   completeMultipartUpload,
   createPresignedUpload,
   createS3Client,
+  deleteObject,
   headObject,
   isAllowedExtension,
+  isProductObjectKeyFor,
   type PresignedUpload,
+  type ProductObjectKeyKind,
 } from "@gieochu/storage";
 import { getEnv } from "@gieochu/config";
 import { getPrismaClient, withTenant, type ProductFile } from "@gieochu/db";
@@ -21,6 +24,29 @@ export async function requireStorageConfig() {
     throw new AppError({ code: "STORAGE_NOT_CONFIGURED", message: "Chưa cấu hình lưu trữ file.", httpStatus: 503 });
   }
   return config;
+}
+
+/**
+ * The object key comes back from the client on `complete` — it must be one
+ * `buildProductFileKey` could have issued for THIS tenant/product, otherwise a
+ * tenant could register another tenant's (leaked via download URL) key. Pure
+ * check, runs before any storage call.
+ */
+function assertOwnObjectKey(objectKey: string, tenantId: string, productId: string, kind: ProductObjectKeyKind): void {
+  const fileName = objectKey.split("/").pop() ?? "";
+  const extOk = kind === "cover" ? COVER_IMAGE_EXTENSIONS.has(fileName.split(".").pop()?.toLowerCase() ?? "") : isAllowedExtension(fileName);
+  if (!isProductObjectKeyFor(objectKey, tenantId, productId, kind) || !extOk) {
+    throw new AppError({ code: "INVALID_OBJECT_KEY", message: "Khoá file tải lên không hợp lệ cho sản phẩm này.", httpStatus: 400 });
+  }
+}
+
+/** Best-effort cleanup of an upload we refuse to register — failure is logged, never masks the original error. */
+async function discardUploadedObject(client: ReturnType<typeof createS3Client>, bucket: string, objectKey: string): Promise<void> {
+  try {
+    await deleteObject(client, bucket, objectKey);
+  } catch (error) {
+    logger.warn({ objectKey, err: error }, "product-upload: không xoá được object bị từ chối");
+  }
 }
 
 export interface PresignUploadInput {
@@ -88,26 +114,51 @@ export interface CompleteUploadInput {
  * tiền/trạng thái từ client" applies just as much to upload metadata.
  */
 export async function completeProductFileUpload(tenantId: string, productId: string, input: CompleteUploadInput): Promise<ProductFile> {
+  assertOwnObjectKey(input.objectKey, tenantId, productId, "file");
+
   const product = await withTenant(tenantId, (tx) => tx.product.findUnique({ where: { id: productId } }));
   if (!product) {
     throw new AppError({ code: "PRODUCT_NOT_FOUND", message: "Không tìm thấy sản phẩm.", httpStatus: 404 });
   }
 
+  // `product_files.objectKey` is @unique — check up front so a repeated
+  // complete gets a clean 409 (and never touches/deletes the registered object).
+  const existing = await withTenant(tenantId, (tx) => tx.productFile.findUnique({ where: { objectKey: input.objectKey }, select: { id: true } }));
+  if (existing) {
+    throw new AppError({ code: "UPLOAD_ALREADY_COMPLETED", message: "File này đã được ghi nhận trước đó.", httpStatus: 409 });
+  }
+
   const storageConfig = await requireStorageConfig();
   const client = createS3Client(storageConfig);
+  const bucket = storageConfig.bucketPrivate;
 
   if (input.uploadId && input.parts) {
     await completeMultipartUpload(client, {
-      bucket: storageConfig.bucketPrivate,
+      bucket,
       key: input.objectKey,
       uploadId: input.uploadId,
       parts: input.parts,
     });
   }
 
-  const head = await headObject(client, storageConfig.bucketPrivate, input.objectKey);
-  if (!head || head.sizeBytes !== input.sizeBytes) {
+  const head = await headObject(client, bucket, input.objectKey);
+  if (!head) {
     throw new AppError({ code: "UPLOAD_NOT_FOUND", message: "Không tìm thấy file vừa tải lên.", httpStatus: 400 });
+  }
+  if (head.sizeBytes !== input.sizeBytes) {
+    await discardUploadedObject(client, bucket, input.objectKey);
+    throw new AppError({ code: "UPLOAD_SIZE_MISMATCH", message: "Dung lượng file tải lên không khớp với khai báo.", httpStatus: 400 });
+  }
+
+  // Presign checked the plan against the size the client CLAIMED — re-check
+  // with the real size from HeadObject so "presign small, upload big" fails.
+  const realSizeBytes = head.sizeBytes;
+  try {
+    await assertPlanLimit(tenantId, "fileSize", realSizeBytes);
+    await assertPlanLimit(tenantId, "storage", realSizeBytes);
+  } catch (error) {
+    await discardUploadedObject(client, bucket, input.objectKey);
+    throw error;
   }
 
   const file = await withTenant(tenantId, (tx) =>
@@ -118,7 +169,7 @@ export async function completeProductFileUpload(tenantId: string, productId: str
         objectKey: input.objectKey,
         fileName: input.fileName,
         mimeType: input.mimeType,
-        sizeBytes: input.sizeBytes,
+        sizeBytes: realSizeBytes,
         isPreview: input.isPreview,
         scanStatus: "PENDING",
       },
@@ -126,7 +177,7 @@ export async function completeProductFileUpload(tenantId: string, productId: str
   );
 
   const prisma = getPrismaClient();
-  await prisma.tenant.update({ where: { id: tenantId }, data: { storageUsedBytes: { increment: input.sizeBytes } } });
+  await prisma.tenant.update({ where: { id: tenantId }, data: { storageUsedBytes: { increment: realSizeBytes } } });
 
   await enqueueFileScan({ productFileId: file.id });
 
@@ -179,6 +230,8 @@ export async function presignCoverImageUpload(tenantId: string, productId: strin
 }
 
 export async function completeCoverImageUpload(tenantId: string, productId: string, objectKey: string): Promise<void> {
+  assertOwnObjectKey(objectKey, tenantId, productId, "cover");
+
   const product = await withTenant(tenantId, (tx) => tx.product.findUnique({ where: { id: productId } }));
   if (!product) {
     throw new AppError({ code: "PRODUCT_NOT_FOUND", message: "Không tìm thấy sản phẩm.", httpStatus: 404 });

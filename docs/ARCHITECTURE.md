@@ -168,7 +168,8 @@ component nhạy cảm tự xác thực và phân quyền lại — không tin p
 │       │   │                       # settings (+ settings/payments — M7, + billing — M3,
 │       │   │                       # + products(+new,+[productId](+share-links — M9)) — M5,
 │       │   │                       # + coupons(+new,+[couponId]) — M6, + orders(+[orderId]), customers — M8)
-│       │   ├── [tenantSlug]/       # storefront công khai (+ products/[productSlug], checkout/[orderCode] — M8)
+│       │   ├── [tenantSlug]/       # storefront công khai (+ [productSlug] — ADR-030, products/[productSlug]/route.ts 301,
+│       │   │                       #   checkout/[orderCode] — M8, posts(+[postId]) — M10b)
 │       │   ├── s/[token]/          # M9: trang link chia sẻ công khai, không cần đăng nhập
 │       │   ├── pricing/, p/[slug]/ # trang công khai (M2)
 │       │   ├── api/

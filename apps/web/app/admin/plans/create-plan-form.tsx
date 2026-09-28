@@ -12,6 +12,7 @@ const EMPTY: PlanFormValues = {
   maxProducts: 0,
   storageMb: 0,
   maxFileMb: 0,
+  imageStorageMb: 100,
   isFree: false,
   features: {},
 };

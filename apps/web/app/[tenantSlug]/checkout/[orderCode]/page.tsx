@@ -2,12 +2,27 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { AppError } from "@gieochu/core";
 import type { CheckoutResult } from "@gieochu/payments";
+import { brandColors } from "@gieochu/config/theme";
 import { requireVerifiedAccess } from "../../../../lib/page-guards";
 import { getOrderForCustomer } from "../../../../lib/order";
 import { getEnabledProviders } from "../../../../lib/tenant-payment";
+import { SiteFooter } from "../../../_ui/site-footer";
+import { SiteHeader } from "../../../_ui/site-header";
+import { systemFontVars } from "../../../_ui/system-fonts";
 import { CheckoutPoll } from "./checkout-poll";
 import { CouponPanel } from "./coupon-panel";
 import { ProviderPanel } from "./provider-panel";
+
+// ADR-025: checkout là trang HỆ THỐNG — màu lấy từ token hệ thống như trang chi tiết tài liệu.
+const INK = brandColors.ink;
+const INK_SOFT = brandColors.inkSoft;
+const LINE = brandColors.line;
+const BLUE = brandColors.primary;
+const AMBER = brandColors.accent;
+const ACCENT_SOFT = brandColors.accentSoft;
+const GREEN = brandColors.secondary;
+/** Nền nhạt của secondary; chữ trên nền này dùng INK (tương phản AA), viền mang sắc trạng thái. */
+const GREEN_SOFT = `color-mix(in srgb, ${GREEN} 10%, white)`;
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING: "Chờ thanh toán",
@@ -40,84 +55,121 @@ export default async function CheckoutPage({ params }: { params: Promise<{ tenan
   const enabledProviders = isPending && !order.provider ? await getEnabledProviders(order.tenantId) : [];
   const checkout = order.checkoutPayload as CheckoutResult | null;
 
+  // ADR-025: checkout là trang hệ thống — bọc header/footer + font hệ thống, nội dung giữ container-narrow.
   return (
-    <main className="mx-auto max-w-md px-4 py-10">
-      <CheckoutPoll active={isPending} />
+    <div className={`${systemFontVars} flex min-h-dvh flex-col bg-white font-[family-name:var(--font-body)]`} style={{ color: INK }}>
+      <a
+        href="#noi-dung"
+        className="sr-only z-30 rounded-full bg-white px-5 py-3 font-semibold text-[color:var(--color-primary)] shadow-lg focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+      >
+        Bỏ qua tới nội dung chính
+      </a>
 
-      <h1 className="text-2xl font-bold">Đơn hàng {order.code}</h1>
-      <p className="mt-1 text-sm text-gray-500">{STATUS_LABEL[order.status] ?? order.status}</p>
+      <SiteHeader />
 
-      <section className="mt-6 rounded border p-4">
-        <ul className="space-y-1 text-sm">
-          {order.items.map((item) => (
-            <li key={item.id} className="flex justify-between">
-              <span>{item.titleSnapshot}</span>
-              <span>{item.finalPriceVnd.toLocaleString("vi-VN")}đ</span>
+      <main id="noi-dung" tabIndex={-1} className="container-narrow flex-1 py-10 outline-none">
+        <CheckoutPoll active={isPending} />
+
+        <nav aria-label="Đường dẫn" className="mb-2">
+          <ol className="flex flex-wrap items-center gap-x-1 text-sm" style={{ color: INK_SOFT }}>
+            <li>
+              <Link
+                href={`/${order.tenant.slug}`}
+                className="inline-flex min-h-11 items-center rounded-full pr-1 font-medium hover:text-[color:var(--color-primary)] hover:underline"
+              >
+                <span aria-hidden="true">←&nbsp;</span>
+                {order.tenant.name}
+              </Link>
             </li>
-          ))}
-        </ul>
-        <div className="mt-3 space-y-1 border-t pt-3 text-sm">
-          <div className="flex justify-between text-gray-500">
-            <span>Tạm tính</span>
-            <span>{order.subtotalVnd.toLocaleString("vi-VN")}đ</span>
-          </div>
-          {order.discountVnd > 0 ? (
-            <div className="flex justify-between text-gray-500">
-              <span>Giảm giá</span>
-              <span>-{order.discountVnd.toLocaleString("vi-VN")}đ</span>
+          </ol>
+        </nav>
+
+        <h1 className="font-[family-name:var(--font-heading)] text-2xl font-bold [overflow-wrap:anywhere]">Đơn hàng {order.code}</h1>
+        <p className="mt-1 text-sm" style={{ color: INK_SOFT }}>
+          <span className="sr-only">Trạng thái: </span>
+          {STATUS_LABEL[order.status] ?? order.status}
+        </p>
+
+        <section className="mt-6 rounded-xl border p-4" style={{ borderColor: LINE }}>
+          <ul className="space-y-1 text-sm">
+            {order.items.map((item) => (
+              <li key={item.id} className="flex justify-between gap-4">
+                <span className="min-w-0 [overflow-wrap:anywhere]">{item.titleSnapshot}</span>
+                <span className="shrink-0 tabular-nums">{item.finalPriceVnd.toLocaleString("vi-VN")}đ</span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3 space-y-1 border-t pt-3 text-sm" style={{ borderColor: LINE }}>
+            <div className="flex justify-between" style={{ color: INK_SOFT }}>
+              <span>Tạm tính</span>
+              <span>{order.subtotalVnd.toLocaleString("vi-VN")}đ</span>
             </div>
-          ) : null}
-          <div className="flex justify-between text-base font-semibold">
-            <span>Tổng cộng</span>
-            <span>{order.totalVnd.toLocaleString("vi-VN")}đ</span>
-          </div>
-        </div>
-      </section>
-
-      {isPending ? (
-        <section className="mt-4">
-          <CouponPanel tenantSlug={tenantSlug} orderCode={orderCode} appliedCode={order.couponCode} />
-        </section>
-      ) : null}
-
-      {isPending ? (
-        <section className="mt-6 rounded border p-4">
-          {checkout ? (
-            checkout.kind === "QR" ? (
-              <div>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={checkout.qrImageDataUrl} alt="QR thanh toán" className="mx-auto h-48 w-48" />
-                <p className="mt-2 text-center text-sm">
-                  {checkout.bank.accountName} — {checkout.bank.accountNo}
-                </p>
-                <p className="text-center text-sm text-gray-500">Nội dung: {checkout.content}</p>
+            {order.discountVnd > 0 ? (
+              <div className="flex justify-between" style={{ color: INK_SOFT }}>
+                <span>Giảm giá</span>
+                <span>-{order.discountVnd.toLocaleString("vi-VN")}đ</span>
               </div>
+            ) : null}
+            <div className="flex justify-between text-base font-semibold">
+              <span>Tổng cộng</span>
+              <span>{order.totalVnd.toLocaleString("vi-VN")}đ</span>
+            </div>
+          </div>
+        </section>
+
+        {isPending ? (
+          <section className="mt-4">
+            <CouponPanel tenantSlug={tenantSlug} orderCode={orderCode} appliedCode={order.couponCode} />
+          </section>
+        ) : null}
+
+        {isPending ? (
+          <section className="mt-6 rounded-xl border p-4" style={{ borderColor: LINE }}>
+            {checkout ? (
+              checkout.kind === "QR" ? (
+                <div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={checkout.qrImageDataUrl} alt="QR thanh toán" className="mx-auto h-48 w-48" />
+                  <p className="mt-2 text-center text-sm">
+                    {checkout.bank.accountName} — {checkout.bank.accountNo}
+                  </p>
+                  <p className="text-center text-sm [overflow-wrap:anywhere]" style={{ color: INK_SOFT }}>Nội dung: {checkout.content}</p>
+                </div>
+              ) : (
+                <a href={checkout.url} className="flex min-h-11 items-center justify-center font-medium underline" style={{ color: BLUE }}>
+                  Mở trang thanh toán
+                </a>
+              )
             ) : (
-              <a href={checkout.url} className="block text-center text-[var(--color-primary)] underline">
-                Mở trang thanh toán
-              </a>
-            )
-          ) : (
-            <ProviderPanel tenantSlug={tenantSlug} orderCode={orderCode} enabledProviders={enabledProviders} />
-          )}
-          <p className="mt-3 text-center text-xs text-gray-400">Đơn hàng hết hạn lúc {formatVnDateTime(order.expiresAt)}</p>
-        </section>
-      ) : null}
+              <ProviderPanel tenantSlug={tenantSlug} orderCode={orderCode} enabledProviders={enabledProviders} />
+            )}
+            <p className="mt-3 text-center text-xs" style={{ color: INK_SOFT }}>Đơn hàng hết hạn lúc {formatVnDateTime(order.expiresAt)}</p>
+          </section>
+        ) : null}
 
-      {isPaidOrFulfilled ? (
-        <section className="mt-6 rounded border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-          Thanh toán thành công.{" "}
-          <Link href="/account/library" className="underline">
-            Xem tài liệu đã mua
-          </Link>
-        </section>
-      ) : null}
+        {isPaidOrFulfilled ? (
+          <section
+            className="mt-6 rounded-xl border border-l-4 p-4 text-sm"
+            style={{ borderColor: GREEN, background: GREEN_SOFT, color: INK }}
+          >
+            <strong className="font-semibold">Thanh toán thành công.</strong>{" "}
+            <Link href="/account/library" className="font-medium underline" style={{ color: BLUE }}>
+              Xem tài liệu đã mua
+            </Link>
+          </section>
+        ) : null}
 
-      {order.status === "EXPIRED" ? (
-        <section className="mt-6 rounded border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          Đơn hàng đã hết hạn. Vui lòng đặt lại đơn hàng mới.
-        </section>
-      ) : null}
-    </main>
+        {order.status === "EXPIRED" ? (
+          <section
+            className="mt-6 rounded-xl border border-l-4 p-4 text-sm"
+            style={{ borderColor: AMBER, background: ACCENT_SOFT, color: INK }}
+          >
+            <strong className="font-semibold">Đơn hàng đã hết hạn.</strong> Vui lòng đặt lại đơn hàng mới.
+          </section>
+        ) : null}
+      </main>
+
+      <SiteFooter />
+    </div>
   );
 }

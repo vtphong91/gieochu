@@ -148,9 +148,10 @@ export type TenantSlugHistory = Prisma.TenantSlugHistoryModel
  * URL, no presign needed to display it) — the sellable files themselves
  * live in the private bucket via ProductFile. `salePriceVnd`/`saleStartsAt`/
  * `saleEndsAt` are columns only — M6 adds the pricing engine that reads
- * them. `downloadLimit=0` means unlimited (ADR-014). `ratingAvg`/
- * `ratingCount` are deliberately NOT added here — nothing in M5 writes
- * them; M10 adds those columns when it adds review aggregation.
+ * them. `downloadLimit=0` means unlimited (ADR-014). ADR-029 mục 3: điểm
+ * đánh giá cache bằng 2 số nguyên `ratingSum`/`ratingCount` (không float) —
+ * chỉ tính review VISIBLE, luôn tính lại toàn phần (SUM/COUNT) dưới scope
+ * `system_job` (`recomputeProductRating`, apps/web/lib/review.ts).
  */
 export type Product = Prisma.ProductModel
 /**
@@ -161,6 +162,15 @@ export type Product = Prisma.ProductModel
  * that removing a file from a product that already has buyers must never
  * delete the underlying object (§5.2), so a real S3 delete only ever
  * happens from the file.scan job rejecting a file that was never CLEAN.
+ * 
+ * ADR-026: cùng bảng lưu cả **link tài liệu ngoài** (`sourceKind =
+ * EXTERNAL_URL`). Dòng link: `externalUrl` có giá trị, `fileName` là nhãn
+ * hiển thị, `objectKey`/`mimeType`/`scanStatus` = NULL (không quét, không có
+ * object — NULL không vi phạm `@unique`), `sizeBytes = 0` (không tính dung
+ * lượng), `isPreview = false`. CHECK constraint `product_files_source_shape`
+ * (migration 20260926120000) ép đúng hình dạng này ở tầng DB. Mọi luồng file
+ * cũ lọc `scanStatus = 'CLEAN'` nên tự loại dòng link; RLS nhánh public chỉ
+ * cho `sourceKind = 'FILE'`.
  */
 export type ProductFile = Prisma.ProductFileModel
 /**
@@ -214,9 +224,9 @@ export type EmailSendLog = Prisma.EmailSendLogModel
 /**
  * Model DocumentCategory
  * Danh mục tài liệu — taxonomy CẤP PLATFORM do System Admin tạo trước
- * (/admin/categories), KHÔNG phải danh mục riêng của từng tenant. Việc gán
- * sản phẩm vào danh mục này là module sau (chưa làm ở đây). Bảng L1 (không
- * tenantId), không cần RLS — cùng lớp với SystemBranding/Plan.
+ * (/admin/categories), KHÔNG phải danh mục riêng của từng tenant. Sản phẩm
+ * gắn qua `Product.categoryId` (ADR-026). Bảng L1 (không tenantId), không
+ * cần RLS — cùng lớp với SystemBranding/Plan.
  */
 export type DocumentCategory = Prisma.DocumentCategoryModel
 /**
@@ -365,3 +375,40 @@ export type ShareLink = Prisma.ShareLinkModel
  * download vs. an anonymous share-link download.
  */
 export type DownloadEvent = Prisma.DownloadEventModel
+/**
+ * Model StorefrontMessage
+ * ADR-023: tin nhắn từ form liên hệ trên storefront `/[tenantSlug]` — bảng L2 có RLS
+ * (migration `rls_storefront_messages`): scope public chỉ INSERT, scope tenant
+ * SELECT/UPDATE/DELETE đúng tenantId. System admin không có đường đọc (§7.9).
+ * Không lưu IP thô — `ipHash` = HMAC-SHA256(ip), chỉ dùng cho rate limit.
+ */
+export type StorefrontMessage = Prisma.StorefrontMessageModel
+/**
+ * Model TenantMediaAsset
+ * ADR-028: ghi nhận ảnh tenant đã upload lên Cloudinary HỆ THỐNG để tính hạn mức `Plan.imageStorageMb`.
+ * Bảng L2 có RLS (migration `rls_adr028_media_assets`, policy `tenant_isolation`: đúng tenantId hoặc scope
+ * system_job cho job dọn asset sau này). Dòng được tạo khi CẤP CHỮ KÝ (giữ chỗ, `bytes` tạm tính,
+ * `verifiedAt = null`) và cập nhật số thật khi server đọc Cloudinary Admin API (`verifiedAt` có giá trị) —
+ * không bao giờ lấy `bytes` từ client. `publicId` do server sinh (nằm trong chữ ký upload).
+ */
+export type TenantMediaAsset = Prisma.TenantMediaAssetModel
+/**
+ * Model Review
+ * ADR-029 (M10a) — đánh giá sản phẩm. Bảng L2 có RLS tách theo lệnh (migration `rls_m10a_reviews`):
+ * public đọc VISIBLE của sản phẩm PUBLISHED; customer đọc/ghi/xoá của chính mình (INSERT/UPDATE phải còn đơn
+ * FULFILLED + entitlement chưa thu hồi); tenant đọc/UPDATE (ẩn, khôi phục, trả lời) của tenant mình; system_job.
+ * Không nhánh admin (§7.9). Trigger `reviews_guard_columns` chặn customer đổi cột kiểm duyệt/trả lời và chặn
+ * tenant đổi nội dung của khách. `orderItemId` = dòng đơn chứng minh quyền đánh giá (cập nhật khi khách mua lại
+ * rồi sửa). `displayName` là snapshot tên rút gọn ("Minh A.") lúc ghi — trang public không join hồ sơ L1.
+ */
+export type Review = Prisma.ReviewModel
+/**
+ * Model Post
+ * ADR-029 mục 5–6 (M10b) — bài viết tối giản của tenant. Bảng L2 có RLS tách theo lệnh (migration `rls_m10b_posts`):
+ * public chỉ đọc PUBLISHED của tenant không LOCKED; tenant đọc/ghi/xoá bài của mình; system_job. Không nhánh
+ * customer/admin (§7.9). `body` là HTML đã qua `sanitizeRichTextHtml` (ảnh chỉ Cloudinary hệ thống, ≤6 ảnh — kiểm
+ * ở server). `excerpt` là văn bản thuần tự sinh từ `body` (≤300 ký tự). `productId` phải là sản phẩm CÙNG tenant
+ * (trigger `posts_guard_product_tenant`); xoá sản phẩm → SetNull. Tối đa 1 bài ghim/tenant: partial unique index
+ * `posts_tenantId_pinned_key` (`WHERE "isPinned"`, khai báo trong migration SQL — Prisma không biểu diễn được).
+ */
+export type Post = Prisma.PostModel

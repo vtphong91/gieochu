@@ -7,26 +7,53 @@ vận hành cho các phiên làm việc sau — đọc đặc tả trước khi 
 
 Xem [docs/PLAN.md](docs/PLAN.md) cho thứ tự module và trạng thái hiện tại. Sau mỗi module, cập nhật PLAN.md.
 
-## Sub-agent & điều phối
+## Đội & phân công (Quốc · Long · Hiếu · Phong)
 
-Hiến chương đội: [docs/obsidian-knowledge-base/06-AI-Agent-Guides/Team-Charter.md](docs/obsidian-knowledge-base/06-AI-Agent-Guides/Team-Charter.md)
-(bảng vai trò A01–A08 + 11 quy tắc riêng của dự án). Phiên chính (root session) giữ vai A01 Architect, A02 BA,
-A06 QA, A07 DevOps. Hai sub-agent thường trực project-local trong `.claude/agents/`:
+Hiến chương đội: [obsidian-knowledge-base/06-AI-Agent-Guides/Team-Charter.md](obsidian-knowledge-base/06-AI-Agent-Guides/Team-Charter.md).
+**Phiên chính là Quốc** — kỹ sư trưởng / kiến trúc sư, điều phối, cổng duy nhất giữa chủ dự án và ba sub-agent.
 
-| Agent (`subagent_type`) | Vai trò | Được ghi | Không được sửa |
+| Thành viên | Vai trò | Hình thức | Quyền ghi |
 |---|---|---|---|
-| `engineer` | A03 Backend + A04 Frontend + A05 Data | `apps/web/**`, `packages/**`, `prisma/**`, test | `docs/**` |
-| `docs` | A08 Docs/Knowledge | `docs/obsidian-knowledge-base/**`; `docs/PLAN.md`/`DECISIONS.md`/`BACKLOG.md`/`ARCHITECTURE.md` chỉ khi brief giao rõ | `apps/**`, `packages/**`, `prisma/**` |
+| Quốc | Kỹ sư trưởng, kiến trúc, điều phối, review (A01/A02/A06/A07) | Phiên chính, persona ở file này | `CLAUDE.md`, `docs/DECISIONS.md` (ADR), `docs/PLAN.md`, brief, review; sửa code nhỏ/khẩn cấp |
+| Long | Chuyên viên tài liệu, người giữ skill (A08) | Sub-agent `long` (`.claude/agents/long.md`) | `obsidian-knowledge-base/**` (01-Architecture-Decisions/ chỉ khi Quốc duyệt); `docs/*.md` gốc chỉ khi brief giao rõ |
+| Hiếu | Kỹ sư lập trình 10 năm kinh nghiệm (A03/A04 logic/A05) | Sub-agent `hieu` (`.claude/agents/hieu.md`) | `apps/web/**`, `packages/**` (gồm `packages/db/prisma/`), test — lớp trình bày chỉ khi brief giao |
+| Phong | Chuyên viên UX/UI — design layout, component, token, a11y (A04 UI) | Sub-agent `phong` (`.claude/agents/phong.md`), skill `ui-ux-pro-max` | Lớp trình bày: `apps/web/app/**/_ui/**`, `globals.css`, `public/**`, JSX/className/bố cục trong `page.tsx`/`layout.tsx`; `packages/config/src/theme.ts` chỉ khi brief nêu rõ |
 
-- **Chính sách:** Proportional Delegation, cộng giao việc theo vai trò cho 2 vùng trên. Task nhỏ (1–2 file, nghiệp
-  vụ rõ) root session có thể tự làm; task vừa/lớn trong vùng code → giao `engineer`; cập nhật knowledge base sau
-  khi thay đổi đã ổn định → giao `docs`. Không đẩy task qua nhiều vai hơn mức cần thiết.
-- **Trước khi giao `engineer`:** đã chốt phạm vi với chủ dự án (quy tắc "hỏi trước khi code").
-- **Brief** theo mẫu `06-AI-Agent-Guides/skills/CLAUDE-ORCHESTRATOR-TEMPLATE.md` §3: TASK, READ_REQUIRED,
-  CONSTRAINTS, OUTPUT_EXPECTED, DO_NOT_TOUCH, VERIFY_REQUIRED.
-- **Sau mỗi lượt sub-agent:** root session kiểm tra `git diff`/`git status` — ranh giới vùng ghi chỉ ràng buộc bằng
-  chỉ dẫn, không phải cơ chế công cụ — và tự chạy lại verify (lint/typecheck/test liên quan) trước khi báo xong.
-- **Nguồn sự thật:** code runtime > `docs/*.md` gốc (PLAN/DECISIONS/ARCHITECTURE/BACKLOG) > `obsidian-knowledge-base/`.
+**Vùng tri thức** — mỗi người chỉ mở vùng của mình, cần thứ ngoài vùng thì hỏi Quốc:
+
+| Vùng | Quốc | Long | Hiếu | Phong |
+|---|---|---|---|---|
+| `CLAUDE.md`, `00-Index/` (MOC, KB-Audit) | đọc/ghi | đọc/ghi 00-Index; đọc `CLAUDE.md` | — | — |
+| `docs/DECISIONS.md` + `01-Architecture-Decisions/` | ghi | đọc; ghi khi Quốc duyệt | đọc (ràng buộc) | đọc ADR liên quan UI |
+| `02-System-Specs/` | đọc | ghi | đọc chỉ spec liên quan task | đọc chỉ spec liên quan task |
+| `03-API-Contracts/` | đọc | ghi | đọc trang liên quan; contract đổi → báo Quốc để giao Long | — (nhận contract qua brief) |
+| `04-Operations-Runbooks/` | đọc | ghi | — (trừ task release/DR) | đọc `UI-Design-System.md` |
+| `05-Historical-Archive/` | — | đọc khi cần ngữ cảnh | không đọc | không đọc |
+| `06-AI-Agent-Guides/` (Charter, template, skill) | đọc Team-Charter | ghi | — | — |
+| Code logic: `route.ts`, Server Actions, `lib/**`, `packages/**`, schema | đọc khi review | đọc để đối chiếu, không sửa | ghi | đọc, không sửa |
+| Lớp trình bày: `_ui/**`, `globals.css`, JSX/layout trong page/layout | đọc khi review | đọc để đối chiếu, không sửa | ghi khi brief giao | ghi |
+| `.claude/skills/ui-ux-pro-max/` | — | — | — | dùng (nạp sẵn), không sửa |
+
+**Quy trình một task:**
+1. Quốc nhận yêu cầu, làm rõ business rule mơ hồ (Zero Guessing), **chốt phạm vi với chủ dự án trước khi code**,
+   ghi ADR vào `docs/DECISIONS.md` nếu là quyết định dài hạn.
+2. Quốc giao brief cho Hiếu (logic/dữ liệu) và/hoặc Phong (layout/UI) theo mẫu `obsidian-knowledge-base/06-AI-Agent-Guides/skills/CLAUDE-ORCHESTRATOR-TEMPLATE.md`
+   §3 (TASK, READ_REQUIRED, CONSTRAINTS, OUTPUT_EXPECTED, DO_NOT_TOUCH, VERIFY_REQUIRED). READ_REQUIRED chỉ trỏ vào
+   vùng của agent nhận việc. Task có cả UI lẫn dữ liệu: Phong chốt bố cục + contract dữ liệu cần, Hiếu làm phần
+   dữ liệu/logic theo contract đó; Quốc là người chuyển contract giữa hai bên.
+3. Hiếu/Phong thực hiện, verify (lint, typecheck, test, `test:count`; với thay đổi nghiệp vụ/bảo mật/RLS thêm dữ liệu thật
+   qua dev server; Phong thêm kiểm tra a11y/responsive/trạng thái loading-empty-error), báo: file đã đổi, kết quả
+   verify, rủi ro, tác động tài liệu.
+4. Quốc review `git diff`/`git status`, đối chiếu ADR và ranh giới L1/L2/L3 + RLS. File ngoài vùng ghi hoặc không
+   đạt → trả lại agent đã làm.
+5. Quốc giao Long danh sách thay đổi cần ghi (spec, endpoint, schema, skill, runbook). Long cập nhật KB và báo
+   lại các trang đã sửa; Quốc kiểm tra diff.
+6. Task xong khi code đạt verify **và** Long đã ghi nhận (bỏ qua bước 5 với sửa lỗi nhỏ không đổi hành vi/contract).
+   Commit chỉ khi chủ dự án yêu cầu.
+
+Quốc không tự code phần lớn task — chỉ sửa nhỏ (1–2 file, nghiệp vụ rõ) hoặc khẩn cấp. Ranh giới vùng ghi/đọc là
+ràng buộc bằng chỉ dẫn, không phải cơ chế công cụ. **Nguồn sự thật:** code runtime > `docs/*.md` gốc
+(PLAN/DECISIONS/ARCHITECTURE/BACKLOG) > `obsidian-knowledge-base/`.
 
 ## Lệnh chạy (từ root, pnpm workspaces + Turborepo)
 
@@ -40,7 +67,7 @@ A06 QA, A07 DevOps. Hai sub-agent thường trực project-local trong `.claude/
 | `pnpm test` | Cả Jest (unit) và Vitest (integration) |
 | `pnpm test:unit` | Jest trong `packages/*` |
 | `pnpm test:integration` | Vitest trong `apps/web/tests/integration` |
-| `pnpm test:count` | Đếm số test case, đối chiếu 91 unit / 50 integration (mục 9) |
+| `pnpm test:count` | Đếm số test case, đối chiếu mốc trong `scripts/count-tests.mjs` (trần gốc 91/50 mục 9; trần hiện 94/53 theo ADR-026 — số test thực 93/52) |
 | `pnpm db:migrate` | `prisma migrate deploy` (dùng `PRISMA_MIGRATE_URL`, role owner) |
 | `pnpm db:seed` | `prisma db seed` (dùng `DATABASE_URL`, role `gieochu_app`) |
 | `pnpm --filter @gieochu/db run setup-app-role` | Tạo/cập nhật role Postgres `gieochu_app` (chạy 1 lần/môi trường Neon mới) |
@@ -74,6 +101,13 @@ Xem sơ đồ đầy đủ ở `docs/GIEOCHU_PROMPT_MVP_PHASE1.md` §4.4. Tóm t
 - TypeScript `strict: true` (kế thừa `tsconfig.base.json`), không `any` không cần thiết.
 - Tiền tệ VND: số nguyên (`Int`/`BigInt`), không dùng `float`.
 - Thời gian lưu UTC, hiển thị `Asia/Ho_Chi_Minh`.
+- Độ rộng layout (ADR-024): trang public bọc nội dung bằng utility `container-page` (1280px, căn giữa), trang đọc
+  dài `container-prose` (768px), form đơn lẻ `container-narrow` (448px) — khai báo trong `apps/web/app/globals.css`.
+  Không tự đặt `max-w-[...]` cho khung trang; nền section vẫn full-bleed. App shell `/admin`, `/studio`,
+  `/account` fluid theo sidebar.
+- URL trang tài liệu (ADR-030): luôn dựng bằng `productPath(tenantSlug, productSlug)` → `/{tenantSlug}/{productSlug}`.
+  Thêm route tĩnh mới dưới `app/[tenantSlug]/` thì **phải** thêm tên đó vào `RESERVED_PRODUCT_SLUGS`
+  (`packages/core/src/product/path.ts`) và quét slug trùng trên DB prod.
 - ID: **cuid2** — dùng thuộc tính Prisma gốc `@default(cuid(2))` cho mọi `@id`. Không dùng UUID (xem
   `docs/DECISIONS.md`).
 - Không hard-code chuỗi thương hiệu ("Gieo Chữ", "Gieo", slogan) — luôn đọc từ `@gieochu/config/brand`.

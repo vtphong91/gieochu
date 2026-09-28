@@ -18,7 +18,11 @@ export interface CreateShareLinkInput {
   expiresAt?: Date | null;
   maxUses?: number | null;
   password?: string | null;
-  /** Empty/omitted = every currently-sold (non-preview, CLEAN, not-removed) file of the product. */
+  /**
+   * Empty/omitted = every currently-sold (non-preview, CLEAN, not-removed) file of the product.
+   * ADR-026: link tài liệu ngoài (EXTERNAL_URL) KHÔNG đi qua share link — share link là kênh ẩn danh,
+   * không phát URL Drive/OneDrive cho người chưa mua.
+   */
   fileIds?: string[];
 }
 
@@ -90,6 +94,7 @@ async function loadShareLinkFiles(tenantId: string, productId: string, fileIds: 
       where: {
         tenantId,
         productId,
+        sourceKind: "FILE",
         isPreview: false,
         scanStatus: "CLEAN",
         removedAt: null,
@@ -164,9 +169,9 @@ export async function consumeShareLinkDownload(rawToken: string, fileId: string,
 
   const file = await withTenant(shareLink.tenantId, async (tx) => {
     const productFile = await tx.productFile.findFirst({
-      where: { id: fileId, productId: shareLink.productId, isPreview: false, scanStatus: "CLEAN", removedAt: null },
+      where: { id: fileId, productId: shareLink.productId, sourceKind: "FILE", isPreview: false, scanStatus: "CLEAN", removedAt: null },
     });
-    if (!productFile) throw notFound("Không tìm thấy file.");
+    if (!productFile || !productFile.objectKey) throw notFound("Không tìm thấy file.");
 
     const allowedIds = Array.isArray(shareLink.fileIds) ? (shareLink.fileIds as string[]) : null;
     if (allowedIds && !allowedIds.includes(fileId)) throw notFound("Không tìm thấy file.");
@@ -182,7 +187,7 @@ export async function consumeShareLinkDownload(rawToken: string, fileId: string,
     await tx.downloadEvent.create({
       data: { tenantId: shareLink.tenantId, fileId: productFile.id, shareLinkId: shareLink.id, ip },
     });
-    return productFile;
+    return { objectKey: productFile.objectKey, fileName: productFile.fileName };
   });
 
   const storageConfig = await requireStorageConfig();

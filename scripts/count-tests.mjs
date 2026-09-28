@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 // Counts `it(...)` / `test(...)` cases across the two test suites and checks
 // them against the fixed targets from docs/GIEOCHU_PROMPT_MVP_PHASE1.md §9
-// (91 Jest unit cases in packages/*, 50 Vitest integration cases in apps/web).
+// (91 Jest unit cases in packages/*, 50 Vitest integration cases in apps/web), raised
+// +1/+1 for the product-upload object-key hardening, then +2/+2 for the product editor phase 1
+// (external-link allowlist + publish eligibility unit tests; publish-refusal and external-link
+// delivery integration tests) — owner-approved, ADR-026 (cap +3/+3 for the whole batch).
+// ADR-028 uses +2/+2 of the remaining headroom without raising the cap (Cloudinary delivery URL + sanitizer
+// image-host unit tests; image quota signature refusal + register folder check integration tests).
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
@@ -44,10 +49,10 @@ const integrationFiles = walk(join(ROOT, "apps", "web", "tests", "integration"),
 const unitCount = countCases(unitFiles);
 const integrationCount = countCases(integrationFiles);
 
-console.log(`Jest unit test cases (packages/*):        ${unitCount} / 91`);
-console.log(`Vitest integration test cases (apps/web):  ${integrationCount} / 50`);
+console.log(`Jest unit test cases (packages/*):        ${unitCount} / 94`);
+console.log(`Vitest integration test cases (apps/web):  ${integrationCount} / 53`);
 
-if (unitCount > 91 || integrationCount > 50) {
+if (unitCount > 94 || integrationCount > 53) {
   console.error("\nTest count exceeds the target in docs/GIEOCHU_PROMPT_MVP_PHASE1.md §9 — check before adding more.");
   process.exitCode = 1;
 }

@@ -20,11 +20,13 @@ export default async function PricingPage() {
   const plans = await getActivePlans();
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-16">
-      <h1 className="text-3xl font-bold">Bảng giá</h1>
-      <p className="mt-2 text-gray-600">
-        Bắt đầu miễn phí trên {brand.name}. Chỉ nâng cấp khi bạn cần nhiều hơn.
-      </p>
+    <main className="container-page py-16">
+      <div className="mx-auto max-w-2xl">
+        <h1 className="text-3xl font-bold">Bảng giá</h1>
+        <p className="mt-2 text-gray-600">
+          Bắt đầu miễn phí trên {brand.name}. Chỉ nâng cấp khi bạn cần nhiều hơn.
+        </p>
+      </div>
 
       <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {plans.map((plan) => {

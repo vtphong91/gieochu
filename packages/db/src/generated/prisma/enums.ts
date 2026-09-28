@@ -116,6 +116,14 @@ export const ProductFileScanStatus = {
 export type ProductFileScanStatus = (typeof ProductFileScanStatus)[keyof typeof ProductFileScanStatus]
 
 
+export const ProductFileSource = {
+  FILE: 'FILE',
+  EXTERNAL_URL: 'EXTERNAL_URL'
+} as const
+
+export type ProductFileSource = (typeof ProductFileSource)[keyof typeof ProductFileSource]
+
+
 export const PaymentProviderId = {
   MANUAL_QR: 'MANUAL_QR',
   SEPAY: 'SEPAY',
@@ -170,3 +178,51 @@ export const PaymentMatchStatus = {
 } as const
 
 export type PaymentMatchStatus = (typeof PaymentMatchStatus)[keyof typeof PaymentMatchStatus]
+
+
+export const StorefrontMessageStatus = {
+  NEW: 'NEW',
+  READ: 'READ',
+  ARCHIVED: 'ARCHIVED'
+} as const
+
+export type StorefrontMessageStatus = (typeof StorefrontMessageStatus)[keyof typeof StorefrontMessageStatus]
+
+
+export const TenantMediaUsage = {
+  CONTENT: 'CONTENT',
+  PRODUCT_COVER: 'PRODUCT_COVER',
+  STOREFRONT: 'STOREFRONT',
+  POST: 'POST'
+} as const
+
+export type TenantMediaUsage = (typeof TenantMediaUsage)[keyof typeof TenantMediaUsage]
+
+
+export const ReviewStatus = {
+  VISIBLE: 'VISIBLE',
+  HIDDEN: 'HIDDEN'
+} as const
+
+export type ReviewStatus = (typeof ReviewStatus)[keyof typeof ReviewStatus]
+
+
+export const ReviewHiddenReason = {
+  SPAM: 'SPAM',
+  OFFENSIVE: 'OFFENSIVE',
+  IRRELEVANT: 'IRRELEVANT',
+  PERSONAL_INFO: 'PERSONAL_INFO',
+  REFUNDED: 'REFUNDED',
+  OTHER: 'OTHER'
+} as const
+
+export type ReviewHiddenReason = (typeof ReviewHiddenReason)[keyof typeof ReviewHiddenReason]
+
+
+export const PostStatus = {
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+  HIDDEN: 'HIDDEN'
+} as const
+
+export type PostStatus = (typeof PostStatus)[keyof typeof PostStatus]

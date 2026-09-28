@@ -61,6 +61,7 @@ model User {
   tenantCustomerOf   TenantCustomer[]
   downloadTokens     DownloadToken[]
   downloadEvents     DownloadEvent[]
+  reviews            Review[]
 
   @@map("users")
 }
@@ -138,20 +139,23 @@ enum PlanInterval {
 /// these, never `plan.code`, so plan packaging stays a pure commercial
 /// concern editable from System Admin.
 model Plan {
-  id            String       @id @default(cuid(2))
-  code          String       @unique
-  name          String
-  priceVnd      Int
-  interval      PlanInterval
-  intervalCount Int          @default(1)
-  maxProducts   Int
-  storageMb     Int
-  maxFileMb     Int
-  isFree        Boolean      @default(false)
-  features      Json         @default("{}")
-  isActive      Boolean      @default(true)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id             String       @id @default(cuid(2))
+  code           String       @unique
+  name           String
+  priceVnd       Int
+  interval       PlanInterval
+  intervalCount  Int          @default(1)
+  maxProducts    Int
+  storageMb      Int
+  maxFileMb      Int
+  /// ADR-028: hạn mức ảnh Cloudinary (MB) — cộng chung ảnh mô tả + ảnh bìa + ảnh storefront (`tenant_media_assets`).
+  /// Default 100 = mức FREE, an toàn cho gói tạo mới chưa đặt số.
+  imageStorageMb Int          @default(100)
+  isFree         Boolean      @default(false)
+  features       Json         @default("{}")
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   subscriptions Subscription[]
   invoices      SubscriptionInvoice[]
@@ -282,21 +286,25 @@ enum TenantStatus {
 /// by RLS policies (packages/db/prisma/migrations/*_rls_m4/) enforced
 /// through withTenant/withPublic/withCustomer/withSystemJob (packages/db/src/rls.ts).
 model Tenant {
-  id               String       @id @default(cuid(2))
-  slug             String       @unique
-  ownerId          String       @unique
-  owner            User         @relation(fields: [ownerId], references: [id])
-  name             String
-  bio              String?
-  logoKey          String?
-  coverKey         String?
+  id                      String       @id @default(cuid(2))
+  slug                    String       @unique
+  ownerId                 String       @unique
+  owner                   User         @relation(fields: [ownerId], references: [id])
+  name                    String
+  bio                     String?
+  logoKey                 String?
+  coverKey                String?
   /// { primaryColor, accentColor, socialLinks: { facebook?, youtube?, tiktok?, zalo?, website? } }
-  branding         Json?
-  orderCodePrefix  String       @unique
-  status           TenantStatus @default(ACTIVE)
-  storageUsedBytes Int          @default(0)
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  branding                Json?
+  /// ADR-023: storefront sections đã xuất bản (validate bằng `storefrontSectionsSchema`, @gieochu/core). null = chưa từng xuất bản → nội dung demo sinh trong code.
+  storefrontSections      Json?
+  /// ADR-023: bản nháp đang soạn trong Studio; null = không có nháp.
+  storefrontSectionsDraft Json?
+  orderCodePrefix         String       @unique
+  status                  TenantStatus @default(ACTIVE)
+  storageUsedBytes        Int          @default(0)
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
 
   members              TenantMember[]
   slugHistory          TenantSlugHistory[]
@@ -311,6 +319,10 @@ model Tenant {
   entitlements         Entitlement[]
   shareLinks           ShareLink[]
   downloadEvents       DownloadEvent[]
+  storefrontMessages   StorefrontMessage[]
+  mediaAssets          TenantMediaAsset[]
+  reviews              Review[]
+  posts                Post[]
 
   @@map("tenants")
 }
@@ -366,35 +378,53 @@ enum ProductType {
 /// URL, no presign needed to display it) — the sellable files themselves
 /// live in the private bucket via ProductFile. `salePriceVnd`/`saleStartsAt`/
 /// `saleEndsAt` are columns only — M6 adds the pricing engine that reads
-/// them. `downloadLimit=0` means unlimited (ADR-014). `ratingAvg`/
-/// `ratingCount` are deliberately NOT added here — nothing in M5 writes
-/// them; M10 adds those columns when it adds review aggregation.
+/// them. `downloadLimit=0` means unlimited (ADR-014). ADR-029 mục 3: điểm
+/// đánh giá cache bằng 2 số nguyên `ratingSum`/`ratingCount` (không float) —
+/// chỉ tính review VISIBLE, luôn tính lại toàn phần (SUM/COUNT) dưới scope
+/// `system_job` (`recomputeProductRating`, apps/web/lib/review.ts).
 model Product {
-  id            String        @id @default(cuid(2))
+  id            String            @id @default(cuid(2))
   tenantId      String
-  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant        Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   slug          String
   title         String
   description   String?
-  type          ProductType   @default(OTHER)
+  type          ProductType       @default(OTHER)
+  /// ADR-027: mô tả ngắn — văn bản thuần ≤300 ký tự (chuẩn hoá/validate ở `normalizeProductSummary`,
+  /// @gieochu/core). Hiển thị trên thẻ storefront và đầu trang chi tiết; không bắt buộc khi xuất bản.
+  summary       String?
+  /// Ảnh bìa cũ trên R2 public (M5). ADR-027: chỉ còn là fallback khi chưa có `coverImageUrl`.
   coverImageKey String?
-  tags          String[]      @default([])
-  priceVnd      Int           @default(0)
+  /// ADR-027: ảnh bìa Cloudinary — chỉ nhận `https://res.cloudinary.com/...` (`isCloudinaryImageUrl`,
+  /// cùng luật ADR-023). Ưu tiên hơn `coverImageKey` khi hiển thị (`resolveProductCoverUrl`).
+  coverImageUrl String?
+  tags          String[]          @default([])
+  priceVnd      Int               @default(0)
   salePriceVnd  Int?
   saleStartsAt  DateTime?
   saleEndsAt    DateTime?
-  downloadLimit Int           @default(5)
-  status        ProductStatus @default(DRAFT)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  downloadLimit Int               @default(5)
+  ratingSum     Int               @default(0)
+  ratingCount   Int               @default(0)
+  status        ProductStatus     @default(DRAFT)
+  /// ADR-026: danh mục tài liệu (L1, System Admin quản lý). Nháp được để
+  /// trống; xuất bản bắt buộc có danh mục đang `isActive` (canPublishProduct).
+  /// Danh mục bị xoá (hiện chưa có luồng xoá) → SetNull, sản phẩm giữ nguyên.
+  categoryId    String?
+  category      DocumentCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
   files        ProductFile[]
   orderItems   OrderItem[]
   entitlements Entitlement[]
   shareLinks   ShareLink[]
+  reviews      Review[]
+  posts        Post[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
+  @@index([categoryId])
   @@map("products")
 }
 
@@ -404,26 +434,43 @@ enum ProductFileScanStatus {
   REJECTED
 }
 
+/// ADR-026: nguồn giao hàng của một dòng `product_files`.
+enum ProductFileSource {
+  FILE
+  EXTERNAL_URL
+}
+
 /// §"M5" — PRODUCT_FILES. `tenantId` is denormalized from Product (per the
 /// spec's own ERD) so RLS can scope this table the same way as `products`,
 /// without a join. `removedAt` is a soft-hide only — the spec is explicit
 /// that removing a file from a product that already has buyers must never
 /// delete the underlying object (§5.2), so a real S3 delete only ever
 /// happens from the file.scan job rejecting a file that was never CLEAN.
+///
+/// ADR-026: cùng bảng lưu cả **link tài liệu ngoài** (`sourceKind =
+/// EXTERNAL_URL`). Dòng link: `externalUrl` có giá trị, `fileName` là nhãn
+/// hiển thị, `objectKey`/`mimeType`/`scanStatus` = NULL (không quét, không có
+/// object — NULL không vi phạm `@unique`), `sizeBytes = 0` (không tính dung
+/// lượng), `isPreview = false`. CHECK constraint `product_files_source_shape`
+/// (migration 20260926120000) ép đúng hình dạng này ở tầng DB. Mọi luồng file
+/// cũ lọc `scanStatus = 'CLEAN'` nên tự loại dòng link; RLS nhánh public chỉ
+/// cho `sourceKind = 'FILE'`.
 model ProductFile {
-  id         String                @id @default(cuid(2))
-  productId  String
-  product    Product               @relation(fields: [productId], references: [id], onDelete: Cascade)
-  tenantId   String
-  objectKey  String                @unique
-  fileName   String
-  mimeType   String
-  sizeBytes  Int
-  sha256     String?
-  scanStatus ProductFileScanStatus @default(PENDING)
-  isPreview  Boolean               @default(false)
-  removedAt  DateTime?
-  createdAt  DateTime              @default(now())
+  id          String                 @id @default(cuid(2))
+  productId   String
+  product     Product                @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tenantId    String
+  sourceKind  ProductFileSource      @default(FILE)
+  externalUrl String?
+  objectKey   String?                @unique
+  fileName    String
+  mimeType    String?
+  sizeBytes   Int
+  sha256      String?
+  scanStatus  ProductFileScanStatus? @default(PENDING)
+  isPreview   Boolean                @default(false)
+  removedAt   DateTime?
+  createdAt   DateTime               @default(now())
 
   downloadTokens DownloadToken[]
   downloadEvents DownloadEvent[]
@@ -522,9 +569,9 @@ model EmailSendLog {
 }
 
 /// Danh mục tài liệu — taxonomy CẤP PLATFORM do System Admin tạo trước
-/// (/admin/categories), KHÔNG phải danh mục riêng của từng tenant. Việc gán
-/// sản phẩm vào danh mục này là module sau (chưa làm ở đây). Bảng L1 (không
-/// tenantId), không cần RLS — cùng lớp với SystemBranding/Plan.
+/// (/admin/categories), KHÔNG phải danh mục riêng của từng tenant. Sản phẩm
+/// gắn qua `Product.categoryId` (ADR-026). Bảng L1 (không tenantId), không
+/// cần RLS — cùng lớp với SystemBranding/Plan.
 model DocumentCategory {
   id               String   @id @default(cuid(2))
   slug             String   @unique
@@ -541,6 +588,8 @@ model DocumentCategory {
   isActive         Boolean  @default(true)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  products Product[]
 
   @@map("document_categories")
 }
@@ -830,6 +879,7 @@ model OrderItem {
   createdAt     DateTime @default(now())
 
   entitlement Entitlement?
+  reviews     Review[]
 
   @@index([orderId])
   @@map("order_items")
@@ -986,4 +1036,154 @@ model DownloadEvent {
   @@index([tenantId])
   @@index([fileId])
   @@map("download_events")
+}
+
+enum StorefrontMessageStatus {
+  NEW
+  READ
+  ARCHIVED
+}
+
+/// ADR-023: tin nhắn từ form liên hệ trên storefront `/[tenantSlug]` — bảng L2 có RLS
+/// (migration `rls_storefront_messages`): scope public chỉ INSERT, scope tenant
+/// SELECT/UPDATE/DELETE đúng tenantId. System admin không có đường đọc (§7.9).
+/// Không lưu IP thô — `ipHash` = HMAC-SHA256(ip), chỉ dùng cho rate limit.
+model StorefrontMessage {
+  id        String                  @id @default(cuid(2))
+  tenantId  String
+  tenant    Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  email     String
+  message   String
+  status    StorefrontMessageStatus @default(NEW)
+  ipHash    String?
+  createdAt DateTime                @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([ipHash, createdAt])
+  @@map("storefront_messages")
+}
+
+enum TenantMediaUsage {
+  CONTENT
+  PRODUCT_COVER
+  STOREFRONT
+  /// ADR-029 mục 5 (M10b): ảnh trong nội dung bài viết (folder `tenants/<id>/posts`).
+  POST
+}
+
+/// ADR-028: ghi nhận ảnh tenant đã upload lên Cloudinary HỆ THỐNG để tính hạn mức `Plan.imageStorageMb`.
+/// Bảng L2 có RLS (migration `rls_adr028_media_assets`, policy `tenant_isolation`: đúng tenantId hoặc scope
+/// system_job cho job dọn asset sau này). Dòng được tạo khi CẤP CHỮ KÝ (giữ chỗ, `bytes` tạm tính,
+/// `verifiedAt = null`) và cập nhật số thật khi server đọc Cloudinary Admin API (`verifiedAt` có giá trị) —
+/// không bao giờ lấy `bytes` từ client. `publicId` do server sinh (nằm trong chữ ký upload).
+model TenantMediaAsset {
+  id         String           @id @default(cuid(2))
+  tenantId   String
+  tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  publicId   String           @unique
+  bytes      Int
+  format     String?
+  width      Int?
+  height     Int?
+  usage      TenantMediaUsage
+  /// null = mới giữ chỗ lúc ký, chưa xác minh với Cloudinary (bytes là mức tạm tính).
+  verifiedAt DateTime?
+  createdAt  DateTime         @default(now())
+
+  @@index([tenantId, createdAt])
+  @@map("tenant_media_assets")
+}
+
+enum ReviewStatus {
+  VISIBLE
+  HIDDEN
+}
+
+/// ADR-029 mục 2. `REFUNDED` chỉ do hệ thống đặt (hoàn tiền / thu hồi entitlement) — tenant không chọn được.
+enum ReviewHiddenReason {
+  SPAM
+  OFFENSIVE
+  IRRELEVANT
+  PERSONAL_INFO
+  REFUNDED
+  OTHER
+}
+
+/// ADR-029 (M10a) — đánh giá sản phẩm. Bảng L2 có RLS tách theo lệnh (migration `rls_m10a_reviews`):
+/// public đọc VISIBLE của sản phẩm PUBLISHED; customer đọc/ghi/xoá của chính mình (INSERT/UPDATE phải còn đơn
+/// FULFILLED + entitlement chưa thu hồi); tenant đọc/UPDATE (ẩn, khôi phục, trả lời) của tenant mình; system_job.
+/// Không nhánh admin (§7.9). Trigger `reviews_guard_columns` chặn customer đổi cột kiểm duyệt/trả lời và chặn
+/// tenant đổi nội dung của khách. `orderItemId` = dòng đơn chứng minh quyền đánh giá (cập nhật khi khách mua lại
+/// rồi sửa). `displayName` là snapshot tên rút gọn ("Minh A.") lúc ghi — trang public không join hồ sơ L1.
+model Review {
+  id           String              @id @default(cuid(2))
+  tenantId     String
+  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderItemId  String
+  orderItem    OrderItem           @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  /// 1–5 (CHECK `reviews_rating_range`).
+  rating       Int
+  /// Văn bản thuần ≤2000 ký tự (CHECK), null = chỉ chấm sao.
+  body         String?
+  displayName  String
+  status       ReviewStatus        @default(VISIBLE)
+  /// Có giá trị ⇔ status = HIDDEN (CHECK `reviews_hidden_shape`).
+  hiddenReason ReviewHiddenReason?
+  hiddenAt     DateTime?
+  /// Trả lời của người bán (1 trả lời/đánh giá, sửa được), văn bản thuần ≤2000 ký tự.
+  reply        String?
+  repliedAt    DateTime?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@unique([productId, userId])
+  @@index([tenantId, createdAt])
+  @@index([productId, status, createdAt])
+  @@index([userId])
+  @@index([orderItemId])
+  @@map("reviews")
+}
+
+/// ADR-029 mục 5: tenant tự chuyển DRAFT ⇄ PUBLISHED; `HIDDEN` chỉ dành cho gỡ do vi phạm (M12) — tenant không đặt
+/// được và không tự gỡ được (trigger `posts_guard_columns`).
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  HIDDEN
+}
+
+/// ADR-029 mục 5–6 (M10b) — bài viết tối giản của tenant. Bảng L2 có RLS tách theo lệnh (migration `rls_m10b_posts`):
+/// public chỉ đọc PUBLISHED của tenant không LOCKED; tenant đọc/ghi/xoá bài của mình; system_job. Không nhánh
+/// customer/admin (§7.9). `body` là HTML đã qua `sanitizeRichTextHtml` (ảnh chỉ Cloudinary hệ thống, ≤6 ảnh — kiểm
+/// ở server). `excerpt` là văn bản thuần tự sinh từ `body` (≤300 ký tự). `productId` phải là sản phẩm CÙNG tenant
+/// (trigger `posts_guard_product_tenant`); xoá sản phẩm → SetNull. Tối đa 1 bài ghim/tenant: partial unique index
+/// `posts_tenantId_pinned_key` (`WHERE "isPinned"`, khai báo trong migration SQL — Prisma không biểu diễn được).
+model Post {
+  id           String     @id @default(cuid(2))
+  tenantId     String
+  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  /// Tuỳ chọn, ≤200 ký tự (CHECK `posts_title_length`).
+  title        String?
+  body         String
+  /// Văn bản thuần ≤300 ký tự sinh từ `body` khi lưu; "" khi bài chỉ có ảnh.
+  excerpt      String     @default("")
+  productId    String?
+  product      Product?   @relation(fields: [productId], references: [id], onDelete: SetNull)
+  status       PostStatus @default(DRAFT)
+  /// Chỉ có giá trị khi status = HIDDEN (M12 đặt, qua system_job).
+  hiddenReason String?
+  isPinned     Boolean    @default(false)
+  /// Lần xuất bản đầu tiên (giữ nguyên khi gỡ về DRAFT rồi đăng lại). Bắt buộc khi PUBLISHED (CHECK).
+  publishedAt  DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([tenantId, status, publishedAt(sort: Desc)])
+  @@index([productId])
+  @@map("posts")
 }

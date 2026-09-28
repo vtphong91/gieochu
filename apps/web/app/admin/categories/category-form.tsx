@@ -5,9 +5,13 @@ import type { CategoryActionState } from "./actions";
 import { ConfigCard, FormBanner, PrimaryButton, TextField } from "../_ui/kit";
 import { ImageUploadField } from "../_ui/image-upload-field";
 import { IconDoc, IconLayers, IconTag } from "../_ui/icons";
-import { TiptapEditor } from "../../_ui/editor/tiptap-editor";
+import { TiptapEditor, type TiptapImageUpload } from "../../_ui/editor/tiptap-editor";
+import { getCloudinaryUploadSignatureAction } from "../../_ui/cloudinary-actions";
 
 const initialState: CategoryActionState = {};
+
+/** ADR-028: ảnh trong mô tả danh mục dùng chữ ký System Center (không đăng ký hạn mức — không thuộc tenant). */
+const DESCRIPTION_IMAGE_UPLOAD: TiptapImageUpload = { getSignature: getCloudinaryUploadSignatureAction };
 
 export interface CategoryFormValues {
   name: string;
@@ -60,7 +64,7 @@ export function CategoryForm({
 
       <ConfigCard icon={<IconDoc className="h-5 w-5" />} title="Mô tả chi tiết" description="Hiển thị trên trang danh mục — hỗ trợ định dạng đầy đủ.">
         <input type="hidden" name="description" value={description} />
-        <TiptapEditor content={description} onChange={setDescription} placeholder="Giới thiệu chi tiết về danh mục tài liệu này..." />
+        <TiptapEditor content={description} onChange={setDescription} placeholder="Giới thiệu chi tiết về danh mục tài liệu này..." imageUpload={DESCRIPTION_IMAGE_UPLOAD} />
       </ConfigCard>
 
       <ConfigCard icon={<IconLayers className="h-5 w-5" />} title="Hình ảnh" description="Ảnh đại diện danh mục và ảnh chia sẻ mạng xã hội.">

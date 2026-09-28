@@ -1,11 +1,12 @@
 import { requireTenantMemberPage } from "../../../lib/page-guards";
 import { getOrderDashboardStats } from "../../../lib/order";
+import { countNewTenantReviews } from "../../../lib/review";
 import { AdminPageHeader } from "../../admin/_ui/kit";
 
 export default async function StudioDashboardPage({ params }: { params: Promise<{ tenantSlug: string }> }) {
   const { tenantSlug } = await params;
   const { tenant } = await requireTenantMemberPage(tenantSlug, `/studio/${tenantSlug}`);
-  const stats = await getOrderDashboardStats(tenant.id);
+  const [stats, newReviews7d] = await Promise.all([getOrderDashboardStats(tenant.id), countNewTenantReviews(tenant.id)]);
 
   return (
     <main className="px-5 py-8 lg:px-8">
@@ -15,7 +16,7 @@ export default async function StudioDashboardPage({ params }: { params: Promise<
         <StatCard label="Doanh thu 30 ngày" value={`${stats.revenue30dVnd.toLocaleString("vi-VN")}đ`} />
         <StatCard label="Đơn chờ xác nhận" value={String(stats.pendingOrdersCount)} />
         <StatCard label="Sản phẩm bán chạy" note="Cần M5/M6 — Sản phẩm, Giá" />
-        <StatCard label="Đánh giá mới" note="Cần M10 — Social Feed" />
+        <StatCard label="Đánh giá mới" value={String(newReviews7d)} note="7 ngày gần nhất" />
       </div>
     </main>
   );

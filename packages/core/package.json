@@ -8,8 +8,14 @@
   "exports": {
     ".": "./src/index.ts",
     "./home-sections": "./src/admin/home-sections.ts",
+    "./storefront-sections": "./src/tenant/storefront-sections.ts",
     "./content/word-count": "./src/content/word-count.ts",
-    "./content/sanitize-html": "./src/content/sanitize-html.ts"
+    "./content/sanitize-html": "./src/content/sanitize-html.ts",
+    "./cloudinary-url": "./src/content/cloudinary-url.ts",
+    "./product-summary": "./src/product/summary.ts",
+    "./review": "./src/review/review.ts",
+    "./post": "./src/content/post.ts",
+    "./product-path": "./src/product/path.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

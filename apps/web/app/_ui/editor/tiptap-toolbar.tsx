@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import type { Editor } from "@tiptap/react";
+import { useId, useState } from "react";
+import { useEditorState, type Editor } from "@tiptap/react";
 import { TEXT_COLOR_PRESETS } from "./extensions";
 import {
   IconAlignCenter,
@@ -19,6 +19,7 @@ import {
   IconOrderedList,
   IconQuote,
   IconRedo,
+  IconSpinner,
   IconStrike,
   IconTextColor,
   IconUnderline,
@@ -32,12 +33,15 @@ const ACTIVE_FG = "#0F3B82";
 
 function ToolbarButton({
   active,
+  expanded,
   disabled,
   onClick,
   label,
   children,
 }: {
   active?: boolean;
+  /** Chỉ truyền cho nút mở popover — báo trình đọc màn hình popover đang mở/đóng. */
+  expanded?: boolean;
   disabled?: boolean;
   onClick: () => void;
   label: string;
@@ -49,9 +53,10 @@ function ToolbarButton({
       title={label}
       aria-label={label}
       aria-pressed={active}
+      aria-expanded={expanded}
       disabled={disabled}
       onClick={onClick}
-      className="flex h-8 w-8 items-center justify-center rounded-md transition disabled:cursor-not-allowed disabled:opacity-40"
+      className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md transition hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-(--color-primary) disabled:cursor-not-allowed disabled:opacity-40"
       style={active ? { background: ACTIVE_BG, color: ACTIVE_FG } : { color: INK }}
     >
       {children}
@@ -63,12 +68,27 @@ function Separator() {
   return <span className="mx-1 h-5 w-px shrink-0" style={{ background: LINE }} />;
 }
 
-export function TiptapToolbar({ editor }: { editor: Editor | null }) {
+export function TiptapToolbar({
+  editor,
+  onInsertImage,
+  imageBusy = false,
+}: {
+  editor: Editor | null;
+  /** Mở hộp chọn file ảnh (ADR-028). Không truyền → ẩn nút chèn ảnh. */
+  onInsertImage?: () => void;
+  /** Đang tải ảnh lên — khoá nút chèn ảnh, đổi icon sang vòng tải. */
+  imageBusy?: boolean;
+}) {
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
-  const [imageOpen, setImageOpen] = useState(false);
-  const [imageUrl, setImageUrl] = useState("");
+  const [altOpen, setAltOpen] = useState(false);
+  const [altText, setAltText] = useState("");
   const [colorOpen, setColorOpen] = useState(false);
+  const linkInputId = useId();
+  const altInputId = useId();
+  // Chọn ảnh (nhấn vào ảnh) không đổi nội dung nên không làm editor render lại — theo dõi riêng bằng useEditorState
+  // để hiện nút "Mô tả ảnh" đúng lúc.
+  const imageSelected = useEditorState({ editor, selector: (ctx) => ctx.editor?.isActive("image") ?? false }) ?? false;
 
   if (!editor) return null;
 
@@ -87,12 +107,14 @@ export function TiptapToolbar({ editor }: { editor: Editor | null }) {
     setLinkOpen(false);
   }
 
-  function applyImageUrl() {
-    const url = imageUrl.trim();
-    if (!url) return;
-    editor!.chain().focus().setImage({ src: url }).run();
-    setImageOpen(false);
-    setImageUrl("");
+  function openAltDialog() {
+    setAltText((editor!.getAttributes("image").alt as string | undefined) ?? "");
+    setAltOpen(true);
+  }
+
+  function applyAlt() {
+    editor!.chain().focus().updateAttributes("image", { alt: altText.trim() }).run();
+    setAltOpen(false);
   }
 
   const headingValue = editor.isActive("heading", { level: 1 })
@@ -115,7 +137,7 @@ export function TiptapToolbar({ editor }: { editor: Editor | null }) {
           if (level === 0) editor.chain().focus().setParagraph().run();
           else editor.chain().focus().toggleHeading({ level: level as 1 | 2 | 3 | 4 }).run();
         }}
-        className="h-8 rounded-md border px-2 text-sm outline-none"
+        className="h-8 shrink-0 cursor-pointer rounded-md border bg-white px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-(--color-primary)/30"
         style={{ borderColor: LINE, color: INK }}
       >
         <option value="0">Đoạn văn</option>
@@ -146,22 +168,31 @@ export function TiptapToolbar({ editor }: { editor: Editor | null }) {
         <IconHighlight className="h-4 w-4" />
       </ToolbarButton>
 
-      <div className="relative">
-        <ToolbarButton label="Màu chữ" onClick={() => setColorOpen((v) => !v)}>
+      {/* Mobile: popover neo theo cả toolbar (left-2) để không tràn mép phải màn hình khi toolbar xuống dòng;
+          từ sm trở lên: neo ngay dưới nút (wrapper sm:relative). */}
+      <div className="sm:relative">
+        <ToolbarButton label="Màu chữ" expanded={colorOpen} onClick={() => setColorOpen((v) => !v)}>
           <IconTextColor className="h-4 w-4" />
         </ToolbarButton>
         {colorOpen ? (
-          <div className="absolute top-full left-0 z-20 mt-1 flex gap-1.5 rounded-lg border bg-white p-2 shadow-lg" style={{ borderColor: LINE }}>
+          <div
+            role="group"
+            aria-label="Chọn màu chữ"
+            onKeyDown={(e) => e.key === "Escape" && setColorOpen(false)}
+            className="absolute top-full left-2 z-20 mt-1 flex gap-1.5 rounded-lg border bg-white p-2 shadow-lg sm:left-0"
+            style={{ borderColor: LINE }}
+          >
             {TEXT_COLOR_PRESETS.map((preset) => (
               <button
                 key={preset.value}
                 type="button"
                 title={preset.label}
+                aria-label={`Màu chữ: ${preset.label}`}
                 onClick={() => {
                   editor.chain().focus().setColor(preset.value).run();
                   setColorOpen(false);
                 }}
-                className="h-6 w-6 rounded-full border"
+                className="h-7 w-7 cursor-pointer rounded-full border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-primary)"
                 style={{ background: preset.value, borderColor: LINE }}
               />
             ))}
@@ -209,27 +240,61 @@ export function TiptapToolbar({ editor }: { editor: Editor | null }) {
 
       <Separator />
 
-      <div className="relative">
-        <ToolbarButton label="Chèn liên kết" active={editor.isActive("link")} onClick={openLinkDialog}>
+      {/* Popover liên kết / ảnh neo theo MÉP PHẢI của toolbar (toolbar là `relative`, wrapper của nút cố ý
+          KHÔNG relative) và bề rộng bị chặn trong toolbar — luôn nằm trọn trong khung editor dù nút ở vị trí
+          nào sau khi toolbar xuống dòng. Mobile: trải hết bề ngang toolbar. */}
+      <div>
+        <ToolbarButton
+          label="Chèn liên kết"
+          active={editor.isActive("link")}
+          expanded={linkOpen}
+          onClick={() => {
+            setAltOpen(false);
+            if (linkOpen) setLinkOpen(false);
+            else openLinkDialog();
+          }}
+        >
           <IconLinkChain className="h-4 w-4" />
         </ToolbarButton>
         {linkOpen ? (
-          <div className="absolute top-full left-0 z-20 mt-1 flex w-64 flex-col gap-2 rounded-lg border bg-white p-3 shadow-lg" style={{ borderColor: LINE }}>
+          <div
+            onKeyDown={(e) => e.key === "Escape" && setLinkOpen(false)}
+            className="absolute top-full right-2 left-2 z-20 mt-1 flex flex-col gap-2 rounded-lg border bg-white p-3 shadow-lg sm:left-auto sm:w-80"
+            style={{ borderColor: LINE }}
+          >
+            <label htmlFor={linkInputId} className="text-xs font-medium" style={{ color: INK }}>
+              URL liên kết
+            </label>
             <input
+              id={linkInputId}
               autoFocus
               type="url"
               placeholder="https://..."
               value={linkUrl}
               onChange={(e) => setLinkUrl(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && applyLink()}
-              className="rounded-md border px-2.5 py-1.5 text-sm outline-none"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  applyLink();
+                }
+              }}
+              className="min-w-0 rounded-md border px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-(--color-primary)/20"
               style={{ borderColor: LINE }}
             />
-            <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setLinkOpen(false)} className="text-xs font-medium text-gray-500">
+            <div className="flex justify-end gap-1">
+              <button
+                type="button"
+                onClick={() => setLinkOpen(false)}
+                className="cursor-pointer rounded-md px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100"
+              >
                 Huỷ
               </button>
-              <button type="button" onClick={applyLink} className="text-xs font-semibold" style={{ color: ACTIVE_FG }}>
+              <button
+                type="button"
+                onClick={applyLink}
+                className="cursor-pointer rounded-md px-3 py-2 text-xs font-semibold hover:bg-gray-100"
+                style={{ color: ACTIVE_FG }}
+              >
                 {linkUrl.trim() ? "Áp dụng" : "Gỡ liên kết"}
               </button>
             </div>
@@ -237,33 +302,82 @@ export function TiptapToolbar({ editor }: { editor: Editor | null }) {
         ) : null}
       </div>
 
-      <div className="relative">
-        <ToolbarButton label="Chèn ảnh" onClick={() => setImageOpen((v) => !v)}>
-          <IconImagePic className="h-4 w-4" />
+      {onInsertImage ? (
+        <ToolbarButton
+          label={imageBusy ? "Đang tải ảnh lên..." : "Chèn ảnh từ máy (PNG, JPG, WebP, tối đa 5MB)"}
+          disabled={imageBusy}
+          onClick={() => {
+            setLinkOpen(false);
+            setAltOpen(false);
+            onInsertImage();
+          }}
+        >
+          {imageBusy ? <IconSpinner className="h-4 w-4" /> : <IconImagePic className="h-4 w-4" />}
         </ToolbarButton>
-        {imageOpen ? (
-          <div className="absolute top-full left-0 z-20 mt-1 flex w-72 flex-col gap-2 rounded-lg border bg-white p-3 shadow-lg" style={{ borderColor: LINE }}>
-            <label className="text-xs font-medium" style={{ color: INK }}>
-              URL ảnh
-            </label>
-            <div className="flex gap-2">
+      ) : null}
+
+      {/* Chỉ hiện khi đang chọn một ảnh trong nội dung — sửa mô tả (alt) cho trình đọc màn hình/SEO. */}
+      {imageSelected ? (
+        <div>
+          <ToolbarButton
+            label="Sửa mô tả ảnh (alt)"
+            expanded={altOpen}
+            onClick={() => {
+              setLinkOpen(false);
+              if (altOpen) setAltOpen(false);
+              else openAltDialog();
+            }}
+          >
+            <span className="text-xs font-semibold">Alt</span>
+          </ToolbarButton>
+          {altOpen ? (
+            <div
+              onKeyDown={(e) => e.key === "Escape" && setAltOpen(false)}
+              className="absolute top-full right-2 left-2 z-20 mt-1 flex flex-col gap-2 rounded-lg border bg-white p-3 shadow-lg sm:left-auto sm:w-80"
+              style={{ borderColor: LINE }}
+            >
+              <label htmlFor={altInputId} className="text-xs font-medium" style={{ color: INK }}>
+                Mô tả ảnh (alt)
+              </label>
               <input
+                id={altInputId}
                 autoFocus
-                type="url"
-                placeholder="https://..."
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && applyImageUrl()}
-                className="min-w-0 flex-1 rounded-md border px-2.5 py-1.5 text-sm outline-none"
+                type="text"
+                maxLength={200}
+                placeholder="Vd: Bìa sách bài tập Toán lớp 5"
+                value={altText}
+                onChange={(e) => setAltText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    applyAlt();
+                  }
+                }}
+                className="min-w-0 rounded-md border px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-(--color-primary)/20"
                 style={{ borderColor: LINE }}
               />
-              <button type="button" onClick={applyImageUrl} className="shrink-0 text-xs font-semibold" style={{ color: ACTIVE_FG }}>
-                Chèn
-              </button>
+              <p className="text-xs text-gray-600">Mô tả ngắn nội dung ảnh cho người dùng trình đọc màn hình và công cụ tìm kiếm.</p>
+              <div className="flex justify-end gap-1">
+                <button
+                  type="button"
+                  onClick={() => setAltOpen(false)}
+                  className="cursor-pointer rounded-md px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100"
+                >
+                  Huỷ
+                </button>
+                <button
+                  type="button"
+                  onClick={applyAlt}
+                  className="cursor-pointer rounded-md px-3 py-2 text-xs font-semibold hover:bg-gray-100"
+                  style={{ color: ACTIVE_FG }}
+                >
+                  Lưu mô tả
+                </button>
+              </div>
             </div>
-          </div>
-        ) : null}
-      </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <Separator />
 

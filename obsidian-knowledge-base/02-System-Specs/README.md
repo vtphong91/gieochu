@@ -1,0 +1,56 @@
+---
+tags:
+  - meta
+  - spec
+date: 2026-09-26
+updated: 2026-09-28
+---
+
+# 📐 System Specifications (Living Specs)
+
+Thư mục này chứa các **Bản đặc tả sống của hệ thống** (Living Specs) cho **Gieo Chữ** — tài liệu mô tả chính
+xác cách hệ thống đang vận hành thực tế trên mã nguồn và cơ sở dữ liệu, không phải kế hoạch phát triển. Toàn
+bộ nội dung được viết lại từ nguồn thật: `CLAUDE.md`, `docs/ARCHITECTURE.md`, `docs/PLAN.md`,
+`docs/DECISIONS.md`, `docs/GIEOCHU_TENANT_MODULE_STRUCTURE_V1.0.md` và `packages/db/prisma/schema.prisma`.
+
+## Danh mục Đặc tả:
+
+- `[[Architecture-Overview]]`: Mô hình 3 tầng dữ liệu L1 System / L2 Tenant / L3 Customer, cơ chế Row-Level
+  Security 4-scope (`withTenant`/`withCustomer`/`withPublic`/`withSystemJob`), cấu trúc Next.js App Router.
+- `[[Order-State-Machine]]`: Vòng đời trạng thái đơn hàng mua tài liệu số
+  (`PENDING → PAID → FULFILLED`, `EXPIRED`, `CANCELED`, `REFUNDED`) và hàm `markOrderPaid()` duy nhất.
+- `[[Tenant-RBAC-And-Permissions]]`: Ba lớp tài khoản độc lập (System/Tenant/Customer), bảng
+  `Role`/`Permission`/`RolePermission` (ADR-022), cơ chế guard 3 tầng không có middleware tập trung.
+- `[[Payment-And-Billing]]`: Hai hệ thống thanh toán tách biệt (Platform billing vs Tenant billing) dùng chung
+  `packages/payments` qua `PaymentScope`, mô hình Free Forever + Paid Subscription (ADR-021), webhook
+  idempotent với `timingSafeEqual`.
+- `[[File-Storage-And-Downloads-Specs]]`: Lưu trữ file sản phẩm qua S3-compatible (Cloudflare R2), presigned
+  URL ≤ 10 phút, `DownloadToken`/`ShareLink`, mật khẩu share link bằng argon2 riêng trong `packages/core`; §7 ảnh
+  tenant trên Cloudinary hệ thống — chữ ký `public_id`, giữ chỗ + đối soát hạn mức, `cloudinaryDeliveryUrl`,
+  sanitizer (ADR-028).
+- `[[User-Management-System-Center-Specs]]`: Console quản trị `/admin/**`, khoá/mở khoá tài khoản, cơ chế
+  refresh-token rotation + reuse detection, ranh giới "System Admin không đọc order/customer của tenant".
+- `[[Storefront-CMS-Specs]]`: Storefront tenant theo section CMS (7 loại section — thêm `reviews` và `posts` ở ADR-029, nháp/xuất bản/khôi phục, nội
+  dung demo), form liên hệ + hộp thư `storefront_messages` với RLS tách policy theo lệnh, rate limit, upload ảnh
+  Cloudinary theo tenant (ADR-023).
+- `[[Product-Editor-And-Publishing-Specs]]`: Sản phẩm sau ADR-026/027 — sửa bảo mật upload (khoá object theo
+  tenant/sản phẩm, kiểm lại gói bằng dung lượng thật), danh mục bắt buộc khi xuất bản, link tài liệu ngoài theo
+  allowlist, `canPublishProduct` + checklist, mô tả ngắn, ảnh bìa Cloudinary, chế độ hiển thị Công khai/Riêng tư,
+  bản nháp tự động khi thêm tệp đầu tiên ở trang Tạo, ảnh mô tả upload (ADR-028), trang Xem trước, URL tài liệu
+  `/{tenantSlug}/{productSlug}` + redirect 301 URL cũ + 23 slug dành riêng (ADR-030, §7A)
+  ([Product-Editor-And-Publishing-Specs.md](./Product-Editor-And-Publishing-Specs.md)).
+- `[[Posts-Specs]]`: Bài viết tối giản M10b (ADR-029) — DRAFT/PUBLISHED/HIDDEN (HIDDEN chỉ hệ thống đặt), tiêu đề tuỳ chọn,
+  nội dung Tiptap sanitize theo cloud hệ thống, ≤6 ảnh tính hạn mức, gắn 1 tài liệu cùng tenant, ghim 1 bài/tenant (partial
+  unique index chỉ có trong SQL), trang hệ thống `/[slug]/posts`, section `posts`, RLS tách lệnh + 2 trigger, quy tắc sanitize lại
+  khi render ([Posts-Specs.md](./Posts-Specs.md)).
+- `[[Reviews-Specs]]`: Đánh giá sản phẩm M10a (ADR-029) — quyền đánh giá (đơn FULFILLED + entitlement), 1 đánh giá/khách/
+  sản phẩm, tên hiển thị "Minh N.", ẩn/khôi phục/trả lời của tenant, tự ẩn khi hoàn tiền, cache điểm số nguyên, RLS tách
+  theo lệnh + trigger giới hạn cột ([Reviews-Specs.md](./Reviews-Specs.md)).
+
+## Ghi chú lịch sử
+
+Bộ tài liệu này dựng trên khung thư mục của một KB không thuộc Gieo Chữ và đã được viết lại hoàn toàn cho đúng
+domain Gieo Chữ (SaaS bán tài liệu số đa tenant) vào 2026-09-26. 4 file mô tả khái niệm không tồn tại ở Gieo Chữ
+đã bị xoá khỏi thư mục này thay vì "dịch" gượng ép.
+
+*Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

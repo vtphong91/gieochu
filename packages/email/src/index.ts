@@ -23,3 +23,9 @@ export type { OrderPaidTemplateData } from "./templates/order-paid";
 
 export { renderNewSaleEmail } from "./templates/new-sale";
 export type { NewSaleTemplateData } from "./templates/new-sale";
+
+export { renderStorefrontMessageEmail } from "./templates/storefront-message";
+export type { StorefrontMessageTemplateData } from "./templates/storefront-message";
+
+export { renderNewReviewEmail } from "./templates/new-review";
+export type { NewReviewTemplateData } from "./templates/new-review";

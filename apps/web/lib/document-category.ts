@@ -52,3 +52,22 @@ export async function toggleDocumentCategoryActive(id: string): Promise<Document
   const category = await prisma.documentCategory.findUniqueOrThrow({ where: { id } });
   return prisma.documentCategory.update({ where: { id }, data: { isActive: !category.isActive } });
 }
+
+export interface StudioCategoryOption {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+/**
+ * ADR-026: Studio chỉ liệt kê danh mục đang `isActive`. `document_categories` là bảng L1 (không tenantId,
+ * không RLS) nên đọc thẳng qua getPrismaClient() là đúng — cùng lớp với Plan/SystemBranding.
+ */
+export async function listActiveCategoriesForStudio(): Promise<StudioCategoryOption[]> {
+  const prisma = getPrismaClient();
+  return prisma.documentCategory.findMany({
+    where: { isActive: true },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, slug: true },
+  });
+}

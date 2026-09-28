@@ -17,6 +17,8 @@ const planFormSchema = z.object({
   maxProducts: z.coerce.number(),
   storageMb: z.coerce.number(),
   maxFileMb: z.coerce.number(),
+  /** ADR-028: hạn mức ảnh Cloudinary (MB). */
+  imageStorageMb: z.coerce.number(),
   isFree: z.boolean().default(false),
   features: z.record(z.string(), z.boolean()),
 });

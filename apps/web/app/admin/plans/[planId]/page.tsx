@@ -22,6 +22,7 @@ export default async function AdminEditPlanPage({ params }: { params: Promise<{ 
     maxProducts: plan.maxProducts,
     storageMb: plan.storageMb,
     maxFileMb: plan.maxFileMb,
+    imageStorageMb: plan.imageStorageMb,
     isFree: plan.isFree,
     features: (plan.features as Record<string, boolean>) ?? {},
   };

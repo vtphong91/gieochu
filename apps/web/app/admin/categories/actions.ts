@@ -6,6 +6,7 @@ import { z } from "zod";
 import { AppError } from "@gieochu/core";
 import { sanitizeRichTextHtml } from "@gieochu/core/content/sanitize-html";
 import { requireRole } from "../../../lib/session";
+import { getSystemCloudinaryCloudName } from "../../../lib/system-cloudinary";
 import { createDocumentCategory, toggleDocumentCategoryActive, updateDocumentCategory } from "../../../lib/document-category";
 
 export interface CategoryActionState {
@@ -42,8 +43,8 @@ export async function createCategoryAction(_prevState: CategoryActionState, form
   const parsed = parseCategoryFormData(formData);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ." };
 
-  // Sanitize server-side — cùng nguyên tắc với mô tả sản phẩm (không tin HTML client gửi lên).
-  const description = parsed.data.description ? sanitizeRichTextHtml(parsed.data.description) : undefined;
+  // Sanitize server-side — cùng nguyên tắc với mô tả sản phẩm (không tin HTML client gửi lên); ADR-028: chỉ giữ ảnh Cloudinary hệ thống.
+  const description = parsed.data.description ? sanitizeRichTextHtml(parsed.data.description, { imageCloudName: await getSystemCloudinaryCloudName() }) : undefined;
 
   let category;
   try {
@@ -62,7 +63,7 @@ export async function updateCategoryAction(categoryId: string, _prevState: Categ
   const parsed = parseCategoryFormData(formData);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ." };
 
-  const description = parsed.data.description ? sanitizeRichTextHtml(parsed.data.description) : undefined;
+  const description = parsed.data.description ? sanitizeRichTextHtml(parsed.data.description, { imageCloudName: await getSystemCloudinaryCloudName() }) : undefined;
 
   try {
     await updateDocumentCategory(categoryId, { ...parsed.data, description });

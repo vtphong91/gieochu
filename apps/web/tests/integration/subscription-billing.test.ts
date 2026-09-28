@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getPrismaClient, withSystemJob, withTenant } from "@gieochu/db";
 import { encryptSecret } from "@gieochu/payments";
 import { getEnv } from "@gieochu/config";
@@ -11,6 +11,7 @@ import { assertTenantCanWrite } from "../../lib/tenant-write-guard";
 import { getPublishedProducts } from "../../lib/storefront";
 import { POST as platformWebhook } from "../../app/api/webhooks/platform/[provider]/route";
 import type { CurrentUser } from "../../lib/session";
+import { restorePlatformPaymentConfig, snapshotPlatformPaymentConfig, type PlatformPaymentConfigSnapshot } from "./shared-config-snapshot";
 
 const prisma = getPrismaClient();
 const RUN_PREFIX = `m3test_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -63,6 +64,12 @@ function signedSepayRequest(rawBody: string): Request {
 }
 
 describe("M3 subscription and platform billing", () => {
+  // Cổng SePay platform là cấu hình dùng chung trên DB dev: chụp lại trước khi test ghi đè, afterAll trả đúng dòng cũ.
+  let sepaySnapshot: PlatformPaymentConfigSnapshot;
+  beforeAll(async () => {
+    sepaySnapshot = await snapshotPlatformPaymentConfig("SEPAY");
+  });
+
   afterAll(async () => {
     const tenants = await prisma.tenant.findMany({ where: { slug: { startsWith: RUN_PREFIX } }, select: { id: true } });
     const tenantIds = tenants.map((t) => t.id);
@@ -80,7 +87,7 @@ describe("M3 subscription and platform billing", () => {
     }
     await prisma.tenant.deleteMany({ where: { slug: { startsWith: RUN_PREFIX } } });
     await prisma.user.deleteMany({ where: { email: { startsWith: RUN_PREFIX } } });
-    await prisma.platformPaymentConfig.deleteMany({ where: { provider: "SEPAY" } });
+    await restorePlatformPaymentConfig(sepaySnapshot);
   });
 
   it("creating a tenant opens an ACTIVE subscription on the FREE plan, which never expires", async () => {

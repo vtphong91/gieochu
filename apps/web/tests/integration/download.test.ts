@@ -1,12 +1,14 @@
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { encryptSecret, generateOrderCode } from "@gieochu/core";
-import { getPrismaClient, withSystemJob, withTenant } from "@gieochu/db";
+import { getPrismaClient, withPublic, withSystemJob, withTenant } from "@gieochu/db";
 import { getEnv } from "@gieochu/config";
 import { createTenantForUser } from "../../lib/create-tenant";
 import { requestDownload, consumeDownloadToken } from "../../lib/download";
 import { createShareLink, resolveShareLink, consumeShareLinkDownload, revokeShareLink } from "../../lib/share-link";
 import { listLibraryEntitlements } from "../../lib/library";
+import { addProductExternalLink } from "../../lib/product";
 import type { CurrentUser } from "../../lib/session";
+import { restoreStorageConfig, snapshotStorageConfig, type StorageConfigSnapshot } from "./shared-config-snapshot";
 
 const prisma = getPrismaClient();
 const RUN_PREFIX = `m9test_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -100,6 +102,12 @@ async function createCleanProductFile(tenantId: string, productId: string) {
 }
 
 describe("M9 downloads and share links", () => {
+  // Cấu hình R2 dùng chung trên DB dev: chụp lại trước khi test ghi cấu hình giả, afterAll trả đúng dòng cũ.
+  let storageSnapshot: StorageConfigSnapshot;
+  beforeAll(async () => {
+    storageSnapshot = await snapshotStorageConfig();
+  });
+
   afterAll(async () => {
     const tenants = await prisma.tenant.findMany({ where: { slug: { startsWith: RUN_PREFIX } }, select: { id: true } });
     const tenantIds = tenants.map((t) => t.id);
@@ -118,7 +126,7 @@ describe("M9 downloads and share links", () => {
     }
     await prisma.tenant.deleteMany({ where: { slug: { startsWith: RUN_PREFIX } } });
     await prisma.user.deleteMany({ where: { email: { startsWith: RUN_PREFIX } } });
-    await prisma.systemStorageConfig.deleteMany({ where: { id: "default" } });
+    await restoreStorageConfig(storageSnapshot);
   });
 
   it("lists a customer's library entitlements grouped by tenant, across multiple tenants", async () => {
@@ -198,5 +206,43 @@ describe("M9 downloads and share links", () => {
     await revokeShareLink(tenant.id, shareLink.id);
 
     await expect(resolveShareLink(token)).rejects.toMatchObject({ code: "SHARE_LINK_REVOKED", httpStatus: 410 });
+  });
+
+  it("ADR-026: an entitled customer opens an external link (counted and logged) until the limit; others are refused and it never leaks to public or share links", async () => {
+    const { tenant } = await createOwnerAndTenant("External Link Test", "extlink");
+    const product = await withTenant(tenant.id, (tx) => tx.product.create({ data: { tenantId: tenant.id, slug: "p", title: "P", status: "PUBLISHED" } }));
+    const driveUrl = "https://drive.google.com/file/d/ext123/view";
+    const link = await addProductExternalLink(tenant.id, product.id, { label: "Tài liệu Drive", url: driveUrl });
+    const buyer = await createActiveUser(nextEmail());
+    const stranger = await createActiveUser(nextEmail());
+    const entitlement = await purchaseProduct(tenant.id, buyer.id, product.id, { downloadsUsed: 0, downloadLimit: 1 });
+
+    // Library lists the link (kind only — never the URL itself).
+    const [group] = await listLibraryEntitlements(buyer.id);
+    const libraryItem = group!.entitlements[0]!.files.find((f) => f.id === link.id);
+    expect(libraryItem).toEqual({ id: link.id, kind: "EXTERNAL_URL", fileName: "Tài liệu Drive", sizeBytes: 0 });
+    expect(JSON.stringify(group)).not.toContain("ext123");
+
+    // Not entitled -> the row isn't even visible under the customer's RLS scope.
+    await expect(requestDownload(stranger.id, link.id)).rejects.toMatchObject({ httpStatus: 404 });
+
+    const { token } = await requestDownload(buyer.id, link.id);
+    expect(await consumeDownloadToken(token, "127.0.0.1")).toBe(driveUrl);
+    const updated = await withTenant(tenant.id, (tx) => tx.entitlement.findUniqueOrThrow({ where: { id: entitlement.id } }));
+    expect(updated.downloadsUsed).toBe(1);
+    const events = await withTenant(tenant.id, (tx) => tx.downloadEvent.findMany({ where: { entitlementId: entitlement.id } }));
+    expect(events.map((e) => e.fileId)).toEqual([link.id]);
+
+    // downloadLimit applies exactly like a file.
+    await expect(requestDownload(buyer.id, link.id)).rejects.toMatchObject({ code: "DOWNLOAD_LIMIT_REACHED", httpStatus: 403 });
+
+    // Public scope (storefront/preview) can never read an external-link row, even on a PUBLISHED product.
+    const publicRows = await withPublic((tx) => tx.productFile.findMany({ where: { productId: product.id } }));
+    expect(publicRows).toEqual([]);
+
+    // Share links (anonymous) exclude external links entirely.
+    const { token: shareToken } = await createShareLink(tenant.id, product.id, { label: "Chia sẻ" });
+    expect((await resolveShareLink(shareToken)).files).toEqual([]);
+    await expect(consumeShareLinkDownload(shareToken, link.id, undefined, "127.0.0.1")).rejects.toMatchObject({ httpStatus: 404 });
   });
 });

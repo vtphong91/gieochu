@@ -8,6 +8,8 @@
     "build": "next build",
     "start": "next start",
     "worker": "tsx worker.ts",
+    "demo:seed": "tsx scripts/demo-reviews.ts seed",
+    "demo:clean": "tsx scripts/demo-reviews.ts clean",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "pnpm run test:integration",

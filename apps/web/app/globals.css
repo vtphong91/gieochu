@@ -15,6 +15,56 @@ body {
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 
+/* Chuẩn độ rộng layout — ADR-024 (docs/DECISIONS.md). MỘT nguồn duy nhất cho
+   mọi trang public; không rải max-w-[...] tuỳ ý trong từng trang.
+   - container-page   : nội dung tối đa 1280px, lề 16 / 24 (sm) / 32px (lg)
+   - container-prose  : nội dung tối đa 768px,  lề 16 / 24 (sm) / 32px (lg)
+   - container-narrow : nội dung tối đa 448px,  lề 16 / 24px (sm)
+   max-width = nội dung + 2 × lề của từng breakpoint, nên phần nội dung luôn đúng
+   mức trần ở mọi độ rộng. Nền full-bleed đặt ở phần tử cha, KHÔNG đặt trên
+   container. Không kết hợp với px-* / max-w-* / mx-* trên cùng phần tử (sẽ ghi
+   đè lề/độ rộng chuẩn); cần lề khác thì bọc thêm một lớp bên trong. */
+@utility container-page {
+  width: 100%;
+  margin-inline: auto;
+  padding-inline: 16px;
+  max-width: calc(1280px + 2 * 16px);
+  @variant sm {
+    padding-inline: 24px;
+    max-width: calc(1280px + 2 * 24px);
+  }
+  @variant lg {
+    padding-inline: 32px;
+    max-width: calc(1280px + 2 * 32px);
+  }
+}
+
+@utility container-prose {
+  width: 100%;
+  margin-inline: auto;
+  padding-inline: 16px;
+  max-width: calc(768px + 2 * 16px);
+  @variant sm {
+    padding-inline: 24px;
+    max-width: calc(768px + 2 * 24px);
+  }
+  @variant lg {
+    padding-inline: 32px;
+    max-width: calc(768px + 2 * 32px);
+  }
+}
+
+@utility container-narrow {
+  width: 100%;
+  margin-inline: auto;
+  padding-inline: 16px;
+  max-width: calc(448px + 2 * 16px);
+  @variant sm {
+    padding-inline: 24px;
+    max-width: calc(448px + 2 * 24px);
+  }
+}
+
 /* Style nội dung rich text từ TiptapEditor (apps/web/app/_ui/editor) — dùng
    CHUNG 1 class cho cả vùng đang sửa (.gieochu-editor-content, ProseMirror)
    lẫn nơi hiển thị tĩnh nội dung đã lưu (trang sản phẩm công khai, sau này
@@ -84,6 +134,11 @@ body {
   border-radius: 8px;
   margin: 0.6em 0;
 }
+/* Ảnh đang được chọn trong editor (nhấn vào ảnh) — viền rõ để biết nút "Mô tả ảnh" đang sửa ảnh nào. */
+.gieochu-editor-content img.ProseMirror-selectednode {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
 .gieochu-editor-content mark,
 .gieochu-rich-content mark {
   background: #fef08a;
@@ -101,4 +156,94 @@ body {
   float: left;
   height: 0;
   pointer-events: none;
+}
+
+/* Storefront công khai của tenant (app/[tenantSlug]/page.tsx, _ui/*).
+   Màu đến từ CSS variables --sf-* do _ui/theme.ts tính ở server theo màu tenant
+   (đã bảo đảm tương phản). Đặt trong @layer base để utility Tailwind (vd.
+   outline-none của stretched link) vẫn ghi đè được. */
+@layer base {
+  /* Header hệ thống sticky (app/_ui/site-header.tsx, ADR-025) cao 68px (< sm) / 88px (sm+):
+     anchor (#tai-lieu...) và phần tử nhận focus không bị che (WCAG 2.4.11), chừa thêm 16px. */
+  html:has(.site-header) {
+    scroll-padding-top: calc(68px + 1rem);
+  }
+  @media (width >= 40rem) {
+    html:has(.site-header) {
+      scroll-padding-top: calc(88px + 1rem);
+    }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html:has(.sf-root) {
+      scroll-behavior: smooth;
+    }
+  }
+  .sf-root :focus-visible {
+    outline: 3px solid var(--sf-focus);
+    outline-offset: 3px;
+  }
+  .sf-root a,
+  .sf-root button {
+    touch-action: manipulation;
+  }
+
+  /* Editor sản phẩm Studio (ADR-026/027): nút Lưu nằm trong card xuất bản ở sidebar. Dưới xl (1 cột) có thêm
+     thanh lưu nhanh dính đáy `.studio-save-bar` (~72px, chỉ hiện khi data-visible="true") — chừa
+     scroll-padding-bottom để phần tử nhận focus bằng bàn phím không bị thanh che (WCAG 2.4.11).
+     Nút/link trong editor có vòng focus rõ (kit chưa có focus-visible). */
+  @media (width < 80rem) {
+    html:has(.studio-save-bar[data-visible="true"]) {
+      scroll-padding-bottom: 6rem;
+    }
+  }
+  .studio-editor :is(a, button, summary):focus-visible {
+    outline: 2px solid var(--brand-primary, #0f3b82);
+    outline-offset: 2px;
+  }
+  .studio-editor :is(a, button, input, select, label) {
+    touch-action: manipulation;
+  }
+}
+
+/* Trang Xem trước sản phẩm trong Studio (ADR-027 §5): header hệ thống trong "khung" xem trước không dính
+   (dải `.studio-preview-bar` mới là phần dính đầu vùng làm việc) — đặt ngoài @layer để thắng utility `sticky`.
+   Chừa scroll-padding-top để phần tử nhận focus bằng bàn phím không bị dải che (WCAG 2.4.11). */
+/* Mô tả chi tiết trong editor sản phẩm: khung trống thấp hơn mặc định 280px của TiptapEditor (cột chính đã rộng,
+   khung cao khi chưa có chữ đẩy các card Giá/Ảnh/Tệp xuống quá sâu) — nội dung dài vẫn tự giãn. Ngoài @layer để
+   thắng utility `min-h-[280px]` gắn trên phần tử ProseMirror. */
+.studio-editor .gieochu-editor-content {
+  min-height: 12.5rem;
+}
+
+.studio-preview-frame .site-header {
+  position: static;
+}
+html:has(.studio-preview-bar) {
+  scroll-padding-top: 7rem;
+}
+
+/* Tiêu đề hero chữ gradient primary -> accent (2 đầu đã đạt >= 3:1 trên nền hero). */
+.sf-gradient-text {
+  color: var(--sf-heading-from);
+}
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+  .sf-gradient-text {
+    background-image: linear-gradient(100deg, var(--sf-heading-from) 0%, var(--sf-heading-to) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    color: transparent;
+  }
+}
+@media (forced-colors: active) {
+  .sf-gradient-text {
+    background: none;
+    color: CanvasText;
+  }
+}
+
+/* Editor bài viết (ADR-029 mục 5): nội dung là phần chính của trang → khung soạn cao hơn editor mô tả sản phẩm. */
+.studio-editor.studio-post-editor .gieochu-editor-content {
+  min-height: 22rem;
 }

@@ -61,19 +61,22 @@ export default async function CmsRenderedPage({ params }: { params: Promise<{ sl
       className={`${beVietnamPro.variable} ${inter.variable} min-h-dvh font-[family-name:var(--font-body)]`}
       style={{ background: brandColors.background, color: brandColors.ink }}
     >
-      <header className="flex h-16 items-center justify-between border-b px-5 sm:px-10 lg:px-24" style={{ borderColor: brandColors.line }}>
-        <Link href="/" className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-[9px] text-sm font-bold text-white" style={{ background: brandColors.primary }}>
-            G
-          </span>
-          <span className="font-[family-name:var(--font-heading)] text-base font-semibold">{brand.name}</span>
-        </Link>
-        <Link href="/login" className="text-sm font-semibold" style={{ color: brandColors.primary }}>
-          Đăng nhập
-        </Link>
+      {/* Border full-bleed ở <header>; nội dung bọc container-page (ADR-024). */}
+      <header className="border-b" style={{ borderColor: brandColors.line }}>
+        <div className="container-page flex h-16 items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-[9px] text-sm font-bold text-white" style={{ background: brandColors.primary }}>
+              G
+            </span>
+            <span className="font-[family-name:var(--font-heading)] text-base font-semibold">{brand.name}</span>
+          </Link>
+          <Link href="/login" className="text-sm font-semibold" style={{ color: brandColors.primary }}>
+            Đăng nhập
+          </Link>
+        </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-5 py-14 sm:px-10 sm:py-20">
+      <main className="container-prose py-14 sm:py-20">
         {blocks.hero ? (
           <header>
             <h1 className="font-[family-name:var(--font-heading)] text-3xl leading-tight font-semibold sm:text-4xl">

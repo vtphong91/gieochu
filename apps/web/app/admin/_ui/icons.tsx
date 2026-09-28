@@ -323,3 +323,71 @@ export function IconEyeOff({ className }: IconProps) {
     </svg>
   );
 }
+
+export function IconXCircle({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="m9.2 9.2 5.6 5.6M14.8 9.2l-5.6 5.6" />
+    </svg>
+  );
+}
+
+export function IconAlertTriangle({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.3 4.2 2.9 17.5A2 2 0 0 0 4.6 20.5h14.8a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z" />
+      <path d="M12 9.5v4.5" />
+      <circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function IconUpload({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 15V4" />
+      <path d="m7.5 8.5 4.5-4.5 4.5 4.5" />
+      <path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15" />
+    </svg>
+  );
+}
+
+export function IconFile({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 3.5H7A1.5 1.5 0 0 0 5.5 5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8L14 3.5Z" />
+      <path d="M14 3.5V8h4.5" />
+    </svg>
+  );
+}
+
+/** Ngôi sao nét (điều hướng "Đánh giá" — ADR-029). */
+export function IconStarOutline({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m12 3 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8l-5.4 2.9 1.1-6.1L3.2 9.4l6.1-.8L12 3Z" />
+    </svg>
+  );
+}
+
+/** Tờ báo/bài viết (điều hướng "Bài viết" — ADR-029 mục 5). */
+export function IconNewspaper({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4.5 5.5A1.5 1.5 0 0 1 6 4h10a1.5 1.5 0 0 1 1.5 1.5V18a2 2 0 0 0 2 2H6.5a2 2 0 0 1-2-2V5.5Z" />
+      <path d="M17.5 9h1.5a1.5 1.5 0 0 1 1.5 1.5V18a2 2 0 0 1-2 2" />
+      <path d="M8 8h6M8 11.5h6M8 15h3.5" />
+    </svg>
+  );
+}
+
+/** Đinh ghim (bài viết đang ghim — ADR-029 mục 5). */
+export function IconPin({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9 4h6l-1 5 3 3v1.5H7V12l3-3-1-5Z" />
+      <path d="M12 13.5V20" />
+    </svg>
+  );
+}

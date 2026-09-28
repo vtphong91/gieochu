@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 /** §"M9": POST /api/downloads issues a single-use token URL; navigating to it triggers the actual (302) download. */
-export function DownloadButton({ fileId, disabled }: { fileId: string; disabled: boolean }) {
+export function DownloadButton({ fileId, disabled, label = "Tải xuống" }: { fileId: string; disabled: boolean; label?: string }) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
 
@@ -37,7 +37,7 @@ export function DownloadButton({ fileId, disabled }: { fileId: string; disabled:
         disabled={disabled || isPending}
         className="rounded border px-3 py-1 text-sm text-[var(--color-primary)] disabled:opacity-50"
       >
-        {isPending ? "Đang chuẩn bị..." : "Tải xuống"}
+        {isPending ? "Đang chuẩn bị..." : label}
       </button>
       {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
     </div>

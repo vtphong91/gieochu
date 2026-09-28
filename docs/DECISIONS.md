@@ -386,3 +386,284 @@
   nhất — 3 bảng cộng thêm, không đụng guard/JWT/54 call site hiện có, đồng thời khiến `TENANT_STAFF` không còn
   "chết" về mặt cấu trúc (schema đã chừa sẵn từ M4, xem `docs/BACKLOG.md`) dù luồng mời staff thật vẫn là việc
   sau này.
+
+## ADR-023 — Storefront tenant quản lý bằng section CMS (cùng mô hình CMS trang chủ), form liên hệ lưu hộp thư L2
+
+- **Bối cảnh (2026-09-26):** Chủ dự án yêu cầu storefront `/[tenantSlug]` theo đủ các section của một mẫu
+  portfolio (Hero, Dịch vụ, Tài liệu/Recent Work, Đánh giá, Form liên hệ + CTA, Footer) và tenant tự quản lý nội
+  dung "theo đúng cách System Admin đang quản lý CMS trang chủ". Chủ dự án đã chốt: form liên hệ **lưu hộp thư +
+  email báo**; ảnh upload qua **Cloudinary hệ thống**; section Tài liệu **tự động từ sản phẩm PUBLISHED**; **không
+  thêm test case** đợt này — section chưa có dữ liệu dùng nội dung demo, bổ sung test khi chạy test toàn hệ thống.
+- **Quyết định:**
+  1. **Schema section:** `storefrontSectionsSchema` trong `packages/core` — mảng có thứ tự
+     `{ id, type, visible, data }`, discriminated union theo `type`: `hero`, `services`, `products`,
+     `testimonials`, `contact`. Chỉ nội dung (text/ảnh/link) sửa được; bố cục, màu (theo `Tenant.branding`),
+     icon trang trí do code quyết định — giống `homeSectionsSchema` (CMS trang chủ).
+  2. **Lưu trữ:** 2 cột Json trên `tenants`: `storefrontSections` (bản live) và `storefrontSectionsDraft` (nháp),
+     cùng quy trình Lưu nháp / Xuất bản / Khôi phục bản live như `CmsPage.blocks/blocksDraft`. Không tạo bảng
+     riêng vì 1 tenant = 1 storefront và `tenants` không có RLS (cùng cách lưu `branding`). Cột null → dùng
+     `defaultStorefrontSections(tenant)` sinh trong code (nội dung demo).
+  3. **Nội dung demo:** khi tenant chưa từng xuất bản, khách xem thấy các section demo **trừ `testimonials`**
+     (đánh giá mẫu hiển thị công khai là thông tin sai lệch với người mua); chủ tenant xem trang của mình thấy đủ
+     kèm nhãn "Nội dung mẫu". Tenant xuất bản bản của mình → hiển thị đúng những gì đã bật.
+  4. **Quyền sửa:** Server Actions trong `/studio/[tenantSlug]/storefront`, guard `requireTenantMember` (giống
+     `updateBrandingAction`), validate lại bằng zod ở server; `revalidatePath` trang public khi xuất bản.
+  5. **Form liên hệ — bảng L2 mới `storefront_messages`** (`tenantId`, name, email, message, status
+     NEW/READ/ARCHIVED, `ipHash`, createdAt) **có RLS**: scope public chỉ INSERT; scope tenant SELECT/UPDATE/DELETE
+     của đúng tenant. Không lưu IP thô — chỉ `ipHash` = HMAC-SHA256(ip) với khoá `JWT_ACCESS_SECRET` và nhãn tách
+     miền `storefront-ip:` (không thêm biến env mới). Chấp nhận dùng chung khoá: `ipHash` chỉ phục vụ chống spam,
+     không dùng để định danh lâu dài; xoay khoá JWT chỉ làm hash cũ mất liên kết — vô hại. Nếu sau này `ipHash`
+     được dùng cho mục đích khác (thống kê, chặn vĩnh viễn) thì phải tách secret riêng. Chống spam: honeypot + rate
+     limit in-memory (`lib/rate-limit.ts`) 3 tin/10 phút theo `ipHash`, 50 tin/giờ theo tenant (public không có
+     quyền SELECT nên không đếm bằng DB được). Ghi bằng Server Action `submitStorefrontContactAction` (CSRF sẵn có
+     của Next, §7.7), INSERT không RETURNING (`createMany`) vì public không có policy SELECT. Email báo chủ tenant
+     qua SMTP hệ thống trong `after()`; gửi lỗi không làm mất tin (tin đã lưu trước). Tenant xem/đánh dấu/xoá tin
+     ở Studio. System admin **không** có route đọc tin này (§7.9).
+  6. **Upload ảnh:** tái dùng `ImageUploadField` + Cloudinary hệ thống, chữ ký cho tenant sinh bởi Server Action
+     `getTenantCloudinaryUploadSignatureAction` (guard `requireTenantMember`), folder
+     `<uploadFolder>/tenants/<tenantId>/storefront`, `allowed_formats` png/jpeg/webp nằm trong chữ ký. Giới hạn
+     2MB **chỉ kiểm phía trình duyệt** — signed upload không có tham số dung lượng; chặn cứng cần upload preset
+     (BACKLOG). CSP `img-src` đã cho phép `res.cloudinary.com`.
+- **Hệ quả / nợ:** Chưa có test cho schema section, quyền sửa và RLS `storefront_messages` — phải bổ sung khi
+  chạy test toàn hệ thống (ngân sách `test:count` cần chủ dự án duyệt lại). Chi phí/quota Cloudinary dùng chung
+  toàn nền tảng. Thời hạn lưu tin nhắn (dữ liệu cá nhân): chủ dự án chốt 2026-09-26 **không tự xoá** — tin tồn tại
+  tới khi tenant xoá thủ công ở Studio hoặc tenant bị xoá (FK cascade); xem lại khi có yêu cầu pháp lý/chính sách
+  quyền riêng tư.
+  Đánh giá thật sẽ đến từ M10 — khi đó section `testimonials` có thể chuyển sang lấy review thật.
+
+## ADR-024 — Chuẩn độ rộng layout: nội dung trang public tối đa 1280px, căn giữa, dùng utility chung
+
+- **Bối cảnh (2026-09-26):** Trang chủ hệ thống dàn full-width (chỉ lề `lg:px-24` → ~1728px nội dung ở màn
+  1920px), storefront tenant dùng container riêng (1280px), `/pricing` và `/p/[slug]` mỗi trang một `max-w-*`
+  khác nhau. Sau khi thử 960 / 1140 / 1200 / 1280px trên storefront, chủ dự án chốt **1280px nội dung, căn giữa**
+  và yêu cầu mọi layout phát triển sau theo cùng một template kích thước.
+- **Quyết định:** 3 cấp độ rộng, khai báo **một lần** bằng `@utility` trong `apps/web/app/globals.css` (không rải
+  `max-w-[...]` tuỳ ý trong từng trang):
+  | Utility | Nội dung tối đa | Lề ngang (mobile / sm / lg) | Dùng cho |
+  |---|---|---|---|
+  | `container-page` | **1280px** | 16 / 24 / 32px | Khung chung mọi trang public: header, footer, section trang chủ, storefront tenant, trang danh sách/sản phẩm, pricing |
+  | `container-prose` | 768px | 16 / 24 / 32px | Trang đọc dài: CMS `/p/[slug]`, chính sách, bài viết |
+  | `container-narrow` | 448px | 16 / 24px | Form đơn lẻ: checkout, auth card, xác nhận |
+  - Nền màu/ảnh của section vẫn tràn toàn chiều ngang (full-bleed); chỉ khối nội dung bên trong bọc container.
+  - Khối con (mô tả hero, ảnh, thẻ) được tự giới hạn nhỏ hơn bên trong container; không khối nào vượt container.
+  - Khu vực app shell có sidebar (`/admin/*`, `/studio/*`, `/account/*`) **không** áp container-page ở mức trang
+    (vùng làm việc fluid theo sidebar); nội dung dạng đọc/form bên trong vẫn dùng `container-prose`/`container-narrow`
+    hoặc `max-w-*` của kit admin.
+- **Lý do:** 1280px là độ rộng thông dụng cho trang thương mại, đủ cho lưới 3–4 thẻ, vẫn gọn ở màn 1920px. Khai
+  báo bằng `@utility` trong `globals.css` thay vì class arbitrary vì (1) một nguồn duy nhất, đổi 1 chỗ áp mọi trang;
+  (2) dev server Turbopack từng không sinh lại class arbitrary mới trong thư mục `[tenantSlug]` cho tới khi khởi
+  động lại — utility trong CSS gốc không phụ thuộc việc quét nguồn.
+- **Hệ quả:** Trang chủ hệ thống, storefront tenant chuyển sang `container-page`; `/pricing`, `/p/[slug]`,
+  checkout chuyển dần sang utility tương ứng khi có task chạm tới. Quy tắc chi tiết cho người làm UI ghi ở
+  `obsidian-knowledge-base/04-Operations-Runbooks/UI-Design-System.md`.
+
+## ADR-025 — Tenant chỉ sở hữu nội dung storefront; header/footer và các trang con là của hệ thống
+
+- **Bối cảnh (2026-09-26):** Bản storefront đầu tiên (ADR-023) dựng header/footer riêng cho tenant (logo tenant,
+  menu anchor, nút Liên hệ, footer có mạng xã hội) và trang chi tiết sản phẩm cũng mang header/footer + theme
+  tenant. Chủ dự án làm rõ: header/footer trên mọi trang public là **của hệ thống Gieo Chữ**; tenant **chỉ có 1 trang
+  public duy nhất là storefront**.
+- **Quyết định:**
+  1. Header/footer hệ thống được tách thành component dùng chung (`apps/web/app/_ui/site-header.tsx`,
+     `site-footer.tsx`), dùng cho trang chủ, storefront `/[tenantSlug]`, trang chi tiết sản phẩm, checkout (và các
+     trang public hệ thống khác khi có task chạm tới).
+  2. Storefront `/[tenantSlug]`: giữa header/footer hệ thống là các section CMS của tenant (ADR-023) với màu tenant
+     (`--sf-*`). **Không có** header/footer/menu anchor riêng của tenant. Banner "Nội dung mẫu" (chỉ chủ trang) và
+     banner READ_ONLY/LOCKED vẫn giữ, đặt ngay dưới header hệ thống.
+  3. Link mạng xã hội của tenant hiển thị trong khối CTA của section Liên hệ (không còn footer tenant).
+  4. Trang chi tiết sản phẩm và checkout là **trang hệ thống**: header/footer + màu/font hệ thống, bố cục
+     `container-page` 2 cột (sản phẩm) / `container-narrow` (checkout) theo ADR-024; chỉ nêu tên tenant (breadcrumb
+     về storefront) chứ không mang giao diện tenant. Logic mua hàng M8 không đổi.
+- **Lý do:** Nền tảng giữ nhận diện và điều hướng thống nhất (khách luôn biết mình đang ở Gieo Chữ, đăng nhập/tài
+  khoản ở cùng một chỗ); tenant tuỳ biến trong phạm vi nội dung storefront, tránh mỗi tenant một "website" riêng.
+- **Thay thế:** các phần header/footer/menu tenant trong ADR-023 và phần "dùng chung khung storefront" của trang
+  sản phẩm (task ADR-024).
+
+## ADR-026 — Trang Tạo/Sửa sản phẩm giai đoạn 1: danh mục bắt buộc khi xuất bản, giao tài liệu bằng file hoặc link, nâng mốc test
+
+- **Bối cảnh (2026-09-26):** Trang Studio "Tạo sản phẩm" chỉ có tiêu đề/đường dẫn/loại/mô tả; upload, giá, ảnh
+  bìa nằm ở trang Sửa, danh mục tài liệu (`DocumentCategory`, L1 do System Admin quản lý) chưa gắn với `Product`.
+  Rà soát: `docs/bao-cao-xu-ly-tai-lieu-san-pham-2026-09-26.md` (Long) + đề xuất bố cục của Phong. Chủ dự án chốt:
+  sửa ngay 2 lỗi bảo mật upload; 1 danh mục/sản phẩm, bắt buộc khi xuất bản; cho phép tenant giao tài liệu bằng
+  **link ngoài** ngay GĐ1, sản phẩm **chỉ có link** vẫn được xuất bản; nâng mốc test.
+- **Quyết định:**
+  1. **Bảo mật upload (làm trước):** bước `complete`/`cover-complete` kiểm `objectKey` đúng tiền tố
+     `buildProductFileKey(tenantId, productId, …)` trước mọi lời gọi storage; kiểm lại giới hạn gói bằng dung lượng
+     thật từ HeadObject, vượt thì xoá object và từ chối; `storageUsedBytes` cộng theo dung lượng thật.
+  2. **Danh mục:** cột `Product.categoryId String?` FK → `DocumentCategory` (L1, không RLS; `products` vẫn RLS như
+     cũ). Nháp được để trống; **xuất bản bắt buộc** có danh mục đang `isActive`. Studio chỉ liệt kê danh mục
+     `isActive`. Danh mục bị tắt sau đó: sản phẩm đã xuất bản giữ nguyên, lần xuất bản/sửa tiếp theo phải chọn lại.
+  3. **Link tài liệu ngoài:** lưu cùng bảng `product_files` (đã có RLS L2) với `sourceKind FILE | EXTERNAL_URL` và
+     `externalUrl`; bản ghi link không có object key, không quét, không tính dung lượng, `scanStatus` coi như không
+     áp dụng. Chỉ chấp nhận `https:` và host trong allowlist khởi đầu: `drive.google.com`, `docs.google.com`,
+     `onedrive.live.com`, `1drv.ms`, `*.sharepoint.com`, `dropbox.com`, `www.dropbox.com` (mở rộng sau qua ADR).
+     Link **chỉ trả cho khách đã có entitlement** (Thư viện / trang tải), không bao giờ hiện ở trang public; mỗi lần
+     khách mở link vẫn ghi `DownloadEvent` và tôn trọng `downloadLimit` như file. UI Studio cảnh báo tenant: link
+     ngoài không được quét, không chống chia sẻ lại, tenant tự chịu trách nhiệm quyền truy cập của link.
+  4. **Điều kiện xuất bản** (`canPublishProduct`): có danh mục đang hoạt động, có ảnh bìa (như hiện tại nếu đang
+     bắt buộc), và có **≥1 nguồn giao hàng hợp lệ**: file bán `CLEAN` **hoặc** link ngoài hợp lệ. Trả
+     `{ allowed, reasons[] }` để UI hiện checklist.
+  5. **Luồng tạo:** trang Tạo và Sửa dùng chung một editor 2 cột (`MainAsideGrid`); lần lưu đầu tạo bản nháp rồi ở
+     lại cùng giao diện (chuyển sang URL sửa), từ đó upload file/nhập link được ngay.
+  6. **Test:** mốc `test:count` nâng thêm tối đa **+3 unit / +3 integration** cho đợt này (gồm test cho 2 lỗi bảo
+     mật, kiểm tiền tố key, allowlist link, điều kiện xuất bản, gắn danh mục). `scripts/count-tests.mjs` cập nhật
+     theo số thật khi từng phần xong.
+- **Không làm ở GĐ1:** gallery nhiều ảnh, SEO riêng cho sản phẩm, preview/watermark, ClamAV, trang khám phá xuyên
+  tenant theo danh mục.
+- **Lý do:** Link ngoài đáp ứng nhu cầu thực tế của giáo viên (tài liệu đã nằm sẵn trên Drive) mà vẫn giữ giao
+  hàng sau thanh toán qua entitlement; allowlist + https giảm rủi ro phát tán link độc hại. Lưu chung
+  `product_files` tái dùng RLS và luồng thư viện/tải xuống sẵn có thay vì thêm bảng L2 mới.
+
+## ADR-027 — Bổ sung trang Tạo sản phẩm: mô tả ngắn, ảnh bìa qua Cloudinary, Xem trước, chế độ hiển thị = trạng thái
+
+- **Bối cảnh (2026-09-27):** Chủ dự án duyệt editor GĐ1 (ADR-026) và yêu cầu trang **Tạo** có đủ: giá gốc + giá
+  khuyến mãi, mô tả ngắn, ảnh đại diện, Lưu nháp, Xem trước, chế độ hiển thị Công khai/Riêng tư. Ảnh bìa hiện lưu
+  R2 public (`coverImageKey`) nên (1) không upload được trước khi có `productId`, (2) bị CSP `img-src` chặn hiển thị.
+- **Quyết định:**
+  1. **Chế độ hiển thị không phải khái niệm mới:** "Công khai" = `PUBLISHED`, "Riêng tư" = `DRAFT`. UI hiển thị
+     nhóm radio Công khai/Riêng tư; chọn Công khai khi lưu = lưu rồi xuất bản (vẫn qua `canPublishProduct`), chọn
+     Riêng tư = lưu nháp / gỡ xuất bản. Không thêm cột, không đổi RLS.
+  2. **Mô tả ngắn:** cột `Product.summary String?` — văn bản thuần, tối đa 300 ký tự, hiển thị trên thẻ tài liệu
+     ở storefront và đầu trang chi tiết. Không bắt buộc khi xuất bản.
+  3. **Ảnh bìa chuyển sang Cloudinary:** cột mới `Product.coverImageUrl String?` (chỉ nhận
+     `https://res.cloudinary.com/...`, cùng luật ADR-023), upload bằng chữ ký Cloudinary của tenant đã có
+     (folder `<uploadFolder>/tenants/<id>/products`), dùng được ngay trên trang Tạo. Hiển thị ưu tiên
+     `coverImageUrl`, fallback `coverImageKey` (R2) cho dữ liệu cũ. Điều kiện xuất bản "có ảnh bìa" chấp nhận một
+     trong hai. Luồng R2 `cover-presign/cover-complete` giữ nguyên cho tới khi dọn (BACKLOG).
+  4. **Trang Tạo** nhận đủ: tiêu đề, đường dẫn, mô tả ngắn, mô tả, danh mục, loại, giá gốc, giá khuyến mãi + thời
+     gian, thẻ, ảnh bìa, chế độ hiển thị. Tệp tài liệu/link vẫn cần `productId` → sau khi lưu lần đầu chuyển sang
+     trang Sửa. Chọn Công khai ở trang Tạo mà chưa đủ điều kiện (thường thiếu nguồn giao hàng) → vẫn lưu nháp và
+     hiển thị checklist còn thiếu.
+  5. **Xem trước:** route chỉ chủ tenant/staff `/studio/[tenantSlug]/products/[productId]/preview` (guard
+     `requireTenantMemberPage`, đọc qua `withTenant` nên xem được bản nháp), render giống trang chi tiết công khai
+     kèm dải "Bản xem trước — khách chưa thấy trang này" và nút Mua bị vô hiệu; `noindex`. Nút "Xem trước" ở thanh
+     hành động (trang Tạo: lưu nháp trước rồi mở).
+- **Test:** không nâng trần (94/53); dùng phần còn trống trong trần nếu cần, báo số thật.
+- **Đính chính ADR-026/027 theo code (2026-09-27):** (a) Editor sản phẩm chép lại lưới của `MainAsideGrid`
+  ngay trong `<form>` (grid + thanh hành động phải cùng một form) — chấp nhận, không bắt buộc gọi component.
+  (b) Trang Xem trước và editor dùng guard mặc định `requireTenantMemberPage` hiện chỉ cho `OWNER`; "staff" trong
+  ADR-027 §5 áp dụng khi luồng STAFF thật được làm (ADR-022). (c) `max-w-[1280px]` của editor là giới hạn **nội
+  dung trong** app shell Studio (vùng làm việc vẫn fluid theo sidebar) — không trái ADR-024, vốn chỉ cấm tự đặt
+  `max-w` cho khung trang public.
+- **Sửa đổi ADR-027 §4 (2026-09-27, chủ dự án):** trang Tạo **không khoá** khu Tệp tài liệu. Khi người dùng thêm
+  file hoặc link đầu tiên trên trang Tạo, UI tự gọi `createProductAction` (visibility PRIVATE) với dữ liệu form
+  hiện có để tạo bản nháp ngầm, rồi tiếp tục upload/thêm link vào bản nháp đó ngay trên cùng giao diện (giữ URL
+  `/new`, giữ `draftId` trong state, không remount để không ngắt upload; chỉ chuyển sang URL trang Sửa khi người
+  dùng bấm Lưu nháp/Xuất bản và không còn file đang tải — không lách `history` của Next). Tiêu đề là field bắt buộc duy
+  nhất để tạo nháp: thiếu thì focus ô Tiêu đề kèm thông báo. Không thêm bảng "staging upload" (tránh object mồ
+  côi, job dọn dẹp và nới luật kiểm tiền tố key) — bản nháp bị bỏ dở là dữ liệu hợp lệ, tenant thấy và xoá được.
+
+## ADR-028 — Ảnh nội dung lưu trên Cloudinary hệ thống, có tối ưu tự động và hạn mức theo gói; siết chữ ký upload
+
+- **Bối cảnh (2026-09-27):** Editor Tiptap chỉ chèn ảnh bằng URL. Chủ dự án cân nhắc dùng Cloudinary hệ thống hay
+  bắt tenant tự tạo tài khoản (BYO). Báo cáo `docs/bao-cao-luu-tru-anh-cloudinary-2026-09-27.md` (Long, đối chiếu
+  code): upload đi thẳng trình duyệt → Cloudinary, ảnh phục vụ từ CDN, nên BYO **không** giảm tải server — chỉ
+  chuyển chi phí; chưa có tối ưu ảnh; ảnh không có hạn mức theo gói; chữ ký dùng chung chỉ `requireUser()`.
+- **Quyết định (chủ dự án duyệt):**
+  1. **GĐ1 dùng Cloudinary hệ thống cho mọi tenant**; BYO để GĐ2, chỉ mở khi số liệu dùng thật vượt ngưỡng.
+  2. **Siết chữ ký dùng chung (đã sửa 2026-09-27):** `getCloudinaryUploadSignatureAction` chỉ `SYSTEM_ADMIN`,
+     ký `allowed_formats` png/jpg/jpeg/webp/svg. Tenant luôn dùng action ký riêng theo folder `tenants/<id>/...`.
+  3. **Upload ảnh trong editor:** bỏ ô "URL ảnh"; nút ảnh trên toolbar mở chọn file → upload qua chữ ký tenant,
+     folder `tenants/<id>/content`, định dạng png/jpg/jpeg/webp (GIF không nhận ở GĐ1). Editor dùng ở admin (danh
+     mục) ký bằng chữ ký admin.
+  4. **Tối ưu ảnh:** mọi ảnh Cloudinary hiển thị qua transformation cố định `f_auto,q_auto,c_limit,w_<N>` (hàm
+     dựng URL dùng chung, N theo ngữ cảnh ≤1600); upload có incoming transformation giới hạn cạnh dài ≤2000px.
+     Áp cho ảnh mô tả, ảnh bìa sản phẩm và ảnh storefront.
+  5. **Sanitizer:** `img src` trong HTML mô tả chỉ nhận `https://res.cloudinary.com/<cloud hệ thống>/...`; ảnh ngoài
+     bị loại khi lưu và khi render (khớp CSP `img-src`).
+  6. **Hạn mức ảnh theo gói** (cộng chung ảnh mô tả + ảnh bìa + ảnh storefront): FREE 100MB, CREATOR 1GB, PRO 2GB,
+     BUSINESS 5GB — cột mới trên `Plan` (chỉnh được ở System Admin). Ghi nhận asset ở bảng L2 có RLS (tenantId,
+     publicId, bytes, nơi dùng); dung lượng lấy từ phía server (không tin số client gửi). Vượt hạn mức → từ chối
+     cấp chữ ký kèm thông báo nâng gói.
+- **Test:** dùng phần còn trống trong trần hiện tại (94/53), không nâng trần.
+- **Nợ:** job dọn asset mồ côi; quy trình gỡ ảnh vi phạm; BYO (GĐ2, secret mã hoá AES-256-GCM với khoá riêng).
+- **Bổ sung ADR-028 theo triển khai (2026-09-27, Quốc duyệt):** (a) chữ ký tenant ký **`public_id` đầy đủ** do
+  server sinh (`<root>/tenants/<id>/<content|products|storefront>/<24 hex>`) thay vì `folder` — một chữ ký chỉ tạo/ghi
+  đè đúng 1 asset, không dùng lại để upload vô hạn trong 1 giờ; (b) **giữ chỗ hạn mức ngay khi cấp chữ ký**: tạo dòng
+  `tenant_media_assets` tạm tính 5MB, `verifiedAt = null`; `registerTenantImageAction` đọc Cloudinary Admin API ghi
+  bytes thật; mỗi lần xin chữ ký đối soát lười tối đa 3 dòng giữ chỗ quá 1 giờ (không tồn tại → xoá, có → ghi số
+  thật); (c) Admin API lỗi khi register → vẫn trả URL dựng từ `public_id` với `verified:false`, giữ mức tạm 5MB;
+  404 → xoá giữ chỗ, trả `IMAGE_NOT_FOUND`.
+- **Cập nhật đính chính ADR-026/027 (a)/(c) (2026-09-27):** bố cục editor hiện tại là khung `mx-auto max-w-[1440px]`
+  (giới hạn nội dung trong app shell Studio, không trái ADR-024), lưới `minmax(0,1fr) 360px` dựng trong `<form>`;
+  **không còn** thanh hành động dính đáy — nút Xuất bản/Xem trước/Lưu nháp nằm trong card xuất bản dính ở đầu
+  sidebar (≥xl), dưới xl có thanh lưu nhanh `.studio-save-bar`. Thay thế mô tả "(a) thanh hành động" và
+  "(c) `max-w-[1280px]`" ở trên.
+
+## ADR-029 — M10 giai đoạn 1: Đánh giá (M10a) + Bài viết tối giản (M10b); siết RLS `products`/`product_files`
+
+- **Bối cảnh (2026-09-27):** Kế hoạch `docs/ke-hoach-M10-social-feed-danh-gia-2026-09-27.md` (Long). Đặc tả M10 gốc
+  viết trước ADR-023/025/028. Long phát hiện policy `products` (migration `rls_m9_products_customer`) là `FOR ALL
+  USING (...)` không `WITH CHECK` → ở tầng DB, scope `public` UPDATE được sản phẩm PUBLISHED, scope `customer` UPDATE
+  được sản phẩm có entitlement (code hiện không làm, nhưng lớp DB hở). Quốc đã đối chiếu migration.
+- **Quyết định (chủ dự án chốt 4 điểm; phần còn lại theo khuyến nghị §10 của kế hoạch):**
+  0. **Siết RLS trước M10:** tách policy `products` (và `product_files` nếu cùng mẫu): SELECT cho tenant/public/
+     customer/system_job như hiện tại; INSERT/UPDATE/DELETE chỉ tenant (đúng `tenantId`) và `system_job`.
+  1. **Phạm vi:** M10a Đánh giá → M10b Bài viết tối giản. M10c (bình luận, thả tim, theo dõi) sang BACKLOG. Nút
+     "Báo cáo vi phạm" đợi M12. SEO `AggregateRating` để GĐ3.
+  2. **Đánh giá:** chỉ khách có đơn đã hoàn tất + entitlement chưa thu hồi; **1 đánh giá/khách/sản phẩm** (unique
+     `productId+userId`); sao 1–5, nội dung chữ tuỳ chọn ≤2000 ký tự; đơn 0đ được đánh giá và tính điểm; khách được
+     sửa/tự xoá; hoàn tiền/thu hồi entitlement → đánh giá tự ẩn (lý do REFUNDED), không tính điểm. Tên hiển thị dạng
+     "Minh A." (khách xem trước). Tự đăng; tenant được trả lời (1 trả lời/đánh giá) và ẩn đánh giá với lý do bắt buộc,
+     khôi phục được; người viết thấy nhãn "đã bị ẩn"; không công khai số bị ẩn. Email cho chủ tenant khi có đánh giá
+     mới (`after()`), không email cho khách ở GĐ1. System admin không có route đọc đánh giá (§7.9).
+  3. **Điểm trung bình:** cột cache số nguyên `products.ratingSum`, `ratingCount` (không dùng float); cập nhật qua
+     scope `system_job` sau khi ghi đánh giá (vì customer không còn quyền UPDATE `products` sau mục 0). Thẻ tài liệu
+     hiện sao từ 1 đánh giá kèm số lượng.
+  4. **Storefront:** thêm section **"Đánh giá"** lấy đánh giá thật (tự động N đánh giá ≥4 sao có nội dung, tenant
+     có thể chọn tay), đánh dấu "Đã mua". Section nhập tay cũ đổi tên hiển thị thành **"Cảm nhận"**, không có sao
+     (tránh nhầm với đánh giá xác thực); dữ liệu cũ giữ nguyên.
+  5. **Bài viết (M10b):** Tiptap + sanitizer (ADR-028), tối đa 6 ảnh Cloudinary tính hạn mức ảnh; tiêu đề tuỳ chọn;
+     gắn tối đa 1 sản phẩm; ghim tối đa 1 bài; trạng thái DRAFT/PUBLISHED (tenant tự gỡ về DRAFT), HIDDEN dành cho
+     vi phạm; trang hệ thống `/{tenantSlug}/posts` + `/{tenantSlug}/posts/{postId}` (ADR-025) + section "Bài viết"
+     trên storefront; không giới hạn số bài theo gói. Feed xuyên tenant ngoài phạm vi.
+  6. **Dữ liệu:** bảng L2 `reviews`, `posts` — RLS tách policy theo lệnh (mẫu `storefront_messages`): public SELECT
+     bản ghi hiển thị; customer INSERT/UPDATE/DELETE đánh giá của chính mình có điều kiện `EXISTS` đơn + entitlement;
+     tenant SELECT/UPDATE (ẩn, trả lời) của tenant mình; không nhánh admin.
+- **Test:** chủ dự án chọn **chưa thêm test** — ghi nợ cho RLS `products`, đánh giá, bài viết; verify thủ công trên
+  DB dev qua role `gieochu_app`. Bổ sung khi chạy test toàn hệ thống.
+- **Bổ sung ADR-029 mục 0 theo triển khai (2026-09-27):** migration `20260927130000_rls_adr029_split_write_policies`
+  siết **7 bảng** (không chỉ 2): `products`, `product_files`, `coupons`, `share_links`, `orders`, `order_items`,
+  `entitlements`. Mỗi bảng: `select_access` (FOR SELECT, giữ nguyên điều kiện đọc cũ) + `write_insert/update/delete`
+  chỉ `tenantId = app.tenant_id` hoặc scope `system_job` (`order_items` đi qua đơn cha). Trước đó scope public
+  UPDATE/DELETE được **mọi** share link (bỏ `revokedAt`, đặt lại `usedCount`) và customer tự UPDATE được
+  `downloadsUsed/downloadLimit` của entitlement ở tầng DB — code chưa từng ghi dưới hai scope này nên không cần đổi
+  nghiệp vụ. **Quy tắc cho bảng L2 mới:** có nhánh public/customer thì phải tách policy theo lệnh, không dùng FOR ALL.
+- **Bổ sung ADR-029 M10a theo triển khai (2026-09-27, Quốc chốt):** bảng `reviews` gắn `orderItemId`; chặn đổi cột
+  theo scope bằng trigger `reviews_guard_columns` (customer chỉ rating/body/displayName/orderItemId; tenant chỉ
+  status/hidden*/reply*; không dùng được column GRANT vì chung role `gieochu_app`); điểm TB tính lại toàn phần dưới
+  `system_job` có advisory lock. Quyết định chi tiết: (a) khách **mua lại sau hoàn tiền** và sửa đánh giá → tự khôi
+  phục VISIBLE (có log); (b) **không** giới hạn thời hạn sửa; (c) tenant READ_ONLY vẫn nhận/kiểm duyệt đánh giá
+  của khách đã mua (storefront LOCKED vốn 404 với khách); (d) trả lời rỗng = xoá trả lời; (e) khách thấy nhãn "đã bị
+  ẩn" kèm nhãn lý do tiếng Việt (không hiện mã); đánh giá ẩn vì REFUNDED tenant không khôi phục được.
+- **Bổ sung ADR-029 M10b theo triển khai (2026-09-28, Quốc chốt):** bảng `posts` (L2, RLS tách lệnh; public chỉ thấy
+  PUBLISHED khi tenant không LOCKED), partial unique index 1 bài ghim/tenant (chỉ có trong SQL — cẩn thận khi chạy
+  `prisma migrate dev`), trigger `posts_guard_product_tenant` (sản phẩm gắn phải cùng tenant) và
+  `posts_guard_columns` (chỉ system_job đặt/gỡ HIDDEN). Quy tắc: ghim được bài mọi trạng thái trừ HIDDEN (công khai
+  chỉ hiện khi PUBLISHED); bài HIDDEN tenant chỉ xoá được; tenant READ_ONLY không tạo/sửa/xoá bài (giống sản phẩm);
+  gắn được sản phẩm chưa ARCHIVED (công khai chỉ hiện thẻ khi sản phẩm PUBLISHED); `publishedAt` giữ lần đăng đầu;
+  body phải có chữ hoặc ≥1 ảnh; không có `authorId` ở GĐ1; ảnh bài viết thư mục `tenants/<id>/posts`, usage `POST`.
+
+## ADR-030 — URL tài liệu rút gọn `/{tenantSlug}/{productSlug}`; bỏ sticky card xuất bản
+
+- **Bối cảnh (2026-09-28, chủ dự án):** URL trang tài liệu `/{tenantSlug}/products/{productSlug}` dài, không tối ưu
+  hiển thị/SEO. Card xuất bản dính khi cuộn (editor sản phẩm/bài viết) cao hơn màn hình, che các chức năng bên dưới.
+- **Quyết định:**
+  1. **URL chuẩn (canonical):** `/{tenantSlug}/{productSlug}`. Route `app/[tenantSlug]/[productSlug]/page.tsx`
+     (segment tĩnh cùng cấp như `posts`, `checkout` được Next ưu tiên trước segment động). URL cũ
+     `/{tenantSlug}/products/{productSlug}` trả **301** sang URL mới (giữ query/hash nếu có). Mọi link nội bộ, email,
+     metadata `canonical`, sitemap (khi có) dùng một hàm dựng URL duy nhất `productPath(tenantSlug, productSlug)`.
+  2. **Slug dành riêng:** slug tài liệu không được trùng segment tĩnh con của `/[tenantSlug]` hiện có và dự phòng:
+     `products`, `posts`, `checkout`, `danh-gia`, `bai-viet`, `api`, `studio`, `account`, `login`, `admin`, `p`, `s`,
+     `feed`, `tag`, `category`, `search`, `cart`, `orders`, `reviews`, `about`, `contact`, `new`, `edit` — kiểm ở
+     validate tạo sản phẩm (slug tự sinh trùng thì thêm hậu tố). Danh sách nằm ở `packages/core`.
+  3. **Editor Studio:** card xuất bản **không** dính khi cuộn ở mọi kích thước (bỏ `xl:sticky`); vẫn đứng đầu sidebar
+     từ xl. Thanh lưu nhanh dưới xl giữ nguyên. Áp cho editor sản phẩm và editor bài viết. Thay ADR-027 phần
+     "card xuất bản dính".
+- **Bổ sung ADR-030 theo triển khai (2026-09-28):** redirect URL cũ bằng Route Handler
+  `app/[tenantSlug]/products/[productSlug]/route.ts` trả **301** (Location tương đối, giữ query) — không dùng
+  `permanentRedirect()`/`redirects()` vì Next trả 308 và pattern trong `next.config` khớp cả `/api/...`.
+  `/{tenantSlug}/products` → 404. `productPath`/`productUrl`/`RESERVED_PRODUCT_SLUGS` ở
+  `packages/core/src/product/path.ts` (subpath client `@gieochu/core/product-path`); canonical là URL tuyệt đối.
+  Slug tự nhập trùng từ dành riêng → `INVALID_SLUG`; slug tự sinh trùng → thêm hậu tố. Action sản phẩm nay
+  revalidate cả trang tài liệu và storefront. **Trước khi deploy prod phải quét slug trùng từ dành riêng.**

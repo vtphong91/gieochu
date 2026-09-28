@@ -434,7 +434,11 @@ export const ModelName = {
   Entitlement: 'Entitlement',
   DownloadToken: 'DownloadToken',
   ShareLink: 'ShareLink',
-  DownloadEvent: 'DownloadEvent'
+  DownloadEvent: 'DownloadEvent',
+  StorefrontMessage: 'StorefrontMessage',
+  TenantMediaAsset: 'TenantMediaAsset',
+  Review: 'Review',
+  Post: 'Post'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -450,7 +454,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userProfile" | "refreshToken" | "verificationToken" | "plan" | "role" | "permission" | "rolePermission" | "cmsPage" | "subscription" | "tenant" | "tenantMember" | "tenantSlugHistory" | "product" | "productFile" | "systemSettings" | "systemStorageConfig" | "systemCloudinaryConfig" | "systemSmtpConfig" | "emailSendLog" | "documentCategory" | "systemBranding" | "tenantPaymentConfig" | "platformPaymentConfig" | "subscriptionInvoice" | "platformPaymentTransaction" | "webhookEvent" | "bankBin" | "coupon" | "couponRedemption" | "order" | "orderItem" | "tenantPaymentTransaction" | "tenantCustomer" | "entitlement" | "downloadToken" | "shareLink" | "downloadEvent"
+    modelProps: "user" | "userProfile" | "refreshToken" | "verificationToken" | "plan" | "role" | "permission" | "rolePermission" | "cmsPage" | "subscription" | "tenant" | "tenantMember" | "tenantSlugHistory" | "product" | "productFile" | "systemSettings" | "systemStorageConfig" | "systemCloudinaryConfig" | "systemSmtpConfig" | "emailSendLog" | "documentCategory" | "systemBranding" | "tenantPaymentConfig" | "platformPaymentConfig" | "subscriptionInvoice" | "platformPaymentTransaction" | "webhookEvent" | "bankBin" | "coupon" | "couponRedemption" | "order" | "orderItem" | "tenantPaymentTransaction" | "tenantCustomer" | "entitlement" | "downloadToken" | "shareLink" | "downloadEvent" | "storefrontMessage" | "tenantMediaAsset" | "review" | "post"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -3266,6 +3270,302 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    StorefrontMessage: {
+      payload: Prisma.$StorefrontMessagePayload<ExtArgs>
+      fields: Prisma.StorefrontMessageFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.StorefrontMessageFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorefrontMessagePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.StorefrontMessageFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorefrontMessagePayload>
+        }
+        findFirst: {
+          args: Prisma.StorefrontMessageFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorefrontMessagePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.StorefrontMessageFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorefrontMessagePayload>
+        }
+        findMany: {
+          args: Prisma.StorefrontMessageFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorefrontMessagePayload>[]
+        }
+        create: {
+          args: Prisma.StorefrontMessageCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorefrontMessagePayload>
+        }
+        createMany: {
+          args: Prisma.StorefrontMessageCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.StorefrontMessageCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorefrontMessagePayload>[]
+        }
+        delete: {
+          args: Prisma.StorefrontMessageDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorefrontMessagePayload>
+        }
+        update: {
+          args: Prisma.StorefrontMessageUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorefrontMessagePayload>
+        }
+        deleteMany: {
+          args: Prisma.StorefrontMessageDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.StorefrontMessageUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.StorefrontMessageUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorefrontMessagePayload>[]
+        }
+        upsert: {
+          args: Prisma.StorefrontMessageUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorefrontMessagePayload>
+        }
+        aggregate: {
+          args: Prisma.StorefrontMessageAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateStorefrontMessage>
+        }
+        groupBy: {
+          args: Prisma.StorefrontMessageGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.StorefrontMessageGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.StorefrontMessageCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.StorefrontMessageCountAggregateOutputType> | number
+        }
+      }
+    }
+    TenantMediaAsset: {
+      payload: Prisma.$TenantMediaAssetPayload<ExtArgs>
+      fields: Prisma.TenantMediaAssetFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.TenantMediaAssetFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantMediaAssetPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.TenantMediaAssetFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantMediaAssetPayload>
+        }
+        findFirst: {
+          args: Prisma.TenantMediaAssetFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantMediaAssetPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.TenantMediaAssetFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantMediaAssetPayload>
+        }
+        findMany: {
+          args: Prisma.TenantMediaAssetFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantMediaAssetPayload>[]
+        }
+        create: {
+          args: Prisma.TenantMediaAssetCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantMediaAssetPayload>
+        }
+        createMany: {
+          args: Prisma.TenantMediaAssetCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.TenantMediaAssetCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantMediaAssetPayload>[]
+        }
+        delete: {
+          args: Prisma.TenantMediaAssetDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantMediaAssetPayload>
+        }
+        update: {
+          args: Prisma.TenantMediaAssetUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantMediaAssetPayload>
+        }
+        deleteMany: {
+          args: Prisma.TenantMediaAssetDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.TenantMediaAssetUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.TenantMediaAssetUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantMediaAssetPayload>[]
+        }
+        upsert: {
+          args: Prisma.TenantMediaAssetUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantMediaAssetPayload>
+        }
+        aggregate: {
+          args: Prisma.TenantMediaAssetAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateTenantMediaAsset>
+        }
+        groupBy: {
+          args: Prisma.TenantMediaAssetGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.TenantMediaAssetGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.TenantMediaAssetCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.TenantMediaAssetCountAggregateOutputType> | number
+        }
+      }
+    }
+    Review: {
+      payload: Prisma.$ReviewPayload<ExtArgs>
+      fields: Prisma.ReviewFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ReviewFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ReviewFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewPayload>
+        }
+        findFirst: {
+          args: Prisma.ReviewFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ReviewFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewPayload>
+        }
+        findMany: {
+          args: Prisma.ReviewFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewPayload>[]
+        }
+        create: {
+          args: Prisma.ReviewCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewPayload>
+        }
+        createMany: {
+          args: Prisma.ReviewCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ReviewCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewPayload>[]
+        }
+        delete: {
+          args: Prisma.ReviewDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewPayload>
+        }
+        update: {
+          args: Prisma.ReviewUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewPayload>
+        }
+        deleteMany: {
+          args: Prisma.ReviewDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ReviewUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ReviewUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewPayload>[]
+        }
+        upsert: {
+          args: Prisma.ReviewUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewPayload>
+        }
+        aggregate: {
+          args: Prisma.ReviewAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateReview>
+        }
+        groupBy: {
+          args: Prisma.ReviewGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ReviewGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ReviewCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ReviewCountAggregateOutputType> | number
+        }
+      }
+    }
+    Post: {
+      payload: Prisma.$PostPayload<ExtArgs>
+      fields: Prisma.PostFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PostFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PostPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PostFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PostPayload>
+        }
+        findFirst: {
+          args: Prisma.PostFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PostPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PostFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PostPayload>
+        }
+        findMany: {
+          args: Prisma.PostFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PostPayload>[]
+        }
+        create: {
+          args: Prisma.PostCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PostPayload>
+        }
+        createMany: {
+          args: Prisma.PostCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PostCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PostPayload>[]
+        }
+        delete: {
+          args: Prisma.PostDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PostPayload>
+        }
+        update: {
+          args: Prisma.PostUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PostPayload>
+        }
+        deleteMany: {
+          args: Prisma.PostDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PostUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PostUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PostPayload>[]
+        }
+        upsert: {
+          args: Prisma.PostUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PostPayload>
+        }
+        aggregate: {
+          args: Prisma.PostAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePost>
+        }
+        groupBy: {
+          args: Prisma.PostGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PostGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PostCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PostCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -3376,6 +3676,7 @@ export const PlanScalarFieldEnum = {
   maxProducts: 'maxProducts',
   storageMb: 'storageMb',
   maxFileMb: 'maxFileMb',
+  imageStorageMb: 'imageStorageMb',
   isFree: 'isFree',
   features: 'features',
   isActive: 'isActive',
@@ -3458,6 +3759,8 @@ export const TenantScalarFieldEnum = {
   logoKey: 'logoKey',
   coverKey: 'coverKey',
   branding: 'branding',
+  storefrontSections: 'storefrontSections',
+  storefrontSectionsDraft: 'storefrontSectionsDraft',
   orderCodePrefix: 'orderCodePrefix',
   status: 'status',
   storageUsedBytes: 'storageUsedBytes',
@@ -3495,14 +3798,19 @@ export const ProductScalarFieldEnum = {
   title: 'title',
   description: 'description',
   type: 'type',
+  summary: 'summary',
   coverImageKey: 'coverImageKey',
+  coverImageUrl: 'coverImageUrl',
   tags: 'tags',
   priceVnd: 'priceVnd',
   salePriceVnd: 'salePriceVnd',
   saleStartsAt: 'saleStartsAt',
   saleEndsAt: 'saleEndsAt',
   downloadLimit: 'downloadLimit',
+  ratingSum: 'ratingSum',
+  ratingCount: 'ratingCount',
   status: 'status',
+  categoryId: 'categoryId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -3514,6 +3822,8 @@ export const ProductFileScalarFieldEnum = {
   id: 'id',
   productId: 'productId',
   tenantId: 'tenantId',
+  sourceKind: 'sourceKind',
+  externalUrl: 'externalUrl',
   objectKey: 'objectKey',
   fileName: 'fileName',
   mimeType: 'mimeType',
@@ -3875,6 +4185,75 @@ export const DownloadEventScalarFieldEnum = {
 export type DownloadEventScalarFieldEnum = (typeof DownloadEventScalarFieldEnum)[keyof typeof DownloadEventScalarFieldEnum]
 
 
+export const StorefrontMessageScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  name: 'name',
+  email: 'email',
+  message: 'message',
+  status: 'status',
+  ipHash: 'ipHash',
+  createdAt: 'createdAt'
+} as const
+
+export type StorefrontMessageScalarFieldEnum = (typeof StorefrontMessageScalarFieldEnum)[keyof typeof StorefrontMessageScalarFieldEnum]
+
+
+export const TenantMediaAssetScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  publicId: 'publicId',
+  bytes: 'bytes',
+  format: 'format',
+  width: 'width',
+  height: 'height',
+  usage: 'usage',
+  verifiedAt: 'verifiedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type TenantMediaAssetScalarFieldEnum = (typeof TenantMediaAssetScalarFieldEnum)[keyof typeof TenantMediaAssetScalarFieldEnum]
+
+
+export const ReviewScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  productId: 'productId',
+  userId: 'userId',
+  orderItemId: 'orderItemId',
+  rating: 'rating',
+  body: 'body',
+  displayName: 'displayName',
+  status: 'status',
+  hiddenReason: 'hiddenReason',
+  hiddenAt: 'hiddenAt',
+  reply: 'reply',
+  repliedAt: 'repliedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ReviewScalarFieldEnum = (typeof ReviewScalarFieldEnum)[keyof typeof ReviewScalarFieldEnum]
+
+
+export const PostScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  title: 'title',
+  body: 'body',
+  excerpt: 'excerpt',
+  productId: 'productId',
+  status: 'status',
+  hiddenReason: 'hiddenReason',
+  isPinned: 'isPinned',
+  publishedAt: 'publishedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PostScalarFieldEnum = (typeof PostScalarFieldEnum)[keyof typeof PostScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -4147,6 +4526,20 @@ export type ListEnumProductStatusFieldRefInput<$PrismaModel> = FieldRefInputType
 
 
 /**
+ * Reference to a field of type 'ProductFileSource'
+ */
+export type EnumProductFileSourceFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ProductFileSource'>
+    
+
+
+/**
+ * Reference to a field of type 'ProductFileSource[]'
+ */
+export type ListEnumProductFileSourceFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ProductFileSource[]'>
+    
+
+
+/**
  * Reference to a field of type 'ProductFileScanStatus'
  */
 export type EnumProductFileScanStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ProductFileScanStatus'>
@@ -4241,6 +4634,76 @@ export type EnumPaymentMatchStatusFieldRefInput<$PrismaModel> = FieldRefInputTyp
  * Reference to a field of type 'PaymentMatchStatus[]'
  */
 export type ListEnumPaymentMatchStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PaymentMatchStatus[]'>
+    
+
+
+/**
+ * Reference to a field of type 'StorefrontMessageStatus'
+ */
+export type EnumStorefrontMessageStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'StorefrontMessageStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'StorefrontMessageStatus[]'
+ */
+export type ListEnumStorefrontMessageStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'StorefrontMessageStatus[]'>
+    
+
+
+/**
+ * Reference to a field of type 'TenantMediaUsage'
+ */
+export type EnumTenantMediaUsageFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TenantMediaUsage'>
+    
+
+
+/**
+ * Reference to a field of type 'TenantMediaUsage[]'
+ */
+export type ListEnumTenantMediaUsageFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TenantMediaUsage[]'>
+    
+
+
+/**
+ * Reference to a field of type 'ReviewStatus'
+ */
+export type EnumReviewStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ReviewStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'ReviewStatus[]'
+ */
+export type ListEnumReviewStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ReviewStatus[]'>
+    
+
+
+/**
+ * Reference to a field of type 'ReviewHiddenReason'
+ */
+export type EnumReviewHiddenReasonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ReviewHiddenReason'>
+    
+
+
+/**
+ * Reference to a field of type 'ReviewHiddenReason[]'
+ */
+export type ListEnumReviewHiddenReasonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ReviewHiddenReason[]'>
+    
+
+
+/**
+ * Reference to a field of type 'PostStatus'
+ */
+export type EnumPostStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PostStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'PostStatus[]'
+ */
+export type ListEnumPostStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PostStatus[]'>
     
 
 
@@ -4446,6 +4909,10 @@ export type GlobalOmitConfig = {
   downloadToken?: Prisma.DownloadTokenOmit
   shareLink?: Prisma.ShareLinkOmit
   downloadEvent?: Prisma.DownloadEventOmit
+  storefrontMessage?: Prisma.StorefrontMessageOmit
+  tenantMediaAsset?: Prisma.TenantMediaAssetOmit
+  review?: Prisma.ReviewOmit
+  post?: Prisma.PostOmit
 }
 
 /* Types for Logging */

@@ -144,3 +144,11 @@ export function IconHorizontalRule({ className }: IconProps) {
     </svg>
   );
 }
+/** Vòng tải — quay chỉ khi người dùng không bật giảm chuyển động (motion-safe). */
+export function IconSpinner({ className }: IconProps) {
+  return (
+    <svg {...base} className={`motion-safe:animate-spin ${className ?? ""}`} aria-hidden="true">
+      <path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5" />
+    </svg>
+  );
+}

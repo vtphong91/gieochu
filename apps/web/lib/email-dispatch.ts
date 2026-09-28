@@ -7,9 +7,11 @@ import { getDecryptedSystemSmtpConfig } from "./system-smtp";
  * Email gửi tới khách hàng cuối của tenant — System Admin không được đọc chi
  * tiết đơn hàng/khách hàng của tenant (CLAUDE.md §7.9), nên các loại này không
  * bao giờ được ghi vào EmailSendLog (bảng chỉ System Admin đọc), dù việc gửi
- * vẫn diễn ra bình thường.
+ * vẫn diễn ra bình thường. `storefront_message` (ADR-023): báo chủ tenant có
+ * lời nhắn từ khách của họ — cùng lý do, không để lộ dấu vết liên hệ lên log.
+ * `review_new` (ADR-029): báo chủ tenant có đánh giá mới từ khách của họ — cùng lý do.
  */
-const TENANT_CUSTOMER_FACING_TYPES = new Set(["order_paid", "new_sale"]);
+const TENANT_CUSTOMER_FACING_TYPES = new Set(["order_paid", "new_sale", "storefront_message", "review_new"]);
 
 /**
  * Sender thật dùng khi gửi email — ưu tiên cấu hình SMTP đã lưu ở System Admin

@@ -15,9 +15,9 @@ import type * as Prisma from "../internal/prismaNamespace"
 /**
  * Model DocumentCategory
  * Danh mục tài liệu — taxonomy CẤP PLATFORM do System Admin tạo trước
- * (/admin/categories), KHÔNG phải danh mục riêng của từng tenant. Việc gán
- * sản phẩm vào danh mục này là module sau (chưa làm ở đây). Bảng L1 (không
- * tenantId), không cần RLS — cùng lớp với SystemBranding/Plan.
+ * (/admin/categories), KHÔNG phải danh mục riêng của từng tenant. Sản phẩm
+ * gắn qua `Product.categoryId` (ADR-026). Bảng L1 (không tenantId), không
+ * cần RLS — cùng lớp với SystemBranding/Plan.
  */
 export type DocumentCategoryModel = runtime.Types.Result.DefaultSelection<Prisma.$DocumentCategoryPayload>
 
@@ -241,6 +241,7 @@ export type DocumentCategoryWhereInput = {
   isActive?: Prisma.BoolFilter<"DocumentCategory"> | boolean
   createdAt?: Prisma.DateTimeFilter<"DocumentCategory"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"DocumentCategory"> | Date | string
+  products?: Prisma.ProductListRelationFilter
 }
 
 export type DocumentCategoryOrderByWithRelationInput = {
@@ -256,6 +257,7 @@ export type DocumentCategoryOrderByWithRelationInput = {
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  products?: Prisma.ProductOrderByRelationAggregateInput
 }
 
 export type DocumentCategoryWhereUniqueInput = Prisma.AtLeast<{
@@ -274,6 +276,7 @@ export type DocumentCategoryWhereUniqueInput = Prisma.AtLeast<{
   isActive?: Prisma.BoolFilter<"DocumentCategory"> | boolean
   createdAt?: Prisma.DateTimeFilter<"DocumentCategory"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"DocumentCategory"> | Date | string
+  products?: Prisma.ProductListRelationFilter
 }, "id" | "slug">
 
 export type DocumentCategoryOrderByWithAggregationInput = {
@@ -325,6 +328,7 @@ export type DocumentCategoryCreateInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  products?: Prisma.ProductCreateNestedManyWithoutCategoryInput
 }
 
 export type DocumentCategoryUncheckedCreateInput = {
@@ -340,6 +344,7 @@ export type DocumentCategoryUncheckedCreateInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  products?: Prisma.ProductUncheckedCreateNestedManyWithoutCategoryInput
 }
 
 export type DocumentCategoryUpdateInput = {
@@ -355,6 +360,7 @@ export type DocumentCategoryUpdateInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  products?: Prisma.ProductUpdateManyWithoutCategoryNestedInput
 }
 
 export type DocumentCategoryUncheckedUpdateInput = {
@@ -370,6 +376,7 @@ export type DocumentCategoryUncheckedUpdateInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  products?: Prisma.ProductUncheckedUpdateManyWithoutCategoryNestedInput
 }
 
 export type DocumentCategoryCreateManyInput = {
@@ -417,6 +424,11 @@ export type DocumentCategoryUncheckedUpdateManyInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
+export type DocumentCategoryNullableScalarRelationFilter = {
+  is?: Prisma.DocumentCategoryWhereInput | null
+  isNot?: Prisma.DocumentCategoryWhereInput | null
+}
+
 export type DocumentCategoryCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   slug?: Prisma.SortOrder
@@ -462,6 +474,127 @@ export type DocumentCategoryMinOrderByAggregateInput = {
   updatedAt?: Prisma.SortOrder
 }
 
+export type DocumentCategoryCreateNestedOneWithoutProductsInput = {
+  create?: Prisma.XOR<Prisma.DocumentCategoryCreateWithoutProductsInput, Prisma.DocumentCategoryUncheckedCreateWithoutProductsInput>
+  connectOrCreate?: Prisma.DocumentCategoryCreateOrConnectWithoutProductsInput
+  connect?: Prisma.DocumentCategoryWhereUniqueInput
+}
+
+export type DocumentCategoryUpdateOneWithoutProductsNestedInput = {
+  create?: Prisma.XOR<Prisma.DocumentCategoryCreateWithoutProductsInput, Prisma.DocumentCategoryUncheckedCreateWithoutProductsInput>
+  connectOrCreate?: Prisma.DocumentCategoryCreateOrConnectWithoutProductsInput
+  upsert?: Prisma.DocumentCategoryUpsertWithoutProductsInput
+  disconnect?: Prisma.DocumentCategoryWhereInput | boolean
+  delete?: Prisma.DocumentCategoryWhereInput | boolean
+  connect?: Prisma.DocumentCategoryWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.DocumentCategoryUpdateToOneWithWhereWithoutProductsInput, Prisma.DocumentCategoryUpdateWithoutProductsInput>, Prisma.DocumentCategoryUncheckedUpdateWithoutProductsInput>
+}
+
+export type DocumentCategoryCreateWithoutProductsInput = {
+  id?: string
+  slug: string
+  name: string
+  shortDescription?: string | null
+  description?: string | null
+  imageUrl?: string | null
+  seoTitle?: string | null
+  seoDescription?: string | null
+  ogImageUrl?: string | null
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type DocumentCategoryUncheckedCreateWithoutProductsInput = {
+  id?: string
+  slug: string
+  name: string
+  shortDescription?: string | null
+  description?: string | null
+  imageUrl?: string | null
+  seoTitle?: string | null
+  seoDescription?: string | null
+  ogImageUrl?: string | null
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type DocumentCategoryCreateOrConnectWithoutProductsInput = {
+  where: Prisma.DocumentCategoryWhereUniqueInput
+  create: Prisma.XOR<Prisma.DocumentCategoryCreateWithoutProductsInput, Prisma.DocumentCategoryUncheckedCreateWithoutProductsInput>
+}
+
+export type DocumentCategoryUpsertWithoutProductsInput = {
+  update: Prisma.XOR<Prisma.DocumentCategoryUpdateWithoutProductsInput, Prisma.DocumentCategoryUncheckedUpdateWithoutProductsInput>
+  create: Prisma.XOR<Prisma.DocumentCategoryCreateWithoutProductsInput, Prisma.DocumentCategoryUncheckedCreateWithoutProductsInput>
+  where?: Prisma.DocumentCategoryWhereInput
+}
+
+export type DocumentCategoryUpdateToOneWithWhereWithoutProductsInput = {
+  where?: Prisma.DocumentCategoryWhereInput
+  data: Prisma.XOR<Prisma.DocumentCategoryUpdateWithoutProductsInput, Prisma.DocumentCategoryUncheckedUpdateWithoutProductsInput>
+}
+
+export type DocumentCategoryUpdateWithoutProductsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  shortDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ogImageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type DocumentCategoryUncheckedUpdateWithoutProductsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  shortDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ogImageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+
+/**
+ * Count Type DocumentCategoryCountOutputType
+ */
+
+export type DocumentCategoryCountOutputType = {
+  products: number
+}
+
+export type DocumentCategoryCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  products?: boolean | DocumentCategoryCountOutputTypeCountProductsArgs
+}
+
+/**
+ * DocumentCategoryCountOutputType without action
+ */
+export type DocumentCategoryCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the DocumentCategoryCountOutputType
+   */
+  select?: Prisma.DocumentCategoryCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * DocumentCategoryCountOutputType without action
+ */
+export type DocumentCategoryCountOutputTypeCountProductsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ProductWhereInput
+}
 
 
 export type DocumentCategorySelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -477,6 +610,8 @@ export type DocumentCategorySelect<ExtArgs extends runtime.Types.Extensions.Inte
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  products?: boolean | Prisma.DocumentCategory$productsArgs<ExtArgs>
+  _count?: boolean | Prisma.DocumentCategoryCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["documentCategory"]>
 
 export type DocumentCategorySelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -525,10 +660,18 @@ export type DocumentCategorySelectScalar = {
 }
 
 export type DocumentCategoryOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "slug" | "name" | "shortDescription" | "description" | "imageUrl" | "seoTitle" | "seoDescription" | "ogImageUrl" | "isActive" | "createdAt" | "updatedAt", ExtArgs["result"]["documentCategory"]>
+export type DocumentCategoryInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  products?: boolean | Prisma.DocumentCategory$productsArgs<ExtArgs>
+  _count?: boolean | Prisma.DocumentCategoryCountOutputTypeDefaultArgs<ExtArgs>
+}
+export type DocumentCategoryIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
+export type DocumentCategoryIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
 
 export type $DocumentCategoryPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "DocumentCategory"
-  objects: {}
+  objects: {
+    products: Prisma.$ProductPayload<ExtArgs>[]
+  }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     slug: string
@@ -943,6 +1086,7 @@ readonly fields: DocumentCategoryFieldRefs;
  */
 export interface Prisma__DocumentCategoryClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  products<T extends Prisma.DocumentCategory$productsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.DocumentCategory$productsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ProductPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1001,6 +1145,10 @@ export type DocumentCategoryFindUniqueArgs<ExtArgs extends runtime.Types.Extensi
    */
   omit?: Prisma.DocumentCategoryOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DocumentCategoryInclude<ExtArgs> | null
+  /**
    * Filter, which DocumentCategory to fetch.
    */
   where: Prisma.DocumentCategoryWhereUniqueInput
@@ -1019,6 +1167,10 @@ export type DocumentCategoryFindUniqueOrThrowArgs<ExtArgs extends runtime.Types.
    */
   omit?: Prisma.DocumentCategoryOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DocumentCategoryInclude<ExtArgs> | null
+  /**
    * Filter, which DocumentCategory to fetch.
    */
   where: Prisma.DocumentCategoryWhereUniqueInput
@@ -1036,6 +1188,10 @@ export type DocumentCategoryFindFirstArgs<ExtArgs extends runtime.Types.Extensio
    * Omit specific fields from the DocumentCategory
    */
   omit?: Prisma.DocumentCategoryOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DocumentCategoryInclude<ExtArgs> | null
   /**
    * Filter, which DocumentCategory to fetch.
    */
@@ -1085,6 +1241,10 @@ export type DocumentCategoryFindFirstOrThrowArgs<ExtArgs extends runtime.Types.E
    */
   omit?: Prisma.DocumentCategoryOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DocumentCategoryInclude<ExtArgs> | null
+  /**
    * Filter, which DocumentCategory to fetch.
    */
   where?: Prisma.DocumentCategoryWhereInput
@@ -1132,6 +1292,10 @@ export type DocumentCategoryFindManyArgs<ExtArgs extends runtime.Types.Extension
    * Omit specific fields from the DocumentCategory
    */
   omit?: Prisma.DocumentCategoryOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DocumentCategoryInclude<ExtArgs> | null
   /**
    * Filter, which DocumentCategories to fetch.
    */
@@ -1181,6 +1345,10 @@ export type DocumentCategoryCreateArgs<ExtArgs extends runtime.Types.Extensions.
    */
   omit?: Prisma.DocumentCategoryOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DocumentCategoryInclude<ExtArgs> | null
+  /**
    * The data needed to create a DocumentCategory.
    */
   data: Prisma.XOR<Prisma.DocumentCategoryCreateInput, Prisma.DocumentCategoryUncheckedCreateInput>
@@ -1228,6 +1396,10 @@ export type DocumentCategoryUpdateArgs<ExtArgs extends runtime.Types.Extensions.
    * Omit specific fields from the DocumentCategory
    */
   omit?: Prisma.DocumentCategoryOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DocumentCategoryInclude<ExtArgs> | null
   /**
    * The data needed to update a DocumentCategory.
    */
@@ -1295,6 +1467,10 @@ export type DocumentCategoryUpsertArgs<ExtArgs extends runtime.Types.Extensions.
    */
   omit?: Prisma.DocumentCategoryOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DocumentCategoryInclude<ExtArgs> | null
+  /**
    * The filter to search for the DocumentCategory to update in case it exists.
    */
   where: Prisma.DocumentCategoryWhereUniqueInput
@@ -1321,6 +1497,10 @@ export type DocumentCategoryDeleteArgs<ExtArgs extends runtime.Types.Extensions.
    */
   omit?: Prisma.DocumentCategoryOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DocumentCategoryInclude<ExtArgs> | null
+  /**
    * Filter which DocumentCategory to delete.
    */
   where: Prisma.DocumentCategoryWhereUniqueInput
@@ -1341,6 +1521,30 @@ export type DocumentCategoryDeleteManyArgs<ExtArgs extends runtime.Types.Extensi
 }
 
 /**
+ * DocumentCategory.products
+ */
+export type DocumentCategory$productsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Product
+   */
+  select?: Prisma.ProductSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Product
+   */
+  omit?: Prisma.ProductOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ProductInclude<ExtArgs> | null
+  where?: Prisma.ProductWhereInput
+  orderBy?: Prisma.ProductOrderByWithRelationInput | Prisma.ProductOrderByWithRelationInput[]
+  cursor?: Prisma.ProductWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ProductScalarFieldEnum | Prisma.ProductScalarFieldEnum[]
+}
+
+/**
  * DocumentCategory without action
  */
 export type DocumentCategoryDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1352,4 +1556,8 @@ export type DocumentCategoryDefaultArgs<ExtArgs extends runtime.Types.Extensions
    * Omit specific fields from the DocumentCategory
    */
   omit?: Prisma.DocumentCategoryOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DocumentCategoryInclude<ExtArgs> | null
 }

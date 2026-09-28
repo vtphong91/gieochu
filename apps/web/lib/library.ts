@@ -1,7 +1,15 @@
-import { withCustomer } from "@gieochu/db";
+import { normalizeExternalDocumentUrl } from "@gieochu/core";
+import { withCustomer, type ReviewStatus } from "@gieochu/db";
+import { getMyReviewsByProduct } from "./review";
 
+/**
+ * Một mục tải trong Thư viện. ADR-026: `kind = EXTERNAL_URL` là link tài liệu ngoài — `fileName` là nhãn,
+ * `sizeBytes = 0`; URL thật KHÔNG có ở đây, chỉ lộ ra khi khách mở qua `POST /api/downloads` → token (tính
+ * lượt + ghi DownloadEvent như file).
+ */
 export interface LibraryFile {
   id: string;
+  kind: "FILE" | "EXTERNAL_URL";
   fileName: string;
   sizeBytes: number;
 }
@@ -15,6 +23,10 @@ export interface LibraryEntitlement {
   downloadLimit: number;
   revoked: boolean;
   files: LibraryFile[];
+  /** ADR-029: được viết/sửa đánh giá (entitlement chưa thu hồi — entitlement chỉ sinh khi đơn FULFILLED). */
+  canReview: boolean;
+  /** Đánh giá hiện có của khách cho sản phẩm (theo sản phẩm, không theo từng lần mua); null = chưa đánh giá. */
+  review: { id: string; rating: number; status: ReviewStatus } | null;
 }
 
 export interface LibraryTenantGroup {
@@ -36,12 +48,26 @@ export async function listLibraryEntitlements(userId: string): Promise<LibraryTe
             id: true,
             title: true,
             slug: true,
-            files: { where: { isPreview: false, scanStatus: "CLEAN", removedAt: null }, select: { id: true, fileName: true, sizeBytes: true } },
+            files: {
+              where: {
+                isPreview: false,
+                removedAt: null,
+                OR: [{ sourceKind: "FILE", scanStatus: "CLEAN" }, { sourceKind: "EXTERNAL_URL" }],
+              },
+              // externalUrl chỉ đọc để lọc link không còn qua allowlist — không trả ra ngoài hàm này.
+              select: { id: true, sourceKind: true, fileName: true, sizeBytes: true, externalUrl: true },
+              orderBy: { createdAt: "asc" },
+            },
           },
         },
       },
       orderBy: { createdAt: "desc" },
     }),
+  );
+
+  const reviews = await getMyReviewsByProduct(
+    userId,
+    entitlements.map((e) => e.productId),
   );
 
   const groups = new Map<string, LibraryTenantGroup>();
@@ -59,7 +85,11 @@ export async function listLibraryEntitlements(userId: string): Promise<LibraryTe
       downloadsUsed: entitlement.downloadsUsed,
       downloadLimit: entitlement.downloadLimit,
       revoked: entitlement.revokedAt != null,
-      files: entitlement.product.files,
+      files: entitlement.product.files
+        .filter((f) => f.sourceKind === "FILE" || (f.externalUrl != null && normalizeExternalDocumentUrl(f.externalUrl) !== null))
+        .map((f) => ({ id: f.id, kind: f.sourceKind, fileName: f.fileName, sizeBytes: f.sizeBytes })),
+      canReview: entitlement.revokedAt == null,
+      review: reviews.get(entitlement.productId) ?? null,
     });
   }
   return [...groups.values()];

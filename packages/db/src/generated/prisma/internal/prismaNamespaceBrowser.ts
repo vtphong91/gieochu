@@ -88,7 +88,11 @@ export const ModelName = {
   Entitlement: 'Entitlement',
   DownloadToken: 'DownloadToken',
   ShareLink: 'ShareLink',
-  DownloadEvent: 'DownloadEvent'
+  DownloadEvent: 'DownloadEvent',
+  StorefrontMessage: 'StorefrontMessage',
+  TenantMediaAsset: 'TenantMediaAsset',
+  Review: 'Review',
+  Post: 'Post'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -178,6 +182,7 @@ export const PlanScalarFieldEnum = {
   maxProducts: 'maxProducts',
   storageMb: 'storageMb',
   maxFileMb: 'maxFileMb',
+  imageStorageMb: 'imageStorageMb',
   isFree: 'isFree',
   features: 'features',
   isActive: 'isActive',
@@ -260,6 +265,8 @@ export const TenantScalarFieldEnum = {
   logoKey: 'logoKey',
   coverKey: 'coverKey',
   branding: 'branding',
+  storefrontSections: 'storefrontSections',
+  storefrontSectionsDraft: 'storefrontSectionsDraft',
   orderCodePrefix: 'orderCodePrefix',
   status: 'status',
   storageUsedBytes: 'storageUsedBytes',
@@ -297,14 +304,19 @@ export const ProductScalarFieldEnum = {
   title: 'title',
   description: 'description',
   type: 'type',
+  summary: 'summary',
   coverImageKey: 'coverImageKey',
+  coverImageUrl: 'coverImageUrl',
   tags: 'tags',
   priceVnd: 'priceVnd',
   salePriceVnd: 'salePriceVnd',
   saleStartsAt: 'saleStartsAt',
   saleEndsAt: 'saleEndsAt',
   downloadLimit: 'downloadLimit',
+  ratingSum: 'ratingSum',
+  ratingCount: 'ratingCount',
   status: 'status',
+  categoryId: 'categoryId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -316,6 +328,8 @@ export const ProductFileScalarFieldEnum = {
   id: 'id',
   productId: 'productId',
   tenantId: 'tenantId',
+  sourceKind: 'sourceKind',
+  externalUrl: 'externalUrl',
   objectKey: 'objectKey',
   fileName: 'fileName',
   mimeType: 'mimeType',
@@ -675,6 +689,75 @@ export const DownloadEventScalarFieldEnum = {
 } as const
 
 export type DownloadEventScalarFieldEnum = (typeof DownloadEventScalarFieldEnum)[keyof typeof DownloadEventScalarFieldEnum]
+
+
+export const StorefrontMessageScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  name: 'name',
+  email: 'email',
+  message: 'message',
+  status: 'status',
+  ipHash: 'ipHash',
+  createdAt: 'createdAt'
+} as const
+
+export type StorefrontMessageScalarFieldEnum = (typeof StorefrontMessageScalarFieldEnum)[keyof typeof StorefrontMessageScalarFieldEnum]
+
+
+export const TenantMediaAssetScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  publicId: 'publicId',
+  bytes: 'bytes',
+  format: 'format',
+  width: 'width',
+  height: 'height',
+  usage: 'usage',
+  verifiedAt: 'verifiedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type TenantMediaAssetScalarFieldEnum = (typeof TenantMediaAssetScalarFieldEnum)[keyof typeof TenantMediaAssetScalarFieldEnum]
+
+
+export const ReviewScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  productId: 'productId',
+  userId: 'userId',
+  orderItemId: 'orderItemId',
+  rating: 'rating',
+  body: 'body',
+  displayName: 'displayName',
+  status: 'status',
+  hiddenReason: 'hiddenReason',
+  hiddenAt: 'hiddenAt',
+  reply: 'reply',
+  repliedAt: 'repliedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ReviewScalarFieldEnum = (typeof ReviewScalarFieldEnum)[keyof typeof ReviewScalarFieldEnum]
+
+
+export const PostScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  title: 'title',
+  body: 'body',
+  excerpt: 'excerpt',
+  productId: 'productId',
+  status: 'status',
+  hiddenReason: 'hiddenReason',
+  isPinned: 'isPinned',
+  publishedAt: 'publishedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PostScalarFieldEnum = (typeof PostScalarFieldEnum)[keyof typeof PostScalarFieldEnum]
 
 
 export const SortOrder = {

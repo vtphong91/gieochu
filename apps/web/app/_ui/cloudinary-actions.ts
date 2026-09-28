@@ -1,36 +1,27 @@
 "use server";
 
-import { AppError } from "@gieochu/core";
-import { requireUser } from "../../lib/session";
+import { signatureError, signatureOk, type CloudinarySignatureResult } from "../../lib/cloudinary-signature";
+import { requireRole } from "../../lib/session";
 import { createCloudinaryUploadSignature } from "../../lib/system-cloudinary";
 
-export interface CloudinarySignatureResult {
-  ok: boolean;
-  error?: string;
-  cloudName: string;
-  apiKey: string;
-  timestamp: number;
-  folder: string;
-  signature: string;
-}
+export type { CloudinarySignatureResult } from "../../lib/cloudinary-signature";
 
 /**
- * Dùng chung cho mọi ô upload ảnh trong toàn hệ thống (Admin: Landing Page
- * CMS/Nhận diện thương hiệu; Studio/TiptapEditor: mô tả sản phẩm...). Chỉ
- * yêu cầu đã đăng nhập (`requireUser`), không giới hạn SYSTEM_ADMIN — chữ ký
- * chỉ chứng minh server có credential Cloudinary hợp lệ, không lộ secret; ranh
- * giới cần giữ là "không cho khách ẩn danh spam upload", không phải theo vai
- * trò cụ thể.
+ * Chữ ký upload mặc định của `ImageUploadField` — CHỈ dành cho System Center
+ * (CMS trang chủ, nhận diện thương hiệu, danh mục). Tenant có action ký riêng
+ * theo folder `tenants/<id>/...` (storefront, ảnh bìa sản phẩm). Trước đây chỉ
+ * `requireUser()` nên mọi tài khoản (kể cả khách mua hàng) lấy được chữ ký
+ * upload vào folder gốc của Cloudinary nền tảng — đã siết (2026-09-27).
+ * `allowed_formats` nằm trong chữ ký; giữ SVG cho logo admin (hiển thị qua
+ * `<img>` nên không thực thi script).
  */
+const ADMIN_ALLOWED_FORMATS = ["png", "jpg", "jpeg", "webp", "svg"] as const;
+
 export async function getCloudinaryUploadSignatureAction(): Promise<CloudinarySignatureResult> {
-  await requireUser();
+  await requireRole("SYSTEM_ADMIN");
   try {
-    const sig = await createCloudinaryUploadSignature();
-    return { ok: true, ...sig };
+    return signatureOk(await createCloudinaryUploadSignature({ allowedFormats: ADMIN_ALLOWED_FORMATS }));
   } catch (error) {
-    if (error instanceof AppError) {
-      return { ok: false, error: error.message, cloudName: "", apiKey: "", timestamp: 0, folder: "", signature: "" };
-    }
-    throw error;
+    return signatureError(error);
   }
 }

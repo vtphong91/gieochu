@@ -44,6 +44,24 @@ export function SettingsGrid({ children }: { children: ReactNode }) {
   return <div className="mt-6 grid gap-6" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(380px, 960px))" }}>{children}</div>;
 }
 
+/**
+ * Bố cục trang "tạo/sửa" 2 cột (kiểu trình biên tập sản phẩm thương mại): cột chính co giãn chứa nội dung
+ * chính (tiêu đề, mô tả, tệp...) + sidebar phải 320px chứa thuộc tính/hành động (trạng thái, phân loại, giá).
+ * Chỉ tách 2 cột từ xl (1280px): ở lg sidebar điều hướng 288px của app shell đã chiếm chỗ, 2 cột sẽ bóp cột
+ * chính còn ~330px. Dưới xl: 1 cột, sidebar xếp xuống DƯỚI cột chính (nội dung chính ưu tiên). Đặt trong
+ * `<form>` được — chỉ là markup. `minmax(0,1fr)` để editor/bảng trong cột chính không đẩy tràn ngang.
+ */
+export function MainAsideGrid({ main, aside, asideLabel }: { main: ReactNode; aside: ReactNode; asideLabel?: string }) {
+  return (
+    <div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="min-w-0 space-y-6">{main}</div>
+      <aside aria-label={asideLabel} className="min-w-0 space-y-6">
+        {aside}
+      </aside>
+    </div>
+  );
+}
+
 type BadgeTone = "success" | "warning" | "danger" | "neutral" | "info";
 
 const BADGE_STYLE: Record<BadgeTone, { bg: string; fg: string; line: string }> = {
@@ -240,13 +258,25 @@ const ROW_ACTION_STYLE: Record<ActionTone, { bg: string; fg: string }> = {
   neutral: { bg: "#F3F4F6", fg: "#4B5563" },
 };
 
+const ROW_ACTION_SIZE = {
+  /** Mặc định — trong dòng bảng desktop. */
+  sm: "px-2.5 py-1.5 text-xs",
+  /** Thẻ/danh sách dùng cả trên mobile: cao 44px dưới lg (target chạm), gọn như `sm` từ lg. */
+  touch: "min-h-11 px-3.5 text-sm lg:min-h-8 lg:px-2.5 lg:text-xs",
+} as const;
+
 /** Nút hành động nhỏ trong dòng bảng — nền pastel theo ý nghĩa (đúng pattern `.admin-btn-action`). */
-export function RowActionButton({ tone = "neutral", children, ...rest }: ComponentProps<"button"> & { tone?: ActionTone }) {
+export function RowActionButton({
+  tone = "neutral",
+  size = "sm",
+  children,
+  ...rest
+}: ComponentProps<"button"> & { tone?: ActionTone; size?: keyof typeof ROW_ACTION_SIZE }) {
   const s = ROW_ACTION_STYLE[tone];
   return (
     <button
       type="submit"
-      className="inline-flex items-center justify-center rounded-lg px-2.5 py-1.5 text-xs font-semibold transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+      className={`inline-flex items-center justify-center rounded-lg font-semibold transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60 ${ROW_ACTION_SIZE[size]}`}
       style={{ background: s.bg, color: s.fg }}
       {...rest}
     >
@@ -275,14 +305,26 @@ export function FormBanner({ ok, message }: { ok: boolean; message?: string | nu
  * nhau) — vừa tạo thanh cuộn dọc thừa, vừa cắt mất RowMenu (position:absolute)
  * khi mở ở các hàng cuối bảng.
  */
-export function DataTable({ head, children }: { head: string[]; children: ReactNode }) {
+/**
+ * `headClassName[i]` gắn thêm class cho `<th>` cột i — căn phải cột thao tác (`text-right`), ẩn cột phụ trên
+ * mobile (`hidden md:table-cell`, nhớ gắn cùng class cho `<Td>` tương ứng).
+ */
+export function DataTable({
+  head,
+  headClassName,
+  children,
+}: {
+  head: string[];
+  headClassName?: (string | undefined)[];
+  children: ReactNode;
+}) {
   return (
     <div className="rounded-2xl border bg-white" style={{ borderColor: GRAY_LINE }}>
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b" style={{ borderColor: GRAY_LINE, color: INK_SOFT }}>
-            {head.map((h) => (
-              <th key={h} className="px-4 py-3 font-medium">
+            {head.map((h, i) => (
+              <th key={`${i}-${h}`} className={`px-4 py-3 font-medium ${headClassName?.[i] ?? ""}`}>
                 {h}
               </th>
             ))}

@@ -23,6 +23,9 @@ export async function runFileScan(productFileId: string): Promise<void> {
 
   const file = await withSystemJob((tx) => tx.productFile.findUniqueOrThrow({ where: { id: productFileId } }));
   if (file.scanStatus !== "PENDING") return; // already processed — idempotent
+  // ADR-026: link tài liệu ngoài không có object, không quét (scanStatus NULL nên đã return ở trên — chặn thêm).
+  if (file.sourceKind !== "FILE" || !file.objectKey) return;
+  const objectKey = file.objectKey;
 
   const storageConfig = await getDecryptedSystemStorageConfig();
   if (!storageConfig) {
@@ -31,11 +34,11 @@ export async function runFileScan(productFileId: string): Promise<void> {
   }
   const client = createS3Client(storageConfig);
 
-  const { sha256, detectedExt } = await readObjectForScan(client, storageConfig.bucketPrivate, file.objectKey);
+  const { sha256, detectedExt } = await readObjectForScan(client, storageConfig.bucketPrivate, objectKey);
   const isValid = matchesDeclaredExtension(file.fileName, detectedExt);
 
   if (!isValid) {
-    await deleteObject(client, storageConfig.bucketPrivate, file.objectKey);
+    await deleteObject(client, storageConfig.bucketPrivate, objectKey);
     await withSystemJob((tx) => tx.productFile.update({ where: { id: productFileId }, data: { scanStatus: "REJECTED" } }));
 
     const tenant = await prisma.tenant.findUniqueOrThrow({ where: { id: file.tenantId } });

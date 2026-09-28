@@ -24,6 +24,40 @@ export type { SocialLinkKey } from "./tenant/branding";
 export { resolveStorefrontAccess } from "./tenant/access-policy";
 export type { StorefrontAccessDecision, StorefrontViewer, TenantStatus } from "./tenant/access-policy";
 export { canManageTenant } from "./tenant/membership";
+export {
+  defaultStorefrontPostsSection,
+  defaultStorefrontReviewsSection,
+  defaultStorefrontSections,
+  isCloudinaryImageUrl,
+  isSafeStorefrontHref,
+  storefrontImageUrls,
+  STOREFRONT_PRODUCTS_LIMIT_MAX,
+  STOREFRONT_PRODUCTS_LIMIT_MIN,
+  STOREFRONT_POSTS_LIMIT_MAX,
+  STOREFRONT_POSTS_LIMIT_MIN,
+  STOREFRONT_REVIEWS_LIMIT_MAX,
+  STOREFRONT_REVIEWS_LIMIT_MIN,
+  STOREFRONT_REVIEWS_PINNED_MAX,
+  STOREFRONT_SECTION_LABELS,
+  STOREFRONT_SERVICE_ICON_LABELS,
+  STOREFRONT_SERVICE_ICONS,
+  storefrontSectionSchema,
+  storefrontSectionsSchema,
+} from "./tenant/storefront-sections";
+export type {
+  StorefrontContactData,
+  StorefrontCta,
+  StorefrontHeroData,
+  StorefrontPostsData,
+  StorefrontProductsData,
+  StorefrontReviewsData,
+  StorefrontSection,
+  StorefrontSectionData,
+  StorefrontSectionType,
+  StorefrontServiceIcon,
+  StorefrontServicesData,
+  StorefrontTestimonialsData,
+} from "./tenant/storefront-sections";
 export type { TenantMemberRole } from "./tenant/membership";
 
 export { addBillingPeriod, computeGraceEndsAt, computeRenewalPeriod } from "./billing/period";
@@ -36,10 +70,45 @@ export type { PlanLimitKind, PlanLimits } from "./billing/plan-limits";
 export { canUsePlanFeature } from "./billing/feature-gate";
 export type { PlanFeatureKey } from "./billing/feature-gate";
 
+export { CLOUDINARY_DELIVERY_HOST, CLOUDINARY_MAX_DELIVERY_WIDTH, cloudinaryDeliveryUrl } from "./content/cloudinary-url";
+export type { CloudinaryDeliveryOptions } from "./content/cloudinary-url";
+
+export {
+  buildPostExcerpt,
+  countRichTextImages,
+  firstRichTextImageSrc,
+  htmlToPlainText,
+  normalizePostTitle,
+  POST_BODY_MAX_LENGTH,
+  POST_EXCERPT_MAX_LENGTH,
+  POST_MAX_IMAGES,
+  POST_STATUS_LABELS,
+  POST_TITLE_MAX_LENGTH,
+  richTextImageSrcs,
+} from "./content/post";
+export type { PostTitleResult } from "./content/post";
+
 export { suggestSlug } from "./product/slug-suggestion";
+export { isReservedProductSlug, productPath, productUrl, RESERVED_PRODUCT_SLUGS } from "./product/path";
 export { canPublishProduct } from "./product/publish-eligibility";
-export type { PublishBlockReason, PublishEligibilityInput, PublishEligibilityResult } from "./product/publish-eligibility";
+export type {
+  PublishBlock,
+  PublishBlockReason,
+  PublishChecklistItem,
+  PublishEligibilityInput,
+  PublishEligibilityResult,
+  PublishRequirement,
+} from "./product/publish-eligibility";
+export {
+  EXTERNAL_DOCUMENT_EXACT_HOSTS,
+  EXTERNAL_DOCUMENT_URL_MAX_LENGTH,
+  EXTERNAL_DOCUMENT_WILDCARD_SUFFIXES,
+  isAllowedExternalDocumentUrl,
+  normalizeExternalDocumentUrl,
+} from "./product/external-document-url";
 export { applyStorageDelta } from "./product/storage-accounting";
+export { normalizeProductSummary, PRODUCT_SUMMARY_MAX_LENGTH } from "./product/summary";
+export type { ProductSummaryResult } from "./product/summary";
 
 export { calculatePrice } from "./pricing/calculate-price";
 export type {
@@ -51,6 +120,23 @@ export type {
   PricedLine,
   PricingLineInput,
 } from "./pricing/calculate-price";
+
+export {
+  computeRatingAverage,
+  formatReviewerDisplayName,
+  isTenantReviewHideReason,
+  normalizeReviewText,
+  parseReviewRating,
+  REVIEW_ANONYMOUS_NAME,
+  REVIEW_BODY_MAX_LENGTH,
+  REVIEW_HIDDEN_REASON_LABELS,
+  REVIEW_HIDDEN_REASONS,
+  REVIEW_RATING_MAX,
+  REVIEW_RATING_MIN,
+  REVIEW_REPLY_MAX_LENGTH,
+  TENANT_REVIEW_HIDE_REASONS,
+} from "./review/review";
+export type { ReviewHiddenReasonValue, ReviewTextResult, TenantReviewHideReason } from "./review/review";
 
 export { transitionOrderStatus } from "./order/state";
 export type { OrderEvent, OrderStatus } from "./order/state";

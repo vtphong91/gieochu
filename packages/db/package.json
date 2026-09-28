@@ -17,7 +17,9 @@
     "test:unit": "echo \"no unit tests in @gieochu/db (RLS/query tests run as Vitest integration tests in apps/web)\"",
     "test:integration": "echo \"no integration tests in @gieochu/db\"",
     "seed": "tsx prisma/seed.ts",
-    "setup-app-role": "tsx scripts/setup-app-role.mts"
+    "setup-app-role": "tsx scripts/setup-app-role.mts",
+    "demo:seed": "pnpm --filter @gieochu/web run demo:seed",
+    "demo:clean": "pnpm --filter @gieochu/web run demo:clean"
   },
   "dependencies": {
     "@gieochu/config": "workspace:*",

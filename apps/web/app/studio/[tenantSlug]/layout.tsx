@@ -4,18 +4,11 @@ import { brandColors } from "@gieochu/config/theme";
 import { getPrismaClient } from "@gieochu/db";
 import { requireTenantMemberPage } from "../../../lib/page-guards";
 import { getEffectiveBrand, getEffectiveLogos } from "../../../lib/branding";
+import { countNewStorefrontMessages } from "../../../lib/storefront-messages";
+import { countReviewsNeedingAttention } from "../../../lib/review";
 import { BrandMark } from "../../_ui/brand-mark";
-import {
-  IconCard,
-  IconExternalLink,
-  IconGear,
-  IconGrid,
-  IconPackage,
-  IconReceipt,
-  IconTag,
-  IconUsers,
-} from "../../admin/_ui/icons";
-import { TenantSidebarNav } from "./_ui/sidebar-nav";
+import { IconExternalLink } from "../../admin/_ui/icons";
+import { TenantSidebarNav, type TenantNavItem } from "./_ui/sidebar-nav";
 
 const beVietnamPro = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
@@ -35,15 +28,24 @@ export default async function StudioLayout({
   const { user, tenant } = await requireTenantMemberPage(tenantSlug, `/studio/${tenantSlug}`);
   const [brand, logos] = await Promise.all([getEffectiveBrand(), getEffectiveLogos()]);
   const member = await getPrismaClient().user.findUnique({ where: { id: user.userId }, select: { email: true } });
+  const [newMessages, reviewsNeedingAttention] = await Promise.all([
+    countNewStorefrontMessages(tenant.id),
+    countReviewsNeedingAttention(tenant.id),
+  ]);
 
-  const NAV = [
-    { href: `/studio/${tenant.slug}`, label: "Tổng quan", Icon: IconGrid },
-    { href: `/studio/${tenant.slug}/orders`, label: "Đơn hàng", Icon: IconReceipt },
-    { href: `/studio/${tenant.slug}/customers`, label: "Khách hàng", Icon: IconUsers },
-    { href: `/studio/${tenant.slug}/products`, label: "Sản phẩm", Icon: IconPackage },
-    { href: `/studio/${tenant.slug}/coupons`, label: "Mã giảm giá", Icon: IconTag },
-    { href: `/studio/${tenant.slug}/billing`, label: "Gói dịch vụ", Icon: IconCard },
-    { href: `/studio/${tenant.slug}/settings`, label: "Cài đặt", Icon: IconGear },
+  // Icon truyền dạng KEY (chuỗi) — không truyền component (hàm) từ Server sang Client Component.
+  const NAV: TenantNavItem[] = [
+    { href: `/studio/${tenant.slug}`, label: "Tổng quan", icon: "grid" },
+    { href: `/studio/${tenant.slug}/orders`, label: "Đơn hàng", icon: "receipt" },
+    { href: `/studio/${tenant.slug}/customers`, label: "Khách hàng", icon: "users" },
+    { href: `/studio/${tenant.slug}/products`, label: "Sản phẩm", icon: "package" },
+    { href: `/studio/${tenant.slug}/posts`, label: "Bài viết", icon: "posts" },
+    { href: `/studio/${tenant.slug}/coupons`, label: "Mã giảm giá", icon: "tag" },
+    { href: `/studio/${tenant.slug}/storefront`, label: "Trang bán hàng", icon: "store" },
+    { href: `/studio/${tenant.slug}/reviews`, label: reviewsNeedingAttention > 0 ? `Đánh giá (${reviewsNeedingAttention > 99 ? "99+" : reviewsNeedingAttention})` : "Đánh giá", icon: "star" },
+    { href: `/studio/${tenant.slug}/messages`, label: newMessages > 0 ? `Hộp thư (${newMessages > 99 ? "99+" : newMessages})` : "Hộp thư", icon: "mail" },
+    { href: `/studio/${tenant.slug}/billing`, label: "Gói dịch vụ", icon: "card" },
+    { href: `/studio/${tenant.slug}/settings`, label: "Cài đặt", icon: "gear" },
   ];
 
   return (

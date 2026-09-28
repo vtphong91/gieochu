@@ -2,7 +2,8 @@
 export { ALLOWED_EXTENSIONS, getDeclaredExtension, isAllowedExtension, matchesDeclaredExtension } from "./file-format";
 export type { AllowedExtension } from "./file-format";
 
-export { buildProductFileKey, sanitizeFileName } from "./object-key";
+export { buildProductFileKey, isProductObjectKeyFor, sanitizeFileName } from "./object-key";
+export type { ProductObjectKeyKind } from "./object-key";
 
 export { createS3Client } from "./s3-client";
 export type { S3ClientConfig } from "./s3-client";

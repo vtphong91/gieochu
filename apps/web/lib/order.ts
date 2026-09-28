@@ -25,6 +25,7 @@ import { renderNewSaleEmail, renderOrderPaidEmail } from "@gieochu/email";
 import { assertTenantCanWrite } from "./tenant-write-guard";
 import { toCouponSnapshot } from "./coupon";
 import { sendEmailNow } from "./email-dispatch";
+import { hideReviewsForRevokedItems, recomputeProductRatings } from "./review";
 
 const ORDER_CODE_RETRIES = 10;
 
@@ -407,17 +408,24 @@ export async function cancelOrder(tenantId: string, orderId: string): Promise<vo
   await withTenant(tenantId, (tx) => tx.order.update({ where: { id: orderId }, data: { status: nextStatus } }));
 }
 
-/** Only valid from FULFILLED — revokes every entitlement the order created so downloads stop working. */
+/**
+ * Only valid from FULFILLED — revokes every entitlement the order created so downloads stop working.
+ * ADR-029 mục 2: đánh giá gắn với các dòng đơn này tự ẩn (HIDDEN, lý do REFUNDED) trong cùng transaction, điểm
+ * sản phẩm tính lại sau khi commit.
+ */
 export async function markOrderRefunded(tenantId: string, orderId: string): Promise<void> {
   const order = await withTenant(tenantId, (tx) => tx.order.findUnique({ where: { id: orderId } }));
   if (!order) throw notFound("Không tìm thấy đơn hàng.");
   const nextStatus = transitionOrderStatus(order.status as OrderStatus, "REFUND");
 
-  await withTenant(tenantId, async (tx) => {
+  const affectedProductIds = await withTenant(tenantId, async (tx) => {
     await tx.order.update({ where: { id: orderId }, data: { status: nextStatus } });
     const items = await tx.orderItem.findMany({ where: { orderId }, select: { id: true } });
-    await tx.entitlement.updateMany({ where: { orderItemId: { in: items.map((i) => i.id) } }, data: { revokedAt: new Date() } });
+    const itemIds = items.map((i) => i.id);
+    await tx.entitlement.updateMany({ where: { orderItemId: { in: itemIds } }, data: { revokedAt: new Date() } });
+    return hideReviewsForRevokedItems(tx, tenantId, itemIds);
   });
+  await recomputeProductRatings(affectedProductIds);
 }
 
 export interface OrderListFilters {
