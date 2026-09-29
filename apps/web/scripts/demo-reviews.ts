@@ -26,6 +26,7 @@ import { markOrderPaid } from "../lib/order";
 import { addProductExternalLink, createProduct, publishProduct } from "../lib/product";
 import { hideReview, recomputeProductRatings, replyToReview, upsertMyReview } from "../lib/review";
 import { getSystemCloudinaryCloudName } from "../lib/system-cloudinary";
+import { getSystemSettings } from "../lib/system-settings";
 
 const TENANT_SLUG = "phongweb";
 const DEMO_PASSWORD = "Demo@12345";
@@ -406,7 +407,7 @@ async function createFulfilledOrder(tenant: { id: string; orderCodePrefix: strin
     now,
   );
   const code = await uniqueOrderCode(tenant.orderCodePrefix);
-  const expiresAt = computeOrderExpiresAt(now, getEnv().ORDER_PENDING_TTL_MINUTES);
+  const expiresAt = computeOrderExpiresAt(now, (await getSystemSettings()).orderPendingTtlMinutes);
 
   return withTenant(tenant.id, async (tx) => {
     const order = await tx.order.create({

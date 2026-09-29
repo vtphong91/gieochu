@@ -86,7 +86,7 @@ describe("M4 tenant workspace and storefront", () => {
     const accessToken = await signAccessToken(
       { sub: ownerA.id, sid: "test-family", role: "USER", ver: true, pc: true },
       getJwtContext(),
-      getAccessTokenTtlSeconds(),
+      await getAccessTokenTtlSeconds(),
     );
 
     vi.doMock("next/headers", () => ({

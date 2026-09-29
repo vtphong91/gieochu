@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Be_Vietnam_Pro, Inter } from "next/font/google";
 import { getPrismaClient } from "@gieochu/db";
-import { getBrand } from "@gieochu/config/brand";
+import { getEffectiveBrand } from "../../../lib/branding";
 import { brandColors } from "@gieochu/config/theme";
 import { getActivePlans } from "../../../lib/pricing";
 
@@ -52,7 +52,7 @@ export default async function CmsRenderedPage({ params }: { params: Promise<{ sl
   const page = await getPublishedPage(slug);
   if (!page) notFound();
 
-  const brand = getBrand();
+  const brand = await getEffectiveBrand();
   const blocks = page.blocks as CmsBlocks;
   const plans = blocks.pricingTable?.source === "plans" ? await getActivePlans() : null;
 

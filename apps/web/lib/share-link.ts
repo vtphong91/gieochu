@@ -9,9 +9,9 @@ import {
 } from "@gieochu/core";
 import { createPresignedDownload, createS3Client } from "@gieochu/storage";
 import { getPrismaClient, withPublic, withTenant, type Prisma, type ShareLink } from "@gieochu/db";
-import { getEnv } from "@gieochu/config";
 import { assertTenantCanWrite } from "./tenant-write-guard";
 import { requireStorageConfig } from "./product-upload";
+import { getSystemSettings } from "./system-settings";
 
 export interface CreateShareLinkInput {
   label: string;
@@ -192,11 +192,12 @@ export async function consumeShareLinkDownload(rawToken: string, fileId: string,
 
   const storageConfig = await requireStorageConfig();
   const client = createS3Client(storageConfig);
-  const env = getEnv();
+  const settings = await getSystemSettings();
   return createPresignedDownload(client, {
     bucket: storageConfig.bucketPrivate,
     key: file.objectKey,
     fileName: file.fileName,
-    ttlSeconds: env.PRESIGN_DOWNLOAD_TTL_SECONDS,
+    // ADR-032: ≤600 do validate; createPresignedDownload kẹp lại ≤600 lần nữa phòng DB sai (§7.6).
+    ttlSeconds: settings.presignDownloadTtlSeconds,
   });
 }

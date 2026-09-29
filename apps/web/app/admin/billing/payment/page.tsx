@@ -1,4 +1,4 @@
-import { getBrand } from "@gieochu/config/brand";
+import { getEffectiveBrand } from "../../../../lib/branding";
 import { getEnv } from "@gieochu/config";
 import { buildWebhookNotifyUrl } from "@gieochu/payments";
 import { requireAdminAccess } from "../../../../lib/page-guards";
@@ -16,7 +16,7 @@ const COMING_SOON = [
 
 export default async function AdminBillingPaymentPage() {
   await requireAdminAccess("/admin/billing/payment");
-  const brand = getBrand();
+  const brand = await getEffectiveBrand();
 
   const [banks, configs] = await Promise.all([listBankBins(), listPlatformProviderConfigs()]);
 

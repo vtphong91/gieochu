@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { getBrand, type Brand } from "@gieochu/config/brand";
+import { resolveBrand, type Brand } from "@gieochu/config/brand";
 import { getPrismaClient } from "@gieochu/db";
 
 const CONFIG_ID = "default";
@@ -11,20 +11,13 @@ export const getSystemBranding = cache(async function getSystemBranding() {
 });
 
 /**
- * Tên/slogan hiệu lực thật sự dùng để hiển thị — ưu tiên DB (System Admin
- * cấu hình qua /admin/settings/branding), rơi về `getBrand()` (env) nếu
- * DB trống. Không sửa `getBrand()` trong @gieochu/config vì package đó
- * không được phụ thuộc @gieochu/db (xem comment SystemBranding trong schema).
+ * ADR-032 mục 2: nguồn DUY NHẤT của chuỗi thương hiệu — ưu tiên DB (`SystemBranding`, System Admin
+ * cấu hình qua /admin/settings/branding), rơi về `DEFAULT_BRAND` (@gieochu/config/brand) khi DB
+ * trống. Không đọc env. @gieochu/config không phụ thuộc @gieochu/db nên hàm đọc DB đặt ở đây.
+ * Ngoài request React (worker/script) `cache()` là passthrough → mỗi lần gọi đọc lại DB.
  */
 export async function getEffectiveBrand(): Promise<Brand> {
-  const envBrand = getBrand();
-  const branding = await getSystemBranding();
-  if (!branding) return envBrand;
-  return {
-    name: branding.brandName || envBrand.name,
-    shortName: envBrand.shortName,
-    slogan: branding.brandSlogan || envBrand.slogan,
-  };
+  return resolveBrand(await getSystemBranding());
 }
 
 export interface EffectiveLogos {

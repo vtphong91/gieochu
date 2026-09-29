@@ -15,9 +15,14 @@ import type * as Prisma from "../internal/prismaNamespace"
 /**
  * Model SystemSettings
  * §5.1 Layer System — system_settings. Single row (id fixed to "default").
- * trialDays/graceDays seed from the TRIAL_DAYS/GRACE_DAYS env defaults
- * (packages/config) but are the live source of truth once this row exists —
- * business logic (M4 onboarding, M3 sweep) reads from here, not the env var.
+ * ADR-032: cấu hình hệ thống do System Admin sửa ở /admin/settings/general
+ * (apps/web/lib/system-settings.ts). 11 cột Int dưới đây là nguồn sự thật
+ * duy nhất (không còn env TRIAL_DAYS/ACCESS_TOKEN_TTL...). Mặc định + giới
+ * hạn khai báo ở packages/core/src/settings/system-settings.ts — DB default
+ * chỉ để dòng cũ/dòng mới luôn có giá trị; lúc đọc vẫn parse phòng thủ (giá
+ * trị ngoài khoảng → mặc định + log warn). Đổi giá trị chỉ áp cho thao tác mới.
+ * platformName/supportEmail: cột cũ (form /admin/settings) — nullable từ
+ * ADR-032; tên nền tảng hiệu lực lấy từ SystemBranding, không đọc cột này.
  */
 export type SystemSettingsModel = runtime.Types.Result.DefaultSelection<Prisma.$SystemSettingsPayload>
 
@@ -32,11 +37,29 @@ export type AggregateSystemSettings = {
 export type SystemSettingsAvgAggregateOutputType = {
   trialDays: number | null
   graceDays: number | null
+  accessTokenTtlMinutes: number | null
+  refreshTokenTtlDays: number | null
+  emailVerifyTtlHours: number | null
+  passwordResetTtlMinutes: number | null
+  presignUploadTtlSeconds: number | null
+  presignDownloadTtlSeconds: number | null
+  orderPendingTtlMinutes: number | null
+  invoicePendingTtlHours: number | null
+  defaultDownloadLimit: number | null
 }
 
 export type SystemSettingsSumAggregateOutputType = {
   trialDays: number | null
   graceDays: number | null
+  accessTokenTtlMinutes: number | null
+  refreshTokenTtlDays: number | null
+  emailVerifyTtlHours: number | null
+  passwordResetTtlMinutes: number | null
+  presignUploadTtlSeconds: number | null
+  presignDownloadTtlSeconds: number | null
+  orderPendingTtlMinutes: number | null
+  invoicePendingTtlHours: number | null
+  defaultDownloadLimit: number | null
 }
 
 export type SystemSettingsMinAggregateOutputType = {
@@ -45,6 +68,16 @@ export type SystemSettingsMinAggregateOutputType = {
   supportEmail: string | null
   trialDays: number | null
   graceDays: number | null
+  accessTokenTtlMinutes: number | null
+  refreshTokenTtlDays: number | null
+  emailVerifyTtlHours: number | null
+  passwordResetTtlMinutes: number | null
+  presignUploadTtlSeconds: number | null
+  presignDownloadTtlSeconds: number | null
+  orderPendingTtlMinutes: number | null
+  invoicePendingTtlHours: number | null
+  defaultDownloadLimit: number | null
+  updatedById: string | null
   updatedAt: Date | null
 }
 
@@ -54,6 +87,16 @@ export type SystemSettingsMaxAggregateOutputType = {
   supportEmail: string | null
   trialDays: number | null
   graceDays: number | null
+  accessTokenTtlMinutes: number | null
+  refreshTokenTtlDays: number | null
+  emailVerifyTtlHours: number | null
+  passwordResetTtlMinutes: number | null
+  presignUploadTtlSeconds: number | null
+  presignDownloadTtlSeconds: number | null
+  orderPendingTtlMinutes: number | null
+  invoicePendingTtlHours: number | null
+  defaultDownloadLimit: number | null
+  updatedById: string | null
   updatedAt: Date | null
 }
 
@@ -63,6 +106,16 @@ export type SystemSettingsCountAggregateOutputType = {
   supportEmail: number
   trialDays: number
   graceDays: number
+  accessTokenTtlMinutes: number
+  refreshTokenTtlDays: number
+  emailVerifyTtlHours: number
+  passwordResetTtlMinutes: number
+  presignUploadTtlSeconds: number
+  presignDownloadTtlSeconds: number
+  orderPendingTtlMinutes: number
+  invoicePendingTtlHours: number
+  defaultDownloadLimit: number
+  updatedById: number
   updatedAt: number
   _all: number
 }
@@ -71,11 +124,29 @@ export type SystemSettingsCountAggregateOutputType = {
 export type SystemSettingsAvgAggregateInputType = {
   trialDays?: true
   graceDays?: true
+  accessTokenTtlMinutes?: true
+  refreshTokenTtlDays?: true
+  emailVerifyTtlHours?: true
+  passwordResetTtlMinutes?: true
+  presignUploadTtlSeconds?: true
+  presignDownloadTtlSeconds?: true
+  orderPendingTtlMinutes?: true
+  invoicePendingTtlHours?: true
+  defaultDownloadLimit?: true
 }
 
 export type SystemSettingsSumAggregateInputType = {
   trialDays?: true
   graceDays?: true
+  accessTokenTtlMinutes?: true
+  refreshTokenTtlDays?: true
+  emailVerifyTtlHours?: true
+  passwordResetTtlMinutes?: true
+  presignUploadTtlSeconds?: true
+  presignDownloadTtlSeconds?: true
+  orderPendingTtlMinutes?: true
+  invoicePendingTtlHours?: true
+  defaultDownloadLimit?: true
 }
 
 export type SystemSettingsMinAggregateInputType = {
@@ -84,6 +155,16 @@ export type SystemSettingsMinAggregateInputType = {
   supportEmail?: true
   trialDays?: true
   graceDays?: true
+  accessTokenTtlMinutes?: true
+  refreshTokenTtlDays?: true
+  emailVerifyTtlHours?: true
+  passwordResetTtlMinutes?: true
+  presignUploadTtlSeconds?: true
+  presignDownloadTtlSeconds?: true
+  orderPendingTtlMinutes?: true
+  invoicePendingTtlHours?: true
+  defaultDownloadLimit?: true
+  updatedById?: true
   updatedAt?: true
 }
 
@@ -93,6 +174,16 @@ export type SystemSettingsMaxAggregateInputType = {
   supportEmail?: true
   trialDays?: true
   graceDays?: true
+  accessTokenTtlMinutes?: true
+  refreshTokenTtlDays?: true
+  emailVerifyTtlHours?: true
+  passwordResetTtlMinutes?: true
+  presignUploadTtlSeconds?: true
+  presignDownloadTtlSeconds?: true
+  orderPendingTtlMinutes?: true
+  invoicePendingTtlHours?: true
+  defaultDownloadLimit?: true
+  updatedById?: true
   updatedAt?: true
 }
 
@@ -102,6 +193,16 @@ export type SystemSettingsCountAggregateInputType = {
   supportEmail?: true
   trialDays?: true
   graceDays?: true
+  accessTokenTtlMinutes?: true
+  refreshTokenTtlDays?: true
+  emailVerifyTtlHours?: true
+  passwordResetTtlMinutes?: true
+  presignUploadTtlSeconds?: true
+  presignDownloadTtlSeconds?: true
+  orderPendingTtlMinutes?: true
+  invoicePendingTtlHours?: true
+  defaultDownloadLimit?: true
+  updatedById?: true
   updatedAt?: true
   _all?: true
 }
@@ -194,10 +295,20 @@ export type SystemSettingsGroupByArgs<ExtArgs extends runtime.Types.Extensions.I
 
 export type SystemSettingsGroupByOutputType = {
   id: string
-  platformName: string
-  supportEmail: string
+  platformName: string | null
+  supportEmail: string | null
   trialDays: number
   graceDays: number
+  accessTokenTtlMinutes: number
+  refreshTokenTtlDays: number
+  emailVerifyTtlHours: number
+  passwordResetTtlMinutes: number
+  presignUploadTtlSeconds: number
+  presignDownloadTtlSeconds: number
+  orderPendingTtlMinutes: number
+  invoicePendingTtlHours: number
+  defaultDownloadLimit: number
+  updatedById: string | null
   updatedAt: Date
   _count: SystemSettingsCountAggregateOutputType | null
   _avg: SystemSettingsAvgAggregateOutputType | null
@@ -226,19 +337,39 @@ export type SystemSettingsWhereInput = {
   OR?: Prisma.SystemSettingsWhereInput[]
   NOT?: Prisma.SystemSettingsWhereInput | Prisma.SystemSettingsWhereInput[]
   id?: Prisma.StringFilter<"SystemSettings"> | string
-  platformName?: Prisma.StringFilter<"SystemSettings"> | string
-  supportEmail?: Prisma.StringFilter<"SystemSettings"> | string
+  platformName?: Prisma.StringNullableFilter<"SystemSettings"> | string | null
+  supportEmail?: Prisma.StringNullableFilter<"SystemSettings"> | string | null
   trialDays?: Prisma.IntFilter<"SystemSettings"> | number
   graceDays?: Prisma.IntFilter<"SystemSettings"> | number
+  accessTokenTtlMinutes?: Prisma.IntFilter<"SystemSettings"> | number
+  refreshTokenTtlDays?: Prisma.IntFilter<"SystemSettings"> | number
+  emailVerifyTtlHours?: Prisma.IntFilter<"SystemSettings"> | number
+  passwordResetTtlMinutes?: Prisma.IntFilter<"SystemSettings"> | number
+  presignUploadTtlSeconds?: Prisma.IntFilter<"SystemSettings"> | number
+  presignDownloadTtlSeconds?: Prisma.IntFilter<"SystemSettings"> | number
+  orderPendingTtlMinutes?: Prisma.IntFilter<"SystemSettings"> | number
+  invoicePendingTtlHours?: Prisma.IntFilter<"SystemSettings"> | number
+  defaultDownloadLimit?: Prisma.IntFilter<"SystemSettings"> | number
+  updatedById?: Prisma.StringNullableFilter<"SystemSettings"> | string | null
   updatedAt?: Prisma.DateTimeFilter<"SystemSettings"> | Date | string
 }
 
 export type SystemSettingsOrderByWithRelationInput = {
   id?: Prisma.SortOrder
-  platformName?: Prisma.SortOrder
-  supportEmail?: Prisma.SortOrder
+  platformName?: Prisma.SortOrderInput | Prisma.SortOrder
+  supportEmail?: Prisma.SortOrderInput | Prisma.SortOrder
   trialDays?: Prisma.SortOrder
   graceDays?: Prisma.SortOrder
+  accessTokenTtlMinutes?: Prisma.SortOrder
+  refreshTokenTtlDays?: Prisma.SortOrder
+  emailVerifyTtlHours?: Prisma.SortOrder
+  passwordResetTtlMinutes?: Prisma.SortOrder
+  presignUploadTtlSeconds?: Prisma.SortOrder
+  presignDownloadTtlSeconds?: Prisma.SortOrder
+  orderPendingTtlMinutes?: Prisma.SortOrder
+  invoicePendingTtlHours?: Prisma.SortOrder
+  defaultDownloadLimit?: Prisma.SortOrder
+  updatedById?: Prisma.SortOrderInput | Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
@@ -247,19 +378,39 @@ export type SystemSettingsWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.SystemSettingsWhereInput | Prisma.SystemSettingsWhereInput[]
   OR?: Prisma.SystemSettingsWhereInput[]
   NOT?: Prisma.SystemSettingsWhereInput | Prisma.SystemSettingsWhereInput[]
-  platformName?: Prisma.StringFilter<"SystemSettings"> | string
-  supportEmail?: Prisma.StringFilter<"SystemSettings"> | string
+  platformName?: Prisma.StringNullableFilter<"SystemSettings"> | string | null
+  supportEmail?: Prisma.StringNullableFilter<"SystemSettings"> | string | null
   trialDays?: Prisma.IntFilter<"SystemSettings"> | number
   graceDays?: Prisma.IntFilter<"SystemSettings"> | number
+  accessTokenTtlMinutes?: Prisma.IntFilter<"SystemSettings"> | number
+  refreshTokenTtlDays?: Prisma.IntFilter<"SystemSettings"> | number
+  emailVerifyTtlHours?: Prisma.IntFilter<"SystemSettings"> | number
+  passwordResetTtlMinutes?: Prisma.IntFilter<"SystemSettings"> | number
+  presignUploadTtlSeconds?: Prisma.IntFilter<"SystemSettings"> | number
+  presignDownloadTtlSeconds?: Prisma.IntFilter<"SystemSettings"> | number
+  orderPendingTtlMinutes?: Prisma.IntFilter<"SystemSettings"> | number
+  invoicePendingTtlHours?: Prisma.IntFilter<"SystemSettings"> | number
+  defaultDownloadLimit?: Prisma.IntFilter<"SystemSettings"> | number
+  updatedById?: Prisma.StringNullableFilter<"SystemSettings"> | string | null
   updatedAt?: Prisma.DateTimeFilter<"SystemSettings"> | Date | string
 }, "id">
 
 export type SystemSettingsOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
-  platformName?: Prisma.SortOrder
-  supportEmail?: Prisma.SortOrder
+  platformName?: Prisma.SortOrderInput | Prisma.SortOrder
+  supportEmail?: Prisma.SortOrderInput | Prisma.SortOrder
   trialDays?: Prisma.SortOrder
   graceDays?: Prisma.SortOrder
+  accessTokenTtlMinutes?: Prisma.SortOrder
+  refreshTokenTtlDays?: Prisma.SortOrder
+  emailVerifyTtlHours?: Prisma.SortOrder
+  passwordResetTtlMinutes?: Prisma.SortOrder
+  presignUploadTtlSeconds?: Prisma.SortOrder
+  presignDownloadTtlSeconds?: Prisma.SortOrder
+  orderPendingTtlMinutes?: Prisma.SortOrder
+  invoicePendingTtlHours?: Prisma.SortOrder
+  defaultDownloadLimit?: Prisma.SortOrder
+  updatedById?: Prisma.SortOrderInput | Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.SystemSettingsCountOrderByAggregateInput
   _avg?: Prisma.SystemSettingsAvgOrderByAggregateInput
@@ -273,73 +424,153 @@ export type SystemSettingsScalarWhereWithAggregatesInput = {
   OR?: Prisma.SystemSettingsScalarWhereWithAggregatesInput[]
   NOT?: Prisma.SystemSettingsScalarWhereWithAggregatesInput | Prisma.SystemSettingsScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"SystemSettings"> | string
-  platformName?: Prisma.StringWithAggregatesFilter<"SystemSettings"> | string
-  supportEmail?: Prisma.StringWithAggregatesFilter<"SystemSettings"> | string
+  platformName?: Prisma.StringNullableWithAggregatesFilter<"SystemSettings"> | string | null
+  supportEmail?: Prisma.StringNullableWithAggregatesFilter<"SystemSettings"> | string | null
   trialDays?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
   graceDays?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
+  accessTokenTtlMinutes?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
+  refreshTokenTtlDays?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
+  emailVerifyTtlHours?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
+  passwordResetTtlMinutes?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
+  presignUploadTtlSeconds?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
+  presignDownloadTtlSeconds?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
+  orderPendingTtlMinutes?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
+  invoicePendingTtlHours?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
+  defaultDownloadLimit?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
+  updatedById?: Prisma.StringNullableWithAggregatesFilter<"SystemSettings"> | string | null
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"SystemSettings"> | Date | string
 }
 
 export type SystemSettingsCreateInput = {
   id?: string
-  platformName: string
-  supportEmail: string
-  trialDays: number
-  graceDays: number
+  platformName?: string | null
+  supportEmail?: string | null
+  trialDays?: number
+  graceDays?: number
+  accessTokenTtlMinutes?: number
+  refreshTokenTtlDays?: number
+  emailVerifyTtlHours?: number
+  passwordResetTtlMinutes?: number
+  presignUploadTtlSeconds?: number
+  presignDownloadTtlSeconds?: number
+  orderPendingTtlMinutes?: number
+  invoicePendingTtlHours?: number
+  defaultDownloadLimit?: number
+  updatedById?: string | null
   updatedAt?: Date | string
 }
 
 export type SystemSettingsUncheckedCreateInput = {
   id?: string
-  platformName: string
-  supportEmail: string
-  trialDays: number
-  graceDays: number
+  platformName?: string | null
+  supportEmail?: string | null
+  trialDays?: number
+  graceDays?: number
+  accessTokenTtlMinutes?: number
+  refreshTokenTtlDays?: number
+  emailVerifyTtlHours?: number
+  passwordResetTtlMinutes?: number
+  presignUploadTtlSeconds?: number
+  presignDownloadTtlSeconds?: number
+  orderPendingTtlMinutes?: number
+  invoicePendingTtlHours?: number
+  defaultDownloadLimit?: number
+  updatedById?: string | null
   updatedAt?: Date | string
 }
 
 export type SystemSettingsUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  platformName?: Prisma.StringFieldUpdateOperationsInput | string
-  supportEmail?: Prisma.StringFieldUpdateOperationsInput | string
+  platformName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  supportEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   trialDays?: Prisma.IntFieldUpdateOperationsInput | number
   graceDays?: Prisma.IntFieldUpdateOperationsInput | number
+  accessTokenTtlMinutes?: Prisma.IntFieldUpdateOperationsInput | number
+  refreshTokenTtlDays?: Prisma.IntFieldUpdateOperationsInput | number
+  emailVerifyTtlHours?: Prisma.IntFieldUpdateOperationsInput | number
+  passwordResetTtlMinutes?: Prisma.IntFieldUpdateOperationsInput | number
+  presignUploadTtlSeconds?: Prisma.IntFieldUpdateOperationsInput | number
+  presignDownloadTtlSeconds?: Prisma.IntFieldUpdateOperationsInput | number
+  orderPendingTtlMinutes?: Prisma.IntFieldUpdateOperationsInput | number
+  invoicePendingTtlHours?: Prisma.IntFieldUpdateOperationsInput | number
+  defaultDownloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type SystemSettingsUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  platformName?: Prisma.StringFieldUpdateOperationsInput | string
-  supportEmail?: Prisma.StringFieldUpdateOperationsInput | string
+  platformName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  supportEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   trialDays?: Prisma.IntFieldUpdateOperationsInput | number
   graceDays?: Prisma.IntFieldUpdateOperationsInput | number
+  accessTokenTtlMinutes?: Prisma.IntFieldUpdateOperationsInput | number
+  refreshTokenTtlDays?: Prisma.IntFieldUpdateOperationsInput | number
+  emailVerifyTtlHours?: Prisma.IntFieldUpdateOperationsInput | number
+  passwordResetTtlMinutes?: Prisma.IntFieldUpdateOperationsInput | number
+  presignUploadTtlSeconds?: Prisma.IntFieldUpdateOperationsInput | number
+  presignDownloadTtlSeconds?: Prisma.IntFieldUpdateOperationsInput | number
+  orderPendingTtlMinutes?: Prisma.IntFieldUpdateOperationsInput | number
+  invoicePendingTtlHours?: Prisma.IntFieldUpdateOperationsInput | number
+  defaultDownloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type SystemSettingsCreateManyInput = {
   id?: string
-  platformName: string
-  supportEmail: string
-  trialDays: number
-  graceDays: number
+  platformName?: string | null
+  supportEmail?: string | null
+  trialDays?: number
+  graceDays?: number
+  accessTokenTtlMinutes?: number
+  refreshTokenTtlDays?: number
+  emailVerifyTtlHours?: number
+  passwordResetTtlMinutes?: number
+  presignUploadTtlSeconds?: number
+  presignDownloadTtlSeconds?: number
+  orderPendingTtlMinutes?: number
+  invoicePendingTtlHours?: number
+  defaultDownloadLimit?: number
+  updatedById?: string | null
   updatedAt?: Date | string
 }
 
 export type SystemSettingsUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  platformName?: Prisma.StringFieldUpdateOperationsInput | string
-  supportEmail?: Prisma.StringFieldUpdateOperationsInput | string
+  platformName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  supportEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   trialDays?: Prisma.IntFieldUpdateOperationsInput | number
   graceDays?: Prisma.IntFieldUpdateOperationsInput | number
+  accessTokenTtlMinutes?: Prisma.IntFieldUpdateOperationsInput | number
+  refreshTokenTtlDays?: Prisma.IntFieldUpdateOperationsInput | number
+  emailVerifyTtlHours?: Prisma.IntFieldUpdateOperationsInput | number
+  passwordResetTtlMinutes?: Prisma.IntFieldUpdateOperationsInput | number
+  presignUploadTtlSeconds?: Prisma.IntFieldUpdateOperationsInput | number
+  presignDownloadTtlSeconds?: Prisma.IntFieldUpdateOperationsInput | number
+  orderPendingTtlMinutes?: Prisma.IntFieldUpdateOperationsInput | number
+  invoicePendingTtlHours?: Prisma.IntFieldUpdateOperationsInput | number
+  defaultDownloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type SystemSettingsUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  platformName?: Prisma.StringFieldUpdateOperationsInput | string
-  supportEmail?: Prisma.StringFieldUpdateOperationsInput | string
+  platformName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  supportEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   trialDays?: Prisma.IntFieldUpdateOperationsInput | number
   graceDays?: Prisma.IntFieldUpdateOperationsInput | number
+  accessTokenTtlMinutes?: Prisma.IntFieldUpdateOperationsInput | number
+  refreshTokenTtlDays?: Prisma.IntFieldUpdateOperationsInput | number
+  emailVerifyTtlHours?: Prisma.IntFieldUpdateOperationsInput | number
+  passwordResetTtlMinutes?: Prisma.IntFieldUpdateOperationsInput | number
+  presignUploadTtlSeconds?: Prisma.IntFieldUpdateOperationsInput | number
+  presignDownloadTtlSeconds?: Prisma.IntFieldUpdateOperationsInput | number
+  orderPendingTtlMinutes?: Prisma.IntFieldUpdateOperationsInput | number
+  invoicePendingTtlHours?: Prisma.IntFieldUpdateOperationsInput | number
+  defaultDownloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
+  updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -349,12 +580,31 @@ export type SystemSettingsCountOrderByAggregateInput = {
   supportEmail?: Prisma.SortOrder
   trialDays?: Prisma.SortOrder
   graceDays?: Prisma.SortOrder
+  accessTokenTtlMinutes?: Prisma.SortOrder
+  refreshTokenTtlDays?: Prisma.SortOrder
+  emailVerifyTtlHours?: Prisma.SortOrder
+  passwordResetTtlMinutes?: Prisma.SortOrder
+  presignUploadTtlSeconds?: Prisma.SortOrder
+  presignDownloadTtlSeconds?: Prisma.SortOrder
+  orderPendingTtlMinutes?: Prisma.SortOrder
+  invoicePendingTtlHours?: Prisma.SortOrder
+  defaultDownloadLimit?: Prisma.SortOrder
+  updatedById?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
 export type SystemSettingsAvgOrderByAggregateInput = {
   trialDays?: Prisma.SortOrder
   graceDays?: Prisma.SortOrder
+  accessTokenTtlMinutes?: Prisma.SortOrder
+  refreshTokenTtlDays?: Prisma.SortOrder
+  emailVerifyTtlHours?: Prisma.SortOrder
+  passwordResetTtlMinutes?: Prisma.SortOrder
+  presignUploadTtlSeconds?: Prisma.SortOrder
+  presignDownloadTtlSeconds?: Prisma.SortOrder
+  orderPendingTtlMinutes?: Prisma.SortOrder
+  invoicePendingTtlHours?: Prisma.SortOrder
+  defaultDownloadLimit?: Prisma.SortOrder
 }
 
 export type SystemSettingsMaxOrderByAggregateInput = {
@@ -363,6 +613,16 @@ export type SystemSettingsMaxOrderByAggregateInput = {
   supportEmail?: Prisma.SortOrder
   trialDays?: Prisma.SortOrder
   graceDays?: Prisma.SortOrder
+  accessTokenTtlMinutes?: Prisma.SortOrder
+  refreshTokenTtlDays?: Prisma.SortOrder
+  emailVerifyTtlHours?: Prisma.SortOrder
+  passwordResetTtlMinutes?: Prisma.SortOrder
+  presignUploadTtlSeconds?: Prisma.SortOrder
+  presignDownloadTtlSeconds?: Prisma.SortOrder
+  orderPendingTtlMinutes?: Prisma.SortOrder
+  invoicePendingTtlHours?: Prisma.SortOrder
+  defaultDownloadLimit?: Prisma.SortOrder
+  updatedById?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
@@ -372,12 +632,31 @@ export type SystemSettingsMinOrderByAggregateInput = {
   supportEmail?: Prisma.SortOrder
   trialDays?: Prisma.SortOrder
   graceDays?: Prisma.SortOrder
+  accessTokenTtlMinutes?: Prisma.SortOrder
+  refreshTokenTtlDays?: Prisma.SortOrder
+  emailVerifyTtlHours?: Prisma.SortOrder
+  passwordResetTtlMinutes?: Prisma.SortOrder
+  presignUploadTtlSeconds?: Prisma.SortOrder
+  presignDownloadTtlSeconds?: Prisma.SortOrder
+  orderPendingTtlMinutes?: Prisma.SortOrder
+  invoicePendingTtlHours?: Prisma.SortOrder
+  defaultDownloadLimit?: Prisma.SortOrder
+  updatedById?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
 export type SystemSettingsSumOrderByAggregateInput = {
   trialDays?: Prisma.SortOrder
   graceDays?: Prisma.SortOrder
+  accessTokenTtlMinutes?: Prisma.SortOrder
+  refreshTokenTtlDays?: Prisma.SortOrder
+  emailVerifyTtlHours?: Prisma.SortOrder
+  passwordResetTtlMinutes?: Prisma.SortOrder
+  presignUploadTtlSeconds?: Prisma.SortOrder
+  presignDownloadTtlSeconds?: Prisma.SortOrder
+  orderPendingTtlMinutes?: Prisma.SortOrder
+  invoicePendingTtlHours?: Prisma.SortOrder
+  defaultDownloadLimit?: Prisma.SortOrder
 }
 
 
@@ -388,6 +667,16 @@ export type SystemSettingsSelect<ExtArgs extends runtime.Types.Extensions.Intern
   supportEmail?: boolean
   trialDays?: boolean
   graceDays?: boolean
+  accessTokenTtlMinutes?: boolean
+  refreshTokenTtlDays?: boolean
+  emailVerifyTtlHours?: boolean
+  passwordResetTtlMinutes?: boolean
+  presignUploadTtlSeconds?: boolean
+  presignDownloadTtlSeconds?: boolean
+  orderPendingTtlMinutes?: boolean
+  invoicePendingTtlHours?: boolean
+  defaultDownloadLimit?: boolean
+  updatedById?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["systemSettings"]>
 
@@ -397,6 +686,16 @@ export type SystemSettingsSelectCreateManyAndReturn<ExtArgs extends runtime.Type
   supportEmail?: boolean
   trialDays?: boolean
   graceDays?: boolean
+  accessTokenTtlMinutes?: boolean
+  refreshTokenTtlDays?: boolean
+  emailVerifyTtlHours?: boolean
+  passwordResetTtlMinutes?: boolean
+  presignUploadTtlSeconds?: boolean
+  presignDownloadTtlSeconds?: boolean
+  orderPendingTtlMinutes?: boolean
+  invoicePendingTtlHours?: boolean
+  defaultDownloadLimit?: boolean
+  updatedById?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["systemSettings"]>
 
@@ -406,6 +705,16 @@ export type SystemSettingsSelectUpdateManyAndReturn<ExtArgs extends runtime.Type
   supportEmail?: boolean
   trialDays?: boolean
   graceDays?: boolean
+  accessTokenTtlMinutes?: boolean
+  refreshTokenTtlDays?: boolean
+  emailVerifyTtlHours?: boolean
+  passwordResetTtlMinutes?: boolean
+  presignUploadTtlSeconds?: boolean
+  presignDownloadTtlSeconds?: boolean
+  orderPendingTtlMinutes?: boolean
+  invoicePendingTtlHours?: boolean
+  defaultDownloadLimit?: boolean
+  updatedById?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["systemSettings"]>
 
@@ -415,20 +724,43 @@ export type SystemSettingsSelectScalar = {
   supportEmail?: boolean
   trialDays?: boolean
   graceDays?: boolean
+  accessTokenTtlMinutes?: boolean
+  refreshTokenTtlDays?: boolean
+  emailVerifyTtlHours?: boolean
+  passwordResetTtlMinutes?: boolean
+  presignUploadTtlSeconds?: boolean
+  presignDownloadTtlSeconds?: boolean
+  orderPendingTtlMinutes?: boolean
+  invoicePendingTtlHours?: boolean
+  defaultDownloadLimit?: boolean
+  updatedById?: boolean
   updatedAt?: boolean
 }
 
-export type SystemSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "platformName" | "supportEmail" | "trialDays" | "graceDays" | "updatedAt", ExtArgs["result"]["systemSettings"]>
+export type SystemSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "platformName" | "supportEmail" | "trialDays" | "graceDays" | "accessTokenTtlMinutes" | "refreshTokenTtlDays" | "emailVerifyTtlHours" | "passwordResetTtlMinutes" | "presignUploadTtlSeconds" | "presignDownloadTtlSeconds" | "orderPendingTtlMinutes" | "invoicePendingTtlHours" | "defaultDownloadLimit" | "updatedById" | "updatedAt", ExtArgs["result"]["systemSettings"]>
 
 export type $SystemSettingsPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "SystemSettings"
   objects: {}
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
-    platformName: string
-    supportEmail: string
+    platformName: string | null
+    supportEmail: string | null
     trialDays: number
     graceDays: number
+    accessTokenTtlMinutes: number
+    refreshTokenTtlDays: number
+    emailVerifyTtlHours: number
+    passwordResetTtlMinutes: number
+    presignUploadTtlSeconds: number
+    presignDownloadTtlSeconds: number
+    orderPendingTtlMinutes: number
+    invoicePendingTtlHours: number
+    defaultDownloadLimit: number
+    /**
+     * User (SYSTEM_ADMIN) sửa lần cuối — không đặt FK để xoá user không chặn/đổi cấu hình.
+     */
+    updatedById: string | null
     updatedAt: Date
   }, ExtArgs["result"]["systemSettings"]>
   composites: {}
@@ -858,6 +1190,16 @@ export interface SystemSettingsFieldRefs {
   readonly supportEmail: Prisma.FieldRef<"SystemSettings", 'String'>
   readonly trialDays: Prisma.FieldRef<"SystemSettings", 'Int'>
   readonly graceDays: Prisma.FieldRef<"SystemSettings", 'Int'>
+  readonly accessTokenTtlMinutes: Prisma.FieldRef<"SystemSettings", 'Int'>
+  readonly refreshTokenTtlDays: Prisma.FieldRef<"SystemSettings", 'Int'>
+  readonly emailVerifyTtlHours: Prisma.FieldRef<"SystemSettings", 'Int'>
+  readonly passwordResetTtlMinutes: Prisma.FieldRef<"SystemSettings", 'Int'>
+  readonly presignUploadTtlSeconds: Prisma.FieldRef<"SystemSettings", 'Int'>
+  readonly presignDownloadTtlSeconds: Prisma.FieldRef<"SystemSettings", 'Int'>
+  readonly orderPendingTtlMinutes: Prisma.FieldRef<"SystemSettings", 'Int'>
+  readonly invoicePendingTtlHours: Prisma.FieldRef<"SystemSettings", 'Int'>
+  readonly defaultDownloadLimit: Prisma.FieldRef<"SystemSettings", 'Int'>
+  readonly updatedById: Prisma.FieldRef<"SystemSettings", 'String'>
   readonly updatedAt: Prisma.FieldRef<"SystemSettings", 'DateTime'>
 }
     

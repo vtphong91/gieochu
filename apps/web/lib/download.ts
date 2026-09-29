@@ -10,8 +10,8 @@ import {
 } from "@gieochu/core";
 import { getPrismaClient, withCustomer, withTenant, type ProductFile } from "@gieochu/db";
 import { createPresignedDownload, createS3Client } from "@gieochu/storage";
-import { getEnv } from "@gieochu/config";
 import { requireStorageConfig } from "./product-upload";
+import { getSystemSettings } from "./system-settings";
 
 export interface RequestDownloadResult {
   token: string;
@@ -127,11 +127,12 @@ export async function consumeDownloadToken(rawToken: string, ip: string | undefi
 
   const storageConfig = await requireStorageConfig();
   const client = createS3Client(storageConfig);
-  const env = getEnv();
+  const settings = await getSystemSettings();
   return createPresignedDownload(client, {
     bucket: storageConfig.bucketPrivate,
     key: target.deliverable.objectKey,
     fileName: target.fileName,
-    ttlSeconds: env.PRESIGN_DOWNLOAD_TTL_SECONDS,
+    // ADR-032: ≤600 do validate; createPresignedDownload kẹp lại ≤600 lần nữa phòng DB sai (§7.6).
+    ttlSeconds: settings.presignDownloadTtlSeconds,
   });
 }

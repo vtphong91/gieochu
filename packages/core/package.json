@@ -15,7 +15,8 @@
     "./product-summary": "./src/product/summary.ts",
     "./review": "./src/review/review.ts",
     "./post": "./src/content/post.ts",
-    "./product-path": "./src/product/path.ts"
+    "./product-path": "./src/product/path.ts",
+    "./system-settings": "./src/settings/system-settings.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

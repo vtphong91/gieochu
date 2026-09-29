@@ -3844,6 +3844,16 @@ export const SystemSettingsScalarFieldEnum = {
   supportEmail: 'supportEmail',
   trialDays: 'trialDays',
   graceDays: 'graceDays',
+  accessTokenTtlMinutes: 'accessTokenTtlMinutes',
+  refreshTokenTtlDays: 'refreshTokenTtlDays',
+  emailVerifyTtlHours: 'emailVerifyTtlHours',
+  passwordResetTtlMinutes: 'passwordResetTtlMinutes',
+  presignUploadTtlSeconds: 'presignUploadTtlSeconds',
+  presignDownloadTtlSeconds: 'presignDownloadTtlSeconds',
+  orderPendingTtlMinutes: 'orderPendingTtlMinutes',
+  invoicePendingTtlHours: 'invoicePendingTtlHours',
+  defaultDownloadLimit: 'defaultDownloadLimit',
+  updatedById: 'updatedById',
   updatedAt: 'updatedAt'
 } as const
 

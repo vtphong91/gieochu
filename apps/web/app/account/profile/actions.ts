@@ -52,7 +52,7 @@ export async function completeProfileAction(formData: FormData): Promise<void> {
   });
 
   // Re-issue the access token so its `pc` claim reflects the update immediately.
-  const accessTtl = getAccessTokenTtlSeconds();
+  const accessTtl = await getAccessTokenTtlSeconds();
   const accessToken = await signAccessToken(
     {
       sub: user.id,

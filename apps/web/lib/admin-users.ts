@@ -3,7 +3,9 @@ import { AppError, decideLockUser, forbidden, notFound } from "@gieochu/core";
 import { getEnv } from "@gieochu/config";
 import { getPrismaClient } from "@gieochu/db";
 import { renderVerifyEmailTemplate } from "@gieochu/email";
-import { sendEmailNow } from "./email-dispatch";
+import { EMAIL_NOT_CONFIGURED, emailNotConfiguredError, sendEmailNow } from "./email-dispatch";
+import { getEffectiveBrand } from "./branding";
+import { getSystemSettings } from "./system-settings";
 import type { CurrentUser } from "./session";
 
 /** §"M2" Khoá user: từ chối tự khoá/khoá super admin, thu hồi mọi refresh token khi cho phép. */
@@ -42,14 +44,16 @@ export async function resendVerificationForUser(targetUserId: string): Promise<v
 
   const env = getEnv();
   const now = new Date();
-  const verification = createVerificationToken(env.EMAIL_VERIFY_TTL_HOURS, now);
+  const [settings, brand] = await Promise.all([getSystemSettings(), getEffectiveBrand()]);
+  const verification = createVerificationToken(settings.emailVerifyTtlHours, now);
   await prisma.verificationToken.create({
     data: { userId: user.id, type: "EMAIL_VERIFY", tokenHash: verification.tokenHash, expiresAt: verification.expiresAt },
   });
   const verifyUrl = `${env.APP_URL}/verify-email?token=${verification.token}`;
-  const rendered = renderVerifyEmailTemplate({ appName: env.APP_NAME, verifyUrl });
+  const rendered = renderVerifyEmailTemplate({ appName: brand.name, verifyUrl, expiresInHours: settings.emailVerifyTtlHours });
   const result = await sendEmailNow({ type: "verify_email", to: user.email, subject: rendered.subject, html: rendered.html, text: rendered.text });
   if (!result.ok) {
+    if (result.code === EMAIL_NOT_CONFIGURED) throw emailNotConfiguredError();
     throw new AppError({ code: "EMAIL_SEND_FAILED", message: `Gửi email thất bại: ${result.error}`, httpStatus: 502 });
   }
 }

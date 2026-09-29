@@ -5,6 +5,7 @@ import { getEnv } from "@gieochu/config";
 import { getPrismaClient, withSystemJob } from "@gieochu/db";
 import { getDecryptedSystemStorageConfig } from "./system-storage";
 import { sendEmailNow } from "./email-dispatch";
+import { getEffectiveBrand } from "./branding";
 
 /**
  * §"M5" file.scan job — run after `complete` confirms the object exists.
@@ -51,8 +52,9 @@ export async function runFileScan(productFileId: string): Promise<void> {
       prisma.user.findUniqueOrThrow({ where: { id: tenant.ownerId } }),
       withSystemJob((tx) => tx.product.findUniqueOrThrow({ where: { id: file.productId } })),
     ]);
+    const brand = await getEffectiveBrand();
     const rendered = renderProductFileRejectedEmail({
-      appName: env.APP_NAME,
+      appName: brand.name,
       productTitle: product.title,
       fileName: file.fileName,
       productUrl: `${env.APP_URL}/studio/${tenant.slug}/products/${product.id}`,

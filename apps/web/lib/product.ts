@@ -26,6 +26,7 @@ import { assertTenantCanWrite } from "./tenant-write-guard";
 import { assertPlanLimit } from "./plan-limits";
 import { listActiveCategoriesForStudio, type StudioCategoryOption } from "./document-category";
 import { getProductCoverUrl, hasProductCover } from "./product-cover";
+import { getSystemSettings } from "./system-settings";
 
 /** ADR-026: nhãn hiển thị của link tài liệu ngoài (lưu ở `product_files.fileName`). */
 export const EXTERNAL_LINK_LABEL_MAX_LENGTH = 200;
@@ -158,6 +159,10 @@ export async function createProduct(tenantId: string, input: CreateProductInput)
   const existing = await withTenant(tenantId, (tx) => tx.product.findMany({ where: { tenantId }, select: { slug: true } }));
   const slug = suggestSlug(base, [...existing.map((p) => p.slug), ...RESERVED_PRODUCT_SLUGS]);
 
+  // ADR-032: không nhập giới hạn lượt tải → mặc định hệ thống (System Center, 0 = không giới hạn).
+  // Chỉ áp cho sản phẩm tạo mới; sản phẩm cũ/entitlement đã cấp giữ nguyên snapshot.
+  const downloadLimit = input.downloadLimit ?? (await getSystemSettings()).defaultDownloadLimit;
+
   return withTenant(tenantId, (tx) =>
     tx.product.create({
       data: {
@@ -175,7 +180,7 @@ export async function createProduct(tenantId: string, input: CreateProductInput)
         salePriceVnd: input.salePriceVnd ?? null,
         saleStartsAt: input.saleStartsAt ?? null,
         saleEndsAt: input.saleEndsAt ?? null,
-        downloadLimit: input.downloadLimit,
+        downloadLimit,
       },
     }),
   );

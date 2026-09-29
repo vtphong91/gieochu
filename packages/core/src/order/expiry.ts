@@ -1,4 +1,4 @@
-/** §"M8": "Đơn PENDING hết hạn sau 60 phút (cấu hình được)" — `ORDER_PENDING_TTL_MINUTES`. */
+/** §"M8": "Đơn PENDING hết hạn sau 60 phút (cấu hình được)" — `SystemSettings.orderPendingTtlMinutes` (ADR-032). */
 export function computeOrderExpiresAt(now: Date, pendingTtlMinutes: number): Date {
   return new Date(now.getTime() + pendingTtlMinutes * 60 * 1000);
 }

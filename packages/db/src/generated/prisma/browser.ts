@@ -152,9 +152,14 @@ export type ProductFile = Prisma.ProductFileModel
 /**
  * Model SystemSettings
  * §5.1 Layer System — system_settings. Single row (id fixed to "default").
- * trialDays/graceDays seed from the TRIAL_DAYS/GRACE_DAYS env defaults
- * (packages/config) but are the live source of truth once this row exists —
- * business logic (M4 onboarding, M3 sweep) reads from here, not the env var.
+ * ADR-032: cấu hình hệ thống do System Admin sửa ở /admin/settings/general
+ * (apps/web/lib/system-settings.ts). 11 cột Int dưới đây là nguồn sự thật
+ * duy nhất (không còn env TRIAL_DAYS/ACCESS_TOKEN_TTL...). Mặc định + giới
+ * hạn khai báo ở packages/core/src/settings/system-settings.ts — DB default
+ * chỉ để dòng cũ/dòng mới luôn có giá trị; lúc đọc vẫn parse phòng thủ (giá
+ * trị ngoài khoảng → mặc định + log warn). Đổi giá trị chỉ áp cho thao tác mới.
+ * platformName/supportEmail: cột cũ (form /admin/settings) — nullable từ
+ * ADR-032; tên nền tảng hiệu lực lấy từ SystemBranding, không đọc cột này.
  */
 export type SystemSettings = Prisma.SystemSettingsModel
 /**
@@ -210,7 +215,8 @@ export type DocumentCategory = Prisma.DocumentCategoryModel
  * Nhận diện thương hiệu nền tảng (không phải branding riêng của từng
  * tenant — đó là `Tenant.branding`). Tất cả field đều nullable: null nghĩa
  * là "dùng mặc định" — brandName/brandSlogan rỗng thì `getEffectiveBrand()`
- * (apps/web/lib/branding.ts) rơi về `getBrand()` (env, §"packages/config").
+ * (apps/web/lib/branding.ts) rơi về `DEFAULT_BRAND` (@gieochu/config/brand,
+ * ADR-032 — không còn env APP_NAME/APP_SLOGAN).
  * Không đặt bảng này trong @gieochu/config vì package đó không được phép
  * phụ thuộc @gieochu/db (packages/db mới là bên phụ thuộc config, ngược lại
  * sẽ tạo circular dependency).

@@ -45,7 +45,7 @@ async function mockCookieFor(userId: string): Promise<void> {
   const accessToken = await signAccessToken(
     { sub: userId, sid: "test-family", role: "USER", ver: true, pc: true },
     getJwtContext(),
-    getAccessTokenTtlSeconds(),
+    await getAccessTokenTtlSeconds(),
   );
   vi.doMock("next/headers", () => ({
     cookies: async () => ({

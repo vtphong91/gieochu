@@ -1,4 +1,4 @@
-import { getBrand } from "@gieochu/config/brand";
+import { DEFAULT_BRAND } from "@gieochu/config/brand";
 import { requireAdminAccess } from "../../../../lib/page-guards";
 import { getSystemBranding } from "../../../../lib/branding";
 import { AdminPageHeader } from "../../_ui/kit";
@@ -7,7 +7,9 @@ import { BrandingEditor, ResetBrandingButton } from "./branding-editor";
 export default async function AdminBrandingSettingsPage() {
   await requireAdminAccess("/admin/settings/branding");
 
-  const [branding, envBrand] = await Promise.all([getSystemBranding(), Promise.resolve(getBrand())]);
+  const branding = await getSystemBranding();
+  // ADR-032: giá trị dự phòng khi ô tên/slogan để trống là DEFAULT_BRAND (không còn env).
+  const envBrand = DEFAULT_BRAND;
 
   return (
     <main className="px-5 py-8 lg:px-8">

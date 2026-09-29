@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { getEnv } from "@gieochu/config";
 import { getPrismaClient } from "@gieochu/db";
 import { requireAdminAccess } from "../../../lib/page-guards";
+import { getEffectiveBrand } from "../../../lib/branding";
+import { getSystemSettings } from "../../../lib/system-settings";
 import { AdminPageHeader, SettingsGrid } from "../_ui/kit";
 import { SettingsForm } from "./settings-form";
 
@@ -9,8 +10,11 @@ export default async function AdminSettingsPage() {
   await requireAdminAccess("/admin/settings");
 
   const prisma = getPrismaClient();
-  const settings = await prisma.systemSettings.findUnique({ where: { id: "default" } });
-  const env = getEnv();
+  const [settings, effective, brand] = await Promise.all([
+    prisma.systemSettings.findUnique({ where: { id: "default" } }),
+    getSystemSettings(),
+    getEffectiveBrand(),
+  ]);
 
   return (
     <main className="px-5 py-8 lg:px-8">
@@ -19,10 +23,10 @@ export default async function AdminSettingsPage() {
       <SettingsGrid>
         <SettingsForm
           initial={{
-            platformName: settings?.platformName ?? env.APP_NAME,
+            platformName: settings?.platformName ?? brand.name,
             supportEmail: settings?.supportEmail ?? "",
-            trialDays: settings?.trialDays ?? env.TRIAL_DAYS,
-            graceDays: settings?.graceDays ?? env.GRACE_DAYS,
+            trialDays: effective.trialDays,
+            graceDays: effective.graceDays,
           }}
         />
       </SettingsGrid>

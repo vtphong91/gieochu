@@ -36,7 +36,7 @@ Cách làm này khớp đúng hướng dẫn chính thức của Prisma cho tíc
 ## 4. Hệ Quả & Ràng Buộc Kỹ Thuật (Consequences & Rules)
 * **Không dùng chung một URL cho cả hai mục đích:** vi phạm sẽ khiến CLI migrate qua pooler (rủi ro với DDL) hoặc runtime app mở quá nhiều kết nối trực tiếp.
 * **Driver Neon serverless nói chuyện qua giao thức WebSocket/HTTP riêng của Neon** — không phải giao thức Postgres TCP thuần. Vì vậy một Postgres container thường (`postgres:16` trong `docker-compose.yml`, dùng khi cần `psql` kiểm tra thủ công) **không** thể thay thế Neon nếu muốn giữ đúng `@prisma/adapter-neon` — muốn chạy hoàn toàn offline cần thêm Neon local proxy (`neon-proxy`), việc này chưa triển khai, đã ghi vào `docs/BACKLOG.md`.
-* **Về sau tách thêm `PRISMA_MIGRATE_URL`:** khi bổ sung role Postgres riêng cho app (xem [[ADR-003-Postgres-App-Role-RLS]]), `DIRECT_URL` được tái sử dụng làm URL cho role app không có quyền DDL (dùng cho `pg-boss`), còn một biến mới `PRISMA_MIGRATE_URL` (role owner) đảm nhận vai trò CLI migrate/generate.
+* **Về sau tách thêm `PRISMA_MIGRATE_URL`:** khi bổ sung role Postgres riêng cho app (xem [[ADR-003-Postgres-App-Role-RLS]]), `DIRECT_URL` được tái sử dụng làm URL cho role app không có quyền DDL (dùng cho `pg-boss`), còn một biến mới `PRISMA_MIGRATE_URL` (role owner) đảm nhận vai trò CLI migrate/generate. *(Từ ADR-031, 2026-09-29: `generate` và `db seed` không còn cần biến này — xem [[01-Architecture-Decisions/ADR-017-Vercel-Deploy-Build-Without-Env|ADR-017 KB]].)*
 
 ---
 

@@ -7,10 +7,9 @@ import {
   signAccessToken,
 } from "@gieochu/auth";
 import { AppError, unauthorized } from "@gieochu/core";
-import { getEnv } from "@gieochu/config";
 import { getPrismaClient } from "@gieochu/db";
 import { applyAuthCookies, clearAuthCookies, REFRESH_COOKIE_NAME } from "../../../../lib/cookies";
-import { getAccessTokenTtlSeconds, getJwtContext } from "../../../../lib/jwt-context";
+import { getAccessTokenTtlSeconds, getJwtContext, getRefreshTokenTtl } from "../../../../lib/jwt-context";
 import { getRequestId, handleApiError } from "../../../../lib/api-response";
 
 export async function POST(request: NextRequest) {
@@ -60,8 +59,8 @@ export async function POST(request: NextRequest) {
       return response;
     }
 
-    const env = getEnv();
-    const rotated = rotateRefreshToken(record.familyId, env.REFRESH_TOKEN_TTL_DAYS, now);
+    const [refreshTtl, accessTtl] = await Promise.all([getRefreshTokenTtl(), getAccessTokenTtlSeconds()]);
+    const rotated = rotateRefreshToken(record.familyId, refreshTtl.days, now);
     const [user, profile] = await Promise.all([
       prisma.user.findUniqueOrThrow({ where: { id: record.userId } }),
       prisma.userProfile.findUnique({ where: { userId: record.userId } }),
@@ -79,7 +78,6 @@ export async function POST(request: NextRequest) {
       await tx.refreshToken.update({ where: { id: record.id }, data: { replacedById: created.id } });
     });
 
-    const accessTtl = getAccessTokenTtlSeconds();
     const accessToken = await signAccessToken(
       {
         sub: user.id,
@@ -97,7 +95,7 @@ export async function POST(request: NextRequest) {
       accessToken,
       accessTtlSeconds: accessTtl,
       refreshToken: rotated.token,
-      refreshTtlSeconds: env.REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60,
+      refreshTtlSeconds: refreshTtl.seconds,
     });
     return response;
   } catch (error) {

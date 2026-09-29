@@ -127,12 +127,11 @@ async function main() {
   await prisma.systemSettings.upsert({
     where: { id: "default" },
     update: {},
+    // ADR-032: 11 khoá cấu hình lấy DB default (= mặc định trong packages/core/src/settings), không đọc
+    // env. Tên nền tảng lấy từ SystemBranding/DEFAULT_BRAND — không seed platformName.
     create: {
       id: "default",
-      platformName: process.env.APP_NAME ?? "Gieo Chữ",
       supportEmail: process.env.SEED_SUPPORT_EMAIL ?? "support@gieochu.net",
-      trialDays: Number(process.env.TRIAL_DAYS ?? 14),
-      graceDays: Number(process.env.GRACE_DAYS ?? 7),
     },
   });
   console.log("[seed] system settings ready");

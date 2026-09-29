@@ -9,6 +9,8 @@ import { getRequestId, handleApiError, parseJsonBody } from "../../../../lib/api
 import { checkRateLimit } from "../../../../lib/rate-limit";
 import { getClientIp } from "../../../../lib/request-meta";
 import { sendEmailNow } from "../../../../lib/email-dispatch";
+import { getEffectiveBrand } from "../../../../lib/branding";
+import { getSystemSettings } from "../../../../lib/system-settings";
 
 const registerSchema = z.object({
   email: z.string().email("Email không hợp lệ."),
@@ -54,7 +56,8 @@ export async function POST(request: Request) {
     const passwordHash = await hashPassword(body.password);
     const now = new Date();
     const env = getEnv();
-    const verification = createVerificationToken(env.EMAIL_VERIFY_TTL_HOURS, now);
+    const settings = await getSystemSettings();
+    const verification = createVerificationToken(settings.emailVerifyTtlHours, now);
 
     const user = await prisma.$transaction(async (tx) => {
       const created = await tx.user.create({
@@ -80,7 +83,8 @@ export async function POST(request: Request) {
 
     const next = body.accountType === "TENANT" ? "/studio" : "/";
     const verifyUrl = `${env.APP_URL}/verify-email?token=${verification.token}&next=${encodeURIComponent(next)}`;
-    const rendered = renderVerifyEmailTemplate({ appName: env.APP_NAME, verifyUrl });
+    const brand = await getEffectiveBrand();
+    const rendered = renderVerifyEmailTemplate({ appName: brand.name, verifyUrl, expiresInHours: settings.emailVerifyTtlHours });
     // Gửi SMTP đồng bộ ngay — không qua hàng đợi/worker. Không chặn đăng ký nếu gửi
     // lỗi (tài khoản vẫn tạo thành công, user có thể tự bấm "Gửi lại email kích hoạt").
     const sent = await sendEmailNow({ type: "verify_email", to: user.email, subject: rendered.subject, html: rendered.html, text: rendered.text });

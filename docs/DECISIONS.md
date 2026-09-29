@@ -667,3 +667,54 @@
   `packages/core/src/product/path.ts` (subpath client `@gieochu/core/product-path`); canonical là URL tuyệt đối.
   Slug tự nhập trùng từ dành riêng → `INVALID_SLUG`; slug tự sinh trùng → thêm hậu tố. Action sản phẩm nay
   revalidate cả trang tài liệu và storefront. **Trước khi deploy prod phải quét slug trùng từ dành riêng.**
+
+## ADR-031 — Deploy Vercel: build không cần DB/env; `PRISMA_MIGRATE_URL` không bao giờ ở runtime
+
+- **Bối cảnh (2026-09-29):** Deploy Vercel lỗi: (1) Vercel tự chạy `turbo run build` → `prisma generate` đòi
+  `PRISMA_MIGRATE_URL`; (2) `next build` prerender trang đọc DB/env → fail-fast khi build; (3) `env.ts` bắt buộc
+  `PRISMA_MIGRATE_URL` (role owner Neon, quyền DDL, bỏ qua RLS) cả lúc chạy app → buộc đưa secret owner lên Vercel.
+- **Quyết định (chủ dự án duyệt mục 3):**
+  1. `apps/web/vercel.json`: `framework: "nextjs"`, `buildCommand: "next build"`; Vercel Root Directory = `apps/web`,
+     không override Build Command trên dashboard. Prisma client đã sinh sẵn được commit (`packages/db/src/generated`).
+  2. Root `app/layout.tsx` `dynamic = "force-dynamic"` — mọi trang render lúc request; `next build` không cần biến
+     env nào. Kèm lợi ích: nonce CSP (ADR-016) gắn được cho cả `/login`, `/register`, `/pricing`…; branding không bị
+     đóng băng từ lúc build. Đổi lại 7 trang trước đây static tốn 1 truy vấn branding/request.
+  3. `PRISMA_MIGRATE_URL` **bị xoá khỏi schema env runtime**; chỉ CLI Prisma (`migrate`, `studio`) và
+     `setup-app-role` đọc trực tiếp và báo lỗi rõ khi thiếu. `prisma.config.ts` bỏ `datasource` khi thiếu biến (không
+     URL giả). `db seed` chạy bằng `DATABASE_URL` (`gieochu_app`). **Không đặt biến này trên Vercel/runtime**; nếu từng
+     đặt thì xoá và đổi mật khẩu role owner.
+  4. Migration production chạy ngoài Vercel (máy dev/CI) bằng `pnpm db:migrate`. Worker pg-boss (`worker.ts`) cần
+     nơi chạy lâu dài riêng — chưa có (BACKLOG).
+
+## ADR-032 — Cấu hình hệ thống và thương hiệu lấy từ System Center (DB); env chỉ còn hạ tầng + secret
+
+- **Bối cảnh (2026-09-29, chủ dự án):** Env Vercel chứa nhiều biến nghiệp vụ/thương hiệu. Chủ dự án yêu cầu mọi cấu
+  hình tuỳ chọn và chuỗi thương hiệu quản lý ở System Center, lưu DB; chọn đưa cả TTL bảo mật vào System Center
+  **có giới hạn**, và refactor xong mới deploy.
+- **Quyết định:**
+  1. **Env runtime chỉ còn:** `APP_URL`, `DATABASE_URL`, `DIRECT_URL`, `JWT_ACCESS_SECRET`, `JWT_ISSUER`,
+     `JWT_AUDIENCE`, `PAYMENT_ENCRYPTION_KEY`, `STORAGE_ENCRYPTION_KEY` (+ `NODE_ENV` do nền tảng đặt). Biến dev/CLI
+     (`PRISMA_MIGRATE_URL`, `TEST_DATABASE_URL`, fallback email Mailpit, `MOMO_SANDBOX_ENDPOINT`, `ALLOW_DEMO_SEED`)
+     không thuộc runtime prod.
+  2. **Thương hiệu:** `APP_NAME/APP_SHORT_NAME/APP_SLOGAN` bỏ khỏi env. Nguồn duy nhất là `SystemBranding` (DB, trang
+     `/admin/settings/branding`), fallback là hằng mặc định **một chỗ** trong `@gieochu/config/brand` khi DB trống.
+     Mọi nơi đọc thương hiệu (metadata, email, trang, job) đi qua hàm async đọc DB (`getEffectiveBrand`).
+  3. **Cấu hình hệ thống** — bảng L1 mới (1 dòng), trang `/admin/settings/general`, đọc có cache theo request,
+     đổi có hiệu lực cho **thao tác mới** (không hồi tố token/đơn/hoá đơn đã tạo). Giá trị mặc định + giới hạn:
+     | Khoá | Mặc định | Giới hạn |
+     |---|---|---|
+     | Access token (phút) | 15 | 5–60 |
+     | Refresh token (ngày) | 7 | 1–30 |
+     | Link xác minh email (giờ) | 24 | 1–72 |
+     | Link đặt lại mật khẩu (phút) | 30 | 10–120 |
+     | Presign upload (giây) | 600 | 60–3600 |
+     | Presign download (giây) | 600 | 60–600 (§7.6: ≤10 phút) |
+     | Dùng thử (ngày) | 14 | 0–60 |
+     | Ân hạn (ngày) | 7 | 0–30 |
+     | Đơn chờ thanh toán (phút) | 60 | 15–1440 |
+     | Hoá đơn chờ (giờ) | 24 | 1–168 |
+     | Lượt tải mặc định | 5 | 0–1000 (0 = không giới hạn) |
+     Validate ở server bằng zod (ngoài khoảng → từ chối). Chỉ `SYSTEM_ADMIN` sửa; ghi log thay đổi (audit_logs khi có M12).
+  4. **Múi giờ hiển thị** là hằng `Asia/Ho_Chi_Minh` trong code (CLAUDE.md), không cấu hình.
+- **Hệ quả:** các chỗ đọc env đồng bộ (auth/JWT TTL, presign, email verify/reset, order/subscription sweep, sản phẩm)
+  chuyển sang đọc cấu hình async; worker đọc lại mỗi lần chạy job.

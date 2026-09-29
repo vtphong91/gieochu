@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { getBrand } from "@gieochu/config/brand";
+import { getEffectiveBrand } from "../../lib/branding";
 import { brandColors } from "@gieochu/config/theme";
 import { requireAdminAccess } from "../../lib/page-guards";
 import {
@@ -128,7 +128,7 @@ function StatCard({
 
 export default async function AdminDashboardPage() {
   await requireAdminAccess("/admin");
-  const brand = getBrand();
+  const brand = await getEffectiveBrand();
 
   const [summary, monthlyRevenue, recentPayments, recentTenants, planDistribution] = await Promise.all([
     getAdminDashboardSummary(),

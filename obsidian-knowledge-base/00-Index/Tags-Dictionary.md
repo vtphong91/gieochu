@@ -4,7 +4,7 @@ tags:
   - index
   - taxonomy
 date: 2026-09-26
-updated: 2026-09-28
+updated: 2026-09-29
 author: System Architect
 ---
 
@@ -62,6 +62,7 @@ giúp phân loại nội dung và tra cứu nhanh cho người và AI agent đ�
 | `#ui-ux` | Giao diện & trải nghiệm: bố cục, component, accessibility, responsive (owner thiết kế: Phong) |
 | `#design-system` | Design token (màu, font trong `theme.ts`), kit component dùng chung `admin/_ui/` |
 | `#seo` | URL công khai/canonical, metadata, sitemap/robots (vd URL tài liệu rút gọn — ADR-030) |
+| `#deployment` | Triển khai production: hosting Vercel, env runtime, migration prod, worker (vd ADR-031, `Deploy-Vercel-Runbook`) |
 | `#dev-tool` | Công cụ/script **chỉ dành cho môi trường dev** (vd dữ liệu demo `demo:seed`) — không chạy trên staging/production |
 
 ---

@@ -190,7 +190,7 @@ describe("M1 auth", () => {
       const accessToken = await signAccessToken(
         { sub: user.id, sid: "test-family", role: "USER", ver: true, pc: false },
         getJwtContext(),
-        getAccessTokenTtlSeconds(),
+        await getAccessTokenTtlSeconds(),
       );
 
       vi.doMock("next/headers", () => ({

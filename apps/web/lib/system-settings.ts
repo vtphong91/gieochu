@@ -1,0 +1,133 @@
+import { cache } from "react";
+import {
+  AppError,
+  ErrorCodes,
+  logger,
+  parseStoredSystemSettings,
+  SYSTEM_SETTING_KEYS,
+  SYSTEM_SETTINGS_BOUNDS,
+  systemSettingsSchema,
+  type SystemSettingKey,
+  type SystemSettingsValues,
+} from "@gieochu/core";
+import { getPrismaClient } from "@gieochu/db";
+import type { CurrentUser } from "./session";
+
+/**
+ * ADR-032 mục 3 — cấu hình hệ thống (bảng L1 `system_settings`, 1 dòng). Mặc định + giới hạn ở
+ * `@gieochu/core` (`SYSTEM_SETTINGS_BOUNDS`). Mọi nơi trước đây đọc env TTL/trial/grace... gọi hàm này
+ * rồi truyền giá trị xuống package thuần (auth/storage/core không đọc DB).
+ */
+
+const CONFIG_ID = "default";
+
+let warnedMissingRow = false;
+
+async function loadSystemSettings(): Promise<SystemSettingsValues> {
+  const row = await getPrismaClient().systemSettings.findUnique({ where: { id: CONFIG_ID } });
+  const parsed = parseStoredSystemSettings(row);
+  if (parsed.missing) {
+    if (!warnedMissingRow) {
+      warnedMissingRow = true;
+      logger.warn("system_settings: chưa có dòng cấu hình — dùng giá trị mặc định (ADR-032)");
+    }
+  } else if (parsed.invalidKeys.length > 0) {
+    logger.warn({ invalidKeys: parsed.invalidKeys }, "system_settings: giá trị thiếu/ngoài giới hạn — dùng mặc định cho các khoá này");
+  }
+  return parsed.values;
+}
+
+/**
+ * Cấu hình hiệu lực. Trong request (RSC/Route Handler/Server Action) `cache()` dedupe theo request;
+ * ngoài React (worker pg-boss, script) `cache()` là passthrough → mỗi lần gọi đọc lại DB, nên worker
+ * gọi hàm này mỗi lần chạy job để nhận thay đổi mới mà không cần khởi động lại.
+ */
+export const getSystemSettings = cache(loadSystemSettings);
+
+export interface SystemSettingsPageData {
+  /** Giá trị hiệu lực (đã parse phòng thủ). */
+  values: SystemSettingsValues;
+  /** Mặc định + giới hạn + nhãn + đơn vị theo khoá (cũng import được ở client qua `@gieochu/core/system-settings`). */
+  bounds: typeof SYSTEM_SETTINGS_BOUNDS;
+  /** Khoá đang lưu sai/ngoài khoảng trong DB (đang dùng mặc định) — UI nên cảnh báo. */
+  invalidKeys: SystemSettingKey[];
+  /** `true` khi chưa có dòng cấu hình (mọi giá trị là mặc định). */
+  isDefault: boolean;
+  updatedAt: Date | null;
+  updatedByEmail: string | null;
+}
+
+/** Loader cho trang `/admin/settings/general` — người gọi đã `requireAdminAccess()`. Không cache. */
+export async function getSystemSettingsPageData(): Promise<SystemSettingsPageData> {
+  const prisma = getPrismaClient();
+  const row = await prisma.systemSettings.findUnique({ where: { id: CONFIG_ID } });
+  const parsed = parseStoredSystemSettings(row);
+  const updatedBy = row?.updatedById
+    ? await prisma.user.findUnique({ where: { id: row.updatedById }, select: { email: true } })
+    : null;
+  return {
+    values: parsed.values,
+    bounds: SYSTEM_SETTINGS_BOUNDS,
+    invalidKeys: parsed.invalidKeys,
+    isDefault: parsed.missing,
+    updatedAt: row?.updatedAt ?? null,
+    updatedByEmail: updatedBy?.email ?? null,
+  };
+}
+
+export type SystemSettingsFieldErrors = Partial<Record<SystemSettingKey, string>>;
+
+export interface SystemSettingsActionState {
+  ok: boolean;
+  /** Thông báo tổng (tiếng Việt) khi `ok=false`. */
+  error?: string;
+  /** `VALIDATION_ERROR` | `UNAUTHORIZED` | `FORBIDDEN` | `INTERNAL_ERROR`. */
+  code?: string;
+  /** Lỗi theo từng field (tên field = khoá `SystemSettingKey`). */
+  fieldErrors?: SystemSettingsFieldErrors;
+  /** Giá trị đã lưu (khi `ok=true`). */
+  values?: SystemSettingsValues;
+}
+
+/**
+ * Validate (zod, ngoài khoảng → từ chối cả form) rồi ghi 11 khoá, log thay đổi cũ→mới. Người gọi
+ * (Server Action) đã `requireRole("SYSTEM_ADMIN")`. Chỉ ghi các khoá cấu hình — không đụng
+ * `platformName/supportEmail` (cột cũ).
+ */
+export async function saveSystemSettings(actor: CurrentUser, formData: FormData): Promise<SystemSettingsActionState> {
+  const raw = Object.fromEntries(SYSTEM_SETTING_KEYS.map((key) => [key, formData.get(key) ?? undefined]));
+  const parsed = systemSettingsSchema.safeParse(raw);
+  if (!parsed.success) {
+    const fieldErrors: SystemSettingsFieldErrors = {};
+    for (const issue of parsed.error.issues) {
+      const key = issue.path[0] as SystemSettingKey | undefined;
+      if (key && !fieldErrors[key]) fieldErrors[key] = issue.message;
+    }
+    return { ok: false, code: ErrorCodes.VALIDATION_ERROR, error: "Có giá trị không hợp lệ, vui lòng kiểm tra lại.", fieldErrors };
+  }
+
+  const next = parsed.data as SystemSettingsValues;
+  const previous = await loadSystemSettings();
+  await getPrismaClient().systemSettings.upsert({
+    where: { id: CONFIG_ID },
+    update: { ...next, updatedById: actor.userId },
+    create: { id: CONFIG_ID, ...next, updatedById: actor.userId },
+  });
+
+  const changes = Object.fromEntries(
+    SYSTEM_SETTING_KEYS.filter((key) => previous[key] !== next[key]).map((key) => [key, { from: previous[key], to: next[key] }]),
+  );
+  // TODO(M12): ghi thêm audit_logs khi bảng đó có (ADR-032 mục 3).
+  logger.info({ actorId: actor.userId, changes }, "system_settings: cập nhật cấu hình hệ thống");
+
+  return { ok: true, values: next };
+}
+
+/** Chuyển lỗi quyền (AppError) thành state trả về form thay vì ném ra error boundary. */
+export function systemSettingsErrorState(error: unknown): SystemSettingsActionState {
+  if (error instanceof AppError && error.expose) {
+    return { ok: false, code: error.code, error: error.message };
+  }
+  logger.error({ err: error }, "system_settings: lưu cấu hình thất bại");
+  return { ok: false, code: ErrorCodes.INTERNAL_ERROR, error: "Không lưu được cấu hình, vui lòng thử lại." };
+}

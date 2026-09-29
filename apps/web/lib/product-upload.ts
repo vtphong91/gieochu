@@ -12,10 +12,10 @@ import {
   type PresignedUpload,
   type ProductObjectKeyKind,
 } from "@gieochu/storage";
-import { getEnv } from "@gieochu/config";
 import { getPrismaClient, withTenant, type ProductFile } from "@gieochu/db";
 import { assertPlanLimit } from "./plan-limits";
 import { getDecryptedSystemStorageConfig } from "./system-storage";
+import { getSystemSettings } from "./system-settings";
 import { enqueueFileScan } from "./jobs";
 
 export async function requireStorageConfig() {
@@ -82,7 +82,7 @@ export async function presignProductFileUpload(tenantId: string, productId: stri
   await assertPlanLimit(tenantId, "storage", input.sizeBytes);
 
   const storageConfig = await requireStorageConfig();
-  const env = getEnv();
+  const settings = await getSystemSettings();
   const objectKey = buildProductFileKey(tenantId, productId, randomUUID(), input.fileName);
   const client = createS3Client(storageConfig);
 
@@ -91,7 +91,7 @@ export async function presignProductFileUpload(tenantId: string, productId: stri
     key: objectKey,
     sizeBytes: input.sizeBytes,
     mimeType: input.mimeType,
-    ttlSeconds: env.PRESIGN_UPLOAD_TTL_SECONDS,
+    ttlSeconds: settings.presignUploadTtlSeconds,
   });
 
   return { objectKey, upload };
@@ -214,7 +214,7 @@ export async function presignCoverImageUpload(tenantId: string, productId: strin
   }
 
   const storageConfig = await requireStorageConfig();
-  const env = getEnv();
+  const settings = await getSystemSettings();
   const objectKey = buildProductFileKey(tenantId, productId, "cover", input.fileName);
   const client = createS3Client(storageConfig);
 
@@ -223,7 +223,7 @@ export async function presignCoverImageUpload(tenantId: string, productId: strin
     key: objectKey,
     sizeBytes: input.sizeBytes,
     mimeType: input.mimeType,
-    ttlSeconds: env.PRESIGN_UPLOAD_TTL_SECONDS,
+    ttlSeconds: settings.presignUploadTtlSeconds,
   });
 
   return { objectKey, upload };

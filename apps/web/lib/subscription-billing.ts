@@ -9,6 +9,7 @@ import {
 import { getPrismaClient, Prisma } from "@gieochu/db";
 import { buildWebhookNotifyUrl, decryptSecret, getProvider, type PaymentProviderId } from "@gieochu/payments";
 import { getEnv } from "@gieochu/config";
+import { getSystemSettings } from "./system-settings";
 
 const INVOICE_CODE_RETRIES = 10;
 
@@ -73,7 +74,8 @@ export async function createRenewalInvoice(tenantId: string, input: CreateRenewa
 
   const { periodStart, periodEnd } = computeRenewalPeriod(now, subscription.currentPeriodEnd, plan);
   const code = await resolveUniqueInvoiceCode();
-  const dueAt = new Date(now.getTime() + env.INVOICE_PENDING_TTL_HOURS * 60 * 60 * 1000);
+  const { invoicePendingTtlHours } = await getSystemSettings();
+  const dueAt = new Date(now.getTime() + invoicePendingTtlHours * 60 * 60 * 1000);
 
   const checkout = await getProvider(input.provider).createCheckout({
     scope: { kind: "PLATFORM" },

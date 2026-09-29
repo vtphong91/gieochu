@@ -29,8 +29,11 @@ async function main() {
   await queue.ensureQueue(QUEUE_NAMES.FILE_SCAN);
   await queue.ensureQueue(QUEUE_NAMES.PAYMENT_PROCESS);
   await queue.ensureQueue(QUEUE_NAMES.ORDER_SWEEP);
-  // Every 5 min, not hourly like subscription.sweep — ORDER_PENDING_TTL_MINUTES defaults to
-  // 60, so an hourly cadence could leave an expired order showing PENDING for up to an hour.
+  // Every 5 min, not hourly like subscription.sweep — the order pending TTL (SystemSettings
+  // `orderPendingTtlMinutes`, ADR-032, default 60, min 15) is short enough that an hourly cadence could
+  // leave an expired order showing PENDING for up to an hour. Jobs read SystemSettings/branding from DB
+  // on every run (getSystemSettings()/getEffectiveBrand() — React cache() is a passthrough outside a
+  // request), so System Center changes apply without restarting the worker.
   await queue.schedule(QUEUE_NAMES.ORDER_SWEEP, "*/5 * * * *");
 
   await queue.work<Record<string, never>>(QUEUE_NAMES.SUBSCRIPTION_SWEEP, async () => {

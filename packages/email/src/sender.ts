@@ -86,19 +86,24 @@ export function createResendSender(options: { apiKey: string; from: string }): E
 
 export interface EmailEnv {
   EMAIL_PROVIDER: "smtp" | "resend";
-  EMAIL_FROM: string;
+  EMAIL_FROM?: string;
   SMTP_HOST?: string;
   SMTP_PORT?: number;
   RESEND_API_KEY?: string;
 }
 
-export function createEmailSenderFromEnv(env: EmailEnv): EmailSender {
+/**
+ * Sender dựng từ env — CHỈ là fallback cho dev (Mailpit); production cấu hình
+ * ở System Center (SystemSmtpConfig). Trả `null` (không throw) khi env không
+ * đủ: smtp cần SMTP_HOST + SMTP_PORT + EMAIL_FROM, resend cần RESEND_API_KEY +
+ * EMAIL_FROM. Người gọi quyết định cách báo lỗi "chưa cấu hình".
+ */
+export function createEmailSenderFromEnv(env: EmailEnv): EmailSender | null {
+  if (!env.EMAIL_FROM) return null;
   if (env.EMAIL_PROVIDER === "resend") {
-    if (!env.RESEND_API_KEY) throw new Error("RESEND_API_KEY is required when EMAIL_PROVIDER=resend");
+    if (!env.RESEND_API_KEY) return null;
     return createResendSender({ apiKey: env.RESEND_API_KEY, from: env.EMAIL_FROM });
   }
-  if (!env.SMTP_HOST || !env.SMTP_PORT) {
-    throw new Error("SMTP_HOST and SMTP_PORT are required when EMAIL_PROVIDER=smtp");
-  }
+  if (!env.SMTP_HOST || !env.SMTP_PORT) return null;
   return createSmtpSender({ host: env.SMTP_HOST, port: env.SMTP_PORT, from: env.EMAIL_FROM });
 }

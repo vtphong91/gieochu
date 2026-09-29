@@ -8,6 +8,8 @@ import { renderVerifyEmailTemplate } from "@gieochu/email";
 import { getRequestId, handleApiError, parseJsonBody } from "../../../../lib/api-response";
 import { checkRateLimit } from "../../../../lib/rate-limit";
 import { sendEmailNow } from "../../../../lib/email-dispatch";
+import { getEffectiveBrand } from "../../../../lib/branding";
+import { getSystemSettings } from "../../../../lib/system-settings";
 
 const resendSchema = z.object({ email: z.string().email("Email không hợp lệ.") });
 const RESEND_LIMIT = 3;
@@ -28,7 +30,8 @@ export async function POST(request: Request) {
     if (user && user.status === "PENDING") {
       const env = getEnv();
       const now = new Date();
-      const verification = createVerificationToken(env.EMAIL_VERIFY_TTL_HOURS, now);
+      const [settings, brand] = await Promise.all([getSystemSettings(), getEffectiveBrand()]);
+      const verification = createVerificationToken(settings.emailVerifyTtlHours, now);
       await prisma.verificationToken.create({
         data: {
           userId: user.id,
@@ -38,7 +41,7 @@ export async function POST(request: Request) {
         },
       });
       const verifyUrl = `${env.APP_URL}/verify-email?token=${verification.token}`;
-      const rendered = renderVerifyEmailTemplate({ appName: env.APP_NAME, verifyUrl });
+      const rendered = renderVerifyEmailTemplate({ appName: brand.name, verifyUrl, expiresInHours: settings.emailVerifyTtlHours });
       const sent = await sendEmailNow({ type: "verify_email", to: user.email, subject: rendered.subject, html: rendered.html, text: rendered.text });
       if (!sent.ok) {
         logger.warn({ email: user.email, error: sent.error }, "resend-verification: gửi email thất bại");

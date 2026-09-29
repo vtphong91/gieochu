@@ -1,6 +1,7 @@
 import { getPrismaClient } from "@gieochu/db";
 import { requireAdminAccess } from "../../../../lib/page-guards";
 import { getSystemSmtpConfig } from "../../../../lib/system-smtp";
+import { getEffectiveBrand } from "../../../../lib/branding";
 import { AdminPageHeader, Badge } from "../../_ui/kit";
 import { RefreshButton } from "./refresh-button";
 import { SmtpTabs } from "./smtp-tabs";
@@ -9,9 +10,10 @@ export default async function AdminSmtpSettingsPage() {
   await requireAdminAccess("/admin/settings/smtp");
 
   const prisma = getPrismaClient();
-  const [config, logRows] = await Promise.all([
+  const [config, logRows, brand] = await Promise.all([
     getSystemSmtpConfig(),
     prisma.emailSendLog.findMany({ orderBy: { createdAt: "desc" }, take: 50 }),
+    getEffectiveBrand(),
   ]);
 
   return (
@@ -33,7 +35,8 @@ export default async function AdminSmtpSettingsPage() {
           port: config?.publicConfig.port ?? 587,
           secure: config?.publicConfig.secure ?? false,
           username: config?.publicConfig.username ?? "",
-          fromName: config?.publicConfig.fromName ?? "",
+          // Chưa đặt From Name → gợi ý tên thương hiệu hiệu lực (ADR-032), không hard-code.
+          fromName: config?.publicConfig.fromName || brand.name,
           fromEmail: config?.publicConfig.fromEmail ?? "",
           replyTo: config?.publicConfig.replyTo ?? "",
           isEnabled: config?.isEnabled ?? false,

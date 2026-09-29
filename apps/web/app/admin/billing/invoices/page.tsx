@@ -1,4 +1,4 @@
-import { getBrand } from "@gieochu/config/brand";
+import { getEffectiveBrand } from "../../../../lib/branding";
 import { requireAdminAccess } from "../../../../lib/page-guards";
 import { listPendingManualInvoices } from "../../../../lib/subscription-billing";
 import { AdminPageHeader, EmptyState } from "../../_ui/kit";
@@ -7,7 +7,7 @@ import { ConfirmButton } from "./confirm-button";
 
 export default async function AdminBillingInvoicesPage() {
   await requireAdminAccess("/admin/billing/invoices");
-  const brand = getBrand();
+  const brand = await getEffectiveBrand();
 
   const invoices = await listPendingManualInvoices();
 

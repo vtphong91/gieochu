@@ -88,7 +88,7 @@ describe("M7 tenant payment configuration", () => {
     const accessToken = await signAccessToken(
       { sub: ownerA.id, sid: "test-family", role: "USER", ver: true, pc: true },
       getJwtContext(),
-      getAccessTokenTtlSeconds(),
+      await getAccessTokenTtlSeconds(),
     );
     vi.doMock("next/headers", () => ({
       cookies: async () => ({

@@ -3,7 +3,7 @@ tags:
   - meta
   - runbook
 date: 2026-09-26
-updated: 2026-09-28
+updated: 2026-09-29
 ---
 
 # 🚀 Operations Runbooks & DevOps
@@ -26,6 +26,11 @@ viên.
   `ReviewComposer`, section Đánh giá storefront, `StudioReviewCard` (ADR-029, §10); giao diện bài viết M10b — Studio → Bài viết, editor bài viết,
   trang hệ thống `/[slug]/posts`, section `posts` storefront, quy tắc sanitize lại khi render HTML (ADR-029, §11). `[[Publish-And-Rollback-Runbook]]` §2.2 có số test hiện tại và quy tắc
   integration test không xoá cấu hình dùng chung (`shared-config-snapshot.ts`).
+- `[[Deploy-Vercel-Runbook]]`: Deploy app lên **Vercel** theo ADR-031 — cấu hình project (Root Directory `apps/web`,
+  `vercel.json` `buildCommand: "next build"`), bảng env runtime (bắt buộc / theo `EMAIL_PROVIDER` / có mặc định / **không**
+  đặt `PRISMA_MIGRATE_URL`), chuẩn bị DB prod từ máy dev (`setup-app-role`, `db:migrate`, `db:seed`, quét slug dành riêng),
+  cấu hình Admin sau deploy, worker pg-boss cần host riêng, 4 sự cố đã gặp, rủi ro client Prisma commit lệch schema.
+  Deploy thành công chưa xác nhận ❓ ([Deploy-Vercel-Runbook.md](./Deploy-Vercel-Runbook.md)).
 - `[[Dev-Demo-Data-Runbook]]`: **Công cụ chỉ cho dev** — script `apps/web/scripts/demo-reviews.ts`
   (`ALLOW_DEMO_SEED=1 pnpm --filter @gieochu/db run demo:seed|demo:clean`): chốt an toàn, dữ liệu demo đánh giá trên tenant
   `phongweb` (3 sản phẩm, 5 khách, 11 đơn FULFILLED, 9 đánh giá), cách nhận diện và dọn

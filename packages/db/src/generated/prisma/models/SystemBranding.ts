@@ -17,7 +17,8 @@ import type * as Prisma from "../internal/prismaNamespace"
  * Nhận diện thương hiệu nền tảng (không phải branding riêng của từng
  * tenant — đó là `Tenant.branding`). Tất cả field đều nullable: null nghĩa
  * là "dùng mặc định" — brandName/brandSlogan rỗng thì `getEffectiveBrand()`
- * (apps/web/lib/branding.ts) rơi về `getBrand()` (env, §"packages/config").
+ * (apps/web/lib/branding.ts) rơi về `DEFAULT_BRAND` (@gieochu/config/brand,
+ * ADR-032 — không còn env APP_NAME/APP_SLOGAN).
  * Không đặt bảng này trong @gieochu/config vì package đó không được phép
  * phụ thuộc @gieochu/db (packages/db mới là bên phụ thuộc config, ngược lại
  * sẽ tạo circular dependency).

@@ -25,6 +25,8 @@ import { renderNewSaleEmail, renderOrderPaidEmail } from "@gieochu/email";
 import { assertTenantCanWrite } from "./tenant-write-guard";
 import { toCouponSnapshot } from "./coupon";
 import { sendEmailNow } from "./email-dispatch";
+import { getEffectiveBrand } from "./branding";
+import { getSystemSettings } from "./system-settings";
 import { hideReviewsForRevokedItems, recomputeProductRatings } from "./review";
 
 const ORDER_CODE_RETRIES = 10;
@@ -127,6 +129,7 @@ export async function markOrderPaid(tx: Tx, orderId: string, source: MarkOrderPa
 async function sendOrderPaidEmails(orderId: string): Promise<void> {
   const prisma = getPrismaClient();
   const env = getEnv();
+  const brand = await getEffectiveBrand();
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: { customer: true, tenant: { include: { owner: true } }, items: true },
@@ -135,7 +138,7 @@ async function sendOrderPaidEmails(orderId: string): Promise<void> {
 
   const downloadsUrl = `${env.APP_URL}/account/library`;
   const buyerEmail = renderOrderPaidEmail({
-    appName: env.APP_NAME,
+    appName: brand.name,
     orderCode: order.code,
     totalVndDisplay: formatVnd(order.totalVnd),
     downloadsUrl,
@@ -148,7 +151,7 @@ async function sendOrderPaidEmails(orderId: string): Promise<void> {
   const orderUrl = `${env.APP_URL}/studio/${order.tenant.slug}/orders/${order.id}`;
   const productTitle = order.items[0]?.titleSnapshot ?? "";
   const ownerEmail = renderNewSaleEmail({
-    appName: env.APP_NAME,
+    appName: brand.name,
     orderCode: order.code,
     productTitle,
     totalVndDisplay: formatVnd(order.totalVnd),
@@ -209,9 +212,9 @@ export async function createOrder(customerId: string, tenantSlug: string, produc
     now,
   );
 
-  const env = getEnv();
+  const settings = await getSystemSettings();
   const code = await resolveUniqueOrderCode(tenant.orderCodePrefix);
-  const expiresAt = computeOrderExpiresAt(now, env.ORDER_PENDING_TTL_MINUTES);
+  const expiresAt = computeOrderExpiresAt(now, settings.orderPendingTtlMinutes);
 
   const order = await withTenant(tenant.id, (tx) =>
     tx.order.create({

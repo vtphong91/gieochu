@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getBrand } from "@gieochu/config/brand";
+import { getEffectiveBrand } from "../../lib/branding";
 import { getActivePlans } from "../../lib/pricing";
 
 export const metadata: Metadata = {
@@ -16,7 +16,7 @@ const FEATURE_LABELS: Record<string, string> = {
 };
 
 export default async function PricingPage() {
-  const brand = getBrand();
+  const brand = await getEffectiveBrand();
   const plans = await getActivePlans();
 
   return (

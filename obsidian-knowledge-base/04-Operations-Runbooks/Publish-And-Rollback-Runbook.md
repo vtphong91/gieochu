@@ -6,7 +6,7 @@ tags:
   - rollback
   - status/living
 date: 2026-07-02
-updated: 2026-09-26
+updated: 2026-09-29
 author: System Architect
 ---
 
@@ -16,9 +16,9 @@ author: System Architect
 > `packages/*` là các package dùng chung: `config`, `core`, `db`, `auth`, `payments`, `storage`, `email`,
 > `jobs`). **Chưa có pipeline CI/CD tự động triển khai (CD) lên production** — chỉ có CI kiểm thử
 > (`.github/workflows/ci.yml`, chạy lint/typecheck/test trên push `main` và pull request). **Deploy hiện là
-> thủ công.** ❓ Nền tảng hosting production thật chưa được xác nhận trong repo (không tìm thấy file cấu
-> hình deploy nào cho một nền tảng cụ thể) — cần hỏi lại chủ dự án trước khi viết quy trình deploy chi tiết
-> theo một nền tảng nhất định.
+> thủ công.** Từ **ADR-031 (2026-09-29)** nền tảng hosting app là **Vercel** (`apps/web/vercel.json` ✅) — quy trình chi
+> tiết ở [[04-Operations-Runbooks/Deploy-Vercel-Runbook|Deploy-Vercel-Runbook]]; deploy thành công đầu tiên chưa xác nhận ❓.
+> Worker pg-boss chưa có host.
 
 ## 1. CI Hiện Có (`.github/workflows/ci.yml`)
 
@@ -52,7 +52,7 @@ rà lại cho môi trường mới, theo đúng CLAUDE.md mục 11:
 | :--- | :--- | :--- |
 | App | `APP_URL`, `APP_NAME`, `APP_SHORT_NAME`, `APP_SLOGAN`, `TZ_DISPLAY` | Không hard-code chuỗi thương hiệu ở nơi khác — luôn đọc từ `@gieochu/config/brand` |
 | Database | `DATABASE_URL`, `DIRECT_URL` (role `gieochu_app`, xem ADR-010) | Pooled connection cho `DATABASE_URL`; `DIRECT_URL` không qua pooler (dùng cho `pg-boss`, ADR-007) |
-| Database (CLI) | `PRISMA_MIGRATE_URL` (role owner Neon) | **Chỉ** CLI `prisma migrate`/`generate` dùng — không dùng cho runtime app |
+| Database (CLI) | `PRISMA_MIGRATE_URL` (role owner Neon) | **Chỉ** CLI `prisma migrate`/`studio` + `setup-app-role` trên máy dev/CI; **không** thuộc schema env runtime, **không đặt trên Vercel** (ADR-031). `generate`/`db seed` không cần |
 | Auth | `JWT_ACCESS_SECRET` (≥ 32 bytes), `JWT_ISSUER`, `JWT_AUDIENCE`, `ACCESS_TOKEN_TTL`, `REFRESH_TOKEN_TTL_DAYS`, `EMAIL_VERIFY_TTL_HOURS`, `PASSWORD_RESET_TTL_MINUTES` | Secret phải khác giữa dev/staging/production |
 | Mã hoá | `PAYMENT_ENCRYPTION_KEY` (32 bytes base64), `STORAGE_ENCRYPTION_KEY` (32 bytes base64, tách riêng theo ADR-017) | Không dùng chung 1 key cho cả 2 miền secret |
 | Storage (tham số vận hành) | `PRESIGN_UPLOAD_TTL_SECONDS`, `PRESIGN_DOWNLOAD_TTL_SECONDS` (≤ 600), `CLAMAV_HOST` | Endpoint/bucket/access key R2 **không** ở env — cấu hình qua `/admin/settings/storage` (ADR-017) |
@@ -120,16 +120,15 @@ flowchart TD
     Step1["1. pnpm lint / typecheck / test / test:count — phải xanh toàn bộ"] --> Step2["2. Rà checklist env (mục 2.1)"]
     Step2 --> Step3["3. pnpm build"]
     Step3 --> Step4["4. pnpm db:migrate trên môi trường đích (nếu có migration mới)"]
-    Step4 --> Step5["5. Deploy thủ công lên hosting production\n(❓ nền tảng cụ thể chưa xác nhận trong repo)"]
+    Step4 --> Step5["5. Deploy lên Vercel\n(Deploy-Vercel-Runbook, ADR-031)"]
     Step5 --> Step6["6. Smoke test tối thiểu (mục 4)"]
     Step6 --> Success["Phát hành thành công"]
 ```
 
-**Vì bước 5 chưa có công cụ/nền tảng cụ thể được xác nhận**, đây chỉ là khung quy trình — cần bổ sung bước
-deploy thật (build output, cách khởi động `next start` hoặc tương đương) khi chủ dự án xác nhận nền tảng
-hosting. Không tự giả định một nền tảng cụ thể (Vercel/Railway/self-host...) khi chưa có bằng chứng trong
-repo — file `docs/PLAN.md` (roadmap Giai đoạn 4) chỉ nhắc "Vercel Domains API" như một **lựa chọn khả dĩ** cho
-tính năng tên miền riêng của tenant trong tương lai, không phải xác nhận nền tảng hosting hiện tại.
+**Bước 5 (từ ADR-031, 2026-09-29):** deploy lên **Vercel** theo [[04-Operations-Runbooks/Deploy-Vercel-Runbook|Deploy-Vercel-Runbook]]
+(Root Directory `apps/web`, `vercel.json` `buildCommand: "next build"`, env runtime không có `PRISMA_MIGRATE_URL`). Bước 3
+`pnpm build` là kiểm tra cục bộ — Vercel không chạy `turbo run build`. Migration (bước 4) luôn chạy từ máy dev/CI, không
+phải trên Vercel. ❓ Chưa có lần deploy Vercel thành công được xác nhận.
 
 ### 3.1. Smoke Test Tối Thiểu Sau Deploy
 

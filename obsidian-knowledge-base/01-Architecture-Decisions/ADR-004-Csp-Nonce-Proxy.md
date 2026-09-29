@@ -6,6 +6,7 @@ tags:
   - proxy
   - status/accepted
 date: 2026-09-26
+updated: 2026-09-29
 decider: vtphong91
 status: Accepted (Chốt — Áp dụng chính thức)
 ---
@@ -40,6 +41,11 @@ Theo đúng pattern nonce chính thức của Next.js (`https://nextjs.org/docs/
 * **`proxy.ts` là nơi duy nhất sinh CSP** — không thêm CSP tĩnh trở lại vào `next.config.ts`, vì làm vậy sẽ tái tạo đúng lỗi ban đầu (chặn hydrate).
 * **Không dùng `unsafe-inline` vĩnh viễn cho `script-src`** ở production — nonce + `strict-dynamic` là cách duy nhất vừa giữ CSP chặt vừa cho phép cơ chế hydrate nội bộ của Next.js hoạt động.
 * **`proxy.ts` không thay `middleware.ts`** về vai trò bảo mật: nó chỉ gắn `x-request-id`, làm redirect thô, và (từ quyết định này) sinh CSP nonce — **không** phải nơi xác thực người dùng. Mọi route handler/server action/server component nhạy cảm vẫn phải tự `requireUser()`/`requireRole()` lại (xem CLAUDE.md, mục "Cấu trúc thư mục").
+* **Ghi chú (2026-09-29, theo ADR-031 — [[01-Architecture-Decisions/ADR-017-Vercel-Deploy-Build-Without-Env|ADR-017 KB]]) ✅:**
+  nonce chỉ gắn được vào trang **render động**; trang prerender static lúc build không nhận nonce theo request. Root
+  `apps/web/app/layout.tsx` nay đặt `export const dynamic = "force-dynamic"` nên **mọi trang** (kể cả `/login`, `/register`,
+  `/pricing`…) render lúc request và nhận nonce. Không gỡ `force-dynamic` ở root layout mà không xử lý lại điểm này.
+  Hiệu lực CSP trên bản deploy Vercel thật: ❓ chưa kiểm.
 * Ghi ADR vì đây là thay đổi vị trí cấu hình bảo mật (CSP) khỏi nơi đặc tả gốc nhắc tới (`next.config.ts`) sang `proxy.ts` — không phải một trong nhiều lựa chọn, mà là cách sửa đúng theo khuyến nghị chính thức của framework.
 
 ---
@@ -47,4 +53,5 @@ Theo đúng pattern nonce chính thức của Next.js (`https://nextjs.org/docs/
 ## 5. Tài Liệu Tham Chiếu & Liên Kết
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * Tương ứng **ADR-016** trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md) (gốc repo).
+* [[01-Architecture-Decisions/ADR-017-Vercel-Deploy-Build-Without-Env|ADR-017 (≙ ADR-031)]] ([ADR-017-Vercel-Deploy-Build-Without-Env.md](./ADR-017-Vercel-Deploy-Build-Without-Env.md)) — root layout `force-dynamic`.
 * Xem CLAUDE.md, mục "Quy tắc bảo mật" #7 và #8 cho các quy tắc CSRF/header liên quan.

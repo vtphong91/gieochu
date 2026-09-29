@@ -7,6 +7,7 @@ import { createSmtpSender } from "@gieochu/email";
 import { requireRole } from "../../../../lib/session";
 import { saveSystemSmtpConfig, testSystemSmtpConnection, getDecryptedSystemSmtpConfig } from "../../../../lib/system-smtp";
 import { logEmailSend } from "../../../../lib/email-dispatch";
+import { getEffectiveBrand } from "../../../../lib/branding";
 
 export interface SmtpActionState {
   error?: string;
@@ -74,7 +75,8 @@ export async function sendTestEmailAction(_prevState: SmtpActionState, formData:
   const config = await getDecryptedSystemSmtpConfig();
   if (!config) return { error: "SMTP chưa được cấu hình hoặc đang tắt — lưu và xác minh kết nối trước." };
 
-  const subject = "Email test SMTP từ Gieo Chữ";
+  const brand = await getEffectiveBrand();
+  const subject = `Email test SMTP từ ${brand.name}`;
   const html = "<p>Đây là email test xác nhận cấu hình SMTP đang hoạt động đúng.</p>";
   const text = "Đây là email test xác nhận cấu hình SMTP đang hoạt động đúng.";
 

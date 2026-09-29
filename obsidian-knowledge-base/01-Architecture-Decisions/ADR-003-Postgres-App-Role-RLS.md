@@ -6,6 +6,7 @@ tags:
   - rls
   - status/accepted
 date: 2026-09-26
+updated: 2026-09-29
 decider: vtphong91
 status: Accepted (Chốt — Áp dụng chính thức)
 ---
@@ -37,7 +38,12 @@ Kiểm tra `pg_roles` phát hiện nguyên nhân gốc: role mặc định Neon 
 ## 4. Hệ Quả & Ràng Buộc Kỹ Thuật (Consequences & Rules)
 * **Không bao giờ** để runtime app (route handler, server action, job worker) kết nối bằng role owner Neon — RLS sẽ vô hiệu hoàn toàn và im lặng (không có lỗi nào báo, dữ liệu chỉ đơn giản là không bị lọc).
 * **Khi thêm module có bảng L2 mới:** không cần chạy lại `setup-app-role.mts` (nhờ `ALTER DEFAULT PRIVILEGES` đã cấp sẵn quyền cho bảng mới). Nếu tạo một schema Postgres mới (khác `public`/`pgboss`), phải chạy lại script để cấp quyền cho schema đó.
-* **`PRISMA_MIGRATE_URL` chỉ dùng cho CLI** (migrate/seed/generate) — không bao giờ đưa vào code runtime của `apps/web` hay job worker.
+* **`PRISMA_MIGRATE_URL` chỉ dùng cho CLI** — không bao giờ đưa vào code runtime của `apps/web` hay job worker.
+  > **Ghi chú (2026-09-29, theo ADR-031 — [[01-Architecture-Decisions/ADR-017-Vercel-Deploy-Build-Without-Env|ADR-017 KB]]) ✅:**
+  > phạm vi hẹp lại so với mục 3.4 ở trên. `prisma generate` **không** cần biến này (không kết nối DB); `db seed` chạy bằng
+  > `DATABASE_URL` (role `gieochu_app`, qua `getPrismaClient()`). `PRISMA_MIGRATE_URL` chỉ còn dành cho `prisma migrate`/`studio`
+  > và `setup-app-role.mts`, **chỉ đặt trên máy dev/CI** — đã bị xoá khỏi schema env runtime (`packages/config/src/env.ts`),
+  > `prisma.config.ts` bỏ `datasource` khi thiếu biến. Không đặt trên Vercel; nếu từng đặt thì xoá và đổi mật khẩu role owner.
 * Đây là điều kiện tiên quyết để các helper RLS `withTenant/withCustomer/withPublic/withSystemJob` (`packages/db/src/rls.ts`) có ý nghĩa thật — nếu kết nối bypass RLS, các helper này chỉ là lớp bọc vô dụng.
 
 ---
@@ -46,4 +52,5 @@ Kiểm tra `pg_roles` phát hiện nguyên nhân gốc: role mặc định Neon 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * Tương ứng **ADR-010** trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md) (gốc repo).
 * [[ADR-002-Neon-Adapter-Db-Connection]] — Kết nối DB qua `@prisma/adapter-neon`, nguồn của biến `DIRECT_URL`/`DATABASE_URL` được tách vai trò ở đây.
+* [[01-Architecture-Decisions/ADR-017-Vercel-Deploy-Build-Without-Env|ADR-017 (≙ ADR-031)]] ([ADR-017-Vercel-Deploy-Build-Without-Env.md](./ADR-017-Vercel-Deploy-Build-Without-Env.md)) — thu hẹp phạm vi `PRISMA_MIGRATE_URL`.
 * [[ADR-006-Download-Token-Rls-Customer-Branch]] — một ví dụ cụ thể về lỗ hổng RLS được phát hiện và sửa nhờ kỷ luật test tích hợp chạy thật trên role `gieochu_app`.

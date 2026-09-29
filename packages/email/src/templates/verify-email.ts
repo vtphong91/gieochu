@@ -1,6 +1,8 @@
 export interface VerifyEmailTemplateData {
   appName: string;
   verifyUrl: string;
+  /** Hạn link (giờ) — từ SystemSettings.emailVerifyTtlHours (ADR-032), không hard-code. */
+  expiresInHours: number;
 }
 
 export interface RenderedEmail {
@@ -14,14 +16,14 @@ export function renderVerifyEmailTemplate(data: VerifyEmailTemplateData): Render
   const text = [
     "Chào bạn,",
     "",
-    `Bấm vào liên kết sau để kích hoạt tài khoản ${data.appName} (liên kết hết hạn sau 24 giờ):`,
+    `Bấm vào liên kết sau để kích hoạt tài khoản ${data.appName} (liên kết hết hạn sau ${data.expiresInHours} giờ):`,
     data.verifyUrl,
     "",
     "Nếu bạn không yêu cầu tạo tài khoản này, hãy bỏ qua email này.",
   ].join("\n");
   const html = `
     <p>Chào bạn,</p>
-    <p>Bấm vào liên kết sau để kích hoạt tài khoản <strong>${data.appName}</strong> (liên kết hết hạn sau 24 giờ):</p>
+    <p>Bấm vào liên kết sau để kích hoạt tài khoản <strong>${data.appName}</strong> (liên kết hết hạn sau ${data.expiresInHours} giờ):</p>
     <p><a href="${data.verifyUrl}">${data.verifyUrl}</a></p>
     <p>Nếu bạn không yêu cầu tạo tài khoản này, hãy bỏ qua email này.</p>
   `.trim();

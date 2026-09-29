@@ -463,3 +463,30 @@ lộ ra 2 lỗi cả 2 đều tồn tại từ trước, không riêng module n�
   `app/[tenantSlug]/[productSlug]/page.tsx` → tốn 1 query tìm tenant trước khi 404.
 - **Revalidate theo slug cụ thể** thay vì route pattern `/[tenantSlug]/[productSlug]`: hiện mỗi lần một tenant sửa
   sản phẩm/đánh giá sẽ làm mới trang tài liệu của mọi tenant (chấp nhận được vì trang dynamic; tối ưu khi cần).
+
+## Phát sinh trong đợt ADR-031 (deploy Vercel)
+
+**Hạ tầng production**
+- **Host cho worker pg-boss** (`apps/web/worker.ts`, `pnpm --filter @gieochu/web run worker`): Vercel không chạy tiến trình lâu
+  dài. Chưa chọn (ứng viên Railway / Fly.io / VPS). Cần Node ≥ 20.9, cài cả monorepo, cùng bộ env runtime như Vercel (không
+  `PRISMA_MIGRATE_URL`). Thiếu worker: file sản phẩm kẹt "Đang quét" (`FILE_SCAN`), đơn `PENDING` không hết hạn
+  (`ORDER_SWEEP`), webhook thanh toán tenant không được xử lý (`PAYMENT_PROCESS`), quét subscription theo giờ không chạy
+  (`SUBSCRIPTION_SWEEP`). Email **không** phụ thuộc worker (gửi đồng bộ).
+- **Gửi job pg-boss từ Vercel (serverless):** `apps/web/lib/jobs.ts` giả định tiến trình Node sống lâu — cần kiểm hành vi
+  thật trên Vercel (độ trễ khởi động, số kết nối `DIRECT_URL`).
+
+**Build**
+- **Cân nhắc build command `pnpm --filter @gieochu/db run generate && next build`** thay cho `next build` để tránh Prisma client
+  commit ở `packages/db/src/generated` lệch `schema.prisma` khi quên generate (Vercel hiện dùng nguyên bản đã commit).
+  `prisma generate` không cần `PRISMA_MIGRATE_URL` từ ADR-031.
+
+**CI (`.github/workflows/ci.yml`)**
+- `ci.yml` vẫn khai `PRISMA_MIGRATE_URL` (secret `TEST_PRISMA_MIGRATE_URL`) — hợp lệ vì CI là môi trường dev/CI, không phải
+  runtime. Lưu ý hiện trạng: `ci.yml` **chưa có bước `db:migrate`** nên biến này chưa được dùng; nếu muốn CI chạy migrate
+  thì phải thêm bước.
+- Cần rà thêm (chưa quyết): trigger `push: [main]` trong khi nhánh chính là `master`; thiếu `STORAGE_ENCRYPTION_KEY`; biến
+  `S3_*` thừa (storage cấu hình qua Admin từ ADR-017).
+
+**Chưa verify (cần môi trường thật)**
+- Deploy Vercel thành công lần đầu; `prisma db seed` khi không đặt `PRISMA_MIGRATE_URL`; CSP nonce trên các trang trước đây
+  static; quét slug dành riêng trên DB prod (xem mục ADR-030). Quy trình: KB `04-Operations-Runbooks/Deploy-Vercel-Runbook.md`.

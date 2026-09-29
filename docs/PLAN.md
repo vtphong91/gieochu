@@ -518,6 +518,16 @@ mục "Phát sinh trong đợt M10b (ADR-029)".
 **Số test:** `pnpm test:count` = **93/94 unit, 52/53 integration** — không đổi. **Trước deploy prod:** quét slug sản phẩm trùng
 từ dành riêng. Nợ test redirect 301 + chặn slug dành riêng: `docs/BACKLOG.md` mục "Phát sinh trong đợt ADR-030".
 
+## Deploy Vercel (ADR-031) — 2026-09-29
+
+**Đã xong code, chưa xác nhận deploy thành công.** `apps/web/vercel.json` (`buildCommand: "next build"`, Root Directory
+`apps/web`; Prisma client sinh sẵn đã commit); root `app/layout.tsx` `force-dynamic` (build không cần env, nonce CSP gắn mọi
+trang); `PRISMA_MIGRATE_URL` xoá khỏi schema env runtime — chỉ CLI `migrate`/`studio` + `setup-app-role` trên máy dev/CI,
+`db seed` dùng `DATABASE_URL`. Migration prod chạy từ máy dev/CI. **Worker pg-boss chưa có host** (BACKLOG mục "Phát sinh
+trong đợt ADR-031"). Quy trình: KB `04-Operations-Runbooks/Deploy-Vercel-Runbook.md`.
+
+**Số test:** `pnpm test:count` = **93/94 unit, 52/53 integration** — không đổi.
+
 ## Câu hỏi còn mở (đã chọn phương án an toàn, xem ADR tương ứng)
 
 - ID strategy: cuid2 (ADR-001).

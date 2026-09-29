@@ -8,6 +8,8 @@ import { renderResetPasswordEmailTemplate } from "@gieochu/email";
 import { getRequestId, handleApiError, parseJsonBody } from "../../../../lib/api-response";
 import { checkRateLimit } from "../../../../lib/rate-limit";
 import { sendEmailNow } from "../../../../lib/email-dispatch";
+import { getEffectiveBrand } from "../../../../lib/branding";
+import { getSystemSettings } from "../../../../lib/system-settings";
 
 const forgotPasswordSchema = z.object({ email: z.string().email("Email không hợp lệ.") });
 const GENERIC_MESSAGE = "Nếu email tồn tại, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu.";
@@ -26,7 +28,8 @@ export async function POST(request: Request) {
       if (user && user.status === "ACTIVE") {
         const env = getEnv();
         const now = new Date();
-        const verification = createVerificationToken(env.PASSWORD_RESET_TTL_MINUTES / 60, now);
+        const [settings, brand] = await Promise.all([getSystemSettings(), getEffectiveBrand()]);
+        const verification = createVerificationToken(settings.passwordResetTtlMinutes / 60, now);
         await prisma.verificationToken.create({
           data: {
             userId: user.id,
@@ -36,7 +39,7 @@ export async function POST(request: Request) {
           },
         });
         const resetUrl = `${env.APP_URL}/reset-password?token=${verification.token}`;
-        const rendered = renderResetPasswordEmailTemplate({ appName: env.APP_NAME, resetUrl });
+        const rendered = renderResetPasswordEmailTemplate({ appName: brand.name, resetUrl, expiresInMinutes: settings.passwordResetTtlMinutes });
         const sent = await sendEmailNow({ type: "reset_password", to: user.email, subject: rendered.subject, html: rendered.html, text: rendered.text });
         if (!sent.ok) {
           logger.warn({ email: user.email, error: sent.error }, "forgot-password: gửi email thất bại");

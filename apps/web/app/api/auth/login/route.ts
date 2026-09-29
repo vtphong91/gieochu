@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createRefreshToken, isProfileComplete, normalizeEmail, signAccessToken, verifyPassword } from "@gieochu/auth";
 import { AppError } from "@gieochu/core";
-import { getEnv } from "@gieochu/config";
 import { getPrismaClient } from "@gieochu/db";
-import { getAccessTokenTtlSeconds, getJwtContext } from "../../../../lib/jwt-context";
+import { getAccessTokenTtlSeconds, getJwtContext, getRefreshTokenTtl } from "../../../../lib/jwt-context";
 import { applyAuthCookies } from "../../../../lib/cookies";
 import { getRequestId, handleApiError, parseJsonBody } from "../../../../lib/api-response";
 import { checkRateLimit } from "../../../../lib/rate-limit";
@@ -77,8 +76,8 @@ export async function POST(request: Request) {
 
     const now = new Date();
     const familyId = crypto.randomUUID();
-    const env = getEnv();
-    const refresh = createRefreshToken(familyId, env.REFRESH_TOKEN_TTL_DAYS, now);
+    const [refreshTtl, accessTtl] = await Promise.all([getRefreshTokenTtl(), getAccessTokenTtlSeconds()]);
+    const refresh = createRefreshToken(familyId, refreshTtl.days, now);
     const ip = getClientIp(request);
     const userAgent = request.headers.get("user-agent") ?? undefined;
 
@@ -98,7 +97,6 @@ export async function POST(request: Request) {
     ]);
 
     const profileCompleted = isProfileComplete(profile);
-    const accessTtl = getAccessTokenTtlSeconds();
     const accessToken = await signAccessToken(
       { sub: user.id, sid: familyId, role: user.systemRole, ver: true, pc: profileCompleted },
       getJwtContext(),
@@ -113,7 +111,7 @@ export async function POST(request: Request) {
       accessToken,
       accessTtlSeconds: accessTtl,
       refreshToken: refresh.token,
-      refreshTtlSeconds: env.REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60,
+      refreshTtlSeconds: refreshTtl.seconds,
     });
     return response;
   } catch (error) {

@@ -5,11 +5,12 @@ tags:
   - adr
   - history
 date: 2026-09-26
+updated: 2026-09-29
 ---
 
 # Architecture Decisions Timeline — Gieo Chữ
 
-Mục lục đầy đủ theo trình tự đánh số của **30 ADR thật** (ADR-001…ADR-030), nguồn duy nhất: [`docs/DECISIONS.md`](../../docs/DECISIONS.md).
+Mục lục đầy đủ theo trình tự đánh số của **31 ADR thật** (ADR-001…ADR-031), nguồn duy nhất: [`docs/DECISIONS.md`](../../docs/DECISIONS.md).
 Đây chỉ là "mục lục theo thời gian" (một dòng mỗi ADR) — không lặp lại toàn văn Bối cảnh/Quyết định/Lý do.
 
 Xem [[01-Architecture-Decisions/README|01-Architecture-Decisions]] để có nội dung đầy đủ của các ADR quan
@@ -47,5 +48,6 @@ trọng nhất; trang này chỉ là mốc thời gian đầy đủ 29 quyết �
 | ADR-028 | Ảnh nội dung lưu trên Cloudinary hệ thống, có tối ưu tự động và hạn mức theo gói; siết chữ ký upload | Cloudinary hệ thống cho mọi tenant (BYO để GĐ2); chữ ký dùng chung chỉ `SYSTEM_ADMIN`; chữ ký tenant ký `public_id` đầy đủ + giữ chỗ 5MB, đối soát qua Admin API; `Plan.imageStorageMb` (FREE 100MB → BUSINESS 5GB) + bảng L2 `tenant_media_assets`; `f_auto,q_auto,c_limit,w_<N>`; sanitizer chỉ nhận cloud hệ thống (2026-09-27). |
 | ADR-029 | M10 giai đoạn 1: Đánh giá (M10a) + Bài viết tối giản (M10b); siết RLS `products`/`product_files` | Phạm vi M10a → M10b, M10c sang BACKLOG; đánh giá chỉ cho khách có đơn hoàn tất + entitlement chưa thu hồi, 1 đánh giá/khách/sản phẩm, cache điểm số nguyên dưới `system_job`; section "Đánh giá" thật, section cũ thành "Cảm nhận". Bổ sung theo triển khai: siết RLS ghi **7 bảng** (`select_access` + `write_*` chỉ tenant/`system_job`), quy tắc không `FOR ALL` khi có nhánh public/customer; `reviews` gắn `orderItemId`, trigger `reviews_guard_columns`. Chưa thêm test. |
 | ADR-030 | URL tài liệu rút gọn `/{tenantSlug}/{productSlug}`; bỏ sticky card xuất bản | URL chuẩn `/{tenantSlug}/{productSlug}`, URL cũ `/{tenantSlug}/products/{productSlug}` → 301; hàm dựng URL duy nhất `productPath`; 23 slug dành riêng ở `packages/core`; card xuất bản editor sản phẩm/bài viết không dính khi cuộn (thay phần "card xuất bản dính" của ADR-027). Bổ sung theo triển khai: redirect bằng Route Handler (Next trả 308 nếu dùng `permanentRedirect`/`redirects`), `/{tenantSlug}/products` → 404, canonical tuyệt đối, slug tự nhập trùng → `INVALID_SLUG`, tự sinh trùng → hậu tố; quét slug trùng trên DB prod trước deploy. |
+| ADR-031 | Deploy Vercel: build không cần DB/env; `PRISMA_MIGRATE_URL` không bao giờ ở runtime | `apps/web/vercel.json` (`buildCommand: "next build"`, Root Directory `apps/web`), Prisma client sinh sẵn được commit; root `app/layout.tsx` `force-dynamic` (build không cần env, nonce CSP gắn mọi trang); `PRISMA_MIGRATE_URL` xoá khỏi schema env runtime, chỉ CLI `migrate`/`studio` + `setup-app-role` đọc, `db seed` dùng `DATABASE_URL`; migration prod chạy ngoài Vercel; worker pg-boss cần host riêng (chưa có). |
 
 *Quay lại: [[05-Historical-Archive/README|05-Historical-Archive]] · [[MOC-Home]] (../00-Index/MOC-Home.md)*

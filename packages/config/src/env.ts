@@ -1,48 +1,47 @@
 import { z } from "zod";
 
+/**
+ * ADR-032: env runtime chỉ còn hạ tầng + secret. Bắt buộc: APP_URL, DATABASE_URL, DIRECT_URL,
+ * JWT_ACCESS_SECRET, JWT_ISSUER, JWT_AUDIENCE, PAYMENT_ENCRYPTION_KEY, STORAGE_ENCRYPTION_KEY
+ * (+ NODE_ENV do nền tảng đặt). Thương hiệu (SystemBranding) và cấu hình nghiệp vụ/TTL
+ * (SystemSettings) quản lý ở System Center, lưu DB — không đặt qua env. Múi giờ hiển thị là hằng
+ * `DISPLAY_TIME_ZONE` trong @gieochu/core.
+ */
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   APP_URL: z.string().url(),
-  APP_NAME: z.string().min(1),
-  APP_SHORT_NAME: z.string().min(1),
-  APP_SLOGAN: z.string().min(1),
-  TZ_DISPLAY: z.string().min(1).default("Asia/Ho_Chi_Minh"),
 
   DATABASE_URL: z.string().min(1),
   DIRECT_URL: z.string().min(1),
-  /** Owner-role connection, DDL rights — Prisma CLI only. See ADR-010. */
-  PRISMA_MIGRATE_URL: z.string().min(1),
+  // PRISMA_MIGRATE_URL (owner role, DDL rights, ADR-010) deliberately NOT in the runtime schema:
+  // only the Prisma CLI (packages/db/prisma.config.ts) and setup-app-role.mts read it straight from
+  // process.env on dev/CI machines. It must never be set on Vercel/runtime.
+  /** Dev/CI only. */
   TEST_DATABASE_URL: z.string().optional(),
 
   JWT_ACCESS_SECRET: z.string().min(32, "JWT_ACCESS_SECRET phải có ít nhất 32 ký tự"),
   JWT_ISSUER: z.string().min(1),
   JWT_AUDIENCE: z.string().min(1),
-  ACCESS_TOKEN_TTL: z.string().min(1).default("15m"),
-  REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(7),
-  EMAIL_VERIFY_TTL_HOURS: z.coerce.number().int().positive().default(24),
-  PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().positive().default(30),
 
   PAYMENT_ENCRYPTION_KEY: z.string().min(1),
   /** §"M5"/ADR-017: separate key from PAYMENT_ENCRYPTION_KEY for SystemStorageConfig secrets — object
    * storage credentials reach every tenant's files, so they never share a key with payment secrets. */
   STORAGE_ENCRYPTION_KEY: z.string().min(1),
 
-  PRESIGN_UPLOAD_TTL_SECONDS: z.coerce.number().int().positive().default(600),
-  PRESIGN_DOWNLOAD_TTL_SECONDS: z.coerce.number().int().positive().max(600).default(600),
+  /** Tuỳ chọn — không đặt thì bỏ qua quét virus (apps/web/lib/file-scan.ts). */
   CLAMAV_HOST: z.string().optional(),
 
+  // Email: production cấu hình ở System Center (/admin/settings/smtp, bảng SystemSmtpConfig) — nhóm
+  // biến dưới đây CHỈ là fallback cho dev (Mailpit), đều tuỳ chọn. Thiếu cả hai nguồn thì việc gửi
+  // trả về lỗi EMAIL_NOT_CONFIGURED (apps/web/lib/email-dispatch.ts), app vẫn khởi động bình thường.
   EMAIL_PROVIDER: z.enum(["smtp", "resend"]).default("smtp"),
-  EMAIL_FROM: z.string().min(1),
+  // Chuỗi rỗng (vd `EMAIL_FROM=` copy từ .env.example) coi như chưa đặt, không làm app dừng.
+  EMAIL_FROM: z.preprocess((value) => (value === "" ? undefined : value), z.string().min(1).optional()),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().int().optional(),
   RESEND_API_KEY: z.string().optional(),
 
-  TRIAL_DAYS: z.coerce.number().int().positive().default(14),
-  GRACE_DAYS: z.coerce.number().int().positive().default(7),
-  ORDER_PENDING_TTL_MINUTES: z.coerce.number().int().positive().default(60),
-  INVOICE_PENDING_TTL_HOURS: z.coerce.number().int().positive().default(24),
-  DEFAULT_DOWNLOAD_LIMIT: z.coerce.number().int().nonnegative().default(5),
-
+  /** Dev only. */
   MOMO_SANDBOX_ENDPOINT: z.string().optional(),
 });
 

@@ -3,6 +3,8 @@ import { getPrismaClient, type Tenant } from "@gieochu/db";
 import { renderSubscriptionStatusEmail, type SubscriptionEmailStage } from "@gieochu/email";
 import { getEnv } from "@gieochu/config";
 import { sendEmailNow } from "./email-dispatch";
+import { getEffectiveBrand } from "./branding";
+import { getSystemSettings } from "./system-settings";
 
 const REMINDER_DAYS = { EARLY: 7, LATE: 1 } as const;
 
@@ -12,12 +14,13 @@ function formatVnDate(date: Date): string {
 
 async function notify(tenant: Pick<Tenant, "name" | "slug" | "ownerId">, stage: SubscriptionEmailStage, periodEnd?: Date) {
   const env = getEnv();
+  const brand = await getEffectiveBrand();
   const prisma = getPrismaClient();
   const owner = await prisma.user.findUnique({ where: { id: tenant.ownerId }, select: { email: true } });
   if (!owner) return;
 
   const rendered = renderSubscriptionStatusEmail(stage, {
-    appName: env.APP_NAME,
+    appName: brand.name,
     tenantName: tenant.name,
     billingUrl: `${env.APP_URL}/studio/${tenant.slug}/billing`,
     periodEndDisplay: periodEnd ? formatVnDate(periodEnd) : undefined,
@@ -60,10 +63,10 @@ async function downgradeToFree(prisma: ReturnType<typeof getPrismaClient>, subsc
  */
 export async function runSubscriptionSweep(): Promise<void> {
   const prisma = getPrismaClient();
-  const env = getEnv();
   const now = new Date();
-  const settings = await prisma.systemSettings.findUnique({ where: { id: "default" } });
-  const graceDays = settings?.graceDays ?? env.GRACE_DAYS;
+  // ADR-032: đọc lại mỗi lần chạy sweep (worker, ngoài React → không cache) — đổi ân hạn chỉ áp cho
+  // subscription chuyển GRACE từ lần sweep sau, không hồi tố graceEndsAt đã đặt.
+  const { graceDays } = await getSystemSettings();
   const freePlan = await prisma.plan.findFirstOrThrow({ where: { isFree: true, isActive: true } });
 
   const graceExpiring = await prisma.subscription.findMany({
