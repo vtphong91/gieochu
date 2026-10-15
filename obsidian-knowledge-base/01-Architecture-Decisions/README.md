@@ -12,7 +12,7 @@ Thư mục này chứa một **bản trích lọc các Quyết định Kiến tr
 những quyết định mà một người mới tham gia dự án cần biết trước khi chạm vào code.
 
 Đây là bản trích lọc — xem [`docs/DECISIONS.md`](../../docs/DECISIONS.md) ở gốc repo để có đầy đủ toàn bộ quyết
-định kiến trúc (hiện có 34 ADR, ADR-001…ADR-034). Số thứ tự `ADR-0XX` trong các file ở thư mục này là số thứ tự **riêng của
+định kiến trúc (hiện có 35 ADR, ADR-001…ADR-035). Số thứ tự `ADR-0XX` trong các file ở thư mục này là số thứ tự **riêng của
 thư mục KB**, đánh lại từ 1 cho phần trích lọc — mỗi file ghi rõ nó tương ứng ADR số mấy trong
 `docs/DECISIONS.md`, để tra ngược lại nguồn gốc khi cần.
 
@@ -37,5 +37,6 @@ thư mục KB**, đánh lại từ 1 cho phần trích lọc — mỗi file ghi 
 - `[[ADR-018-System-Settings-And-Brand-From-System-Center]]`: Env runtime chỉ còn 8 biến hạ tầng + secret; thương hiệu chỉ từ `SystemBranding` (fallback `DEFAULT_BRAND`/`resolveBrand`, đọc qua `getEffectiveBrand()`); cấu hình hệ thống (TTL phiên/liên kết/presign, ân hạn, đơn/hoá đơn chờ, lượt tải mặc định) ở bảng L1 `system_settings` + trang `/admin/settings/general`, có giới hạn; `DISPLAY_TIME_ZONE` là hằng; kèm sự cố 2026-10-15 (drop `platformName` trên DB dùng chung → quy tắc expand → contract). *(≙ ADR-032)*
 - `[[ADR-019-Home-Page-Real-Data-Sold-Count]]`: Trang chủ hệ thống dùng dữ liệu thật — cột cache `products.soldCount` (tính lại sau commit ở 6 đường đổi trạng thái đơn/entitlement), 4 section `stats`/`search`/`coaches`/`documents` (ghim + tự bù, ẩn khi 0), "Công khai" = PUBLISHED + tenant ACTIVE, không đọc `orders` (§7.9). *(≙ ADR-033, gồm "Bổ sung theo triển khai")*
 - `[[ADR-020-Single-Database-Dev-Preview-Production]]`: Một database Neon duy nhất cho máy dev, Vercel Preview và Production (chủ dự án bác đề xuất tách Neon branch) — migration chỉ Quốc duyệt/chạy theo expand → contract, cấm `db:seed` và `migrate dev/reset`, integration test/script phải dọn dữ liệu, Preview chỉ xem giao diện, dữ liệu demo trên production phải `demo:clean` trước go-live. *(≙ ADR-034)*
+- `[[ADR-021-Shop-Marketplace-Cms-First]]`: Trang "Cửa hàng" (marketplace) `/cua-hang` — làm CMS trước (GĐ1: `CmsPage` slug `shop`, 9 section, nháp/xuất bản/khôi phục, không DDL; `SYSTEM_CMS_SLUGS` chặn form CMS chung và `/p/home`, `/p/shop`), trang dữ liệu sau (GĐ2: `/cua-hang` + `/cua-hang/tai-lieu`, tìm không dấu `unaccent`, gian hàng nổi bật xếp theo bán 30 ngày không hiển thị số, kệ Bán chạy theo `soldCount`). GĐ1 xong code, GĐ2 chưa làm. *(≙ ADR-035, gồm "Bổ sung ADR-035" và "Chủ dự án chốt")*
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

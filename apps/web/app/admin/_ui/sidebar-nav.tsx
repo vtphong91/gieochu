@@ -15,6 +15,7 @@ import {
   IconPackage,
   IconReceipt,
   IconShield,
+  IconShoppingBag,
   IconStore,
   IconTag,
   IconUsers,
@@ -51,6 +52,7 @@ const GROUPS: NavGroup[] = [
     Icon: IconDoc,
     items: [
       { href: "/admin/cms", label: "Trang CMS", Icon: IconDoc },
+      { href: "/admin/cms/shop", label: "Trang Cửa hàng", Icon: IconShoppingBag },
       { href: "/admin/categories", label: "Danh mục tài liệu", Icon: IconTag },
     ],
   },

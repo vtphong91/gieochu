@@ -2,8 +2,9 @@ import type { ReactNode } from "react";
 import type { ProductType } from "@gieochu/db";
 import { brandColors } from "@gieochu/config/theme";
 import { cloudinaryDeliveryUrl } from "@gieochu/core/cloudinary-url";
+import { productTypeLabel } from "@gieochu/core/product-type";
 import { sanitizeRichTextHtml } from "@gieochu/core/content/sanitize-html";
-import { PRODUCT_TYPE_LABEL, ProductTypeIcon } from "./icons";
+import { ProductTypeIcon } from "./icons";
 import { ProductRatingInline } from "./product-reviews";
 
 /*
@@ -89,7 +90,7 @@ export function ProductDetailView({
   const onSale = product.effectivePriceVnd < product.priceVnd;
   const isFree = product.effectivePriceVnd === 0;
   const discountPercent = onSale && product.priceVnd > 0 ? Math.max(1, Math.round((1 - product.effectivePriceVnd / product.priceVnd) * 100)) : 0;
-  const typeLabel = PRODUCT_TYPE_LABEL[product.type];
+  const typeLabel = productTypeLabel(product.type);
   const description = prepareDescription(product.description, product.imageCloudName);
 
   return (

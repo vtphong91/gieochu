@@ -25,7 +25,9 @@ author: System Architect
 > Đợt ADR-026/027 (2026-09-26/27) cũng **không thêm `route.ts`** (đếm lại 2026-09-27: vẫn 20 ✅); contract Server
 > Action của editor sản phẩm Studio ghi ở §10 trang này. Đợt M10a Đánh giá (ADR-029, 2026-09-27) cũng **không thêm
 > `route.ts`** (đếm lại 2026-09-28: vẫn 20 ✅) — contract Server Action + hàm lib đánh giá ghi ở §12. Đợt M10b Bài viết
-> (ADR-029, 2026-09-28) cũng **không thêm `route.ts`** (đếm lại 2026-09-28: vẫn 20 ✅) — contract ghi ở §13.
+> (ADR-029, 2026-09-28) cũng **không thêm `route.ts`** (đếm lại 2026-09-28: vẫn 20 ✅) — contract ghi ở §13. Đợt Cửa hàng
+> (ADR-035 GĐ1 + GĐ2, 2026-10-15) cũng **không thêm `route.ts`** (đếm lại 2026-10-15: 20 dưới `/api`, 21 toàn app ✅) — action
+> CMS ở §15, trang công khai `/cua-hang` + loader `lib/shop.ts` ở §16.
 
 ## 1. Quy Ước Chung
 
@@ -430,7 +432,111 @@ Các action có sẵn của editor trang chủ (`saveHomeDraftAction`, `publishH
 
 ---
 
-## 15. Tài Liệu Tham Chiếu & Liên Kết
+## 15. Server Actions & hàm lib — CMS Cửa hàng (ADR-035 GĐ1) ✅
+
+Đối chiếu code 2026-10-15 (working tree, chưa commit). Revalidate `/cua-hang`, `/cua-hang/tai-lieu` của `publishShopAction` nay trỏ
+tới route có thật (GĐ2, §16). Nghiệp vụ: [[02-System-Specs/Shop-Marketplace-Specs|Shop-Marketplace-Specs]];
+quyết định: [[01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First|ADR-021 (≙ ADR-035)]]. Mọi action là Server Action
+(CSRF sẵn của Next, §7.7), không có Route Handler mới. Dòng dữ liệu: `CmsPage` slug `shop` (L1, `getPrismaClient()`).
+
+### 15.1. Server Actions (`app/admin/cms/shop/actions.ts`)
+
+| Action | Guard | Input → Output |
+| :-- | :-- | :-- |
+| `saveShopDraftAction(sections: unknown)` | `requireRole("SYSTEM_ADMIN")` | `sections` validate bằng `shopSectionsSchema` (+ ảnh hero đúng cloud hệ thống) → `upsert` slug `shop`: có dòng → chỉ ghi `blocksDraft`; chưa có → tạo `{ title: "Cửa hàng", blocks: defaultShopSections(), blocksDraft, status: "DRAFT" }`. Revalidate `/admin/cms/shop`, `/admin/cms` → `ShopEditorActionState { error?, success? }` |
+| `publishShopAction(sections: unknown)` | `requireRole("SYSTEM_ADMIN")` | Validate như trên → `upsert`: `blocks` = bản gửi, `blocksDraft` = `DbNull`, `status: "PUBLISHED"`. Revalidate thêm `/cua-hang`, `/cua-hang/tai-lieu` → `ShopEditorActionState` |
+| `restoreLiveShopAction()` | `requireRole("SYSTEM_ADMIN")` | `updateMany({ where: { slug: "shop" }, data: { blocksDraft: DbNull } })` — chưa có dòng thì không làm gì → `ShopEditorActionState` |
+| `searchShopCategoryOptionsAction(search: unknown, includeIds: unknown)` | `requireRole("SYSTEM_ADMIN")` | `search` chuỗi (khác → bỏ); `includeIds` lọc chuỗi 1–64 ký tự, tối đa 14 → `CategoryPinOption[]` |
+
+- Lỗi validate: `{ error: "Dữ liệu section không hợp lệ (<nhãn section>): <thông báo zod đầu tiên>" }`. Lỗi `AppError` có
+  `expose` → `{ error: message }` (gồm lỗi quyền: `requireRole` ném `forbidden()` — `AppError` mặc định `expose: true`); lỗi khác
+  ném tiếp. Riêng `searchShopCategoryOptionsAction` không bọc try/catch — lỗi quyền **ném** ra client (giống action tìm của trang chủ).
+- Ô ghim tài liệu/gian hàng của editor Cửa hàng **gọi lại** `searchHomeProductOptionsAction`/`searchHomeTenantOptionsAction` (§14.1).
+- Đổi contract ở CMS chung: `saveCmsPageAction` (`app/admin/cms/actions.ts`) trả `{ error }` khi slug thuộc `SYSTEM_CMS_SLUGS`
+  (so khớp trim + chữ thường) — trước đây form chung ghi đè được `home`.
+
+### 15.2. Hàm lib
+
+| Hàm | File | Ghi chú |
+| :-- | :-- | :-- |
+| `getShopCmsEditorData(): Promise<ShopCmsEditorData>` | `lib/shop-cms.ts` | Không gác quyền bên trong — caller (`/admin/cms/shop/page.tsx`) gọi `requireAdminAccess`. Trả `{ sections, live, hasDraft, status: "NONE" \| "DRAFT" \| "PUBLISHED", updatedAt: Date \| null, pinOptions: { tenants, products, categories } }`; `sections` = nháp ?? live ?? mặc định (đã `parseShopSections`) |
+| `listCategoryPinOptions(query?: { search?, includeIds?, includeMax? })` | `lib/home.ts` | `withPublic`; danh mục `isActive` A→Z tối đa 200 + id đang chọn (kể cả đã tắt) xếp trước → `CategoryPinOption { id, name, slug, productCount, eligible }` (`productCount` = tài liệu PUBLISHED + tenant ACTIVE; `eligible = isActive && productCount > 0`); `includeMax` mặc định 12. Caller phải `requireRole("SYSTEM_ADMIN")` |
+| `toCategoryPinOption(option)` | `app/admin/cms/home-editor/pin-options.ts` | → `PinOption { id, label: name, hint: "<n> tài liệu công khai", eligible }` |
+
+### 15.3. `@gieochu/core` — CMS slug và subpath `@gieochu/core/shop-sections`
+
+* `packages/core/src/admin/cms-slugs.ts` (re-export từ `@gieochu/core`): `SYSTEM_CMS_SLUGS` (`["home","shop"]`), `HOME_CMS_SLUG`,
+  `SHOP_CMS_SLUG`, `isSystemCmsSlug(slug)`, kiểu `SystemCmsSlug`.
+* Subpath `@gieochu/core/shop-sections` (`packages/core/package.json` exports → `src/admin/shop-sections.ts`) — chỉ zod + helper
+  thuần, **client component phải import qua subpath này** (barrel `@gieochu/core` kéo code server-only): `shopSectionSchema`,
+  `shopSectionsSchema`, `isValidShopSections`, `parseShopSections`, `resolveShopSections`, `defaultShopSections`,
+  `DEFAULT_SHOP_SECTIONS`, `defaultShopSectionData`, `defaultShopSectionId`, `isInternalShopHref`, `formatShopAvgTenths`,
+  `parseShopAvgTenthsInput`, `SHOP_SECTION_TYPES`, `SHOP_SECTION_LABELS`, `SHOP_CATEGORY_MODES` (+ `_LABELS`),
+  `SHOP_FEATURED_TENANTS_MODES` (+ `_LABELS`), hằng giới hạn `SHOP_*_MIN/MAX/DEFAULT`; kiểu `ShopSection`, `ShopSectionType`,
+  `ShopSectionData<T>`, `ShopHeroData`, `ShopCategoriesData`, `ShopFeaturedData`, `ShopByCategoryData`, `ShopShelfData`,
+  `ShopTopRatedData`, `ShopFeaturedTenantsData`, `ShopCtaOpenStoreData`, `ShopCategoryMode`, `ShopFeaturedTenantsMode`.
+  Barrel `@gieochu/core` re-export phần lớn (không re-export các hằng `*_DEFAULT`, `SHOP_EYEBROW_MAX`… — chỉ có ở subpath).
+* Loader trang công khai `apps/web/lib/shop.ts` (GĐ2): §16.
+
+---
+
+## 16. Trang công khai Cửa hàng + loader `apps/web/lib/shop.ts` (ADR-035 GĐ2) ✅
+
+Đối chiếu code 2026-10-15 (working tree, chưa commit). Nghiệp vụ, quy tắc kệ, SEO:
+[[02-System-Specs/Shop-Marketplace-Specs|Shop-Marketplace-Specs]] §4–§6. **Không thêm `route.ts`** (đếm lại 2026-10-15: 20 dưới
+`/api`, 21 toàn `apps/web/app` ✅) — chỉ page Server Component + layout/loading/error; không có Server Action mới.
+
+### 16.1. Trang (App Router)
+
+| Đường dẫn | File | Guard | Query → Hành vi |
+| :-- | :-- | :-- | :-- |
+| `/cua-hang` | `app/cua-hang/page.tsx` (+ `layout.tsx`, `loading.tsx`, `error.tsx`) | Public (đọc `getCurrentUser()` chỉ để ẩn CTA mở gian hàng) | Không query. Render section `visible` của CMS slug `shop` (bản PUBLISHED, không thì mặc định). `generateMetadata`: canonical tuyệt đối `/cua-hang` |
+| `/cua-hang/tai-lieu` | `app/cua-hang/tai-lieu/page.tsx` (+ `loading.tsx`; dùng chung `layout.tsx`/`error.tsx` của `cua-hang`) | Public | `q`, `danh-muc`, `sap-xep` (`noi-bat`\|`ban-chay`\|`danh-gia-cao`\|`moi-nhat`), `trang`; 24/trang; tham số sai hạ về mặc định (không 404); danh mục sai → bỏ lọc + ghi chú; trang vượt → trang cuối + ghi chú. Canonical không query; có `q` → `robots: noindex, follow` |
+
+Thêm route tĩnh cấp gốc ⇒ 6 slug tenant dành riêng (`RESERVED_SLUGS`): `cua-hang`, `tai-lieu`, `danh-muc`, `tim-kiem`, `giao-vien`,
+`kham-pha` ✅.
+
+### 16.2. Hàm và hằng export từ `apps/web/lib/shop.ts`
+
+| Export | Chữ ký / giá trị | Ghi chú |
+| :-- | :-- | :-- |
+| `getShopCmsSections` | `() => Promise<ShopSection[]>` | `cache()` theo request; `CmsPage` slug `shop` (L1) — PUBLISHED → `parseShopSections(blocks)`, còn lại/hỏng → `defaultShopSections()`; chỉ trả section `visible` |
+| `getShopSeo` | `() => Promise<ShopSeo>` — `{ title, description, heroTitle }` (đều `string \| null`) | `title`/`description` từ `seoTitle`/`seoDescription` **chỉ khi** dòng PUBLISHED; chưa ghép tên thương hiệu |
+| `getShopHeroStats` | `() => Promise<ShopHeroStats>` — `{ productCount, tenantCount }` | Hai phép đếm trong một `withPublic` |
+| `getShopHeroAndCategories` | `(sections: readonly ShopSection[]) => Promise<ShopHeroAndCategories>` — `{ heroChips, categories }` | Nhóm Suspense (a); cả `hero` lẫn `categories` ẩn → không truy vấn |
+| `getShopProductShelves` | `(sections) => Promise<ShopProductShelves>` — `{ featured, byCategory, bestSellers, topRated, newest }` | Nhóm (b); một `withPublic`, một `findMany` chi tiết |
+| `getShopFeaturedTenants` | `(sections) => Promise<ShopFeaturedTenant[]>` | Nhóm (c); `withPublic` + `getTenantSales30d` |
+| `getTenantSales30d` | `(tenantIds: readonly string[]) => Promise<Map<string, number>>` | **`withSystemJob`**; chỉ số đếm theo tenant, cache bộ nhớ 5 phút/instance; lỗi → map rỗng. Chỉ gọi với tenant đã lọc ở server — không dùng cho route admin, không nhận input client |
+| `shouldShowOpenStoreCta` | `(viewer: Pick<CurrentUser, "userId"> \| null) => Promise<boolean>` | `false` nếu viewer là chủ một tenant (`tenants.ownerId`, L1); chưa xét STAFF |
+| `getShopPageData` | `(sections: ShopSection[], viewer: CurrentUser \| null) => Promise<ShopPageData>` | Tiện ích gộp 3 nhóm + CTA (không Suspense) — page hiện **không** dùng |
+| `searchShopProducts` | `(input: ShopSearchInput) => Promise<ShopSearchResult>` | Một `withPublic`; tìm không dấu (`public.gieochu_unaccent`) trên tiêu đề/`summary`/tên tenant/tên danh mục đang bật; `page` kẹp 1…`pageCount` |
+| `parseShopSearchParams` | `(searchParams: Record<string, string \| string[] \| undefined>) => ShopSearchParams` — `{ q, categorySlug, sort, page }` | Không ném; dựa trên `shopSearchParamsSchema` (zod, export) |
+| `normalizeShopQuery` | `(value: string \| undefined \| null) => string \| undefined` | NFC, trim, cắt 100 ký tự |
+| `escapeLikePattern` | `(value: string) => string` | Escape `\`, `%`, `_` (dùng với `ESCAPE '\'`) |
+| `shopSearchHref` | `(params?: { q?, categorySlug?, sort?, page? }) => string` | Dựng `/cua-hang/tai-lieu?…`, bỏ `sap-xep=noi-bat`, `trang=1` |
+| Hằng | `SHOP_PATH = "/cua-hang"`, `SHOP_SEARCH_PATH = "/cua-hang/tai-lieu"`, `SHOP_SORTS`, `SHOP_DEFAULT_SORT = "noi-bat"`, `SHOP_SORT_LABELS`, `SHOP_SEARCH_PAGE_SIZE = 24`, `SHOP_SEARCH_Q_MAX = 100` | |
+
+**Kiểu dữ liệu:** `ShopProduct` = `HomeFeaturedProduct` + `typeLabel: string`; `ShopCategory { id, slug, name, imageUrl, productCount }`;
+`ShopCategoryShelf { category, products, href }`; `ShopFeaturedTenant` = `HomeFeaturedTenant` + `sales30d: number | null` (null ở
+`TOP_RATED`; **không hiển thị**); `ShopSort`; `ShopPageData`; `ShopSearchInput { q?, categorySlug?, sort, page, pageSize: 24 }`;
+`ShopSearchResult { items, total, page, pageCount (≥1), category: ShopCategory | null }`.
+
+### 16.3. Export mới ở `apps/web/lib/home.ts` (để `lib/shop.ts` dùng lại — không đổi hành vi trang chủ)
+
+`PUBLIC_PRODUCT_WHERE`, `orderByPinned`, `tenantLogoUrl`, `fillProductIdsQuery` (trước là hàm/hằng nội bộ) ✅ `git diff`.
+
+### 16.4. `@gieochu/core` — nhãn loại tài liệu (subpath `@gieochu/core/product-type`)
+
+`packages/core/src/product/type-label.ts` (re-export từ barrel `@gieochu/core`; client import qua subpath — file không phụ thuộc gì):
+`PRODUCT_TYPES` (`["TEMPLATE","SLIDE","EBOOK","EXAM","OTHER"]`, khớp enum `ProductType`), `PRODUCT_TYPE_LABELS` (Mẫu tài liệu /
+Slide bài giảng / Sách điện tử / Đề thi / Tài liệu), `productTypeLabel(type: string)` (giá trị lạ → nhãn `OTHER`), kiểu
+`ProductTypeValue`. Storefront tenant (`[tenantSlug]/_ui/products.tsx`, `product-detail.tsx`) và `lib/shop.ts` dùng nguồn này; map
+`PRODUCT_TYPE_LABEL` cũ ở `[tenantSlug]/_ui/icons.tsx` đã gỡ ✅. Editor Studio (`studio/.../editor-bits.tsx`) **vẫn** có map nhãn
+riêng khác chữ ("Mẫu / Template", "Đề thi / Đề kiểm tra") — BACKLOG.
+
+---
+
+## 17. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * [[Database-Schema-Reference]] — Lược đồ dữ liệu ([Database-Schema-Reference.md](./Database-Schema-Reference.md))
@@ -442,5 +548,6 @@ Các action có sẵn của editor trang chủ (`saveHomeDraftAction`, `publishH
 * [[02-System-Specs/Posts-Specs|Posts-Specs]] — nghiệp vụ bài viết M10b ([Posts-Specs.md](../02-System-Specs/Posts-Specs.md))
 * [[01-Architecture-Decisions/ADR-016-Short-Product-Url-No-Sticky-Publish-Card|ADR-016 (≙ ADR-030)]] — URL tài liệu rút gọn, redirect 301 ([ADR-016-Short-Product-Url-No-Sticky-Publish-Card.md](../01-Architecture-Decisions/ADR-016-Short-Product-Url-No-Sticky-Publish-Card.md))
 * [[01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-From-System-Center|ADR-018 (≙ ADR-032)]] ([ADR-018-System-Settings-And-Brand-From-System-Center.md](../01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-From-System-Center.md)) · [[01-Architecture-Decisions/ADR-019-Home-Page-Real-Data-Sold-Count|ADR-019 (≙ ADR-033)]] ([ADR-019-Home-Page-Real-Data-Sold-Count.md](../01-Architecture-Decisions/ADR-019-Home-Page-Real-Data-Sold-Count.md))
+* [[02-System-Specs/Shop-Marketplace-Specs|Shop-Marketplace-Specs]] ([Shop-Marketplace-Specs.md](../02-System-Specs/Shop-Marketplace-Specs.md)) · [[01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First|ADR-021 (≙ ADR-035)]] ([ADR-021-Shop-Marketplace-Cms-First.md](../01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First.md))
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

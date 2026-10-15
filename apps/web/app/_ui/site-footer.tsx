@@ -6,6 +6,9 @@ import { systemFontVars } from "./system-fonts";
 
 const BLUE_DEEP = brandColors.primaryDeep;
 
+/** Link footer: chữ trắng 60% (≥ 4.5:1 trên nền primaryDeep), hover/focus sáng hẳn + focus ring trắng. */
+const FOOTER_LINK = "w-fit rounded-sm outline-offset-2 hover:text-white hover:underline focus-visible:text-white focus-visible:outline-2 focus-visible:outline-white";
+
 /**
  * Footer hệ thống dùng chung mọi trang public (ADR-025). Chrome cố định, không thuộc CMS;
  * tự đọc brand/logo (cache() theo request) và tự gắn font hệ thống.
@@ -34,9 +37,13 @@ export async function SiteFooter() {
             <div>
               <div className="mb-4 text-[13px] font-bold text-white sm:text-[13.5px]">Khám phá</div>
               <div className="flex flex-col gap-3 text-sm text-white/60">
-                <span>Tài liệu</span>
+                <Link href="/cua-hang" className={FOOTER_LINK}>
+                  Cửa hàng
+                </Link>
                 <span>Giáo viên &amp; Coach</span>
-                <Link href="/pricing">Bảng giá</Link>
+                <Link href="/pricing" className={FOOTER_LINK}>
+                  Bảng giá
+                </Link>
               </div>
             </div>
             <div>

@@ -6,6 +6,7 @@ import { getCurrentUser } from "../../lib/session";
 import { resolveLandingPath } from "../../lib/landing-path";
 import { AccountMenu } from "./account-menu";
 import { BrandMark } from "./brand-mark";
+import { MobileNav, type MobileNavItem } from "./mobile-nav";
 import { systemFontVars } from "./system-fonts";
 
 const INK = brandColors.ink;
@@ -15,6 +16,18 @@ const LINE = brandColors.line;
 const BLUE = brandColors.primary;
 const AMBER = brandColors.accent;
 
+/** Link nav ngang (≥ lg): trang hiện tại đậm + gạch chân (không chỉ đổi màu). */
+const NAV_LINK_CLASS =
+  "inline-flex min-h-11 items-center text-[15px] font-medium underline-offset-[6px] outline-offset-2 hover:underline focus-visible:outline-2 aria-[current=page]:font-bold aria-[current=page]:underline aria-[current=page]:decoration-2";
+
+/** Mục điều hướng có trang thật (dùng cho menu mobile; nav ngang ≥ lg giữ thêm mục "Giáo viên & Coach" chưa có trang). */
+export type SiteNavKey = "shop" | "pricing";
+
+const NAV_LINKS: { key: SiteNavKey; href: string; label: string }[] = [
+  { key: "shop", href: "/cua-hang", label: "Cửa hàng" },
+  { key: "pricing", href: "/pricing", label: "Bảng giá" },
+];
+
 /**
  * Header hệ thống dùng chung mọi trang public (ADR-025): trang chủ, storefront tenant,
  * chi tiết tài liệu, checkout. Chrome cố định, không thuộc CMS; tự đọc brand/logo và
@@ -22,8 +35,10 @@ const AMBER = brandColors.accent;
  * Tự gắn font + màu chữ hệ thống nên đặt được trong trang có font/theme riêng.
  * Cao 68px (< sm) / 88px (sm+) — `scroll-padding-top` trong globals.css (.site-header) khớp số này.
  * Nền + border full-bleed ở <header>; nội dung bọc container-page (ADR-024).
+ * `current`: mục điều hướng ứng với trang đang xem (trang tự truyền — header là Server Component, không biết pathname)
+ * → `aria-current="page"` + chữ đậm/gạch chân. Dưới `lg` nav ngang ẩn, thay bằng `MobileNav` (nút menu).
  */
-export async function SiteHeader() {
+export async function SiteHeader({ current }: { current?: SiteNavKey } = {}) {
   const [brand, logos, currentUser] = await Promise.all([getEffectiveBrand(), getEffectiveLogos(), getCurrentUser()]);
 
   // Chỉ SYSTEM_ADMIN/chủ tenant có "điểm đến chính" khác trang chủ (System
@@ -50,6 +65,10 @@ export async function SiteHeader() {
     }
   }
 
+  const mobileItems: MobileNavItem[] = NAV_LINKS.map((link) => ({ href: link.href, label: link.label, current: current === link.key }));
+  // Dưới `sm` nút "Đăng nhập" ở header bị ẩn (chừa chỗ cho CTA) → đưa vào menu mobile cho khách chưa đăng nhập.
+  if (!currentUser) mobileItems.push({ href: "/login", label: "Đăng nhập" });
+
   return (
     <header
       className={`site-header ${systemFontVars} sticky top-0 z-20 border-b font-[family-name:var(--font-body)]`}
@@ -63,15 +82,25 @@ export async function SiteHeader() {
           )}
         </Link>
         <nav aria-label="Điều hướng chính" className="hidden items-center gap-10 lg:flex">
-          <Link href="/pricing" className="text-[15px] font-medium" style={{ color: INK_SOFT }}>
+          <Link
+            href="/pricing"
+            aria-current={current === "pricing" ? "page" : undefined}
+            className={NAV_LINK_CLASS}
+            style={{ color: current === "pricing" ? INK : INK_SOFT, outlineColor: BLUE }}
+          >
             Bảng giá
           </Link>
           <span className="text-[15px] font-medium" style={{ color: INK_SOFT }}>
             Giáo viên &amp; Coach
           </span>
-          <span className="text-[15px] font-medium" style={{ color: INK_SOFT }}>
-            Khám phá tài liệu
-          </span>
+          <Link
+            href="/cua-hang"
+            aria-current={current === "shop" ? "page" : undefined}
+            className={NAV_LINK_CLASS}
+            style={{ color: current === "shop" ? INK : INK_SOFT, outlineColor: BLUE }}
+          >
+            Cửa hàng
+          </Link>
         </nav>
         <div className="flex items-center gap-3 sm:gap-5">
           {accountDisplayName ? (
@@ -91,6 +120,7 @@ export async function SiteHeader() {
               </Link>
             </>
           )}
+          <MobileNav items={mobileItems} />
         </div>
       </div>
     </header>

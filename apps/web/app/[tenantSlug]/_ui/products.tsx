@@ -1,9 +1,10 @@
 import type { StorefrontProductsData } from "@gieochu/core";
 import { cloudinaryDeliveryUrl } from "@gieochu/core/cloudinary-url";
+import { productTypeLabel } from "@gieochu/core/product-type";
 import { productPath } from "@gieochu/core/product-path";
 import type { PublicProduct } from "../../../lib/storefront";
 import { IconDoc } from "../../admin/_ui/icons";
-import { IconStar, PRODUCT_TYPE_LABEL, ProductTypeIcon } from "./icons";
+import { IconStar, ProductTypeIcon } from "./icons";
 import { formatRatingAverage } from "./review-parts";
 import { CONTAINER, SectionHeading, pillClass } from "./primitives";
 
@@ -84,7 +85,7 @@ function ProductCard({ product, href }: { product: PublicProduct; href: string }
 
       <span className="absolute top-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-[color:var(--sf-ink)] shadow-sm">
         <ProductTypeIcon type={product.type} className="h-3.5 w-3.5" />
-        {PRODUCT_TYPE_LABEL[product.type]}
+        {productTypeLabel(product.type)}
       </span>
       {discountPercent > 0 ? (
         <span className="absolute top-3 left-3 rounded-full px-2.5 py-1 text-xs font-bold text-white shadow-sm" style={{ background: "var(--sf-red)" }}>

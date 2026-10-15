@@ -576,6 +576,56 @@ trong đợt ADR-032/033".
 - **Còn treo:** dọn dữ liệu demo (`demo:clean`) trước go-live (ADR-034); migration contract `DROP COLUMN IF EXISTS "platformName"` chạy **sau** khi deploy
   bản ADR-032. Quy trình: KB `04-Operations-Runbooks/Deploy-Vercel-Runbook.md` §9, `Publish-And-Rollback-Runbook.md` §4.2.1.
 
+## Cửa hàng GĐ1 + GĐ2 (ADR-035) — xong code, chưa commit/deploy — 2026-10-15
+
+**GĐ1 (CMS Cửa hàng trong System Center) và GĐ2 (trang công khai `/cua-hang`, `/cua-hang/tai-lieu`) đã xong code, chưa commit,
+chưa deploy.** Quyết định: ADR-035 + "Bổ sung ADR-035" + "Chủ dự án chốt". Kế hoạch: `docs/ke-hoach-cua-hang-marketplace-2026-10-15.md`
+— §5 bước 1–14 xong, bước 15 (KB) xong. Verify: `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test:unit` đạt; thử trên dev server
+với dữ liệu thật đạt.
+
+### GĐ1 — CMS `shop`
+
+- **Không DDL:** cấu hình lưu `CmsPage` slug `shop` (`blocks` live / `blocksDraft` nháp); dòng tạo bằng `upsert` ở lần Lưu nháp/
+  Xuất bản đầu (không seed — ADR-034).
+- **Schema 9 section** `packages/core/src/admin/shop-sections.ts` (subpath client `@gieochu/core/shop-sections`): giới hạn/mặc
+  định, `parseShopSections` đọc phòng thủ (section thiếu → thêm cuối ở trạng thái ẩn, `MANUAL` rỗng → `AUTO`), ngưỡng điểm lưu
+  số nguyên ×10 (`minAvgTenths`).
+- **Editor** `/admin/cms/shop` (`page.tsx`, `loading.tsx`, `_ui/`) + actions `app/admin/cms/shop/actions.ts`
+  (`saveShopDraftAction`, `publishShopAction`, `restoreLiveShopAction`, `searchShopCategoryOptionsAction` — đều
+  `requireRole("SYSTEM_ADMIN")`); loader `apps/web/lib/shop-cms.ts`; `listCategoryPinOptions` trong `apps/web/lib/home.ts`;
+  menu "Trang Cửa hàng"; kit `Notice`; `PinPicker` thêm `copy`/`error`.
+- **`SYSTEM_CMS_SLUGS = ["home","shop"]`** (`packages/core/src/admin/cms-slugs.ts`): form CMS chung từ chối, `/p/home` và
+  `/p/shop` trả 404 (sửa lỗi có sẵn), danh sách `/admin/cms` link editor riêng.
+- Quét tenant trùng 6 slug dành riêng: không trùng; extension `unaccent`/`pg_trgm` khả dụng (theo báo cáo của Quốc).
+
+### GĐ2 — trang công khai
+
+- **Migration expand `20261015090000_adr035_unaccent_search`** (đã áp lên DB dùng chung 2026-10-15, kiểm
+  `gieochu_unaccent(lower('Đề thi Toán học'))` = `de thi toan hoc`): extension `unaccent` + hàm `public.gieochu_unaccent(text)`
+  IMMUTABLE (translate đ/Đ + unaccent), GRANT EXECUTE cho `gieochu_app`; Prisma không quản lý; chưa có index.
+- **Bảo mật DB:** chủ dự án đã `REVOKE CREATE ON DATABASE neondb FROM gieochu_app` (2026-10-15); `setup-app-role.mts` chưa cập nhật
+  (BACKLOG).
+- **`RESERVED_SLUGS`** thêm `cua-hang`, `tai-lieu`, `danh-muc`, `tim-kiem`, `giao-vien`, `kham-pha` (đã quét prod, không trùng).
+- **`@gieochu/core/product-type`** (`packages/core/src/product/type-label.ts`): `PRODUCT_TYPES`, `PRODUCT_TYPE_LABELS`,
+  `productTypeLabel` — storefront tenant và loader Cửa hàng dùng chung một nguồn nhãn.
+- **Loader `apps/web/lib/shop.ts`**: kệ trong `withPublic` (một `findMany` chi tiết, `ROW_NUMBER` cho kệ theo danh mục); số bán 30 ngày
+  `getTenantSales30d` dưới `withSystemJob` — chỉ số đếm theo tenant, loại entitlement thu hồi, cache bộ nhớ 5 phút, chỉ để xếp hạng,
+  không hiển thị; tìm không dấu trên tiêu đề/summary/tên tenant/tên danh mục, escape LIKE; `getShopHeroStats`, `getShopSeo` (SEO CMS chỉ
+  khi dòng `shop` PUBLISHED). `apps/web/lib/home.ts` export thêm `PUBLIC_PRODUCT_WHERE`, `orderByPinned`, `tenantLogoUrl`,
+  `fillProductIdsQuery`.
+- **Route** `/cua-hang` (layout riêng có header/footer, Suspense theo vị trí section, trạng thái rỗng toàn trang, H1 dự phòng khi ẩn
+  hero, `error.tsx` thông điệp chung + digest) và `/cua-hang/tai-lieu` (`q`, `danh-muc`, `sap-xep`, `trang`; 24/trang; canonical không
+  query; có `q` → noindex). Không thêm `route.ts`.
+- **UI** (`apps/web/app/_ui/`): `catalog-parts`, `document-card`, `tenant-card`, `product-shelf`, `category-grid`, `shop-hero`,
+  `shelf-skeleton`, `shop-cta`, `mobile-nav`; `app/cua-hang/_ui/search-parts.tsx`; header prop `current` + link "Cửa hàng" + menu mobile;
+  footer link "Cửa hàng"; trang chủ dùng `DocumentCard`/`TenantCard`, ô tìm + chip danh mục trỏ `/cua-hang/tai-lieu`; icon
+  `IconMenu`/`IconClose`.
+
+**Số test:** `pnpm test:count` = **93/94 unit, 52/53 integration** — không đổi (không thêm test đợt này). Nợ test + việc còn lại:
+`docs/BACKLOG.md` mục "Phát sinh trong đợt Cửa hàng GĐ1 (ADR-035)" và "Phát sinh trong đợt Cửa hàng GĐ2 (ADR-035)". KB:
+`02-System-Specs/Shop-Marketplace-Specs.md`, `03-API-Contracts/Endpoint-Directory.md` §15–§16,
+`04-Operations-Runbooks/UI-Design-System.md` §13–§14.
+
 ## Câu hỏi còn mở (đã chọn phương án an toàn, xem ADR tương ứng)
 
 - ID strategy: cuid2 (ADR-001).

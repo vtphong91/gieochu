@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import { brandColors } from "@gieochu/config/theme";
 import { IconAlertTriangle, IconChevronDown, IconPin, IconXCircle } from "../../_ui/icons";
 
@@ -13,6 +13,52 @@ export interface PinOption {
   /** false = đang ghim nhưng không còn hiển thị được trên trang chủ. */
   eligible: boolean;
 }
+
+/**
+ * Chuỗi giao diện của bộ chọn — mặc định là bộ chữ "ghim" của trang chủ (ADR-033). CMS Cửa hàng (ADR-035) truyền
+ * bộ chữ riêng, vd bộ chọn danh mục dùng "Chọn / Bỏ chọn". Truyền thiếu key nào thì key đó dùng mặc định.
+ */
+export interface PinPickerCopy {
+  /** Ghi chú dưới tiêu đề. */
+  note: string;
+  /** Khi chưa chọn mục nào. */
+  emptyPinned: string;
+  /** Gợi ý dưới ô tìm (khi chưa đủ). */
+  searchHint: string;
+  /** Động từ nút chọn, vd "Ghim". */
+  pinAction: string;
+  /** Động từ nút bỏ, vd "Bỏ ghim". */
+  unpinAction: string;
+  /** Trạng thái đã chọn + tiền tố bộ đếm, vd "Đã ghim". */
+  pinnedState: string;
+  /** Mục đã chọn nhưng không còn dùng được. */
+  unavailable: string;
+  /** Mục đã chọn vượt số hiển thị. */
+  overLimit: (limit: number) => string;
+  /** Đã chọn đủ `max`. */
+  full: (max: number) => string;
+  /** Tìm không ra kết quả cho từ khoá. */
+  noMatch: (query: string) => string;
+  /** Không có mục nào để chọn. */
+  noOptions: string;
+  /** Icon nút chọn / trạng thái đã chọn. */
+  PinIcon: ComponentType<{ className?: string }>;
+}
+
+const DEFAULT_COPY: PinPickerCopy = {
+  note: "Ghim trước, thiếu sẽ tự bù theo đánh giá và mới nhất. Thứ tự ghim là thứ tự hiển thị.",
+  emptyPinned: "Chưa ghim mục nào — trang chủ tự chọn theo đánh giá và mới nhất.",
+  searchHint: "Gõ để lọc theo tên; chỉ hiện mục đang công khai.",
+  pinAction: "Ghim",
+  unpinAction: "Bỏ ghim",
+  pinnedState: "Đã ghim",
+  unavailable: "Không còn hiển thị — sẽ bị bỏ qua, nên bỏ ghim.",
+  overLimit: (limit) => `Ngoài số thẻ hiển thị (${limit}) — sẽ không hiện.`,
+  full: (max) => `Đã đủ ${max} mục ghim — bỏ bớt để ghim thêm.`,
+  noMatch: (query) => `Không có mục công khai nào khớp “${query}”. Thử từ khoá ngắn hơn.`,
+  noOptions: "Chưa có mục công khai nào để ghim.",
+  PinIcon: IconPin,
+};
 
 const INK = brandColors.ink;
 const INK_SOFT = "#4B5563";
@@ -46,6 +92,8 @@ export function PinPicker({
   initialOptions,
   search,
   onChange,
+  copy: copyOverride,
+  error,
 }: {
   id: string;
   label: string;
@@ -59,7 +107,13 @@ export function PinPicker({
   initialOptions: PinOption[];
   search: (query: string, includeIds: string[]) => Promise<PinOption[]>;
   onChange: (ids: string[]) => void;
+  /** Bộ chữ riêng (mặc định: "ghim" của trang chủ). */
+  copy?: Partial<PinPickerCopy>;
+  /** Lỗi kiểm tra của cả danh sách (hiện dưới tiêu đề, gắn `aria-describedby`). */
+  error?: string;
 }) {
+  const copy: PinPickerCopy = { ...DEFAULT_COPY, ...copyOverride };
+  const { PinIcon } = copy;
   const [results, setResults] = useState<PinOption[]>(initialOptions);
   const [known, setKnown] = useState<Map<string, PinOption>>(() => new Map(initialOptions.map((o) => [o.id, o])));
   const [query, setQuery] = useState("");
@@ -82,6 +136,7 @@ export function PinPicker({
   const noteId = `${id}-note`;
   const searchId = `${id}-search`;
   const resultsId = `${id}-results`;
+  const errorId = `${id}-error`;
 
   function nameOf(pinnedId: string): string {
     return known.get(pinnedId)?.label ?? "Mục không xác định";
@@ -101,7 +156,7 @@ export function PinPicker({
         return next;
       });
       const selectable = found.filter((o) => o.eligible && !valueRef.current.includes(o.id)).length;
-      setAnnouncement(selectable === 0 ? "Không có kết quả để ghim." : `${selectable} kết quả.`);
+      setAnnouncement(selectable === 0 ? `Không có kết quả để ${copy.pinAction.toLowerCase()}.` : `${selectable} kết quả.`);
     } catch {
       if (seq !== requestSeq.current) return;
       setFailed(true);
@@ -135,37 +190,47 @@ export function PinPicker({
     if (full || value.includes(option.id)) return;
     setKnown((prev) => new Map(prev).set(option.id, option));
     onChange([...value, option.id]);
-    setAnnouncement(`Đã ghim ${option.label} ở vị trí ${value.length + 1}.`);
+    setAnnouncement(`${copy.pinnedState} ${option.label} ở vị trí ${value.length + 1}.`);
   }
 
   function unpin(pinnedId: string) {
     onChange(value.filter((v) => v !== pinnedId));
-    setAnnouncement(`Đã bỏ ghim ${nameOf(pinnedId)}.`);
+    setAnnouncement(`Đã ${copy.unpinAction.toLowerCase()} ${nameOf(pinnedId)}.`);
   }
 
   const selectable = results.filter((o) => o.eligible);
 
   return (
-    <section aria-labelledby={titleId} aria-describedby={noteId} className="rounded-xl border p-4" style={{ borderColor: LINE }}>
+    <section
+      aria-labelledby={titleId}
+      aria-describedby={error ? `${errorId} ${noteId}` : noteId}
+      className="rounded-xl border p-4"
+      style={{ borderColor: error ? "#DC2626" : LINE }}
+    >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h3 id={titleId} className="text-sm font-semibold" style={{ color: INK }}>
           {label}
         </h3>
         <span className="text-xs font-medium tabular-nums" style={{ color: INK_SOFT }}>
-          Đã ghim {value.length}/{max}
+          {copy.pinnedState} {value.length}/{max}
         </span>
       </div>
       <p id={noteId} className="mt-1 text-xs leading-relaxed" style={{ color: INK_SOFT }}>
-        Ghim trước, thiếu sẽ tự bù theo đánh giá và mới nhất. Thứ tự ghim là thứ tự hiển thị.
+        {copy.note}
       </p>
+      {error ? (
+        <p id={errorId} role="alert" className="mt-2 text-sm" style={{ color: "#DC2626" }}>
+          {error}
+        </p>
+      ) : null}
 
       {/* ── Đã ghim ── */}
       {value.length === 0 ? (
         <p className="mt-3 rounded-lg border border-dashed px-3.5 py-3 text-sm" style={{ borderColor: LINE, color: INK_SOFT }}>
-          Chưa ghim mục nào — trang chủ tự chọn theo đánh giá và mới nhất.
+          {copy.emptyPinned}
         </p>
       ) : (
-        <ol className="mt-3 space-y-2" aria-label={`${label} — danh sách đã ghim`}>
+        <ol className="mt-3 space-y-2" aria-label={`${label} — danh sách ${copy.pinnedState.toLowerCase()}`}>
           {value.map((pinnedId, index) => {
             const option = known.get(pinnedId);
             const unavailable = !option || !option.eligible;
@@ -198,11 +263,11 @@ export function PinPicker({
                   ) : null}
                   {unavailable ? (
                     <p className="mt-1 inline-flex items-center gap-1 text-xs font-semibold" style={{ color: "#92400E" }}>
-                      <IconAlertTriangle className="h-3.5 w-3.5 shrink-0" /> Không còn hiển thị — sẽ bị bỏ qua, nên bỏ ghim.
+                      <IconAlertTriangle className="h-3.5 w-3.5 shrink-0" /> {copy.unavailable}
                     </p>
                   ) : overLimit ? (
                     <p className="mt-1 text-xs font-semibold" style={{ color: "#92400E" }}>
-                      Ngoài số thẻ hiển thị ({limit}) — sẽ không hiện.
+                      {copy.overLimit(limit)}
                     </p>
                   ) : null}
                 </div>
@@ -231,10 +296,10 @@ export function PinPicker({
                     type="button"
                     className={TEXT_BTN}
                     style={{ background: "#FEF2F2", color: "#B91C1C" }}
-                    aria-label={`Bỏ ghim ${name}`}
+                    aria-label={`${copy.unpinAction} ${name}`}
                     onClick={() => unpin(pinnedId)}
                   >
-                    <IconXCircle className="h-4 w-4" /> Bỏ ghim
+                    <IconXCircle className="h-4 w-4" /> {copy.unpinAction}
                   </button>
                 </div>
               </li>
@@ -271,7 +336,7 @@ export function PinPicker({
           />
         </div>
         <p className="mt-1.5 text-xs" style={{ color: INK_SOFT }}>
-          {full ? `Đã đủ ${max} mục ghim — bỏ bớt để ghim thêm.` : "Gõ để lọc theo tên; chỉ hiện mục đang công khai."}
+          {full ? copy.full(max) : copy.searchHint}
         </p>
 
         <div role="status" className="sr-only">
@@ -292,7 +357,7 @@ export function PinPicker({
             </p>
           ) : selectable.length === 0 ? (
             <p className="rounded-lg border border-dashed px-3.5 py-3 text-sm" style={{ borderColor: LINE, color: INK_SOFT }}>
-              {query.trim() ? `Không có mục công khai nào khớp “${query.trim()}”. Thử từ khoá ngắn hơn.` : "Chưa có mục công khai nào để ghim."}
+              {query.trim() ? copy.noMatch(query.trim()) : copy.noOptions}
             </p>
           ) : (
             <ul
@@ -316,7 +381,7 @@ export function PinPicker({
                     </div>
                     {pinned ? (
                       <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold" style={{ color: "#15803D" }}>
-                        <IconPin className="h-3.5 w-3.5" /> Đã ghim
+                        <PinIcon className="h-3.5 w-3.5" /> {copy.pinnedState}
                       </span>
                     ) : (
                       <button
@@ -324,10 +389,10 @@ export function PinPicker({
                         className={TEXT_BTN}
                         style={{ background: brandColors.surface, color: brandColors.primary }}
                         disabled={full}
-                        aria-label={`Ghim ${option.label}`}
+                        aria-label={`${copy.pinAction} ${option.label}`}
                         onClick={() => pin(option)}
                       >
-                        <IconPin className="h-4 w-4" /> Ghim
+                        <PinIcon className="h-4 w-4" /> {copy.pinAction}
                       </button>
                     )}
                   </li>

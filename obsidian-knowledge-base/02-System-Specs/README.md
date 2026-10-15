@@ -3,7 +3,7 @@ tags:
   - meta
   - spec
 date: 2026-09-26
-updated: 2026-09-28
+updated: 2026-10-15
 ---
 
 # 📐 System Specifications (Living Specs)
@@ -46,6 +46,12 @@ bộ nội dung được viết lại từ nguồn thật: `CLAUDE.md`, `docs/AR
 - `[[Reviews-Specs]]`: Đánh giá sản phẩm M10a (ADR-029) — quyền đánh giá (đơn FULFILLED + entitlement), 1 đánh giá/khách/
   sản phẩm, tên hiển thị "Minh N.", ẩn/khôi phục/trả lời của tenant, tự ẩn khi hoàn tiền, cache điểm số nguyên, RLS tách
   theo lệnh + trigger giới hạn cột ([Reviews-Specs.md](./Reviews-Specs.md)).
+- `[[Shop-Marketplace-Specs]]`: Trang Cửa hàng (marketplace, ADR-035) — **GĐ1 + GĐ2 xong code (2026-10-15), chưa commit/deploy**.
+  GĐ1 CMS `shop` trong System Center: `CmsPage` slug `shop` không DDL, schema 9 section, `parseShopSections` đọc phòng thủ, ngưỡng
+  điểm ×10, nháp/xuất bản/khôi phục, `SYSTEM_CMS_SLUGS` chặn form CMS chung và `/p/home`, `/p/shop`. GĐ2 trang công khai
+  `/cua-hang` + `/cua-hang/tai-lieu`: "Công khai" = PUBLISHED + tenant ACTIVE trong `withPublic`, quy tắc từng kệ, số bán 30 ngày
+  dưới `withSystemJob` (chỉ xếp hạng, không hiển thị), tìm không dấu `gieochu_unaccent`, Suspense theo vị trí, SEO/noindex, 6 slug
+  tenant dành riêng ([Shop-Marketplace-Specs.md](./Shop-Marketplace-Specs.md)).
 
 ## Ghi chú lịch sử
 

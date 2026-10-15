@@ -22,7 +22,11 @@ tenant nơi giáo viên/coach bán tài liệu số cho học viên.
   `listPublishedPosts`, mã lỗi `POST_*`, subpath `@gieochu/core/post` — ADR-029); §14 action/hàm lib cấu hình hệ thống
   (`updateSystemSettingsAction`, `updateSupportEmailAction`, `getSystemSettings`, `getEffectiveBrand` — ADR-032) và CMS trang chủ
   (`searchHomeTenantOptionsAction`/`searchHomeProductOptionsAction`, loader `lib/home.ts`, `recomputeProductSoldCounts`,
-  `markOrderPaid` trả `productIds` — ADR-033).
+  `markOrderPaid` trả `productIds` — ADR-033); §15 action/hàm lib CMS Cửa hàng (`saveShopDraftAction`, `publishShopAction`,
+  `restoreLiveShopAction`, `searchShopCategoryOptionsAction`, `getShopCmsEditorData`, `listCategoryPinOptions`, `SYSTEM_CMS_SLUGS`,
+  subpath `@gieochu/core/shop-sections` — ADR-035 GĐ1); §16 trang công khai `/cua-hang`, `/cua-hang/tai-lieu` (query, SEO) +
+  export của loader `apps/web/lib/shop.ts` (`getShopCmsSections`, `getShopProductShelves`, `getTenantSales30d`, `searchShopProducts`,
+  `parseShopSearchParams`…) + subpath `@gieochu/core/product-type` — ADR-035 GĐ2, không thêm `route.ts`.
 - `[[Database-Schema-Reference]]` — Lược đồ 42 model + 24 enum trong `packages/db/prisma/schema.prisma`, phân
   theo layer L1 (System) / L2 (Tenant, RLS) / L3 (góc nhìn Customer trên bảng L2), cùng quy ước cuid2 (ADR-001),
   mã hoá secret AES-256-GCM (§7.3 CLAUDE.md), và bảng RBAC `Role`/`Permission`/`RolePermission` (ADR-022); §7 ghi RLS tách đọc/ghi 7 bảng, quy tắc bảng L2 mới và mẫu

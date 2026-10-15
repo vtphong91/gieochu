@@ -25,6 +25,11 @@ author: System Architect
   **`gieochu_app`** — role riêng tạo bởi `packages/db/scripts/setup-app-role.mts`, **không phải** role owner
   Neon mặc định. Role owner có `BYPASSRLS` nên nếu app lỡ dùng role đó, mọi chính sách RLS ở §4 sẽ **vô hiệu**
   hoàn toàn (xem ADR-010, `docs/DECISIONS.md`) — đây là lý do tồn tại của role `gieochu_app`.
+  - **Quyền `CREATE` trên database của `gieochu_app` đã bị thu hồi trên DB dùng chung** (chủ dự án chạy `REVOKE CREATE ON DATABASE
+    neondb FROM gieochu_app` 2026-10-15, kiểm `has_database_privilege(..., 'CREATE') = false`) 🟡 (báo cáo Quốc). Lưu ý ✅: script
+    `setup-app-role.mts` hiện vẫn `GRANT CREATE ON DATABASE` (để pg-boss tự tạo schema `pgboss` trên DB mới) — chạy lại script sẽ cấp lại
+    quyền này. Chi tiết + việc còn mở: [[04-Operations-Runbooks/Disaster-Recovery-Runbook|Disaster-Recovery-Runbook]] §4.
+  - Extension/hàm ngoài Prisma: `unaccent` + `public.gieochu_unaccent(text)` (ADR-035, §7).
 - **ORM:** Prisma 7, `provider = "prisma-client"` (client tự sinh, không dùng `prisma-client-js` cũ), output
   `packages/db/src/generated/prisma`.
 - **ID strategy:** **cuid2** cho mọi `@id` (`@default(cuid(2))`) — ADR-001, `docs/DECISIONS.md`. Không dùng
@@ -106,7 +111,7 @@ erDiagram
 | `Role` | Nguồn sự thật RBAC cho "tier này làm được gì" (ADR-022) — định nghĩa toàn cục theo `code`, đối chiếu với `User.systemRole`/`TenantMember.role` (vẫn giữ làm nhãn định danh, không đổi thành FK) | RolePermission | `RoleScope` |
 | `Permission` | 1 row / hành động cấp quyền được, namespace kiểu `system:manage_users`, `tenant:manage_products` | RolePermission | — |
 | `RolePermission` | Bảng nối N-N `Role` ↔ `Permission` | Role, Permission | — |
-| `CmsPage` | Nội dung trang marketing (`blocks` = bản live, `blocksDraft` = bản đang sửa — publish copy draft → live) | — | `CmsPageStatus` |
+| `CmsPage` | Nội dung trang marketing (`blocks` = bản live, `blocksDraft` = bản đang sửa — publish copy draft → live). Slug hệ thống `SYSTEM_CMS_SLUGS` = `home` (trang chủ, ADR-033) và `shop` (Cửa hàng, ADR-035 — dòng tạo bằng `upsert` ở lần lưu đầu) lưu mảng section riêng, có editor riêng; form CMS chung và `/p/[slug]` không nhận hai slug này ✅ | — | `CmsPageStatus` |
 | `Subscription` | Subscription SaaS của 1 tenant — có `tenantId` nhưng **không** RLS (không nằm trong danh sách §4): billing là nghiệp vụ system-managed, quyền đọc gác ở app layer (`requireTenantMember` cho owner, `requireRole SYSTEM_ADMIN` cho admin), cùng nhóm với `Plan`/`SubscriptionInvoice` | Tenant, Plan, SubscriptionInvoice | `SubscriptionStatus` |
 | `TenantSlugHistory` | Lịch sử đổi slug tenant (redirect 301 slug cũ → mới), có `tenantId` nhưng không RLS | Tenant | — |
 | `SystemSettings` | (ADR-032) Cấu hình hệ thống 1 dòng `id="default"` (`@@map("system_settings")`): `supportEmail String?` + 11 khoá `Int` có default — `accessTokenTtlMinutes` 15, `refreshTokenTtlDays` 7, `emailVerifyTtlHours` 24, `passwordResetTtlMinutes` 30, `presignUploadTtlSeconds` 600, `presignDownloadTtlSeconds` 600, `trialDays` 14 (chưa dùng), `graceDays` 7, `orderPendingTtlMinutes` 60, `invoicePendingTtlHours` 24, `defaultDownloadLimit` 5 — giới hạn ở `SYSTEM_SETTINGS_BOUNDS` (app, không có CHECK ở DB); `updatedById String?` (không FK), `updatedAt`. **`platformName` đã bỏ khỏi schema** ✅ nhưng cột còn trên DB production sau sự cố 2026-10-15 🟡 (§7). Đọc qua `getSystemSettings()`, sửa ở `/admin/settings/general` + `/admin/settings` (`supportEmail`) | — | — |
@@ -322,6 +327,20 @@ cả hai. Không secret nào trả plaintext về client (UI chỉ hiện `•�
   - `20260929120000_adr033_product_sold_count` — `products.soldCount INTEGER NOT NULL DEFAULT 0`, CHECK
     `products_sold_count_nonnegative`, backfill bằng cùng công thức với `recomputeProductSoldCounts` (không chạm `updatedAt`).
   - Hai file sau chưa commit (untracked) ✅ `git status`.
+- **Migration ADR-035 (Cửa hàng GĐ2 — tìm không dấu)** ✅ đọc SQL (2026-10-15):
+  - `20261015090000_adr035_unaccent_search` — loại **expand**, idempotent, **không đổi bảng/dữ liệu**:
+    `CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public`; `CREATE OR REPLACE FUNCTION public.gieochu_unaccent(text)
+    RETURNS text LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT` = `public.unaccent('public.unaccent'::regdictionary, translate($1,
+    'đĐ', 'dD'))` (gọi tường minh schema + dictionary nên không phụ thuộc `search_path` → dùng được trong index biểu thức sau này);
+    `COMMENT ON FUNCTION`; khối `DO` cấp `GRANT EXECUTE` trên `public.unaccent(regdictionary, text)` **và** `public.gieochu_unaccent(text)`
+    cho `gieochu_app` (bọc `IF EXISTS` role — hàm bọc không phải `SECURITY DEFINER` nên role gọi cần quyền cả hai).
+  - **Không tạo index** (`pg_trgm` GIN trên `gieochu_unaccent(lower(...))` là nợ "catalog lớn" — BACKLOG).
+  - **Prisma không quản lý** extension/hàm (preview `postgresqlExtensions` không bật) → không có trong `schema.prisma`, không gây drift;
+    chỉ tồn tại qua migration SQL. DB mới / restore: `prisma migrate deploy` tự tạo extension (extension `unaccent` là *trusted* trên Neon
+    → role owner DB tạo được, không cần superuser 🟡 theo comment migration + báo cáo Quốc).
+  - Đã áp lên DB dùng chung 2026-10-15; kiểm `gieochu_unaccent(lower('Đề thi Toán học'))` = `de thi toan hoc`; extension `unaccent` 1.1,
+    schema `public` 🟡 (báo cáo Quốc). Dùng ở `searchShopProducts` (`apps/web/lib/shop.ts`) ✅. File migration chưa commit ✅ `git status`.
+  - Nghiệp vụ: [[02-System-Specs/Shop-Marketplace-Specs|Shop-Marketplace-Specs]] §6.2, §9.
 - **Không có tầng Store Factory / In-Memory Store nào** trong Gieo Chữ (khác các dự án khác từng dùng mẫu
   Dual-Store) — route/Server Action gọi thẳng `getPrismaClient()` (L1) hoặc `withTenant`/`withCustomer`/
   `withPublic`/`withSystemJob` (L2), không có interface trung gian để hoán đổi backend.
@@ -339,7 +358,8 @@ cả hai. Không secret nào trả plaintext về client (UI chỉ hiện `•�
   ADR-021 (`Plan.isFree`, Free Forever), ADR-022 (RBAC `Role`/`Permission`), ADR-023 (Storefront CMS +
   `storefront_messages`), ADR-026 (`Product.categoryId`, `ProductFile.sourceKind/externalUrl`), ADR-027
   (`Product.summary`, `Product.coverImageUrl`), ADR-028 (`Plan.imageStorageMb`, `tenant_media_assets`), ADR-029 (siết RLS 7 bảng, `reviews`,
-  `products.ratingSum/ratingCount`, `posts`, `TenantMediaUsage.POST`)
+  `products.ratingSum/ratingCount`, `posts`, `TenantMediaUsage.POST`), ADR-033 (`products.soldCount`), ADR-035 (`CmsPage` slug `shop`,
+  extension `unaccent` + hàm `gieochu_unaccent`)
 * [[02-System-Specs/Product-Editor-And-Publishing-Specs|Product-Editor-And-Publishing-Specs]] ([Product-Editor-And-Publishing-Specs.md](../02-System-Specs/Product-Editor-And-Publishing-Specs.md)) — nghiệp vụ dùng các cột trên
 * [[02-System-Specs/Reviews-Specs|Reviews-Specs]] ([Reviews-Specs.md](../02-System-Specs/Reviews-Specs.md)) — nghiệp vụ `reviews` (M10a)
 * [[02-System-Specs/Posts-Specs|Posts-Specs]] ([Posts-Specs.md](../02-System-Specs/Posts-Specs.md)) — nghiệp vụ `posts` (M10b)

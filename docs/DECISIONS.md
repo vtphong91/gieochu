@@ -768,3 +768,43 @@
      production và hiển thị công khai — dọn bằng `demo:clean` trước khi mở cho người dùng thật.
   5. **Preview deployment** ghi vào cùng DB — chỉ dùng Preview để xem giao diện, không thao tác tạo/xoá dữ liệu.
 - **Thay thế:** khuyến nghị "tách DB dev bằng Neon branch" trong CLAUDE.md/runbook (sự cố 2026-10-15).
+
+## ADR-035 — Trang "Cửa hàng" (marketplace) `/cua-hang`: CMS trước, trang dữ liệu sau
+
+- **Bối cảnh (2026-10-15, chủ dự án):** Cần trang Cửa hàng kiểu ecommerce tổng hợp tài liệu mọi tenant (tham khảo ảnh
+  mẫu marketplace). Đề xuất UX của Phong; chủ dự án chốt các điểm dưới.
+- **Quyết định:**
+  1. **Route:** `/cua-hang` (trang tổng hợp, trang hệ thống ADR-025, `container-page` ADR-024) + `/cua-hang/tai-lieu`
+     (`?q=&danh-muc=&sap-xep=noi-bat|ban-chay|danh-gia-cao|moi-nhat&trang=`) dùng cho ô tìm kiếm và mọi "Xem tất cả".
+     Menu header "Khám phá tài liệu" → link "Cửa hàng" (có bản mobile). `cua-hang` (+ dự phòng `tai-lieu`, `danh-muc`,
+     `tim-kiem`, `giao-vien`, `kham-pha`) thêm vào slug tenant dành riêng; quét tenant trùng trước deploy.
+  2. **Thứ tự section:** Hero (ô tìm kiếm) → Danh mục → Nổi bật → Theo từng danh mục (≤6 khối × 4) → Bán chạy (nhãn
+     #1…) → Đánh giá cao → **Gian hàng nổi bật** (bổ sung của chủ dự án) → Mới → CTA mở gian hàng. Section rỗng thì ẩn.
+  3. **Đánh giá cao:** ≥3 đánh giá **và** điểm TB ≥4,0 (so sánh số nguyên `ratingSum ≥ 4·ratingCount`); ngưỡng chỉnh
+     được ở System Center; ghi rõ tiêu chí dưới tiêu đề.
+  4. **Gian hàng nổi bật:** tenant ACTIVE có ≥1 tài liệu Công khai, xếp theo **bán chạy trong 30 ngày gần nhất** (chế
+     độ mặc định) hoặc **đánh giá cao** (điểm TB tổng các tài liệu, ≥ ngưỡng số đánh giá) — admin chọn chế độ trong
+     CMS + ghim. Số bán 30 ngày là **số đếm tổng hợp theo tenant** tính dưới `system_job` (không trả chi tiết đơn ra
+     ngoài, không route admin đọc đơn — giữ §7.9), có cache ngắn.
+  5. **Tìm kiếm không dấu ngay GĐ1:** migration *expand* (extension `unaccent` hoặc cột chuẩn hoá + index) — Quốc duyệt
+     và chạy theo ADR-034.
+  6. **Thứ tự triển khai:** **GĐ1 = CMS Cửa hàng trong System Center** (`CmsPage` slug `shop` hoặc tương đương theo mẫu
+     CMS trang chủ: nội dung hero, tiêu đề/mô tả/bật-tắt/thứ tự từng section, ghim nổi bật riêng cho Cửa hàng, chế độ
+     + ghim gian hàng nổi bật, ngưỡng đánh giá cao) + nháp/xuất bản/khôi phục. **GĐ2 = trang công khai** `/cua-hang`,
+     `/cua-hang/tai-lieu` đọc cấu hình CMS + dữ liệu thật (loader `lib/shop.ts` qua `withPublic`, "Công khai" =
+     PUBLISHED + tenant ACTIVE, không đọc `orders` trực tiếp ở scope public), tìm không dấu, header/footer link.
+  7. Thẻ tài liệu tách thành component dùng chung với trang chủ (`DocumentCard`); GĐ1 không có carousel.
+- **Nợ/GĐ sau:** trang danh mục SEO `/cua-hang/danh-muc/[slug]`, `Product.publishedAt` (tạm dùng `createdAt` cho
+  "Mới"), `DocumentCategory.iconKey/sortOrder`, index cho catalog lớn, carousel.
+- **Bổ sung ADR-035 (2026-10-15, Quốc chốt theo kế hoạch `docs/ke-hoach-cua-hang-marketplace-2026-10-15.md`):**
+  cấu hình lưu `CmsPage` slug `shop` (`blocks`/`blocksDraft`, không DDL ở GĐ1); chưa có/chưa xuất bản → `/cua-hang`
+  dùng cấu hình mặc định (không 404); section thiếu trong dữ liệu đã lưu → tự thêm ở trạng thái **ẩn**; ngưỡng điểm
+  lưu số nguyên ×10 (`minAvgTenths`); một tài liệu được xuất hiện ở nhiều kệ; "Theo danh mục" xếp bán chạy → điểm
+  → mới nhất; gian hàng chế độ 30 ngày thiếu thì bù theo tổng đã bán → đánh giá → mới nhất; số bán 30 ngày tính dưới
+  `withSystemJob` lúc render với cache ngắn (chỉ trả số đếm theo tenant), đếm đơn FULFILLED theo `paidAt`, loại
+  entitlement đã thu hồi; trang tìm có `q` → `noindex`, khi có `q` ưu tiên khớp tiêu đề; chip/ô tìm trang chủ chuyển
+  sang `/cua-hang/tai-lieu` ở GĐ2. Hằng `SYSTEM_CMS_SLUGS = ["home","shop"]`: form CMS chung không được tạo/ghi đè
+  slug này và `/p/[slug]` trả 404 cho chúng (sửa lỗi có sẵn). Tìm không dấu: extension `unaccent` + hàm IMMUTABLE
+  bọc (migration expand, Quốc duyệt và chạy theo ADR-034).
+- **Chủ dự án chốt (2026-10-15):** kệ "Bán chạy" xếp theo **tổng đã bán mọi thời gian** (`soldCount`); số bán 30 ngày
+  **chỉ dùng để xếp hạng** gian hàng nổi bật, **không hiển thị công khai** (thẻ gian hàng hiện tổng đã bán + sao).

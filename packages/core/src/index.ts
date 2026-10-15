@@ -90,6 +90,8 @@ export type { PostTitleResult } from "./content/post";
 
 export { suggestSlug } from "./product/slug-suggestion";
 export { isReservedProductSlug, productPath, productUrl, RESERVED_PRODUCT_SLUGS } from "./product/path";
+export { PRODUCT_TYPE_LABELS, PRODUCT_TYPES, productTypeLabel } from "./product/type-label";
+export type { ProductTypeValue } from "./product/type-label";
 export { canPublishProduct } from "./product/publish-eligibility";
 export type {
   PublishBlock,
@@ -183,6 +185,60 @@ export {
   DEFAULT_HOME_DOCUMENTS_TEXT,
 } from "./admin/home-sections";
 export type { HomeSection, HomeSectionType, HomeStatKey } from "./admin/home-sections";
+export { HOME_CMS_SLUG, isSystemCmsSlug, SHOP_CMS_SLUG, SYSTEM_CMS_SLUGS } from "./admin/cms-slugs";
+export type { SystemCmsSlug } from "./admin/cms-slugs";
+export {
+  defaultShopSectionData,
+  defaultShopSectionId,
+  defaultShopSections,
+  DEFAULT_SHOP_SECTIONS,
+  formatShopAvgTenths,
+  isInternalShopHref,
+  isValidShopSections,
+  parseShopAvgTenthsInput,
+  parseShopSections,
+  resolveShopSections,
+  shopSectionSchema,
+  shopSectionsSchema,
+  SHOP_BY_CATEGORY_BLOCKS_MAX,
+  SHOP_BY_CATEGORY_BLOCKS_MIN,
+  SHOP_BY_CATEGORY_CARDS_MAX,
+  SHOP_BY_CATEGORY_CARDS_MIN,
+  SHOP_CATEGORIES_VISIBLE_MAX,
+  SHOP_CATEGORIES_VISIBLE_MIN,
+  SHOP_CATEGORY_MODE_LABELS,
+  SHOP_CATEGORY_MODES,
+  SHOP_FEATURED_TENANTS_MODE_LABELS,
+  SHOP_FEATURED_TENANTS_MODES,
+  SHOP_HERO_CHIPS_MAX,
+  SHOP_HERO_CHIPS_MIN,
+  SHOP_LIMIT_MAX,
+  SHOP_LIMIT_MIN,
+  SHOP_MIN_AVG_TENTHS_MAX,
+  SHOP_MIN_AVG_TENTHS_MIN,
+  SHOP_MIN_REVIEWS_MAX,
+  SHOP_MIN_REVIEWS_MIN,
+  SHOP_PINNED_MAX,
+  SHOP_SECTION_LABELS,
+  SHOP_SECTION_TYPES,
+  SHOP_TENANT_LIMIT_MAX,
+  SHOP_TENANT_LIMIT_MIN,
+} from "./admin/shop-sections";
+export type {
+  ShopByCategoryData,
+  ShopCategoriesData,
+  ShopCategoryMode,
+  ShopCtaOpenStoreData,
+  ShopFeaturedData,
+  ShopFeaturedTenantsData,
+  ShopFeaturedTenantsMode,
+  ShopHeroData,
+  ShopSection,
+  ShopSectionData,
+  ShopSectionType,
+  ShopShelfData,
+  ShopTopRatedData,
+} from "./admin/shop-sections";
 export { buildAdminDashboardSummary } from "./admin/dashboard-summary";
 export type { AdminDashboardCounts, AdminDashboardSummary } from "./admin/dashboard-summary";
 

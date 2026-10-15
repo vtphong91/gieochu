@@ -219,14 +219,8 @@ function IconExam({ className }: IconProps) {
   );
 }
 
-/** Nhãn tiếng Việt theo enum ProductType ở schema (TEMPLATE | SLIDE | EBOOK | EXAM | OTHER). */
-export const PRODUCT_TYPE_LABEL: Record<ProductType, string> = {
-  TEMPLATE: "Mẫu tài liệu",
-  SLIDE: "Slide bài giảng",
-  EBOOK: "Sách điện tử",
-  EXAM: "Đề thi",
-  OTHER: "Tài liệu",
-};
+/* Nhãn chữ của loại tài liệu: `productTypeLabel` / `PRODUCT_TYPE_LABELS` ở `@gieochu/core/product-type` (một nguồn
+   cho loader và UI). File này chỉ giữ map icon. */
 
 const PRODUCT_TYPE_ICON: Record<ProductType, (props: IconProps) => JSX.Element> = {
   TEMPLATE: IconTemplate,

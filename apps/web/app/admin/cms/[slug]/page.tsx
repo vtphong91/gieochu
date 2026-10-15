@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getPrismaClient } from "@gieochu/db";
-import { parseHomeSections, type HomeSection } from "@gieochu/core";
+import { HOME_CMS_SLUG, isSystemCmsSlug, parseHomeSections, type HomeSection } from "@gieochu/core";
 import { listHomeProductOptions, listHomeTenantOptions } from "../../../../lib/home";
 import { requireAdminAccess } from "../../../../lib/page-guards";
 import { AdminPageHeader, SettingsGrid } from "../../_ui/kit";
@@ -22,12 +22,14 @@ function collectPinnedIds(sections: HomeSection[]): { tenantIds: string[]; produ
 export default async function AdminCmsEditPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   await requireAdminAccess(`/admin/cms/${slug}`);
+  // ADR-035 bổ sung: slug hệ thống khác `home` (vd `shop` — có route tĩnh `/admin/cms/shop`) không mở form JSON chung.
+  if (isSystemCmsSlug(slug) && slug !== HOME_CMS_SLUG) notFound();
 
   const prisma = getPrismaClient();
   const page = await prisma.cmsPage.findUnique({ where: { slug } });
   if (!page) notFound();
 
-  if (page.slug === "home") {
+  if (page.slug === HOME_CMS_SLUG) {
     // ADR-033 mục 6: parse phòng thủ — dữ liệu nhập tay cũ của stats/search/coaches/documents chuyển sang dạng mới.
     const live = parseHomeSections(page.blocks);
     const draft = page.blocksDraft ? parseHomeSections(page.blocksDraft) : null;

@@ -8,6 +8,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./home-sections": "./src/admin/home-sections.ts",
+    "./shop-sections": "./src/admin/shop-sections.ts",
     "./storefront-sections": "./src/tenant/storefront-sections.ts",
     "./content/word-count": "./src/content/word-count.ts",
     "./content/sanitize-html": "./src/content/sanitize-html.ts",
@@ -16,6 +17,7 @@
     "./review": "./src/review/review.ts",
     "./post": "./src/content/post.ts",
     "./product-path": "./src/product/path.ts",
+    "./product-type": "./src/product/type-label.ts",
     "./system-settings": "./src/settings/system-settings.ts"
   },
   "scripts": {

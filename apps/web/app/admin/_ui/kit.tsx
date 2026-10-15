@@ -318,6 +318,25 @@ export function FormBanner({ ok, message }: { ok: boolean; message?: string | nu
   );
 }
 
+const NOTICE_STYLE: Record<"info" | "warning", { bg: string; fg: string; line: string }> = {
+  info: { bg: brandColors.surface, fg: brandColors.primary, line: "#BFDBFE" },
+  warning: { bg: AMBER_SOFT, fg: "#92400E", line: AMBER_LINE },
+};
+
+/**
+ * Khung ghi chú/cảnh báo tĩnh trong trang (không phải kết quả thao tác — kết quả dùng `FormBanner`). Nội dung nên
+ * tự nói rõ ý (không chỉ dựa vào màu); `icon` (nếu có) chỉ trang trí.
+ */
+export function Notice({ tone = "info", icon, children }: { tone?: "info" | "warning"; icon?: ReactNode; children: ReactNode }) {
+  const s = NOTICE_STYLE[tone];
+  return (
+    <div className="flex items-start gap-2.5 rounded-xl border px-4 py-3 text-sm leading-relaxed" style={{ background: s.bg, borderColor: s.line, color: s.fg }}>
+      {icon ? <span className="mt-0.5 shrink-0">{icon}</span> : null}
+      <div className="min-w-0">{children}</div>
+    </div>
+  );
+}
+
 /**
  * Bảng dữ liệu chuẩn — bọc trong khung bo góc, dùng lại ở mọi trang danh sách.
  * Cố tình KHÔNG set overflow-x-auto ở đây: set overflow-x mà bỏ overflow-y sẽ

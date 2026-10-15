@@ -162,6 +162,23 @@ export function IconChevronDown({ className }: IconProps) {
   );
 }
 
+/** Nút mở menu điều hướng (header công khai < lg). */
+export function IconMenu({ className }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 7h16M4 12h16M4 17h16" />
+    </svg>
+  );
+}
+
+export function IconClose({ className }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 6l12 12M18 6 6 18" />
+    </svg>
+  );
+}
+
 export function IconMoreHorizontal({ className }: IconProps) {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="currentColor">
@@ -388,6 +405,16 @@ export function IconPin({ className }: IconProps) {
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M9 4h6l-1 5 3 3v1.5H7V12l3-3-1-5Z" />
       <path d="M12 13.5V20" />
+    </svg>
+  );
+}
+
+/** Túi mua hàng (điều hướng "Trang Cửa hàng" — ADR-035). */
+export function IconShoppingBag({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M5.5 7.5h13l-1 12a1.5 1.5 0 0 1-1.5 1.4H8a1.5 1.5 0 0 1-1.5-1.4l-1-12Z" />
+      <path d="M9 10V6.5a3 3 0 0 1 6 0V10" />
     </svg>
   );
 }

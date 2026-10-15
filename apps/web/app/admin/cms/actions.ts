@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { isValidCmsBlocks } from "@gieochu/core";
+import { isSystemCmsSlug, isValidCmsBlocks } from "@gieochu/core";
 import { getPrismaClient } from "@gieochu/db";
 import { requireRole } from "../../../lib/session";
 
@@ -26,6 +26,10 @@ export async function saveCmsPageAction(_prevState: CmsActionState, formData: Fo
   const parsed = cmsFormSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { error: "Dữ liệu không hợp lệ." };
+  }
+  // ADR-035 bổ sung: `home`/`shop` do editor riêng quản lý (dữ liệu khác dạng) — form chung không được tạo/ghi đè.
+  if (isSystemCmsSlug(parsed.data.slug)) {
+    return { error: `Đường dẫn "${parsed.data.slug}" dành cho trang hệ thống (trang chủ / Cửa hàng) — hãy dùng trình chỉnh sửa riêng hoặc chọn đường dẫn khác.` };
   }
 
   let blocks: unknown;

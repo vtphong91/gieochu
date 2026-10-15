@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Be_Vietnam_Pro, Inter } from "next/font/google";
 import { getPrismaClient } from "@gieochu/db";
+import { isSystemCmsSlug } from "@gieochu/core";
 import { getEffectiveBrand } from "../../../lib/branding";
 import { brandColors } from "@gieochu/config/theme";
 import { getActivePlans } from "../../../lib/pricing";
@@ -26,6 +27,8 @@ interface CmsBlocks {
 }
 
 async function getPublishedPage(slug: string) {
+  // ADR-035 bổ sung: `home`/`shop` lưu dạng section riêng (không phải `CmsBlocks`) — không render ở /p/*.
+  if (isSystemCmsSlug(slug)) return null;
   const prisma = getPrismaClient();
   const page = await prisma.cmsPage.findUnique({ where: { slug } });
   if (!page || page.status !== "PUBLISHED") return null;

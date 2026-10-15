@@ -19,6 +19,13 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "support",
   "terms",
   "privacy",
+  // ADR-035 mục 1: route Cửa hàng cấp gốc `/cua-hang` (+ dự phòng) — route tĩnh thắng `app/[tenantSlug]`.
+  "cua-hang",
+  "tai-lieu",
+  "danh-muc",
+  "tim-kiem",
+  "giao-vien",
+  "kham-pha",
 ]);
 
 export function isReservedSlug(slug: string): boolean {

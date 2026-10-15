@@ -27,7 +27,7 @@ import { PUBLIC_PRODUCT_SELECT, toPublicProducts, type PublicProduct } from "./s
  *  - **Không** đọc `orders/order_items/entitlements` (§7.9) — số đã bán chỉ lấy từ cột cache `products.soldCount`.
  */
 
-const PUBLIC_PRODUCT_WHERE = { status: "PUBLISHED", tenant: { status: "ACTIVE" } } as const satisfies Prisma.ProductWhereInput;
+export const PUBLIC_PRODUCT_WHERE = { status: "PUBLISHED", tenant: { status: "ACTIVE" } } as const satisfies Prisma.ProductWhereInput;
 
 // ───────────────────────── Số liệu nổi bật ─────────────────────────
 
@@ -135,7 +135,7 @@ function normalizePinned(ids: readonly string[], limit: number): string[] {
   return [...new Set(ids.filter((id) => typeof id === "string" && id.length > 0))].slice(0, Math.min(limit, HOME_PINNED_MAX));
 }
 
-function orderByPinned<T extends { id: string }>(rows: T[], pinned: readonly string[]): T[] {
+export function orderByPinned<T extends { id: string }>(rows: T[], pinned: readonly string[]): T[] {
   const position = new Map(pinned.map((id, index) => [id, index]));
   return [...rows].sort((a, b) => (position.get(a.id) ?? 0) - (position.get(b.id) ?? 0));
 }
@@ -170,7 +170,7 @@ function featuredTenantQuery(filter: { include: readonly string[] } | { exclude:
   `;
 }
 
-function tenantLogoUrl(logoKey: string | null, publicBaseUrl: string | null): string | null {
+export function tenantLogoUrl(logoKey: string | null, publicBaseUrl: string | null): string | null {
   if (!logoKey || !publicBaseUrl) return null;
   return cloudinaryDeliveryUrl(`${publicBaseUrl}/${logoKey}`, { width: 160 });
 }
@@ -218,7 +218,7 @@ export interface HomeFeaturedProduct extends PublicProduct {
 }
 
 /** Id tài liệu bù: Công khai, bỏ `exclude`; có đánh giá trước → điểm TB giảm dần → số đánh giá → mới nhất. */
-function fillProductIdsQuery(exclude: readonly string[], take: number): Prisma.Sql {
+export function fillProductIdsQuery(exclude: readonly string[], take: number): Prisma.Sql {
   const condition = exclude.length > 0 ? Prisma.sql`AND p."id" NOT IN (${Prisma.join(exclude)})` : Prisma.empty;
   return Prisma.sql`
     SELECT p."id"
@@ -375,6 +375,64 @@ export async function listHomeProductOptions(query: HomePinOptionsQuery = {}): P
   for (const row of rows) {
     if (byId.has(row.id)) continue;
     byId.set(row.id, { id: row.id, title: row.title, tenantName: row.tenant.name, tenantSlug: row.tenant.slug });
+  }
+  return [...byId.values()];
+}
+
+// ───────────────────────── Ô chọn danh mục cho editor CMS Cửa hàng (ADR-035) ─────────────────────────
+
+export interface CategoryPinOption {
+  id: string;
+  name: string;
+  slug: string;
+  /** Số tài liệu Công khai trong danh mục. */
+  productCount: number;
+  /** false = danh mục đã tắt hoặc chưa có tài liệu Công khai → không hiển thị trên Cửa hàng. */
+  eligible: boolean;
+}
+
+export interface CategoryPinOptionsQuery {
+  search?: string;
+  /** Id đang chọn — luôn trả kèm (kể cả danh mục đã tắt, `eligible:false`) để admin gỡ. */
+  includeIds?: readonly string[];
+  /** Tối đa id đang chọn được trả kèm (mặc định `HOME_PINNED_MAX`). */
+  includeMax?: number;
+}
+
+/**
+ * Danh mục cho bộ chọn tay (chip hero / "Theo từng danh mục"): danh mục `isActive` (tên A→Z, tối đa 200, lọc theo
+ * tên) kèm số tài liệu Công khai + các id đang chọn. `document_categories` là L1, nhưng đếm `products` chạm bảng L2
+ * nên chạy trong `withPublic` (RLS chỉ thấy PUBLISHED). Caller phải `requireRole("SYSTEM_ADMIN")`.
+ */
+export async function listCategoryPinOptions(query: CategoryPinOptionsQuery = {}): Promise<CategoryPinOption[]> {
+  const search = normalizeSearch(query.search);
+  const includeIds = [...new Set(query.includeIds ?? [])].slice(0, query.includeMax ?? HOME_PINNED_MAX);
+  const select = {
+    id: true,
+    name: true,
+    slug: true,
+    isActive: true,
+    _count: { select: { products: { where: PUBLIC_PRODUCT_WHERE } } },
+  } as const;
+
+  const rows = await withPublic(async (tx) => {
+    const [active, selected] = await Promise.all([
+      tx.documentCategory.findMany({
+        where: { isActive: true, ...(search ? { name: { contains: search, mode: "insensitive" as const } } : {}) },
+        select,
+        orderBy: [{ name: "asc" }, { id: "asc" }],
+        take: HOME_PIN_OPTIONS_MAX,
+      }),
+      includeIds.length ? tx.documentCategory.findMany({ where: { id: { in: includeIds } }, select }) : Promise.resolve([]),
+    ]);
+    return [...orderByPinned(selected, includeIds), ...active];
+  });
+
+  const byId = new Map<string, CategoryPinOption>();
+  for (const row of rows) {
+    if (byId.has(row.id)) continue;
+    const productCount = row._count.products;
+    byId.set(row.id, { id: row.id, name: row.name, slug: row.slug, productCount, eligible: row.isActive && productCount > 0 });
   }
   return [...byId.values()];
 }

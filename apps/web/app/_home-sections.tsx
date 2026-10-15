@@ -1,24 +1,28 @@
 import { useId } from "react";
 import Link from "next/link";
 import type { HomeSection } from "@gieochu/core";
-import { brandColors } from "@gieochu/config/theme";
-import { cloudinaryDeliveryUrl } from "@gieochu/core/cloudinary-url";
 import type { HomeFeaturedProduct, HomeFeaturedTenant, HomeSearchCategory, HomeStatItem } from "../lib/home";
-
-const INK_SOFT = brandColors.inkSoft;
-const PAPER_ALT = brandColors.backgroundAlt;
-const INK = brandColors.ink;
-const LINE = brandColors.line;
-const BLUE = brandColors.primary;
-const BLUE_DEEP = brandColors.primaryDeep;
-const AMBER = brandColors.accent;
-const AMBER_SOFT = brandColors.accentSoft;
-const GREEN = brandColors.secondary;
-
-// Bảng màu trang trí cố định, xoay vòng theo chỉ số phần tử — không phải nội
-// dung (không cho admin đổi), giữ đúng nguyên tắc chỉ text/link/ảnh mới là
-// editable, còn màu sắc/bố cục vẫn do code quyết định.
-const ROTATING_COLORS = [BLUE, AMBER, GREEN, BLUE_DEEP];
+import { SHOP_SEARCH_PATH, SHOP_SEARCH_Q_MAX, shopSearchHref } from "../lib/shop";
+import {
+  AMBER,
+  AMBER_SOFT,
+  BLUE,
+  BLUE_DEEP,
+  GREEN,
+  INK,
+  INK_SOFT,
+  IconArrow,
+  IconChevron,
+  IconDocs,
+  IconSearch,
+  IconStar,
+  LINE,
+  PAPER_ALT,
+  ROTATING_COLORS,
+  formatCount,
+} from "./_ui/catalog-parts";
+import { DocumentCard } from "./_ui/document-card";
+import { TenantCard } from "./_ui/tenant-card";
 
 function IconSprout({ className }: { className?: string }) {
   return (
@@ -70,49 +74,6 @@ function IconCheck({ className, style }: { className?: string; style?: React.CSS
   );
 }
 
-function IconArrow({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 12h15M13 6l6 6-6 6" />
-    </svg>
-  );
-}
-
-function IconSearch({ className, style }: { className?: string; style?: React.CSSProperties }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} style={style} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <circle cx="11" cy="11" r="6.5" />
-      <path d="M20 20l-4.3-4.3" />
-    </svg>
-  );
-}
-
-function IconChevron({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  );
-}
-
-function IconDocs({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M8 3.5h6.5L19 8v11.5a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1Z" />
-      <path d="M14.2 3.5V8h4.6" />
-      <path d="M9.5 12.5h5M9.5 15.5h5M9.5 18h3" />
-    </svg>
-  );
-}
-
-function IconStar({ className, style }: { className?: string; style?: React.CSSProperties }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} style={style} fill="currentColor" aria-hidden="true">
-      <path d="M12 2.8l2.7 5.6 6.1.8-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.8Z" />
-    </svg>
-  );
-}
-
 function Stars({ count = 5, className }: { count?: number; className?: string }) {
   return (
     <div className={`flex gap-0.5 ${className ?? ""}`} style={{ color: AMBER }}>
@@ -130,14 +91,6 @@ const BENEFIT_TONES = [
   { bg: "#DAEFE1", fg: GREEN },
   { bg: AMBER_SOFT, fg: AMBER },
 ];
-
-function initialsOf(name: string): string {
-  const cleaned = name.replace(/^(Cô|Thầy|Coach)\s+/i, "");
-  const parts = cleaned.split(/\s+/).filter(Boolean);
-  const first = parts[0]?.[0] ?? "";
-  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "";
-  return (first + last).toLocaleUpperCase("vi");
-}
 
 type HeroData = Extract<HomeSection, { type: "hero" }>["data"];
 type SearchData = Extract<HomeSection, { type: "search" }>["data"];
@@ -233,21 +186,6 @@ export function HeroSection({ data }: { data: HeroData }) {
   );
 }
 
-const vnNumber = new Intl.NumberFormat("vi-VN");
-
-function formatCount(value: number): string {
-  return vnNumber.format(value);
-}
-
-function formatVnd(amount: number): string {
-  return `${vnNumber.format(amount)} ₫`;
-}
-
-/** "4,6" — 1 chữ số thập phân kiểu vi-VN (giống thẻ storefront, ADR-029). */
-function formatRating(average: number): string {
-  return average.toLocaleString("vi-VN", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-}
-
 /**
  * Số liệu nổi bật: < 1.000 hiện đúng số; từ 1.000 làm tròn XUỐNG hàng trăm kèm "+" ("1.234" → "1.200+") — gọn và
  * không bao giờ phóng đại. `spoken` là bản cho trình đọc màn hình ("Hơn 1.200").
@@ -294,27 +232,31 @@ const SEARCH_CHIPS_VISIBLE = 10;
 
 function CategoryChip({ category }: { category: HomeSearchCategory }) {
   return (
-    <li
-      className="inline-flex max-w-full items-center gap-1.5 rounded-full border bg-white px-3.5 py-1.5 text-[13px] font-semibold sm:text-sm"
-      style={{ borderColor: LINE, color: INK }}
-    >
-      <span className="[overflow-wrap:anywhere]">{category.name}</span>
-      <span className="text-xs font-medium tabular-nums" style={{ color: INK_SOFT }}>
-        <span aria-hidden="true">· </span>
-        {formatCount(category.productCount)}
-        <span className="sr-only"> tài liệu</span>
-      </span>
+    <li className="max-w-full">
+      <Link
+        href={shopSearchHref({ categorySlug: category.slug })}
+        className="relative inline-flex max-w-full items-center gap-1.5 rounded-full border bg-white px-3.5 py-1.5 text-[13px] font-semibold outline-offset-2 transition-colors before:absolute before:inset-x-0 before:-inset-y-[5px] before:content-[''] hover:border-[color:var(--chip-hover)] focus-visible:outline-2 sm:text-sm [touch-action:manipulation]"
+        style={{ borderColor: LINE, color: INK, outlineColor: BLUE, ["--chip-hover" as string]: BLUE }}
+      >
+        <span className="[overflow-wrap:anywhere]">{category.name}</span>
+        <span className="text-xs font-medium tabular-nums" style={{ color: INK_SOFT }}>
+          <span aria-hidden="true">· </span>
+          {formatCount(category.productCount)}
+          <span className="sr-only"> tài liệu</span>
+        </span>
+      </Link>
     </li>
   );
 }
 
 /**
- * ADR-033 mục 3: chip lấy từ danh mục đang có tài liệu Công khai. Chưa có trang tìm kiếm/danh mục công khai nên chip
- * là nhãn tĩnh (li), KHÔNG phải link/nút — không giả làm phần tử bấm được. Ô tìm kiếm giữ nguyên hiện trạng.
+ * ADR-033 mục 3: chip lấy từ danh mục đang có tài liệu Công khai. ADR-035 (GĐ2): ô tìm là form GET `q` tới
+ * `/cua-hang/tai-lieu`, chip là link `?danh-muc={slug}` — giữ nguyên giao diện cũ, chỉ đổi đích.
  */
 export function SearchSection({ data, categories }: { data: SearchData; categories: HomeSearchCategory[] }) {
   const titleId = useId();
   const chipsLabelId = useId();
+  const queryId = useId();
   const visible = categories.slice(0, SEARCH_CHIPS_VISIBLE);
   const rest = categories.slice(SEARCH_CHIPS_VISIBLE);
   return (
@@ -326,15 +268,37 @@ export function SearchSection({ data, categories }: { data: SearchData; categori
         <p className="mb-1 text-sm sm:text-base" style={{ color: INK_SOFT }}>
           {data.subtitle}
         </p>
-        <div className="flex w-full max-w-[680px] items-center gap-3 rounded-full border bg-white py-1.5 pr-1.5 pl-5" style={{ borderColor: LINE, boxShadow: "0 12px 30px rgba(28,35,51,0.06)" }}>
+        <form
+          action={SHOP_SEARCH_PATH}
+          method="get"
+          role="search"
+          className="flex w-full max-w-[680px] items-center gap-3 rounded-full border bg-white py-1.5 pr-1.5 pl-5 focus-within:outline-2 focus-within:outline-offset-2"
+          style={{ borderColor: LINE, boxShadow: "0 12px 30px rgba(28,35,51,0.06)", outlineColor: BLUE }}
+        >
           <IconSearch className="h-[18px] w-[18px] shrink-0" style={{ color: INK_SOFT }} />
-          <span className="grow truncate text-left text-[13.5px] sm:text-[15px]" style={{ color: INK_SOFT }}>
-            {data.placeholder}
-          </span>
-          <button type="button" className="shrink-0 rounded-full px-5 py-2.5 text-[13px] font-bold text-white sm:px-[26px] sm:py-3 sm:text-sm" style={{ background: BLUE }}>
+          {/* Nhãn ẩn thị giác: giữ giao diện "ô tìm" cũ (một hàng pill) — tiêu đề H2 ngay trên đã nói rõ mục đích. */}
+          <label htmlFor={queryId} className="sr-only">
+            {data.title}
+          </label>
+          <input
+            id={queryId}
+            type="search"
+            name="q"
+            placeholder={data.placeholder}
+            maxLength={SHOP_SEARCH_Q_MAX}
+            enterKeyHint="search"
+            autoComplete="off"
+            className="min-w-0 grow bg-transparent text-left text-base outline-none placeholder:text-[color:var(--search-placeholder)] sm:text-[15px]"
+            style={{ color: INK, ["--search-placeholder" as string]: INK_SOFT }}
+          />
+          <button
+            type="submit"
+            className="relative shrink-0 cursor-pointer rounded-full px-5 py-2.5 text-[13px] font-bold text-white transition-[filter] outline-offset-2 before:absolute before:inset-x-0 before:-inset-y-[2px] before:content-[''] hover:brightness-110 focus-visible:outline-2 sm:px-[26px] sm:py-3 sm:text-sm [touch-action:manipulation]"
+            style={{ background: BLUE, outlineColor: BLUE }}
+          >
             Tìm kiếm
           </button>
-        </div>
+        </form>
         {categories.length > 0 ? (
           <div className="mt-2 flex w-full max-w-[880px] flex-col items-center gap-2.5">
             <p id={chipsLabelId} className="text-xs font-semibold tracking-wide uppercase" style={{ color: INK_SOFT }}>
@@ -404,26 +368,6 @@ export function BenefitsSection({ data }: { data: BenefitsData }) {
   );
 }
 
-/** "★ 4,6 (12 đánh giá)" — sao là ký hiệu trang trí (≥3:1), chữ số màu INK để đạt 4.5:1; trình đọc màn hình nghe câu đầy đủ. */
-function RatingInline({ average, count, long = false }: { average: number; count: number; long?: boolean }) {
-  const avg = formatRating(average);
-  return (
-    <span className="inline-flex items-center gap-1 tabular-nums">
-      <IconStar className="h-3.5 w-3.5 shrink-0" style={{ color: AMBER }} />
-      <span aria-hidden="true" className="font-semibold" style={{ color: INK }}>
-        {avg}
-      </span>
-      <span aria-hidden="true" style={{ color: INK_SOFT }}>
-        ({formatCount(count)}
-        {long ? " đánh giá" : ""})
-      </span>
-      <span className="sr-only">
-        Điểm trung bình {avg} trên 5, {formatCount(count)} đánh giá
-      </span>
-    </span>
-  );
-}
-
 /** Tiêu đề + mô tả section (h2) — dùng chung cho 2 section thẻ nổi bật. */
 function FeaturedHeading({ id, title, subtitle }: { id: string; title: string; subtitle: string }) {
   return (
@@ -438,15 +382,6 @@ function FeaturedHeading({ id, title, subtitle }: { id: string; title: string; s
   );
 }
 
-/**
- * Thẻ bấm được toàn bộ bằng "stretched link" trên tiêu đề (1 link/thẻ → tên truy cập = tên giáo viên/tài liệu, không
- * lặp "Xem chi tiết"); vòng focus vẽ trên cả thẻ. Nhấc nhẹ khi hover chỉ khi người dùng không giảm chuyển động.
- */
-const CARD_CLASS =
-  "group relative flex h-full flex-col overflow-hidden rounded-3xl border bg-white transition-[box-shadow,transform] duration-200 hover:shadow-[0_16px_36px_-18px_rgba(18,33,58,0.35)] motion-safe:hover:-translate-y-0.5 has-[a:focus-visible]:outline-3 has-[a:focus-visible]:outline-offset-2";
-
-const STRETCHED_LINK = "outline-none after:absolute after:inset-0 after:content-['']";
-
 /** ADR-033 mục 4 — thẻ giáo viên/coach: avatar, tên, số tài liệu, sao (khi có), "Đã bán" (khi > 0), link storefront. */
 export function CoachesSection({ data, tenants }: { data: CoachesData; tenants: HomeFeaturedTenant[] }) {
   const titleId = useId();
@@ -457,45 +392,7 @@ export function CoachesSection({ data, tenants }: { data: CoachesData; tenants: 
         <ul className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4 lg:gap-[26px]">
           {tenants.map((c, i) => (
             <li key={c.id}>
-              <article className={`${CARD_CLASS} items-center gap-2 p-4 text-center sm:gap-2.5 sm:p-[26px]`} style={{ borderColor: LINE, outlineColor: BLUE }}>
-                <div
-                  aria-hidden="true"
-                  className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full sm:h-[72px] sm:w-[72px]"
-                  style={{ background: ROTATING_COLORS[i % ROTATING_COLORS.length] }}
-                >
-                  {c.logoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- ảnh đã tối ưu qua cloudinaryDeliveryUrl (ADR-028)
-                    <img src={c.logoUrl} alt="" width={72} height={72} loading="lazy" decoding="async" className="h-full w-full bg-white object-cover" />
-                  ) : (
-                    <span className="font-[family-name:var(--font-heading)] text-xl font-bold text-white sm:text-[22px]">{initialsOf(c.name)}</span>
-                  )}
-                </div>
-                <h3 className="line-clamp-2 text-[15px] leading-snug font-bold [overflow-wrap:anywhere] sm:text-[16.5px]">
-                  <Link href={c.href} className={STRETCHED_LINK}>
-                    {c.name}
-                  </Link>
-                </h3>
-                <span className="rounded-full border px-3 py-0.5 text-[12.5px] tabular-nums" style={{ borderColor: LINE, color: INK_SOFT }}>
-                  {formatCount(c.productCount)} tài liệu
-                </span>
-                {c.ratingAvg !== null || c.soldCount > 0 ? (
-                  <div className="flex flex-col items-center gap-1 text-[13px] sm:text-[13.5px]">
-                    {c.ratingAvg !== null ? <RatingInline average={c.ratingAvg} count={c.ratingCount} long /> : null}
-                    {c.soldCount > 0 ? (
-                      <span className="tabular-nums" style={{ color: INK_SOFT }}>
-                        Đã bán {formatCount(c.soldCount)}
-                      </span>
-                    ) : null}
-                  </div>
-                ) : null}
-                <span
-                  aria-hidden="true"
-                  className="mt-auto inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-full border border-[color:var(--home-line)] px-3 text-[13px] font-semibold transition-colors group-hover:border-[color:var(--brand-primary,#0F3B82)] group-hover:text-[color:var(--brand-primary,#0F3B82)] sm:text-[13.5px]"
-                  style={{ ["--home-line" as string]: LINE }}
-                >
-                  Xem gian hàng <IconArrow className="h-3.5 w-3.5" />
-                </span>
-              </article>
+              <TenantCard tenant={c} toneIndex={i} />
             </li>
           ))}
         </ul>
@@ -512,97 +409,11 @@ export function DocumentsSection({ data, products }: { data: DocumentsData; prod
       <div className="container-page">
         <FeaturedHeading id={titleId} title={data.title} subtitle={data.subtitle} />
         <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-7">
-          {products.map((d, i) => {
-            const tone = ROTATING_COLORS[i % ROTATING_COLORS.length];
-            const free = d.effectivePriceVnd === 0;
-            const discountPercent = d.onSale && d.priceVnd > 0 ? Math.max(1, Math.round((1 - d.effectivePriceVnd / d.priceVnd) * 100)) : 0;
-            return (
-              <li key={d.id}>
-                <article className={CARD_CLASS} style={{ borderColor: LINE, outlineColor: BLUE }}>
-                  <div
-                    className="relative flex aspect-[16/10] items-center justify-center"
-                    style={{ background: `color-mix(in srgb, ${tone} 10%, white)`, color: tone }}
-                  >
-                    {d.coverUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- ảnh đã tối ưu qua cloudinaryDeliveryUrl (ADR-028)
-                      <img
-                        src={cloudinaryDeliveryUrl(d.coverUrl, { width: 640 })}
-                        alt=""
-                        width={640}
-                        height={400}
-                        loading="lazy"
-                        decoding="async"
-                        className="absolute inset-0 h-full w-full object-cover"
-                      />
-                    ) : (
-                      <IconDocs className="h-12 w-12 opacity-80 sm:h-14 sm:w-14" />
-                    )}
-                    {discountPercent > 0 ? (
-                      <span className="absolute top-3 left-3 rounded-full px-2.5 py-1 text-xs font-bold text-white shadow-sm" style={{ background: "#B91C1C" }}>
-                        Giảm {discountPercent}%
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="flex grow flex-col p-5 sm:p-[22px]">
-                    <h3 className="line-clamp-2 text-[15px] leading-[1.4] font-bold [overflow-wrap:anywhere] sm:text-base">
-                      <Link href={d.href} className={STRETCHED_LINK}>
-                        {d.title}
-                      </Link>
-                    </h3>
-                    <p className="mt-2 flex min-w-0 items-center gap-2 text-[13.5px]" style={{ color: INK_SOFT }}>
-                      <span
-                        aria-hidden="true"
-                        className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                        style={{ background: tone }}
-                      >
-                        {initialsOf(d.tenant.name).slice(0, 1)}
-                      </span>
-                      <span className="sr-only">Người bán: </span>
-                      <span className="truncate" title={d.tenant.name}>
-                        {d.tenant.name}
-                      </span>
-                    </p>
-                    {d.ratingAvg !== null || d.soldCount > 0 ? (
-                      <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
-                        {d.ratingAvg !== null ? <RatingInline average={d.ratingAvg} count={d.ratingCount} /> : null}
-                        {d.ratingAvg !== null && d.soldCount > 0 ? (
-                          <span aria-hidden="true" style={{ color: INK_SOFT }}>
-                            ·
-                          </span>
-                        ) : null}
-                        {d.soldCount > 0 ? (
-                          <span className="tabular-nums" style={{ color: INK_SOFT }}>
-                            Đã bán {formatCount(d.soldCount)}
-                          </span>
-                        ) : null}
-                      </p>
-                    ) : null}
-                    <div className="mt-auto flex items-end justify-between gap-3 pt-4">
-                      <p className="flex flex-wrap items-baseline gap-x-2 tabular-nums">
-                        {d.onSale ? <span className="sr-only">Giá khuyến mãi </span> : null}
-                        <span className="font-[family-name:var(--font-heading)] text-[17px] font-bold sm:text-[18px]" style={{ color: BLUE }}>
-                          {free ? "Miễn phí" : formatVnd(d.effectivePriceVnd)}
-                        </span>
-                        {d.onSale ? (
-                          <span className="text-[13px] line-through" style={{ color: INK_SOFT }}>
-                            <span className="sr-only">, giá gốc </span>
-                            {formatVnd(d.priceVnd)}
-                          </span>
-                        ) : null}
-                      </p>
-                      <span
-                        aria-hidden="true"
-                        className="inline-flex shrink-0 items-center gap-1 rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition-colors"
-                        style={{ borderColor: LINE }}
-                      >
-                        Xem chi tiết <IconArrow className="h-3.5 w-3.5" />
-                      </span>
-                    </div>
-                  </div>
-                </article>
-              </li>
-            );
-          })}
+          {products.map((d, i) => (
+            <li key={d.id}>
+              <DocumentCard product={d} toneIndex={i} />
+            </li>
+          ))}
         </ul>
       </div>
     </section>

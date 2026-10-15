@@ -65,7 +65,8 @@ Center (DB), env runtime chỉ còn 8 biến, kèm sự cố 2026-10-15 và quy 
 [[01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-From-System-Center|ADR-018 KB]]), trang chủ hệ thống dùng dữ liệu thật +
 cột cache `products.soldCount` (ADR-033, [[01-Architecture-Decisions/ADR-019-Home-Page-Real-Data-Sold-Count|ADR-019 KB]]), một database
 duy nhất cho dev/Preview/production + kỷ luật thao tác DB (ADR-034,
-[[01-Architecture-Decisions/ADR-020-Single-Database-Dev-Preview-Production|ADR-020 KB]]). Tổng cộng 34 ADR gốc.
+[[01-Architecture-Decisions/ADR-020-Single-Database-Dev-Preview-Production|ADR-020 KB]]), trang Cửa hàng (marketplace) — CMS `shop` trước,
+trang công khai `/cua-hang` sau (ADR-035, [[01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First|ADR-021 KB]]). Tổng cộng 35 ADR gốc.
 ([Đường dẫn](../01-Architecture-Decisions/README.md))
 
 ### 2. [[02-System-Specs/README|02-System-Specs]] — Đặc tả Hệ thống Sống (Living Specs)
@@ -77,7 +78,7 @@ tải xuống/share link, storefront CMS + form liên hệ (ADR-023,
 ngoài + trang Xem trước + URL tài liệu `/{tenantSlug}/{productSlug}` và slug dành riêng (ADR-026/027/030,
 [[02-System-Specs/Product-Editor-And-Publishing-Specs|Product-Editor-And-Publishing-Specs]]), ảnh Cloudinary hệ thống + hạn mức ảnh
 (ADR-028, [[02-System-Specs/File-Storage-And-Downloads-Specs|File-Storage-And-Downloads-Specs]] §7), đánh giá sản phẩm M10a
-(ADR-029, [[02-System-Specs/Reviews-Specs|Reviews-Specs]]), bài viết tối giản M10b (ADR-029, [[02-System-Specs/Posts-Specs|Posts-Specs]]), cùng ranh giới RLS theo layer L1/L2/L3 (tách policy đọc/ghi từ ADR-029).
+(ADR-029, [[02-System-Specs/Reviews-Specs|Reviews-Specs]]), bài viết tối giản M10b (ADR-029, [[02-System-Specs/Posts-Specs|Posts-Specs]]), trang Cửa hàng — GĐ1 CMS `shop` + GĐ2 trang công khai `/cua-hang`, `/cua-hang/tai-lieu` xong code, chưa commit/deploy (ADR-035, [[02-System-Specs/Shop-Marketplace-Specs|Shop-Marketplace-Specs]]), cùng ranh giới RLS theo layer L1/L2/L3 (tách policy đọc/ghi từ ADR-029).
 ([Đường dẫn](../02-System-Specs/README.md))
 
 ### 3. [[03-API-Contracts/README|03-API-Contracts]] — Chuẩn Giao tiếp & Data Models
@@ -85,7 +86,8 @@ Hợp đồng dữ liệu giữa client và server: danh bạ route (`apps/web/a
 lược đồ Prisma (`packages/db/prisma/schema.prisma`) theo layer, và mẫu response lỗi chuẩn
 `{ error: { code, message, requestId } }`; kèm contract Server Action của editor sản phẩm Studio
 (`ProductActionState`, [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §10) và action ảnh Cloudinary tenant
-(`CloudinarySignatureResult`, `registerTenantImageAction`, §11) và action/hàm đánh giá M10a (§12), action/hàm bài viết M10b (§13).
+(`CloudinarySignatureResult`, `registerTenantImageAction`, §11) và action/hàm đánh giá M10a (§12), action/hàm bài viết M10b (§13), cấu hình hệ thống + CMS trang chủ (§14), action/hàm CMS Cửa hàng + subpath `@gieochu/core/shop-sections` (§15), trang công khai Cửa hàng + loader `lib/shop.ts` +
+subpath `@gieochu/core/product-type` (§16); lược đồ ghi thêm migration ADR-035 (extension `unaccent`, hàm `gieochu_unaccent`).
 ([Đường dẫn](../03-API-Contracts/README.md))
 
 ### 4. [[04-Operations-Runbooks/README|04-Operations-Runbooks]] — Vận hành, Kiểm thử & Triển khai
@@ -94,10 +96,11 @@ lưu trữ qua System Admin (`/admin/settings/storage`, `/admin/billing/payment`
 công đã dùng để bắt lỗi thật (ví dụ lỗi CSP chặn hydrate React, seed thiếu `UserProfile`) trong các module
 trước.
 Hệ thống thiết kế UI (token, chuẩn độ rộng layout 1280px theo ADR-024, kit component, editor sản phẩm 2 cột + card xuất bản
-đầu sidebar (không dính khi cuộn — ADR-030) + trang Xem trước theo ADR-026/027, TiptapEditor upload ảnh theo ADR-028, giao diện đánh giá M10a §10, giao diện bài viết M10b §11, trang chủ dữ liệu thật + PinPicker + form "Cấu hình chung" §12 — ADR-032/033) ở
+đầu sidebar (không dính khi cuộn — ADR-030) + trang Xem trước theo ADR-026/027, TiptapEditor upload ảnh theo ADR-028, giao diện đánh giá M10a §10, giao diện bài viết M10b §11, trang chủ dữ liệu thật + PinPicker + form "Cấu hình chung" §12 — ADR-032/033, editor CMS Cửa hàng + kit `Notice` §13 — ADR-035, trang Cửa hàng công khai + component catalog dùng chung `DocumentCard`/`ProductShelf`/`ShopHero`/`MobileNav` §14 — ADR-035 GĐ2) ở
 [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] ([UI-Design-System.md](../04-Operations-Runbooks/UI-Design-System.md)).
 Deploy lên Vercel (ADR-031/032: cấu hình project, 8 biến env runtime + biến cần xoá, chuẩn bị DB prod, worker pg-boss cần host
-riêng, sự cố đã gặp, **quy trình migration expand → contract + kỷ luật một DB duy nhất (ADR-034) sau sự cố 2026-10-15**) ở
+riêng, sự cố đã gặp, **quy trình migration expand → contract + kỷ luật một DB duy nhất (ADR-034) sau sự cố 2026-10-15**, migration
+Cửa hàng `unaccent` đã áp trước deploy §9.5) ở
 [[04-Operations-Runbooks/Deploy-Vercel-Runbook|Deploy-Vercel-Runbook]] ([Deploy-Vercel-Runbook.md](../04-Operations-Runbooks/Deploy-Vercel-Runbook.md)).
 Script dữ liệu demo **chỉ cho dev** (`demo:seed`/`demo:clean`, đánh giá trên tenant `phongweb`) ở
 [[04-Operations-Runbooks/Dev-Demo-Data-Runbook|Dev-Demo-Data-Runbook]] ([Dev-Demo-Data-Runbook.md](../04-Operations-Runbooks/Dev-Demo-Data-Runbook.md)).
@@ -106,7 +109,7 @@ Script dữ liệu demo **chỉ cho dev** (`demo:seed`/`demo:clean`, đánh giá
 ### 5. [[05-Historical-Archive/README|05-Historical-Archive]] — Lịch sử thật, không bịa (Cold Storage)
 Gieo Chữ còn ở giai đoạn rất sớm (18 commit git, 2026-09-17 → 2026-09-20) nên thư mục này **nhỏ và có chủ
 đích** — chỉ 3 trang dựng từ nguồn thật: [[Module-Build-History]] (đối chiếu `docs/PLAN.md` với git log thật),
-[[Architecture-Decisions-Timeline]] (mục lục đủ 34 ADR, ADR-001…ADR-034), [[Known-Gaps-And-Backlog]] (từ `docs/BACKLOG.md`).
+[[Architecture-Decisions-Timeline]] (mục lục đủ 35 ADR, ADR-001…ADR-035), [[Known-Gaps-And-Backlog]] (từ `docs/BACKLOG.md`).
 Không có báo cáo/sprint log giả lập nào được tạo thêm cho khớp quy mô một dự án lâu năm.
 ([Đường dẫn](../05-Historical-Archive/README.md))
 
@@ -131,6 +134,8 @@ brief — cùng 2 file mẫu dùng chung nhiều project
   ước tính chi phí, khuyến nghị (2026-09-27 — chủ dự án đã quyết thành ADR-028) ([bao-cao-luu-tru-anh-cloudinary-2026-09-27.md](../../docs/bao-cao-luu-tru-anh-cloudinary-2026-09-27.md))
 - Kế hoạch chi tiết M10 — Social Feed và Đánh giá: đánh giá lại đặc tả sau ADR-021…028, đề xuất tách M10a/b/c,
   dữ liệu + RLS, ngân sách test, 14 câu hỏi cần chốt (2026-09-27 — chủ dự án đã quyết thành ADR-029; M10a và M10b xong code, chưa có test) ([ke-hoach-M10-social-feed-danh-gia-2026-09-27.md](../../docs/ke-hoach-M10-social-feed-danh-gia-2026-09-27.md))
+- Kế hoạch triển khai trang Cửa hàng (marketplace) theo ADR-035: GĐ1 CMS `shop` ở System Center (không DDL), GĐ2
+  `/cua-hang` + `/cua-hang/tai-lieu`, tìm không dấu, phân việc Hiếu/Phong, 10 câu hỏi mở (2026-10-15 — GĐ1 + GĐ2 xong code, chưa commit/deploy; §5 bước 1–15 xong) ([ke-hoach-cua-hang-marketplace-2026-10-15.md](../../docs/ke-hoach-cua-hang-marketplace-2026-10-15.md))
 
 ---
 
@@ -138,7 +143,7 @@ brief — cùng 2 file mẫu dùng chung nhiều project
 
 1. **Khi bắt đầu một task mới:** đọc file này (`00-Index/MOC-Home.md`) để xác định đúng tài liệu spec cần
    tra cứu, nhưng **luôn đối chiếu lại với `docs/PLAN.md`/`docs/DECISIONS.md`/code thật** — KB này có thể
-   trễ hơn tiến độ module thật (tại 2026-09-28: M10a + M10b xong code — M10 GĐ1 hoàn tất code, nợ test; M10c/M12 chưa làm).
+   trễ hơn tiến độ module thật (tại 2026-09-28: M10a + M10b xong code — M10 GĐ1 hoàn tất code, nợ test; M10c/M12 chưa làm; tại 2026-10-15: Cửa hàng GĐ1 — CMS `shop` — và GĐ2 — `/cua-hang`, `/cua-hang/tai-lieu` — xong code, chưa commit/deploy).
 2. **Quy tắc bất biến:** luôn đối chiếu với `01-Architecture-Decisions/` trước khi đề xuất bất kỳ thay đổi
    kiến trúc nào — đặc biệt ranh giới layer và RLS.
 3. **Độ tin cậy:** khi spec trong KB và code/`docs/*.md` gốc xung đột — **code và `docs/*.md` gốc luôn là

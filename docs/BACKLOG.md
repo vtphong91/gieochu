@@ -513,7 +513,68 @@ lộ ra 2 lỗi cả 2 đều tồn tại từ trước, không riêng module n�
 
 **Giao diện**
 - **Trang tìm kiếm/danh mục công khai** — để chip danh mục, ô tìm + nút "Tìm kiếm" trên trang chủ (hiện tĩnh, nút chưa có hành vi)
-  và nút "Xem tất cả" (trang chủ/storefront hiện ẩn vì chưa có trang đích) thành link thật.
+  và nút "Xem tất cả" (trang chủ/storefront hiện ẩn vì chưa có trang đích) thành link thật. *(Cập nhật 2026-10-15: chip + ô tìm trang
+  chủ đã trỏ `/cua-hang/tai-lieu` — ADR-035 GĐ2. Còn mở: nút "Xem tất cả" sản phẩm trên storefront tenant vẫn ẩn; trang danh mục SEO
+  `/cua-hang/danh-muc/[slug]` vẫn là nợ ADR-035.)*
 - **`SettingsGrid` `minmax(380px, 960px)`** (`admin/_ui/kit.tsx`) gây cuộn ngang ở viewport 375px.
 - **"Xem trang chủ ↗"** ở editor CMS trang chủ là `<Link>` bọc `<button>` (phần tử tương tác lồng nhau) — đổi thành một link
   dạng nút.
+
+## Phát sinh trong đợt Cửa hàng GĐ1 (ADR-035 — CMS `shop` trong System Center)
+
+**Nợ test** (kế hoạch `docs/ke-hoach-cua-hang-marketplace-2026-10-15.md` §6 — đợt này không thêm test, số test giữ 93/52; thêm
+test cần chủ dự án duyệt nâng trần):
+- (a) Unit `parseShopSections`: dữ liệu hỏng → mặc định của field, trùng `type`, section thiếu thêm ở trạng thái ẩn.
+- (b) Unit điều kiện "đánh giá cao" bằng số nguyên (ngưỡng ×10).
+- (c) Integration tìm không dấu ("de thi" khớp "Đề thi") trong `withPublic` (GĐ2).
+- (d) Integration action CMS Cửa hàng từ chối người không phải SYSTEM_ADMIN.
+- (e) Unit slug dành riêng mới (`cua-hang`, `tai-lieu`, `danh-muc`, `tim-kiem`, `giao-vien`, `kham-pha` — GĐ2).
+
+**Dữ liệu / SEO**
+- **SEO cho dòng `shop`:** `CmsPage.seoTitle`/`seoDescription` của slug `shop` dự kiến dùng cho metadata `/cua-hang` nhưng editor
+  GĐ1 chưa có ô sửa và actions không ghi hai cột này (dòng tạo bằng `upsert` để trống).
+
+**Giao diện**
+- **`<main>` lồng ở các trang admin khác:** `admin/layout.tsx` đã bọc `<main>`, nhưng ~20 file `app/admin/**` (`page.tsx` các mục
+  billing/categories/cms/plans/roles/settings/tenants/users + `error.tsx`) vẫn bọc `<main>` riêng. Editor Cửa hàng đã dùng `<div>`.
+- **Editor CMS trang chủ chưa đạt target 44px / focus ring** như editor Cửa hàng (nút, danh sách section).
+
+## Phát sinh trong đợt Cửa hàng GĐ2 (ADR-035 — trang công khai `/cua-hang`, `/cua-hang/tai-lieu`)
+
+**Bảo mật / hạ tầng DB**
+- **`setup-app-role.mts` thêm `REVOKE CREATE ON DATABASE … FROM gieochu_app`** cho môi trường mới (việc của Hiếu, chưa làm). Chủ dự án
+  đã chạy `REVOKE` trên DB dùng chung 2026-10-15 (`has_database_privilege(..., 'CREATE') = false`), nhưng script hiện vẫn `GRANT CREATE
+  ON DATABASE` (để pg-boss tự tạo schema `pgboss`) — chạy lại script sẽ cấp lại quyền. Cần chốt thứ tự với pg-boss trên DB mới (tạo
+  schema `pgboss` bằng role owner trước, hay REVOKE sau lần khởi động worker đầu). KB `04-Operations-Runbooks/Disaster-Recovery-Runbook.md` §4.1.
+- **Index GIN trigram (`pg_trgm`) cho catalog lớn** trên biểu thức `gieochu_unaccent(lower(...))` (tiêu đề/summary/tên tenant/tên danh
+  mục) — hiện `LIKE '%q%'` quét tuần tự, chấp nhận được với catalog nhỏ. Migration expand riêng, Quốc duyệt và chạy.
+
+**Dữ liệu / nghiệp vụ**
+- **Hàm public lấy toàn bộ danh mục cho select** của ô tìm: hiện page bổ sung section "Danh mục" mặc định để gọi
+  `getShopHeroAndCategories` (cách vòng) — tách hàm riêng.
+- **CTA mở gian hàng chưa xét STAFF**: `shouldShowOpenStoreCta` chỉ ẩn với chủ tenant (`tenants.ownerId`); `tenant_members` có RLS chỉ cho
+  scope tenant/system_job và chưa có luồng tạo STAFF.
+- **Kệ "Gian hàng nổi bật" chế độ `TOP_RATED` không bù** tenant chưa đạt `minReviews` (chế độ `SALES_30D` có bù) — kệ có thể ít hơn
+  `limit`. Xác nhận hành vi mong muốn.
+- **`studio/[tenantSlug]/products/_ui/editor-bits.tsx` còn map nhãn loại tài liệu riêng** (`PRODUCT_TYPE_LABEL`, chữ khác: "Mẫu /
+  Template", "Đề thi / Đề kiểm tra") — chuyển sang `@gieochu/core/product-type` hoặc quyết định giữ nhãn riêng cho editor.
+
+**SEO / giao diện**
+- **Title trang tìm khi lọc danh mục** chưa có tên danh mục (hiện `Tài liệu | {brand}`).
+- **Token màu sale/danger trong `packages/config/src/theme.ts`**: hex `#B91C1C` (`SALE_RED`, `app/_ui/catalog-parts.tsx`) và chữ `#241503`
+  trên nút accent (trang chủ, `shop-cta`, `site-header`) đang hard-code.
+- **"Xem gian hàng" (thẻ `TenantCard`) xuống 2 dòng ở 360px.**
+- **`/pricing` chưa truyền `current="pricing"`** cho `SiteHeader` (chưa có `aria-current` ở mục "Bảng giá").
+- **`PUBLIC_PAGE_READY = false` còn trong editor CMS Cửa hàng** (`admin/cms/shop/_ui/shop-sections-editor.tsx`) → ghi chú "Xem trang chưa
+  mở được" sai sự thật từ khi GĐ2 có route; đổi trước deploy.
+
+**Nợ test** (không thêm test đợt này, số test giữ 93/52; thêm test cần chủ dự án duyệt nâng trần) — gộp và thay danh sách (a)–(e) của
+mục GĐ1:
+- Unit: `productTypeLabel` (giá trị lạ → nhãn OTHER); 6 slug dành riêng mới; `parseShopSearchParams` / `escapeLikePattern`; điều kiện
+  "đánh giá cao" số nguyên (ngưỡng ×10); `parseShopSections` (dữ liệu hỏng → mặc định của field, trùng `type`, section thiếu thêm ở
+  trạng thái ẩn).
+- Integration: tìm không dấu ("de thi" khớp "Đề thi") trong `withPublic`; `getTenantSales30d` loại entitlement đã thu hồi; `ROW_NUMBER`
+  kệ theo danh mục (≤ `cardsPerBlock`/khối); action CMS Cửa hàng từ chối người không phải SYSTEM_ADMIN.
+
+**Chưa kiểm thực tế** (dev server dữ liệu thật đã đạt ở luồng chính): trạng thái rỗng toàn trang; `error.tsx` khi lỗi thật; phân trang
+nhiều trang; nhánh SEO từ CMS đã xuất bản (`seoTitle`/`seoDescription` — editor chưa có ô sửa).

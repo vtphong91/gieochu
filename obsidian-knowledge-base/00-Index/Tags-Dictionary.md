@@ -4,7 +4,7 @@ tags:
   - index
   - taxonomy
 date: 2026-09-26
-updated: 2026-09-29
+updated: 2026-10-15
 author: System Architect
 ---
 
@@ -47,6 +47,7 @@ giúp phân loại nội dung và tra cứu nhanh cho người và AI agent đ�
 | `#customer` | Trải nghiệm khách hàng mua tài liệu |
 | `#reviews` | Đánh giá sản phẩm của khách đã mua (M10a, ADR-029): quyền đánh giá, kiểm duyệt/trả lời của tenant, điểm trung bình |
 | `#posts` | Bài viết tối giản của tenant (M10b, ADR-029): trạng thái DRAFT/PUBLISHED/HIDDEN, ghim, gắn tài liệu, trang `/[slug]/posts`, section `posts` |
+| `#marketplace` | Trang Cửa hàng tổng hợp tài liệu mọi tenant (ADR-035): CMS `shop` ở System Center (GĐ1), `/cua-hang` + `/cua-hang/tai-lieu` (GĐ2) |
 
 ---
 

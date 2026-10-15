@@ -52,7 +52,8 @@ lập) là nợ kỹ thuật đã biết — nếu tách `apps/web/app/admin` sa
 - **Header/footer trên mọi trang public là của hệ thống**, không thuộc CMS, không thuộc tenant.
   `SiteHeader` (`apps/web/app/_ui/site-header.tsx`) và `SiteFooter` (`apps/web/app/_ui/site-footer.tsx`) là chrome
   **bắt buộc** cho trang public — trang public mới phải dùng 2 component này, không tự dựng header/footer.
-- Cả hai là **async Server Component, không nhận props**, tự đọc dữ liệu: `getEffectiveBrand()` +
+- Cả hai là **async Server Component**, tự đọc dữ liệu (từ ADR-035 GĐ2, `SiteHeader` nhận **một prop tuỳ chọn** `current?: SiteNavKey`
+  — `"shop" | "pricing"` — xem cuối mục; `SiteFooter` không nhận prop): `getEffectiveBrand()` +
   `getEffectiveLogos()` (có `cache()` theo request); riêng `SiteHeader` đọc thêm người dùng hiện tại
   (`getCurrentUser()`) — đã đăng nhập thì truy vấn `user` (email + `profile.fullName`) và `resolveLandingPath` để hiện
   `AccountMenu` (mục "Trang quản trị hệ thống" cho `/admin`, "Quản lý gian hàng" cho `/studio/*`); chưa đăng nhập thì
@@ -72,8 +73,18 @@ lập) là nợ kỹ thuật đã biết — nếu tách `apps/web/app/admin` sa
 - Skip-link "Bỏ qua tới nội dung chính" → `#noi-dung` đặt trước `SiteHeader` ở storefront, chi tiết sản phẩm,
   checkout; **trang chủ chưa có** skip-link (cũng không có `<main id="noi-dung">`) — đã có trong `docs/BACKLOG.md`.
   Skip-link hiện nằm ở từng trang, không nằm trong `SiteHeader`.
-- Trang đang dùng: trang chủ (`app/page.tsx`), storefront `/[tenantSlug]`, chi tiết sản phẩm, checkout. `/pricing` và
-  `/p/[slug]` **chưa** chuyển — xem §4.6.
+- Trang đang dùng: trang chủ (`app/page.tsx`), storefront `/[tenantSlug]`, chi tiết sản phẩm, checkout, Cửa hàng (`app/cua-hang/layout.tsx`,
+  ADR-035). `/pricing` và `/p/[slug]` **chưa** chuyển — xem §4.6.
+- **Điều hướng (ADR-035 GĐ2)** ✅ đọc code 2026-10-15:
+  - Nav ngang (chỉ hiện từ `lg`): "Bảng giá" (`/pricing`) · "Giáo viên & Coach" (vẫn `<span>`, chưa có trang) · **"Cửa hàng"**
+    (`/cua-hang`, thay `<span>` "Khám phá tài liệu" cũ). Link dùng `NAV_LINK_CLASS`: `min-h-11`, mục ứng với `current` có
+    `aria-current="page"` + chữ đậm + gạch chân (không chỉ đổi màu).
+  - `current` do **trang tự truyền** (header là Server Component, không biết pathname). Hiện chỉ `cua-hang/layout.tsx` truyền
+    `current="shop"`; `/pricing` chưa truyền `current="pricing"` (BACKLOG).
+  - **Menu mobile** `MobileNav` (`app/_ui/mobile-nav.tsx`, client) dưới `lg`: §14.6. Mục = "Cửa hàng", "Bảng giá" (+ "Đăng nhập" khi chưa
+    đăng nhập — nút "Đăng nhập" ở header bị ẩn dưới `sm`).
+  - Footer cột "Khám phá": link **"Cửa hàng"** → `/cua-hang` thay dòng chữ "Tài liệu"; "Bảng giá" thành link có `FOOTER_LINK` (chữ trắng
+    60%, hover/focus trắng hẳn + gạch chân, focus ring trắng); "Giáo viên & Coach" vẫn là chữ.
 
 ---
 
@@ -777,6 +788,10 @@ Quyết định: [[01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-F
 
 ### 12.1. Thẻ trang chủ — link phủ cả thẻ (`app/_home-sections.tsx`)
 
+> **Cập nhật ADR-035 GĐ2 (2026-10-15) ✅:** thẻ đã tách thành component dùng chung `DocumentCard` / `TenantCard` (`app/_ui/`), hằng
+> `CARD_CLASS`, `STRETCHED_LINK`, `FOCUS_RING` chuyển sang `app/_ui/catalog-parts.tsx` — trang chủ và Cửa hàng cùng dùng (§14.2).
+> Quy tắc dưới đây vẫn đúng.
+
 * `CARD_CLASS`: `group relative flex h-full flex-col … rounded-3xl border bg-white`, hover đổ bóng + nhấc `-translate-y-0.5` **chỉ
   khi** `motion-safe`; vòng focus vẽ trên **cả thẻ** bằng `has-[a:focus-visible]:outline-3 outline-offset-2` (màu qua
   `outlineColor`).
@@ -794,13 +809,14 @@ Quyết định: [[01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-F
   bản cho trình đọc màn hình "Hơn 1.200" (không bao giờ phóng đại); số tròn trăm hiện nguyên.
 * Điểm đánh giá 1 chữ số thập phân kiểu vi-VN ("4,6"), giá `"… ₫"`.
 
-### 12.3. Section "Tìm tài liệu" — chip tĩnh + `<details>`
+### 12.3. Section "Tìm tài liệu" — chip link + `<details>`
 
-* Chip danh mục là `<li>` **tĩnh** (tên + "· N" kèm `sr-only` "tài liệu"), **không** phải link/nút — chưa có trang tìm kiếm/danh
-  mục công khai nên không giả làm phần tử bấm được. Danh sách có nhãn "Danh mục đang có tài liệu" (`aria-labelledby`).
+* **Từ ADR-035 GĐ2 (2026-10-15) ✅:** ô tìm là **form GET** `action="/cua-hang/tai-lieu"` với `name="q"` (cắt theo
+  `SHOP_SEARCH_Q_MAX` = 100); chip danh mục là **link** `shopSearchHref({ categorySlug })` → `/cua-hang/tai-lieu?danh-muc={slug}` (tên
+  + "· N" kèm `sr-only` "tài liệu"). Giao diện giữ như cũ, chỉ đổi đích. (Trước GĐ2: chip `<li>` tĩnh, nút "Tìm kiếm" chưa có hành vi.)
+* Danh sách có nhãn "Danh mục đang có tài liệu" (`aria-labelledby`).
 * Hiện sẵn 10 chip (`SEARCH_CHIPS_VISIBLE`); phần còn lại trong `<details>`/`<summary>` ("Xem thêm N danh mục" / "Thu gọn",
   `min-h-11`, focus-visible outline, mũi tên xoay tắt khi `motion-reduce`) — không cắt mất, không cuộn ngang.
-* Ô tìm + nút "Tìm kiếm" giữ hiện trạng (chưa có hành vi) — BACKLOG "trang tìm kiếm/danh mục công khai".
 
 ### 12.4. Mẫu `PinPicker` (`app/admin/cms/home-editor/pin-picker.tsx`, client)
 
@@ -845,11 +861,179 @@ Nhóm cài đặt hệ thống nay có: **"Cấu hình chung"** → `/admin/sett
 
 * `SettingsGrid` `minmax(380px, …)` gây cuộn ngang ở 375px.
 * Editor CMS trang chủ: "Xem trang chủ ↗" là `<Link>` bọc `<button>` (phần tử tương tác lồng nhau).
-* Chip/ô tìm trang chủ chưa thành link — chờ trang tìm kiếm/danh mục công khai.
+* ~~Chip/ô tìm trang chủ chưa thành link~~ — ✅ xong ở ADR-035 GĐ2 (§12.3).
 
 ---
 
-## 13. Tài Liệu Tham Chiếu & Liên Kết
+## 13. Editor CMS Cửa Hàng (ADR-035 GĐ1) ✅
+
+Quyết định: [[01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First|ADR-021 (≙ ADR-035)]]; nghiệp vụ:
+[[02-System-Specs/Shop-Marketplace-Specs|Shop-Marketplace-Specs]]. Thiết kế theo brief của Quốc (Phong làm), Long đối chiếu code
+2026-10-15 (working tree, chưa commit). Thử tay a11y/responsive trên trình duyệt ❓ (chưa có báo cáo kiểm tay).
+
+### 13.1. Kit: `Notice` (`admin/_ui/kit.tsx`) — khác `FormBanner`
+
+* `Notice({ tone?: "info" | "warning", icon?, children })`: khung ghi chú/cảnh báo **tĩnh** trong trang (bo `rounded-xl`, viền +
+  nền theo tone: info = `brandColors.surface`/chữ `primary`, warning = nền hổ phách/chữ `#92400E`). Không có `role` — không phải
+  thông báo động.
+* `FormBanner` vẫn là nơi hiện **kết quả thao tác** (thành công/lỗi sau khi gửi). Không dùng `Notice` cho kết quả thao tác.
+* Nội dung `Notice` phải tự nói rõ ý (không chỉ dựa vào màu); `icon` chỉ trang trí.
+
+### 13.2. `PinPicker` thêm `copy` và `error` (`app/admin/cms/home-editor/pin-picker.tsx`)
+
+Bổ sung cho §12.4 (props cũ giữ nguyên, trang chủ không đổi hành vi):
+* `copy?: Partial<PinPickerCopy>` — bộ chữ giao diện: `note`, `emptyPinned`, `searchHint`, `pinAction`, `unpinAction`,
+  `pinnedState`, `unavailable`, `overLimit(limit)`, `full(max)`, `noMatch(query)`, `noOptions`, `PinIcon`. Thiếu key nào dùng
+  mặc định "ghim" của trang chủ. Thông báo `role="status"` và `aria-label` nút cũng đổi theo bộ chữ.
+* `error?: string` — lỗi của cả danh sách: viền khung đỏ, `<p role="alert">` dưới tiêu đề, gắn vào `aria-describedby` của khung.
+* Editor Cửa hàng dùng 3 bộ chữ: tài liệu ghim (ghi chú "ghim riêng cho trang Cửa hàng"), gian hàng ghim, và **bộ chọn danh mục**
+  (`categoryCopy(unit)` — động từ "Chọn / Bỏ chọn / Đã chọn", icon `IconPlus`). Option danh mục map bằng `toCategoryPinOption`
+  (gợi ý "N tài liệu công khai", `eligible:false` → nhãn chữ "Danh mục đang tắt hoặc chưa có tài liệu công khai").
+
+### 13.3. Pattern editor CMS nhiều section (`app/admin/cms/shop/_ui/shop-sections-editor.tsx`, client)
+
+* **Bố cục:** wrapper trang là `<div>` (layout admin đã có `<main>`); lưới `xl:grid-cols-[320px_minmax(0,1fr)]` — trái danh sách
+  khu vực, phải form của khu vực đang chọn; dưới `xl` xếp dọc.
+* **Thông báo trạng thái đầu trang** (`Notice tone="warning"`): `NONE` "Chưa lưu lần nào — đang hiển thị cấu hình mặc định";
+  `DRAFT` "Chưa xuất bản lần nào…".
+* **Thanh trạng thái dính** (`sticky top-0 z-10`, nền trắng mờ `backdrop-blur`, tràn mép bằng `-mx-5 lg:-mx-8`): huy hiệu
+  "Đã xuất bản" / "Chưa xuất bản" / "Chưa lưu · cấu hình mặc định", "Có nháp chưa xuất bản", "Có thay đổi chưa lưu", "Lưu lần
+  cuối: …" (giờ định dạng ở server theo `DISPLAY_TIME_ZONE` để tránh lệch hydrate), vùng `aria-live="polite"`; nút "Xem trang"
+  (tab mới, có `sr-only` giải thích), "Khôi phục bản đang hiển thị", "Lưu nháp", "Xuất bản" (chính). Nút `min-h-11` dưới `lg`.
+  Kết quả thao tác hiện ngay trong thanh: `role="status"` khi thành công, `role="alert"` khi lỗi.
+* **Danh sách khu vực** (`<ol>`): mỗi dòng = nút con mắt ẩn/hiện (`aria-pressed`, `aria-label` "Ẩn/Hiện khu vực …", icon
+  `IconEye`/`IconEyeOff`) + nút tên (số thứ tự, `aria-current` khi đang chọn, nhãn chữ "Đang ẩn", "N lỗi") + nút **Lên/Xuống**
+  thay kéo-thả (WCAG 2.5.7; `disabled` ở đầu/cuối). Nút icon 44px dưới `lg`, 36px từ `lg`. Bộ đếm "x/9 đang hiện".
+* **Kiểm tra trước khi gửi:** chạy đúng `shopSectionsSchema` ở client (`shop-validation.ts`), chỉ bật hiện lỗi sau lần bấm
+  Lưu/Xuất bản đầu tiên; lỗi → **khung tóm tắt** (`role="alert"`, `tabIndex=-1`, nhận focus, tiêu đề "Chưa lưu được — còn N lỗi
+  cần sửa"), mỗi lỗi là nút: chọn đúng khu vực rồi **focus nhảy tới ô** (ô danh sách → ô tìm `-search` của `PinPicker`; không
+  thấy ô → tiêu đề form `tabIndex=-1`). Không gọi server khi còn lỗi; server vẫn validate lại.
+* **Xác nhận khôi phục:** `window.confirm` nêu rõ đích ("bản đang hiển thị" hoặc "cấu hình mặc định") và "không hoàn tác được";
+  khôi phục xong dựng lại form (`formVersion`) để ô gõ tay bỏ chuỗi dở.
+* **Cảnh báo rời trang:** `beforeunload` chỉ gắn khi có thay đổi chưa lưu (so snapshot JSON).
+* **Ghi chú dữ liệu thật** đầu form từng khu vực (`LiveDataNote` = `Notice tone="info"`): CMS chỉ lưu nhãn/cấu hình, thẻ lấy từ
+  dữ liệu thật. "Mọi ô chữ đều bắt buộc."
+* **Khung chờ** `app/admin/cms/shop/loading.tsx`: cùng khung với trang (tránh nhảy layout), `aria-busy`, `role="status"` ẩn,
+  `animate-pulse motion-reduce:animate-none`.
+
+### 13.4. Field riêng (`app/admin/cms/shop/_ui/shop-fields.tsx`)
+
+| Field | Dùng cho | Ghi chú |
+|---|---|---|
+| `ShopTextField` | Ô chữ 1 dòng bắt buộc | Bọc `TextField` của kit, `maxLength`, gợi ý kèm bộ đếm "n/max ký tự" |
+| `ShopTextAreaField` | Mô tả (CTA) | Textarea bắt buộc có đếm ký tự |
+| `RangeSelectField` | Số trong khoảng nhỏ (số thẻ, số khối, chip) | `SelectField` liệt kê từng số + đơn vị — không có trạng thái gõ sai |
+| `IntegerField` | Số nguyên khoảng rộng (số đánh giá tối thiểu 1–50) | Ô chữ `inputMode="numeric"`, giữ chuỗi đang gõ; sai → đẩy `NaN` để bước kiểm tra chặn (không âm thầm giữ giá trị cũ) |
+| `AvgTenthsField` | Ngưỡng điểm TB | Nhập "4,0" (nhận "4.0", "4"), `inputMode="decimal"`, placeholder "4,0"; lưu số nguyên ×10 qua `parseShopAvgTenthsInput`; rời ô thì chuẩn hoá cách viết ("4.5" → "4,5"); sai/ngoài 1,0–5,0 → `NaN`. Không float |
+| `RadioCardGroup` | Chế độ danh mục AUTO/MANUAL, chế độ gian hàng SALES_30D/TOP_RATED | `fieldset`/`legend`, cả thẻ là vùng bấm `min-h-11`, mô tả gắn `aria-describedby`, focus ring qua `has-[:focus-visible]` |
+
+Lỗi luôn hiện dưới ô (`role="alert"`) + `aria-invalid`/`aria-describedby`. Ảnh hero dùng `ImageUploadField` (§9.9). Mô tả chế độ
+`SALES_30D` ghi rõ "số bán chỉ dùng để xếp hạng, không hiển thị".
+
+### 13.5. Menu và hằng tạm
+
+* Sidebar System Center (`admin/_ui/sidebar-nav.tsx`), nhóm nội dung: "Trang CMS" → **"Trang Cửa hàng"** (`/admin/cms/shop`, icon
+  mới `IconShoppingBag` trong `admin/_ui/icons.tsx`) → "Danh mục tài liệu".
+* Hằng `PUBLIC_PAGE_READY = false` trong editor: hiện ghi chú "Trang công khai /cua-hang có ở giai đoạn 2 — hiện “Xem trang” chưa
+  mở được nội dung" (gắn `aria-describedby` vào nút "Xem trang"). **Đổi thành `true` (hoặc bỏ ghi chú) khi GĐ2 lên.** ⚠️ Tại
+  2026-10-15 GĐ2 đã xong code (route `/cua-hang` có thật) nhưng hằng **vẫn `false`** ✅ — ghi chú sai sự thật; BACKLOG.
+
+### 13.6. Việc còn mở (BACKLOG, liên quan UI)
+
+* `<main>` lồng: 20 file trong `app/admin/**` (các `page.tsx` + `error.tsx`) vẫn bọc `<main>` riêng trong khi `admin/layout.tsx` đã có
+  `<main>` ✅ (grep 2026-10-15); editor Cửa hàng đã dùng `<div>`.
+* Editor CMS trang chủ chưa đạt target 44px và focus ring như editor Cửa hàng.
+
+---
+
+## 14. Trang Cửa Hàng Công Khai + Component Catalog Dùng Chung (ADR-035 GĐ2) ✅
+
+Quyết định: [[01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First|ADR-021 (≙ ADR-035)]]; nghiệp vụ + dữ liệu:
+[[02-System-Specs/Shop-Marketplace-Specs|Shop-Marketplace-Specs]] §5–§6. Thiết kế theo brief của Quốc (Phong làm), Long đọc file
+component lấy API props ngày 2026-10-15 (working tree, chưa commit). Kiểm responsive 360/768/1280 + a11y trên trình duyệt: theo báo
+cáo "dev server đạt" 🟡; chi tiết từng điểm chưa có báo cáo riêng ❓.
+
+### 14.1. `catalog-parts.tsx` — mảnh trình bày dùng chung (server-safe, client import được)
+
+* Màu lấy từ token `brandColors`: `INK`, `INK_SOFT`, `LINE`, `PAPER_ALT` (`backgroundAlt`), `BLUE`, `BLUE_DEEP`, `AMBER`, `AMBER_SOFT`,
+  `GREEN`; `ROTATING_COLORS` + `rotatingColor(i)` (xoay màu nhấn theo vị trí thẻ), `pastelOf(color, percent=10)` (nền pastel).
+* ⚠️ **Hex hard-code** chưa có token: `SALE_RED = "#B91C1C"` (nhãn giảm giá/giá sale); chữ `#241503` trên nút accent (trang chủ, `shop-cta`,
+  `site-header`) — BACKLOG thêm token sale/danger vào `theme.ts`.
+* Icon SVG: `IconArrow`, `IconSearch`, `IconChevron`, `IconDocs`, `IconStar`, `IconFolder`, `IconStorefront` (props `className`, `style`).
+* Định dạng: `formatCount` (vi-VN), `formatVnd`, `formatRating` ("4,6"), `initialsOf`, `discountPercentOf(product)`; `RatingInline({ average,
+  count, long? })`.
+* Lớp thẻ: `CARD_CLASS`, `STRETCHED_LINK`, `FOCUS_RING`; kiểu `CardHeadingLevel = "h2" | "h3" | "h4"`.
+
+### 14.2. Thẻ — `DocumentCard`, `TenantCard`
+
+| Component | Props | Ghi chú |
+|---|---|---|
+| `DocumentCard` (`_ui/document-card.tsx`) | `product: DocumentCardProduct` (= `HomeFeaturedProduct` + `typeLabel?`), `toneIndex?` (0), `headingLevel?: "h3" \| "h4"` (h3), `rank?: number`, `density?: "default" \| "compact"` | Ảnh bìa `cloudinaryDeliveryUrl(…, { width: 640 })` hoặc khối màu; nhãn "Giảm N%" khi khuyến mãi; nhãn loại (`typeLabel`, chỉ khi có — trang chủ không truyền); tên `line-clamp-2`; tên gian hàng; sao + số đánh giá; "Đã bán N" (ẩn khi 0); giá + giá gốc gạch (có `sr-only` "Giá khuyến mãi"). `rank` → "#N" `aria-hidden` + `sr-only` "Hạng N". Một link duy nhất (stretched) tới `href` |
+| `TenantCard` (`_ui/tenant-card.tsx`) | `tenant: TenantCardTenant` (= `HomeFeaturedTenant`), `toneIndex?`, `headingLevel?: "h3" \| "h4"` | Avatar/logo (`alt=""`), tên, "N tài liệu", sao (khi có), "Đã bán" tổng (khi > 0), nhãn "Xem gian hàng" `aria-hidden`; link `/{tenantSlug}`. Trường thừa (`sales30d`) **bị bỏ qua** — số bán 30 ngày không hiển thị |
+
+Trang chủ (`_home-sections.tsx`) dùng `DocumentCard` (mặc định `default`) và `TenantCard`; Cửa hàng dùng `density="compact"`.
+
+### 14.3. Khung kệ — `product-shelf.tsx`
+
+| Export | Props | Ghi chú |
+|---|---|---|
+| `ShelfSection` | `title`, `subtitle?`, `note?`, `viewAll?: { href, label }`, `headingLevel?: "h2" \| "h3"` (h2), `background?: "paper" \| "alt"` (paper), `children` | Khung section dùng chung (tiêu đề + mô tả + dòng ghi chú + một link "Xem tất cả" ≥44px) |
+| `ProductShelf` | `title`, `subtitle?`, `criteria?`, `products`, `href?`, `viewAllLabel?` (mặc định "Xem tất cả {title}"), `ranked?`, `headingLevel?`, `background?`, `desktopLimit?` (8), `mobileLimit?` (4) | Lưới 2 cột (< lg) / 4 cột (≥ lg), thẻ `compact`; thẻ vượt `mobileLimit` ẩn bằng `hidden lg:block` (không vào cây a11y ở mobile); `headingLevel="h3"` → thẻ h4; rỗng → `null` |
+| `TenantShelf` | `title`, `subtitle?`, `tenants`, `href?`, `viewAllLabel?`, `background?` | Lưới 2/4 cột `TenantCard`; rỗng → `null` |
+| `formatTopRatedCriteria(minReviews, minAvgTenths)` | — | "Từ 3 đánh giá, điểm trung bình từ 4,0" — in dưới tiêu đề kệ Đánh giá cao |
+
+### 14.4. Danh mục, hero, CTA, skeleton
+
+| Component | Props | Ghi chú |
+|---|---|---|
+| `CategoryGrid` (`_ui/category-grid.tsx`) | `title`, `subtitle?`, `categories: CategoryTileData[]`, `maxVisible`, `background?` | Lưới 2–3 cột mobile / 4 tablet / 6 desktop; phần vượt `maxVisible` trong `<details>` ("Xem thêm N danh mục" / "Thu gọn", `min-h-11`, danh sách phụ `aria-label="Danh mục khác"`); rỗng → `null` |
+| `CategoryTile` | `category`, `toneIndex?` | Ô là link `shopCategoryHref(slug)` = `/cua-hang/tai-lieu?danh-muc={slug}`; nền pastel xoay vòng; icon = `imageUrl` hoặc icon mặc định |
+| `ShopHero` (`_ui/shop-hero.tsx`) | `data` (eyebrow/title/subtitle/searchLabel/searchPlaceholder/imageUrl của CMS), `categories`, `chips`, `stats?: { productCount?, tenantCount? }` | Nền gradient `BLUE_DEEP`→`BLUE`; **H1** = `data.title`; `ShopSearchForm`; chip phổ biến (danh sách có nhãn); khối minh hoạ phải `hidden lg:block` (ảnh CMS `width: 1000` hoặc minh hoạ mặc định) + thẻ số liệu "Tài liệu đang bán"/"Gian hàng" chỉ hiện khi > 0 |
+| `ShopSearchForm` | `label`, `placeholder`, `categories` (rỗng → không render select), `defaultQuery?`, `defaultCategorySlug?`, `action?` (`/cua-hang/tai-lieu`), `hiddenFields?`, `submitLabel?` ("Tìm kiếm") | Form GET thuần (không cần JS): `q` + `<select name="danh-muc">` (rỗng = mọi danh mục); nhãn hiển thị cho cả ô và select (không dùng placeholder thay nhãn); ô cao 48px, chữ 16px (iOS không tự zoom) |
+| `ShopEmptyState` (`_ui/shop-cta.tsx`) | `title?` ("Cửa hàng chưa có tài liệu nào"), `description?`, `cta?: {label, href} \| null` (mặc định "Mở gian hàng miễn phí" → `/register`; `null` = ẩn), `secondary?`, `headingLevel?: "h1" \| "h2"` (h2) | Khối trạng thái rỗng toàn trang |
+| `OpenStoreCta` | `data: ShopCtaOpenStoreData` | Section CTA mở gian hàng; nút accent chữ nâu đậm (≥ 4.5:1) |
+| `ShelfSkeleton` (`_ui/shelf-skeleton.tsx`) | `variant?: "products" \| "categories" \| "tenants" \| "hero"`, `label?` (chữ sr "Đang tải {label}…"), `shelves?` (1), `background?` | Khối giữ chỗ; nhấp nháy chỉ khi `motion-safe` |
+
+### 14.5. Trang `/cua-hang` và `/cua-hang/tai-lieu`
+
+* `app/cua-hang/layout.tsx`: bọc `systemFontVars`, nền/màu hệ thống, `SiteHeader current="shop"` + `<main className="grow">` + `SiteFooter`
+  → `loading.tsx` / `error.tsx` vẫn có header/footer.
+* `/cua-hang`: mỗi section một `<Suspense>` tại đúng vị trí với `ShelfSkeleton` tương ứng; nền zebra `paper`/`alt` xen kẽ; hero ẩn → H1
+  dự phòng "Cửa hàng tài liệu". Khối theo danh mục: `ShelfSection` (h2) chứa nhiều `ProductShelf headingLevel="h3"` → thẻ h4.
+* `/cua-hang/tai-lieu`: dải đầu nền `PAPER_ALT` — breadcrumb (`nav aria-label="Đường dẫn"`, "Cửa hàng / Tài liệu", mục cuối
+  `aria-current="page"`), H1 ("Kết quả cho “q”" / tên danh mục / "Tài liệu"), ghi chú `SearchNote`, `ShopSearchForm` (giữ `sap-xep` bằng
+  `hiddenFields`). Phần kết quả: H2 "N tài liệu" / "Không có kết quả" (`id="ket-qua"`), `ShopSortForm`, lưới 2/4 cột `DocumentCard`
+  compact (h3), `ShopPagination`.
+* `app/cua-hang/_ui/search-parts.tsx`:
+  - `ShopSortForm({ q?, categorySlug?, sort })` — form GET riêng, giữ `q` + `danh-muc` bằng input ẩn, về trang 1; có nút "Áp dụng" (không
+    cần JS), select có nhãn hiển thị.
+  - `SearchNote({ children })` — ghi chú (danh mục không tồn tại, trang vượt).
+  - `ShopPagination({ page, pageCount, state })` — link thuần: Trước/Sau (`rel="prev"`/`"next"`) + số trang (≥ `sm`; dưới `sm` chỉ "Trang
+    x/y" để không tràn ngang); trang hiện tại `aria-current="page"` + nền đặc; đầu/cuối là nút mờ `aria-disabled`, không phải link.
+  - `ShopNoResults({ state, categoryName?, popular })` — gợi ý bỏ từ khoá/danh mục + chip danh mục phổ biến.
+* `error.tsx`: khối `role="alert"`, tiêu đề H1 "Không tải được Cửa hàng", "Mã tham chiếu" = `digest` (không hiện `error.message`), nút
+  "Thử lại" (`retry()`) `min-h-12` + link "Về trang chủ".
+
+### 14.6. `MobileNav` (`app/_ui/mobile-nav.tsx`, client) + icon mới
+
+* Props `items: MobileNavItem[]` — `{ href, label, current? }`; rỗng → `null`.
+* Nút 44×44 có `aria-expanded` + `aria-controls`; panel thả xuống full-bleed dưới header. Đóng khi: bấm lại nút, **Esc** (trả focus về
+  nút), bấm ra ngoài (`pointerdown`), hoặc đổi trang (so `usePathname()` — header nằm trong layout nên không tự unmount). Mục hiện tại:
+  `aria-current="page"` + chữ đậm/vạch (không chỉ màu).
+* Icon mới trong `admin/_ui/icons.tsx`: `IconMenu`, `IconClose` (cùng `IconShoppingBag` từ GĐ1).
+
+### 14.7. Việc còn mở (BACKLOG, liên quan UI)
+
+* Token màu sale/danger trong `theme.ts` (thay `#B91C1C`, `#241503` hard-code).
+* Nhãn "Xem gian hàng" của `TenantCard` xuống 2 dòng ở 360px.
+* `/pricing` chưa truyền `current="pricing"` cho `SiteHeader`.
+* Title trang tìm khi lọc danh mục chưa có tên danh mục.
+* `PUBLIC_PAGE_READY` còn `false` trong editor CMS Cửa hàng (§13.5).
+* Chưa kiểm thực tế: trạng thái rỗng toàn trang, `error.tsx` khi lỗi thật, phân trang nhiều trang ❓.
+
+---
+
+## 15. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * `apps/web/app/admin/_ui/kit.tsx`, `apps/web/app/admin/_ui/kit-interactive.tsx`, `apps/web/app/admin/_ui/icons.tsx`
@@ -867,6 +1051,8 @@ Nhóm cài đặt hệ thống nay có: **"Cấu hình chung"** → `/admin/sett
 * `apps/web/app/[tenantSlug]/_ui/{review-parts,product-reviews,review-composer,storefront-reviews}.tsx`, `studio/[tenantSlug]/reviews/_ui/review-card.tsx` (§10) · [[02-System-Specs/Reviews-Specs|Reviews-Specs]] ([Reviews-Specs.md](../02-System-Specs/Reviews-Specs.md)) · [[01-Architecture-Decisions/ADR-015-M10-Reviews-Posts-Rls-Split-Writes|ADR-015 (≙ ADR-029)]]
 * `apps/web/app/studio/[tenantSlug]/posts/_ui/{post-list,post-editor,post-bits}.ts(x)`, `apps/web/app/[tenantSlug]/_ui/{post-parts,storefront-posts}.tsx` (§11) · [[02-System-Specs/Posts-Specs|Posts-Specs]] ([Posts-Specs.md](../02-System-Specs/Posts-Specs.md))
 * `apps/web/app/_home-sections.tsx`, `apps/web/app/admin/cms/home-editor/{pin-picker,home-sections-editor}.tsx`, `apps/web/app/admin/settings/general/*`, `apps/web/app/admin/_ui/sidebar-nav.tsx` (§12) · [[01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-From-System-Center|ADR-018 (≙ ADR-032)]] · [[01-Architecture-Decisions/ADR-019-Home-Page-Real-Data-Sold-Count|ADR-019 (≙ ADR-033)]]
+* `apps/web/app/admin/cms/shop/{page,loading}.tsx`, `apps/web/app/admin/cms/shop/_ui/{shop-sections-editor,shop-fields,shop-validation}.ts(x)`, `apps/web/app/admin/_ui/kit.tsx` (`Notice`) (§13) · [[02-System-Specs/Shop-Marketplace-Specs|Shop-Marketplace-Specs]] ([Shop-Marketplace-Specs.md](../02-System-Specs/Shop-Marketplace-Specs.md)) · [[01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First|ADR-021 (≙ ADR-035)]]
+* `apps/web/app/_ui/{catalog-parts,document-card,tenant-card,product-shelf,category-grid,shop-hero,shelf-skeleton,shop-cta,mobile-nav}.tsx`, `apps/web/app/cua-hang/{layout,page,loading,error}.tsx`, `apps/web/app/cua-hang/tai-lieu/{page,loading}.tsx`, `apps/web/app/cua-hang/_ui/search-parts.tsx` (§14)
 * [[04-Operations-Runbooks/README|Quay lại danh mục Operations Runbooks]]
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

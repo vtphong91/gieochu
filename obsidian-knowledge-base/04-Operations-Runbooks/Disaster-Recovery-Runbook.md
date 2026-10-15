@@ -5,7 +5,7 @@ tags:
   - recovery
   - status/living
 date: 2026-05-27
-updated: 2026-09-26
+updated: 2026-10-15
 author: System Architect
 ---
 
@@ -121,6 +121,38 @@ SELECT rolname, rolbypassrls FROM pg_roles WHERE rolname = 'gieochu_app';
 `ALTER DEFAULT PRIVILEGES`) — chỉ chạy lại khi: (a) tạo Neon project/branch mới hoàn toàn, hoặc (b) tạo một
 schema Postgres mới ngoài `public`/`pgboss`.
 
+### 4.1. Quyền `CREATE` trên database — đã thu hồi trên DB dùng chung (2026-10-15)
+
+* **Hiện trạng DB dùng chung (dev = Preview = production, ADR-034):** chủ dự án đã chạy
+  `REVOKE CREATE ON DATABASE neondb FROM gieochu_app;` ngày 2026-10-15 và kiểm
+  `has_database_privilege('gieochu_app', 'neondb', 'CREATE') = false` 🟡 (báo cáo Quốc). Mục đích: role runtime không tự tạo được
+  schema mới trong database.
+* **Script chưa khớp** ✅ (đọc `packages/db/scripts/setup-app-role.mts`): script vẫn chạy `GRANT CREATE ON DATABASE "<db>" TO
+  gieochu_app` (comment: để pg-boss tự tạo schema `pgboss` trên database mới). Hệ quả:
+  - Chạy lại `setup-app-role` trên DB dùng chung (ví dụ trường hợp (b) ở trên) sẽ **cấp lại** quyền `CREATE` → phải chạy lại câu
+    `REVOKE` ở trên bằng role owner ngay sau đó, rồi kiểm lại bằng `has_database_privilege`.
+  - Môi trường/branch Neon mới: sau `setup-app-role` cần chạy `REVOKE` thủ công cho tới khi script được sửa (BACKLOG — việc của Hiếu,
+    chưa làm).
+* ❓ **Chưa rõ thứ tự với pg-boss trên DB mới:** nếu `REVOKE` trước khi schema `pgboss` tồn tại, worker/`createJobQueue` có thể không
+  tự tạo được schema. Chưa ai thử — cần Quốc chốt cách làm (tạo schema `pgboss` bằng role owner trước, hay để script giữ `GRANT` rồi
+  `REVOKE` sau lần khởi động worker đầu tiên).
+
+```sql
+-- Chạy bằng role owner (Neon SQL Editor). Thay neondb bằng tên database thật nếu khác.
+REVOKE CREATE ON DATABASE neondb FROM gieochu_app;
+SELECT has_database_privilege('gieochu_app', 'neondb', 'CREATE');  -- kỳ vọng: false
+```
+
+### 4.2. Extension/hàm ngoài Prisma cần có sau restore/rebuild
+
+* Extension `unaccent` + hàm `public.gieochu_unaccent(text)` (ADR-035, tìm không dấu ở `/cua-hang/tai-lieu`) **do migration
+  `20261015090000_adr035_unaccent_search` tạo** ✅ — `pnpm db:migrate` trên DB mới tự tạo (`IF NOT EXISTS`/`OR REPLACE`), không cần bước
+  tay. Extension `unaccent` là *trusted* trên Neon nên role owner DB tạo được 🟡.
+* PITR (§3) khôi phục cả extension/hàm cùng dữ liệu. Thiếu hàm → trang tìm `/cua-hang/tai-lieu` có `q` lỗi (vào `error.tsx`); các trang
+  khác không dùng hàm này ✅ (`grep gieochu_unaccent` chỉ có ở `apps/web/lib/shop.ts`).
+* Kiểm nhanh (role `gieochu_app` hoặc owner): `SELECT public.gieochu_unaccent(lower('Đề thi Toán học'));` → `de thi toan hoc`.
+  Lược đồ: [[03-API-Contracts/Database-Schema-Reference|Database-Schema-Reference]] §7.
+
 ---
 
 ## 5. Xử Lý Mất Kết Nối Neon Postgres
@@ -171,6 +203,10 @@ pnpm --filter @gieochu/db run setup-app-role          # 1 lần/môi trường N
 pnpm db:migrate                                        # prisma migrate deploy, dùng PRISMA_MIGRATE_URL (role owner)
 pnpm db:seed                                           # prisma db seed, dùng DATABASE_URL (role gieochu_app)
 ```
+
+Sau `setup-app-role`: chạy `REVOKE CREATE ON DATABASE … FROM gieochu_app` theo §4.1 (script chưa tự làm — lưu ý ❓ thứ tự với
+pg-boss). `db:migrate` tự tạo extension `unaccent` + hàm `gieochu_unaccent` (§4.2). `db:seed` **chỉ** dùng cho DB trống hoàn toàn —
+DB đang có dữ liệu thì không chạy (ADR-034).
 
 Trước khi chạy, `.env` phải đủ biến bắt buộc — env fail-fast qua zod (`packages/config/src/env.ts`) sẽ làm
 app dừng ngay khi khởi động nếu thiếu, kể cả khi chỉ mở trang marketing (hành vi cố ý, không phải bug).

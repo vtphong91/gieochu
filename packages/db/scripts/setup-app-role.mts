@@ -47,10 +47,12 @@ async function main() {
       console.log(`\nCreated role "${APP_ROLE}".\n`);
     }
 
-    // CREATE privilege on the database so this role can create new schemas
-    // itself if needed (e.g. pg-boss's schema on a brand-new database).
+    // Least privilege (2026-10-15): the app role must NOT create schemas. pg-boss only runs
+    // CREATE SCHEMA when it is not installed yet — on a brand-new database, create the
+    // "pgboss" schema with the owner role first (e.g. start the worker once with the owner
+    // URL), then re-run this script so the grants below pick it up.
     const dbName = new URL(ownerUrl).pathname.replace(/^\//, "");
-    await ownerClient.query(`GRANT CREATE ON DATABASE "${dbName}" TO ${APP_ROLE}`);
+    await ownerClient.query(`REVOKE CREATE ON DATABASE "${dbName}" FROM ${APP_ROLE}`);
 
     await ownerClient.query(`GRANT USAGE ON SCHEMA public TO ${APP_ROLE}`);
     await ownerClient.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${APP_ROLE}`);

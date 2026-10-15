@@ -147,7 +147,9 @@ production cho phiên này rồi trả lại `.env` dev sau khi xong (tránh ch�
    pnpm --filter @gieochu/db run setup-app-role
    ```
    Script in ra `DATABASE_URL`/`DIRECT_URL` cho role `gieochu_app` (pooled = chèn `-pooler` vào host) ✅ → dùng làm giá trị
-   env trên Vercel (§3.1).
+   env trên Vercel (§3.1). Script hiện vẫn `GRANT CREATE ON DATABASE` cho `gieochu_app` ✅ — DB dùng chung đã `REVOKE` quyền này
+   (2026-10-15 🟡); chạy lại script thì phải `REVOKE` lại. Xem
+   [[04-Operations-Runbooks/Disaster-Recovery-Runbook|Disaster-Recovery-Runbook]] §4.1.
 2. **Chạy migration** — cần `PRISMA_MIGRATE_URL` ✅:
    ```bash
    pnpm db:migrate    # prisma migrate deploy
@@ -322,6 +324,17 @@ cột đã xoá) **không** quay lại được. Point-in-Time Restore ảnh hư
   "platformName";` rồi áp theo bước 5 §9.2 (BACKLOG). `IF EXISTS` để chạy được cả trên DB đã mất cột.
 * Migration `20260929120000_adr033_product_sold_count` (thêm cột + CHECK + backfill — loại expand) đã áp lên DB theo
   `docs/DECISIONS.md` 🟡.
+
+### 9.5. Migration Cửa hàng ADR-035 — đã áp trước deploy (đúng trình tự expand)
+
+* `20261015090000_adr035_unaccent_search` (chỉ *thêm* extension `unaccent` + hàm `public.gieochu_unaccent(text)` + GRANT EXECUTE cho
+  `gieochu_app`; idempotent) ✅ đọc SQL — Quốc đã áp lên DB dùng chung 2026-10-15, kiểm hàm trả `de thi toan hoc` 🟡. Bản production
+  hiện tại không dùng hàm → không ảnh hưởng (đúng bước 3 §9.2). Code dùng hàm (`/cua-hang/tai-lieu`) **chưa commit/deploy** ✅.
+* Cùng ngày: `REVOKE CREATE ON DATABASE neondb FROM gieochu_app` (chủ dự án chạy) 🟡 — xem Disaster-Recovery-Runbook §4.1.
+* Trước deploy bản Cửa hàng: quét lại tenant trùng 6 slug dành riêng mới (`cua-hang`, `tai-lieu`, `danh-muc`, `tim-kiem`, `giao-vien`,
+  `kham-pha`) — lần quét 2026-10-15 không trùng 🟡. Câu quét (role owner, chỉ đọc):
+  `SELECT id, slug, name, status FROM tenants WHERE slug IN ('cua-hang','tai-lieu','danh-muc','tim-kiem','giao-vien','kham-pha');`
+  (theo kế hoạch §4.5; tên bảng/cột ✅ theo `@@map`).
 
 ---
 
