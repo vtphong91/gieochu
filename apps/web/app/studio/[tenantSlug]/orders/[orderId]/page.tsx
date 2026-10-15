@@ -6,6 +6,7 @@ import { ConfirmForm } from "./confirm-form";
 import { CancelOrderButton, MarkRefundedButton } from "./order-status-actions";
 import { GrantExtraDownloadsForm, RevokeEntitlementButton } from "./entitlement-actions";
 import { AdminPageHeader, Badge } from "../../../../admin/_ui/kit";
+import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING: "Chờ thanh toán",
@@ -32,7 +33,7 @@ const MATCH_STATUS_LABEL: Record<string, string> = {
 };
 
 function formatVnDateTime(date: Date): string {
-  return date.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+  return date.toLocaleString("vi-VN", { timeZone: DISPLAY_TIME_ZONE });
 }
 
 export default async function StudioOrderDetailPage({

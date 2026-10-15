@@ -226,13 +226,14 @@ async function main() {
       id: "stats-main",
       type: "stats",
       visible: true,
+      // ADR-033: giá trị lấy từ dữ liệu thật (lib/home.ts) — CMS chỉ giữ nhãn + bật/tắt từng ô.
       data: {
-        items: [
-          { value: "500+", label: "Người bán hoạt động" },
-          { value: "10.000+", label: "Tài liệu chất lượng" },
-          { value: "4.8/5", label: "Đánh giá trung bình" },
-          { value: "50.000+", label: "Lượt tải xuống" },
-        ],
+        metrics: {
+          tenants: { label: "Người bán đang hoạt động", enabled: true },
+          products: { label: "Tài liệu công khai", enabled: true },
+          sold: { label: "Lượt mua thành công", enabled: true },
+          reviews: { label: "Đánh giá từ người mua", enabled: true },
+        },
       },
     },
     {
@@ -243,7 +244,7 @@ async function main() {
         title: "Tìm tài liệu bạn cần",
         subtitle: "Giáo án, đề thi, slide bài giảng, bộ đề luyện thi và hơn thế nữa",
         placeholder: "Tìm theo tên tài liệu, môn học, giáo viên...",
-        chips: ["Giáo án", "Đề thi", "Slide bài giảng", "Bộ đề luyện thi", "Khoá học online"],
+        // ADR-033: chip gợi ý lấy từ danh mục đang hoạt động có tài liệu Công khai.
       },
     },
     {
@@ -268,13 +269,10 @@ async function main() {
       visible: true,
       data: {
         title: "Giáo viên & Coach nổi bật",
-        subtitle: "Những người bán được học viên đánh giá cao nhất trên Gieo Chữ",
-        items: [
-          { name: "Cô Hạnh Toán", subject: "Toán THPT", rating: "4.9", reviews: "128", sold: "850+ lượt bán · 32 tài liệu" },
-          { name: "Thầy An Vật Lý", subject: "Vật lý THCS", rating: "4.8", reviews: "96", sold: "610+ lượt bán · 21 tài liệu" },
-          { name: "Coach Minh Anh", subject: "Kỹ năng mềm", rating: "5.0", reviews: "74", sold: "420+ lượt bán · 15 tài liệu" },
-          { name: "Thầy Long Tiếng Anh", subject: "Tiếng Anh giao tiếp", rating: "4.9", reviews: "203", sold: "1.200+ lượt bán · 40 tài liệu" },
-        ],
+        subtitle: "Những người bán được học viên đánh giá cao",
+        // ADR-033: ghim trước (System Admin chọn) rồi tự bù theo đánh giá và mới nhất.
+        limit: 4,
+        pinnedTenantIds: [],
       },
     },
     {
@@ -283,12 +281,9 @@ async function main() {
       visible: true,
       data: {
         title: "Tài liệu nổi bật",
-        subtitle: "Được học viên tin dùng và đánh giá cao nhất tuần này",
-        items: [
-          { tag: "Đề thi", title: "Bộ đề thi thử THPT Quốc gia 2026 — Môn Toán (có đáp án chi tiết)", seller: "Cô Hạnh Toán", rating: "4.9", sold: "210 lượt mua", price: "129.000đ" },
-          { tag: "Giáo án", title: "Giáo án Ngữ văn lớp 10 trọn bộ theo chương trình mới 2026", seller: "Thầy Minh Văn", rating: "4.7", sold: "156 lượt mua", price: "89.000đ" },
-          { tag: "Slide", title: "Slide bài giảng Tiếng Anh giao tiếp cho người mới bắt đầu", seller: "Coach Minh Anh", rating: "5.0", sold: "98 lượt mua", price: "199.000đ" },
-        ],
+        subtitle: "Được học viên tin dùng và đánh giá cao",
+        limit: 6,
+        pinnedProductIds: [],
       },
     },
     {

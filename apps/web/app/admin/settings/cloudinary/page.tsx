@@ -2,6 +2,7 @@ import { requireAdminAccess } from "../../../../lib/page-guards";
 import { getSystemCloudinaryConfig } from "../../../../lib/system-cloudinary";
 import { AdminPageHeader, SettingsGrid } from "../../_ui/kit";
 import { CloudinaryForm } from "./cloudinary-form";
+import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 
 export default async function AdminCloudinarySettingsPage() {
   await requireAdminAccess("/admin/settings/cloudinary");
@@ -21,7 +22,7 @@ export default async function AdminCloudinarySettingsPage() {
             maskedApiKey: config?.maskedSecrets.apiKey,
             maskedApiSecret: config?.maskedSecrets.apiSecret,
             lastVerifiedAt: config?.lastVerifiedAt
-              ? config.lastVerifiedAt.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })
+              ? config.lastVerifiedAt.toLocaleString("vi-VN", { timeZone: DISPLAY_TIME_ZONE })
               : null,
           }}
         />

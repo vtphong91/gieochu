@@ -4,6 +4,7 @@ import { listPendingManualInvoices } from "../../../../lib/subscription-billing"
 import { AdminPageHeader, EmptyState } from "../../_ui/kit";
 import { IconDoc } from "../../_ui/icons";
 import { ConfirmButton } from "./confirm-button";
+import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 
 export default async function AdminBillingInvoicesPage() {
   await requireAdminAccess("/admin/billing/invoices");
@@ -42,7 +43,7 @@ export default async function AdminBillingInvoicesPage() {
                   <td className="px-4 py-3">{invoice.plan.name}</td>
                   <td className="px-4 py-3 font-mono text-xs">{invoice.code}</td>
                   <td className="px-4 py-3 font-semibold">{invoice.amountVnd.toLocaleString("vi-VN")}đ</td>
-                  <td className="px-4 py-3 text-gray-500">{invoice.dueAt.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}</td>
+                  <td className="px-4 py-3 text-gray-500">{invoice.dueAt.toLocaleString("vi-VN", { timeZone: DISPLAY_TIME_ZONE })}</td>
                   <td className="px-4 py-3">
                     <ConfirmButton invoiceId={invoice.id} />
                   </td>

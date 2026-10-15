@@ -3,7 +3,7 @@ tags:
   - meta
   - adr
 date: 2026-09-26
-updated: 2026-09-29
+updated: 2026-10-15
 ---
 
 # 🏛️ Architecture Decision Records (ADRs)
@@ -12,7 +12,7 @@ Thư mục này chứa một **bản trích lọc các Quyết định Kiến tr
 những quyết định mà một người mới tham gia dự án cần biết trước khi chạm vào code.
 
 Đây là bản trích lọc — xem [`docs/DECISIONS.md`](../../docs/DECISIONS.md) ở gốc repo để có đầy đủ toàn bộ quyết
-định kiến trúc (hiện có 31 ADR, ADR-001…ADR-031). Số thứ tự `ADR-0XX` trong các file ở thư mục này là số thứ tự **riêng của
+định kiến trúc (hiện có 34 ADR, ADR-001…ADR-034). Số thứ tự `ADR-0XX` trong các file ở thư mục này là số thứ tự **riêng của
 thư mục KB**, đánh lại từ 1 cho phần trích lọc — mỗi file ghi rõ nó tương ứng ADR số mấy trong
 `docs/DECISIONS.md`, để tra ngược lại nguồn gốc khi cần.
 
@@ -34,5 +34,8 @@ thư mục KB**, đánh lại từ 1 cho phần trích lọc — mỗi file ghi 
 - `[[ADR-015-M10-Reviews-Posts-Rls-Split-Writes]]`: M10 GĐ1 — Đánh giá (M10a) + Bài viết tối giản (M10b) — cả hai đã triển khai; siết RLS 7 bảng L2 (`select_access` + `write_*` chỉ tenant/`system_job`), quy tắc không dùng `FOR ALL` khi có nhánh public/customer, bảng `reviews` + trigger giới hạn cột theo scope, cache điểm số nguyên dưới `system_job`; bảng `posts` (ghim 1 bài bằng partial unique index chỉ có trong SQL, trigger `posts_guard_product_tenant`/`posts_guard_columns`). *(≙ ADR-029, gồm 3 mục "Bổ sung")*
 - `[[ADR-016-Short-Product-Url-No-Sticky-Publish-Card]]`: URL chuẩn trang tài liệu `/{tenantSlug}/{productSlug}` (URL cũ `/{tenantSlug}/products/{productSlug}` → 301 bằng Route Handler, giữ query), hàm dựng URL duy nhất `productPath`/`productUrl`, 23 slug dành riêng (`RESERVED_PRODUCT_SLUGS`); card xuất bản editor sản phẩm/bài viết không còn dính khi cuộn. *(≙ ADR-030, gồm "Bổ sung theo triển khai")*
 - `[[ADR-017-Vercel-Deploy-Build-Without-Env]]`: Deploy Vercel — `vercel.json` (`buildCommand: "next build"`, Root Directory `apps/web`), Prisma client sinh sẵn được commit, root layout `force-dynamic` (build không cần env, nonce CSP gắn mọi trang), `PRISMA_MIGRATE_URL` xoá khỏi env runtime — chỉ CLI migrate/studio + `setup-app-role` trên máy dev/CI; migration prod chạy ngoài Vercel, worker pg-boss cần host riêng (chưa có). *(≙ ADR-031)*
+- `[[ADR-018-System-Settings-And-Brand-From-System-Center]]`: Env runtime chỉ còn 8 biến hạ tầng + secret; thương hiệu chỉ từ `SystemBranding` (fallback `DEFAULT_BRAND`/`resolveBrand`, đọc qua `getEffectiveBrand()`); cấu hình hệ thống (TTL phiên/liên kết/presign, ân hạn, đơn/hoá đơn chờ, lượt tải mặc định) ở bảng L1 `system_settings` + trang `/admin/settings/general`, có giới hạn; `DISPLAY_TIME_ZONE` là hằng; kèm sự cố 2026-10-15 (drop `platformName` trên DB dùng chung → quy tắc expand → contract). *(≙ ADR-032)*
+- `[[ADR-019-Home-Page-Real-Data-Sold-Count]]`: Trang chủ hệ thống dùng dữ liệu thật — cột cache `products.soldCount` (tính lại sau commit ở 6 đường đổi trạng thái đơn/entitlement), 4 section `stats`/`search`/`coaches`/`documents` (ghim + tự bù, ẩn khi 0), "Công khai" = PUBLISHED + tenant ACTIVE, không đọc `orders` (§7.9). *(≙ ADR-033, gồm "Bổ sung theo triển khai")*
+- `[[ADR-020-Single-Database-Dev-Preview-Production]]`: Một database Neon duy nhất cho máy dev, Vercel Preview và Production (chủ dự án bác đề xuất tách Neon branch) — migration chỉ Quốc duyệt/chạy theo expand → contract, cấm `db:seed` và `migrate dev/reset`, integration test/script phải dọn dữ liệu, Preview chỉ xem giao diện, dữ liệu demo trên production phải `demo:clean` trước go-live. *(≙ ADR-034)*
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

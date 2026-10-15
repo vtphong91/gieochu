@@ -1,4 +1,5 @@
 import { IconStar } from "./icons";
+import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 
 /*
  * ADR-029 (M10a) — mảnh giao diện đánh giá dùng chung: trang chi tiết tài liệu (trang hệ thống), section "Đánh giá"
@@ -16,7 +17,7 @@ export const REVIEW_RATING_WORDS: Record<number, string> = {
 };
 
 const DATE_TIME = new Intl.DateTimeFormat("vi-VN", {
-  timeZone: "Asia/Ho_Chi_Minh",
+  timeZone: DISPLAY_TIME_ZONE,
   day: "2-digit",
   month: "2-digit",
   year: "numeric",
@@ -24,7 +25,7 @@ const DATE_TIME = new Intl.DateTimeFormat("vi-VN", {
   minute: "2-digit",
 });
 
-const DATE_ONLY = new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit", year: "numeric" });
+const DATE_ONLY = new Intl.DateTimeFormat("vi-VN", { timeZone: DISPLAY_TIME_ZONE, day: "2-digit", month: "2-digit", year: "numeric" });
 
 /** Ngày giờ hiển thị theo giờ Việt Nam, ví dụ "14:05 27/09/2026". */
 export function formatReviewDateTime(value: Date | string): string {

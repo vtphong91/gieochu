@@ -490,3 +490,30 @@ lộ ra 2 lỗi cả 2 đều tồn tại từ trước, không riêng module n�
 **Chưa verify (cần môi trường thật)**
 - Deploy Vercel thành công lần đầu; `prisma db seed` khi không đặt `PRISMA_MIGRATE_URL`; CSP nonce trên các trang trước đây
   static; quét slug dành riêng trên DB prod (xem mục ADR-030). Quy trình: KB `04-Operations-Runbooks/Deploy-Vercel-Runbook.md`.
+
+## Phát sinh trong đợt ADR-032/033 (cấu hình System Center, trang chủ dữ liệu thật) và sự cố 2026-10-15
+
+**Hạ tầng DB — ưu tiên cao** (một DB duy nhất cho dev/Preview/production theo ADR-034 — đề xuất tách Neon branch đã bị bác)
+- **Dọn dữ liệu demo trước go-live** (ADR-034 — một DB duy nhất): dữ liệu `demo:seed` (5 khách `demo+…@gieochu.test`, 3 sản phẩm
+  `demo-*` + đơn/đánh giá của tenant `phongweb`) đang nằm trên production, hiển thị công khai và được tính vào số liệu trang chủ.
+  Chạy `ALLOW_DEMO_SEED=1 pnpm --filter @gieochu/db run demo:clean` trước khi mở cho người dùng thật, rồi rà lại trang chủ
+  (KB `04-Operations-Runbooks/Deploy-Vercel-Runbook.md` §9.3). Đồng thời rà dữ liệu tạm do integration test để lại.
+- **Migration contract drop `platformName`**: sau khi bản ADR-032 đã lên production và smoke test xong, thêm migration mới
+  `ALTER TABLE "system_settings" DROP COLUMN IF EXISTS "platformName";` (commit riêng, Quốc duyệt và chạy). Trước đó kiểm
+  `prisma migrate status` trên production (migration `20260929100000_adr032_drop_platform_name` có thể đã ghi "applied").
+
+**Dữ liệu / nghiệp vụ**
+- **Job đối soát `products.soldCount` định kỳ** (ADR-033): hiện chỉ tính lại sau commit ở 6 đường đổi trạng thái đơn/entitlement;
+  lỗi recompute chỉ log, cache sai tự sửa khi sản phẩm có thay đổi kế tiếp.
+- **`trialDays` chưa dùng** (`INACTIVE_SYSTEM_SETTINGS`, mô hình Free Forever — ADR-021): lưu + validate nhưng UI ẩn. Quyết định
+  giữ hay bỏ khoá này khi có nghiệp vụ dùng thử.
+- **`seed.ts` ghi đè `blocks` trang chủ** (`CmsPage` slug `home`, `update: { blocks: HOME_SECTIONS, blocksDraft: null }`) mỗi lần
+  chạy — mất nội dung CMS admin đã sửa; và còn chuỗi thương hiệu hard-code trong nội dung seed ("Gieo Chữ" ở hero/CTA/
+  testimonial/`seoTitle`). Sửa thành chỉ tạo khi chưa có + lấy tên từ `DEFAULT_BRAND`.
+
+**Giao diện**
+- **Trang tìm kiếm/danh mục công khai** — để chip danh mục, ô tìm + nút "Tìm kiếm" trên trang chủ (hiện tĩnh, nút chưa có hành vi)
+  và nút "Xem tất cả" (trang chủ/storefront hiện ẩn vì chưa có trang đích) thành link thật.
+- **`SettingsGrid` `minmax(380px, 960px)`** (`admin/_ui/kit.tsx`) gây cuộn ngang ở viewport 375px.
+- **"Xem trang chủ ↗"** ở editor CMS trang chủ là `<Link>` bọc `<button>` (phần tử tương tác lồng nhau) — đổi thành một link
+  dạng nút.

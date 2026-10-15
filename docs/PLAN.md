@@ -27,7 +27,7 @@ BACKLOG) → M12 → hoàn thiện M2.
 | M10 | Social Feed và Đánh giá (tách theo ADR-029) | 🟡 **GĐ1 hoàn tất code** (nợ test): **M10a Đánh giá: xong code** (verify thủ công) · **M10b Bài viết tối giản: xong code** (verify thủ công) · M10c (bình luận/thả tim/theo dõi): chuyển `docs/BACKLOG.md` | M10a: `apps/web/lib/review.ts`, `packages/core/src/review`, `apps/web/app/studio/[tenantSlug]/reviews`; M10b: `apps/web/lib/post.ts`, `packages/core/src/content/post.ts`, `apps/web/app/studio/[tenantSlug]/posts`, `apps/web/app/[tenantSlug]/posts` | 4 / 3 (ngân sách gốc — chưa dùng, ADR-029 chọn chưa thêm test) |
 | M11 | Email và Background Jobs | 🟡 Khung đã có (cùng M1) — job/worker còn lại thêm khi có nghiệp vụ tương ứng | `packages/jobs`, `packages/email`, `apps/web/worker.ts` | 0 / 0 (tính trong module khác) |
 | M12 | Audit Log, Thống kê, Báo cáo vi phạm | ⬜ Chưa làm | audit + stats + reports | 0 / 2 |
-| | **Tổng** | | | Trần gốc mục 9: **91 / 50** · trần hiện **94 / 53** (ADR-026) · thực **93 / 52** (`pnpm test:count` 2026-09-28). Cộng cột theo module ra 92 / 51 — cột là ngân sách gốc từng module, không phải số thực |
+| | **Tổng** | | | Trần gốc mục 9: **91 / 50** · trần hiện **94 / 53** (ADR-026) · thực **93 / 52** (`pnpm test:count` 2026-10-15). Cộng cột theo module ra 92 / 51 — cột là ngân sách gốc từng module, không phải số thực |
 
 ## M0 — Việc đã làm (bản đầu, xem docs/modules/M0.md để có sơ đồ)
 
@@ -527,6 +527,54 @@ trang); `PRISMA_MIGRATE_URL` xoá khỏi schema env runtime — chỉ CLI `migra
 trong đợt ADR-031"). Quy trình: KB `04-Operations-Runbooks/Deploy-Vercel-Runbook.md`.
 
 **Số test:** `pnpm test:count` = **93/94 unit, 52/53 integration** — không đổi.
+
+## Cấu hình hệ thống + thương hiệu từ System Center (ADR-032) — 2026-09-29 → 2026-10-15
+
+**Đã xong code, chưa deploy bản này.** Quyết định chi tiết: ADR-032.
+
+- **Env runtime còn 8 biến bắt buộc** (`packages/config/src/env.ts`): `APP_URL`, `DATABASE_URL`, `DIRECT_URL`, `JWT_ACCESS_SECRET`,
+  `JWT_ISSUER`, `JWT_AUDIENCE`, `PAYMENT_ENCRYPTION_KEY`, `STORAGE_ENCRYPTION_KEY`. Email env chỉ là fallback dev; thiếu cả SMTP ở
+  System Center lẫn env → `EMAIL_NOT_CONFIGURED` (503 ở luồng admin), app vẫn khởi động.
+- **Thương hiệu:** `DEFAULT_BRAND` + `resolveBrand` (`@gieochu/config/brand`), `getEffectiveBrand()` (`apps/web/lib/branding.ts`,
+  đọc `SystemBranding`); bỏ `getBrand()`. Login/register/onboarding nhận tên thương hiệu qua prop từ server.
+- **Cấu hình hệ thống:** bảng L1 `system_settings` thêm 10 cột (migration `20260929090000_adr032_system_settings`), mặc định +
+  giới hạn ở `packages/core/src/settings/system-settings.ts` (`trialDays` lưu nhưng chưa dùng — `INACTIVE_SYSTEM_SETTINGS`);
+  `getSystemSettings()` cache theo request; trang `/admin/settings/general` ("Cấu hình chung"); `/admin/settings` chỉ còn
+  `supportEmail`. TTL access/refresh, hạn link xác minh/đặt lại mật khẩu (email hiển thị hạn động), presign (tải xuống kẹp ≤ 600
+  giây), đơn/hoá đơn chờ, ân hạn, lượt tải mặc định đọc từ DB; `SessionRefresh` làm mới phiên ở nửa TTL access token.
+  Múi giờ hiển thị là hằng `DISPLAY_TIME_ZONE`.
+- **Migration `20260929100000_adr032_drop_platform_name`** — xem mục sự cố dưới.
+
+**Số test:** `pnpm test:count` = **93/94 unit, 52/53 integration** — không đổi. Quy trình deploy (8 biến, biến cần xoá trên Vercel):
+KB `04-Operations-Runbooks/Deploy-Vercel-Runbook.md` §3.
+
+## Trang chủ hệ thống dùng dữ liệu thật (ADR-033) — 2026-09-29 → 2026-10-15
+
+**Đã xong code, chưa deploy bản này.** Quyết định chi tiết: ADR-033 + "Bổ sung ADR-033 theo triển khai".
+
+- **`products.soldCount`** (cache số lượt mua: dòng đơn FULFILLED, trừ entitlement đã thu hồi; CHECK ≥ 0) — migration
+  `20260929120000_adr033_product_sold_count` (đã áp lên DB dùng chung). `recomputeProductSoldCounts` (`apps/web/lib/product-sold-count.ts`,
+  `system_job`) gọi sau commit ở `createOrder` (0đ), `applyCouponToOrder`, `confirmOrderManually`, `processPaymentEvent`,
+  `markOrderRefunded`, `revokeEntitlement`; `markOrderPaid` trả thêm `productIds`. `PublicProduct.soldCount`.
+- **CMS trang chủ:** 4 section `stats`/`search`/`coaches`/`documents` lấy dữ liệu thật (`@gieochu/core/home-sections`,
+  `parseHomeSections` đọc an toàn dữ liệu cũ), loader `apps/web/lib/home.ts` ("Công khai" = PUBLISHED + tenant ACTIVE; ghim + tự
+  bù; section/ô bằng 0 thì ẩn); ô chọn ghim dùng `searchHomeTenantOptionsAction`/`searchHomeProductOptionsAction`. Section
+  testimonials đổi nhãn "Cảm nhận người dùng".
+- Chưa có job đối soát định kỳ `soldCount`; chip/ô tìm chưa thành link (chưa có trang tìm kiếm/danh mục công khai) — BACKLOG.
+
+**Số test:** `pnpm test:count` = **93/94 unit, 52/53 integration** — không đổi. Việc còn lại: `docs/BACKLOG.md` mục "Phát sinh
+trong đợt ADR-032/033".
+
+## Sự cố 2026-10-15 — drop cột `platformName` trên DB dùng chung dev/production
+
+- Migration `20260929100000_adr032_drop_platform_name` chạy trên DB dev — **DB dev đang là DB production** → bản production trên
+  Vercel (còn đọc `system_settings.platformName`) trả 500. Khôi phục: `ADD COLUMN IF NOT EXISTS "platformName" TEXT`.
+- Quy tắc mới (`CLAUDE.md` mục "Migration"): agent không tự chạy `db:migrate`/DDL khi chưa được Quốc duyệt; migration theo expand
+  → contract (DROP/RENAME chỉ sau khi bản không dùng cột đã lên production). Đề xuất tách DB dev bằng Neon branch **bị chủ dự án
+  bác** — ADR-034: một DB duy nhất cho dev/Preview/production, không `db:seed`, test/script phải dọn dữ liệu, Preview chỉ xem
+  giao diện.
+- **Còn treo:** dọn dữ liệu demo (`demo:clean`) trước go-live (ADR-034); migration contract `DROP COLUMN IF EXISTS "platformName"` chạy **sau** khi deploy
+  bản ADR-032. Quy trình: KB `04-Operations-Runbooks/Deploy-Vercel-Runbook.md` §9, `Publish-And-Rollback-Runbook.md` §4.2.1.
 
 ## Câu hỏi còn mở (đã chọn phương án an toàn, xem ADR tương ứng)
 

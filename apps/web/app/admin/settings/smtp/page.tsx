@@ -5,6 +5,7 @@ import { getEffectiveBrand } from "../../../../lib/branding";
 import { AdminPageHeader, Badge } from "../../_ui/kit";
 import { RefreshButton } from "./refresh-button";
 import { SmtpTabs } from "./smtp-tabs";
+import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 
 export default async function AdminSmtpSettingsPage() {
   await requireAdminAccess("/admin/settings/smtp");
@@ -42,7 +43,7 @@ export default async function AdminSmtpSettingsPage() {
           isEnabled: config?.isEnabled ?? false,
           maskedPassword: config?.maskedSecrets.password,
           lastVerifiedAt: config?.lastVerifiedAt
-            ? config.lastVerifiedAt.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })
+            ? config.lastVerifiedAt.toLocaleString("vi-VN", { timeZone: DISPLAY_TIME_ZONE })
             : null,
         }}
         log={logRows.map((row) => ({
@@ -52,7 +53,7 @@ export default async function AdminSmtpSettingsPage() {
           subject: row.subject,
           status: row.status,
           errorMessage: row.errorMessage,
-          createdAt: row.createdAt.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }),
+          createdAt: row.createdAt.toLocaleString("vi-VN", { timeZone: DISPLAY_TIME_ZONE }),
         }))}
       />
     </main>

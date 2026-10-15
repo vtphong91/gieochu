@@ -718,3 +718,53 @@
   4. **Múi giờ hiển thị** là hằng `Asia/Ho_Chi_Minh` trong code (CLAUDE.md), không cấu hình.
 - **Hệ quả:** các chỗ đọc env đồng bộ (auth/JWT TTL, presign, email verify/reset, order/subscription sweep, sản phẩm)
   chuyển sang đọc cấu hình async; worker đọc lại mỗi lần chạy job.
+
+## ADR-033 — Trang chủ hệ thống dùng dữ liệu thật (số liệu, danh mục, giáo viên, tài liệu nổi bật, số đã bán)
+
+- **Bối cảnh (2026-09-29, chủ dự án):** Các section trang chủ (`CmsPage` home, `homeSectionsSchema`) đang là dữ liệu
+  nhập tay/mockup. Chủ dự án chốt: dùng dữ liệu thật; nổi bật = **admin ghim + tự bù**; **hiển thị số đã bán thật** của
+  tài liệu và tenant, chưa bán thì không hiển thị; số liệu nổi bật là số thật, bằng 0 thì ẩn ô đó.
+- **Quyết định:**
+  1. **Số đã bán** = số lượt mua đã hoàn tất (order item FULFILLED, không tính đơn đã hoàn tiền/entitlement thu hồi).
+     Lưu **cột cache** `products.soldCount Int @default(0)`, cập nhật dưới `system_job` khi đơn chuyển PAID/FULFILLED
+     và khi hoàn tiền/thu hồi (tính lại toàn phần theo sản phẩm, idempotent — mẫu `ratingSum/ratingCount` ADR-029).
+     Số đã bán của tenant = tổng `soldCount` các tài liệu Công khai. Trang chủ/public chỉ đọc cột cache trên
+     `products` (scope public), **không** truy vấn `orders` — giữ §7.9 (hệ thống không đọc chi tiết đơn của tenant).
+     `soldCount = 0` → không hiển thị "đã bán".
+  2. **Số liệu nổi bật** (thay dữ liệu nhập tay): số tenant đang hoạt động có ≥1 tài liệu Công khai, số tài liệu
+     Công khai, tổng lượt mua (tổng `soldCount`), số đánh giá hiển thị. Ô nào = 0 thì ẩn; cả section rỗng thì không
+     render. Nhãn từng ô vẫn sửa được trong CMS.
+  3. **Tìm tài liệu:** chip gợi ý lấy từ danh mục đang hoạt động (có ≥1 tài liệu Công khai), admin vẫn sửa tiêu đề/placeholder.
+  4. **Giáo viên & Coach nổi bật / Tài liệu nổi bật:** CMS lưu `title/subtitle`, `limit`, `pinnedTenantIds` /
+     `pinnedProductIds`; hiển thị ghim trước (bỏ id không còn hợp lệ: tenant không ACTIVE, tài liệu không Công khai)
+     rồi tự bù theo điểm đánh giá (≥1 đánh giá) và mới nhất cho đủ `limit`. Thẻ giáo viên: tên, logo, số tài liệu,
+     điểm TB + số đánh giá, số đã bán (ẩn khi 0), link storefront. Thẻ tài liệu: ảnh bìa tối ưu, tên, tenant, giá hiệu
+     lực (khuyến mãi), sao, đã bán (ẩn khi 0), link `productPath`.
+  5. **Giữ nhập tay:** Hero, Vì sao chọn, Mở gian hàng, Cảm nhận người dùng (về nền tảng), CTA cuối.
+  6. Dữ liệu cũ nhập tay của các section chuyển sang thật được bỏ qua khi render (schema đổi, parse phòng thủ).
+- **Bổ sung ADR-033 theo triển khai (2026-10-15, Quốc chốt):** "Công khai" trên trang chủ = tài liệu PUBLISHED **và**
+  tenant ACTIVE (tenant READ_ONLY/LOCKED không được quảng bá); số đánh giá = review VISIBLE trên tài liệu Công khai;
+  tự bù theo: có đánh giá → điểm TB giảm dần → số đánh giá → mới nhất (tenant: ngày tạo); dòng đơn FULFILLED thiếu
+  entitlement vẫn tính đã bán. `soldCount` tính lại sau commit ở mọi đường đổi trạng thái đơn/entitlement
+  (`createOrder` 0đ, `applyCouponToOrder`, `confirmOrderManually`, `processPaymentEvent`, `markOrderRefunded`,
+  `revokeEntitlement`); chưa có job đối soát định kỳ (BACKLOG). Migration `20260929120000_adr033_product_sold_count`
+  đã áp lên DB dùng chung (chỉ thêm cột — an toàn với bản đang deploy).
+- **Sự cố 2026-10-15 (ADR-032):** migration drop `system_settings.platformName` chạy trên DB dev = DB production làm
+  production 500 (bản deploy còn đọc cột). Khôi phục bằng `ADD COLUMN IF NOT EXISTS "platformName" TEXT`. Khi deploy
+  bản không còn dùng cột: thêm migration `DROP COLUMN IF EXISTS` chạy **sau** deploy (expand → contract, xem CLAUDE.md).
+
+## ADR-034 — Một database duy nhất cho dev, Preview và production
+
+- **Bối cảnh (2026-10-15, chủ dự án):** Sau sự cố drop cột `platformName`, Quốc đề xuất tách DB dev bằng Neon branch.
+  Chủ dự án quyết định **không tách**: máy dev, Vercel Preview và Production cùng dùng một database Neon.
+- **Hệ quả bắt buộc (mọi thao tác DB trên máy dev = thao tác trên production):**
+  1. **Migration** chỉ do Quốc duyệt và chạy; theo expand → contract (deploy chỉ *thêm*; `DROP`/`RENAME` chỉ chạy sau
+     khi code không còn dùng cột đã lên production). Không `prisma migrate dev/reset`.
+  2. **Không chạy `pnpm db:seed`** (ghi đè nội dung trang chủ CMS). Thay đổi dữ liệu hệ thống qua UI System Center.
+  3. **Integration test và script thủ công ghi dữ liệu thật** vào production (tạo rồi dọn user/tenant/đơn tạm, có thể
+     gửi email tới `@example.test`). Chỉ chạy khi cần; luôn dọn dữ liệu và không đụng cấu hình dùng chung
+     (`shared-config-snapshot`). Không chạy luồng gửi email tới địa chỉ thật.
+  4. **Dữ liệu demo** (`demo:seed`, khách `demo+…@gieochu.test`, sản phẩm `demo-*` của `phongweb`) đang nằm trên
+     production và hiển thị công khai — dọn bằng `demo:clean` trước khi mở cho người dùng thật.
+  5. **Preview deployment** ghi vào cùng DB — chỉ dùng Preview để xem giao diện, không thao tác tạo/xoá dữ liệu.
+- **Thay thế:** khuyến nghị "tách DB dev bằng Neon branch" trong CLAUDE.md/runbook (sự cố 2026-10-15).

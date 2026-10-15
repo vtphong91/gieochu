@@ -8,10 +8,11 @@ import { ShareLinkForm } from "./share-link-form";
 import { RevokeButton } from "./revoke-button";
 import { AdminPageHeader, Badge, DataTable, EmptyState, SettingsGrid, Td, Tr } from "../../../../../admin/_ui/kit";
 import { IconLinkChain } from "../../../../../_ui/editor/toolbar-icons";
+import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 
 function formatVnDateTime(date: Date | null): string {
   if (!date) return "—";
-  return date.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+  return date.toLocaleString("vi-VN", { timeZone: DISPLAY_TIME_ZONE });
 }
 
 export default async function ShareLinksPage({

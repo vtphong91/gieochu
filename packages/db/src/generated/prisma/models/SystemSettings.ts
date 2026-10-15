@@ -21,8 +21,9 @@ import type * as Prisma from "../internal/prismaNamespace"
  * hạn khai báo ở packages/core/src/settings/system-settings.ts — DB default
  * chỉ để dòng cũ/dòng mới luôn có giá trị; lúc đọc vẫn parse phòng thủ (giá
  * trị ngoài khoảng → mặc định + log warn). Đổi giá trị chỉ áp cho thao tác mới.
- * platformName/supportEmail: cột cũ (form /admin/settings) — nullable từ
- * ADR-032; tên nền tảng hiệu lực lấy từ SystemBranding, không đọc cột này.
+ * supportEmail: form /admin/settings. Cột platformName đã xoá (ADR-032) —
+ * tên nền tảng chỉ lấy từ SystemBranding / DEFAULT_BRAND.
+ * trialDays: lưu + validate nhưng CHƯA dùng (Free Forever, ADR-021).
  */
 export type SystemSettingsModel = runtime.Types.Result.DefaultSelection<Prisma.$SystemSettingsPayload>
 
@@ -64,7 +65,6 @@ export type SystemSettingsSumAggregateOutputType = {
 
 export type SystemSettingsMinAggregateOutputType = {
   id: string | null
-  platformName: string | null
   supportEmail: string | null
   trialDays: number | null
   graceDays: number | null
@@ -83,7 +83,6 @@ export type SystemSettingsMinAggregateOutputType = {
 
 export type SystemSettingsMaxAggregateOutputType = {
   id: string | null
-  platformName: string | null
   supportEmail: string | null
   trialDays: number | null
   graceDays: number | null
@@ -102,7 +101,6 @@ export type SystemSettingsMaxAggregateOutputType = {
 
 export type SystemSettingsCountAggregateOutputType = {
   id: number
-  platformName: number
   supportEmail: number
   trialDays: number
   graceDays: number
@@ -151,7 +149,6 @@ export type SystemSettingsSumAggregateInputType = {
 
 export type SystemSettingsMinAggregateInputType = {
   id?: true
-  platformName?: true
   supportEmail?: true
   trialDays?: true
   graceDays?: true
@@ -170,7 +167,6 @@ export type SystemSettingsMinAggregateInputType = {
 
 export type SystemSettingsMaxAggregateInputType = {
   id?: true
-  platformName?: true
   supportEmail?: true
   trialDays?: true
   graceDays?: true
@@ -189,7 +185,6 @@ export type SystemSettingsMaxAggregateInputType = {
 
 export type SystemSettingsCountAggregateInputType = {
   id?: true
-  platformName?: true
   supportEmail?: true
   trialDays?: true
   graceDays?: true
@@ -295,7 +290,6 @@ export type SystemSettingsGroupByArgs<ExtArgs extends runtime.Types.Extensions.I
 
 export type SystemSettingsGroupByOutputType = {
   id: string
-  platformName: string | null
   supportEmail: string | null
   trialDays: number
   graceDays: number
@@ -337,7 +331,6 @@ export type SystemSettingsWhereInput = {
   OR?: Prisma.SystemSettingsWhereInput[]
   NOT?: Prisma.SystemSettingsWhereInput | Prisma.SystemSettingsWhereInput[]
   id?: Prisma.StringFilter<"SystemSettings"> | string
-  platformName?: Prisma.StringNullableFilter<"SystemSettings"> | string | null
   supportEmail?: Prisma.StringNullableFilter<"SystemSettings"> | string | null
   trialDays?: Prisma.IntFilter<"SystemSettings"> | number
   graceDays?: Prisma.IntFilter<"SystemSettings"> | number
@@ -356,7 +349,6 @@ export type SystemSettingsWhereInput = {
 
 export type SystemSettingsOrderByWithRelationInput = {
   id?: Prisma.SortOrder
-  platformName?: Prisma.SortOrderInput | Prisma.SortOrder
   supportEmail?: Prisma.SortOrderInput | Prisma.SortOrder
   trialDays?: Prisma.SortOrder
   graceDays?: Prisma.SortOrder
@@ -378,7 +370,6 @@ export type SystemSettingsWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.SystemSettingsWhereInput | Prisma.SystemSettingsWhereInput[]
   OR?: Prisma.SystemSettingsWhereInput[]
   NOT?: Prisma.SystemSettingsWhereInput | Prisma.SystemSettingsWhereInput[]
-  platformName?: Prisma.StringNullableFilter<"SystemSettings"> | string | null
   supportEmail?: Prisma.StringNullableFilter<"SystemSettings"> | string | null
   trialDays?: Prisma.IntFilter<"SystemSettings"> | number
   graceDays?: Prisma.IntFilter<"SystemSettings"> | number
@@ -397,7 +388,6 @@ export type SystemSettingsWhereUniqueInput = Prisma.AtLeast<{
 
 export type SystemSettingsOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
-  platformName?: Prisma.SortOrderInput | Prisma.SortOrder
   supportEmail?: Prisma.SortOrderInput | Prisma.SortOrder
   trialDays?: Prisma.SortOrder
   graceDays?: Prisma.SortOrder
@@ -424,7 +414,6 @@ export type SystemSettingsScalarWhereWithAggregatesInput = {
   OR?: Prisma.SystemSettingsScalarWhereWithAggregatesInput[]
   NOT?: Prisma.SystemSettingsScalarWhereWithAggregatesInput | Prisma.SystemSettingsScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"SystemSettings"> | string
-  platformName?: Prisma.StringNullableWithAggregatesFilter<"SystemSettings"> | string | null
   supportEmail?: Prisma.StringNullableWithAggregatesFilter<"SystemSettings"> | string | null
   trialDays?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
   graceDays?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
@@ -443,7 +432,6 @@ export type SystemSettingsScalarWhereWithAggregatesInput = {
 
 export type SystemSettingsCreateInput = {
   id?: string
-  platformName?: string | null
   supportEmail?: string | null
   trialDays?: number
   graceDays?: number
@@ -462,7 +450,6 @@ export type SystemSettingsCreateInput = {
 
 export type SystemSettingsUncheckedCreateInput = {
   id?: string
-  platformName?: string | null
   supportEmail?: string | null
   trialDays?: number
   graceDays?: number
@@ -481,7 +468,6 @@ export type SystemSettingsUncheckedCreateInput = {
 
 export type SystemSettingsUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  platformName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   supportEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   trialDays?: Prisma.IntFieldUpdateOperationsInput | number
   graceDays?: Prisma.IntFieldUpdateOperationsInput | number
@@ -500,7 +486,6 @@ export type SystemSettingsUpdateInput = {
 
 export type SystemSettingsUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  platformName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   supportEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   trialDays?: Prisma.IntFieldUpdateOperationsInput | number
   graceDays?: Prisma.IntFieldUpdateOperationsInput | number
@@ -519,7 +504,6 @@ export type SystemSettingsUncheckedUpdateInput = {
 
 export type SystemSettingsCreateManyInput = {
   id?: string
-  platformName?: string | null
   supportEmail?: string | null
   trialDays?: number
   graceDays?: number
@@ -538,7 +522,6 @@ export type SystemSettingsCreateManyInput = {
 
 export type SystemSettingsUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  platformName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   supportEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   trialDays?: Prisma.IntFieldUpdateOperationsInput | number
   graceDays?: Prisma.IntFieldUpdateOperationsInput | number
@@ -557,7 +540,6 @@ export type SystemSettingsUpdateManyMutationInput = {
 
 export type SystemSettingsUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  platformName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   supportEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   trialDays?: Prisma.IntFieldUpdateOperationsInput | number
   graceDays?: Prisma.IntFieldUpdateOperationsInput | number
@@ -576,7 +558,6 @@ export type SystemSettingsUncheckedUpdateManyInput = {
 
 export type SystemSettingsCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  platformName?: Prisma.SortOrder
   supportEmail?: Prisma.SortOrder
   trialDays?: Prisma.SortOrder
   graceDays?: Prisma.SortOrder
@@ -609,7 +590,6 @@ export type SystemSettingsAvgOrderByAggregateInput = {
 
 export type SystemSettingsMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  platformName?: Prisma.SortOrder
   supportEmail?: Prisma.SortOrder
   trialDays?: Prisma.SortOrder
   graceDays?: Prisma.SortOrder
@@ -628,7 +608,6 @@ export type SystemSettingsMaxOrderByAggregateInput = {
 
 export type SystemSettingsMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  platformName?: Prisma.SortOrder
   supportEmail?: Prisma.SortOrder
   trialDays?: Prisma.SortOrder
   graceDays?: Prisma.SortOrder
@@ -663,7 +642,6 @@ export type SystemSettingsSumOrderByAggregateInput = {
 
 export type SystemSettingsSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
-  platformName?: boolean
   supportEmail?: boolean
   trialDays?: boolean
   graceDays?: boolean
@@ -682,7 +660,6 @@ export type SystemSettingsSelect<ExtArgs extends runtime.Types.Extensions.Intern
 
 export type SystemSettingsSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
-  platformName?: boolean
   supportEmail?: boolean
   trialDays?: boolean
   graceDays?: boolean
@@ -701,7 +678,6 @@ export type SystemSettingsSelectCreateManyAndReturn<ExtArgs extends runtime.Type
 
 export type SystemSettingsSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
-  platformName?: boolean
   supportEmail?: boolean
   trialDays?: boolean
   graceDays?: boolean
@@ -720,7 +696,6 @@ export type SystemSettingsSelectUpdateManyAndReturn<ExtArgs extends runtime.Type
 
 export type SystemSettingsSelectScalar = {
   id?: boolean
-  platformName?: boolean
   supportEmail?: boolean
   trialDays?: boolean
   graceDays?: boolean
@@ -737,14 +712,13 @@ export type SystemSettingsSelectScalar = {
   updatedAt?: boolean
 }
 
-export type SystemSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "platformName" | "supportEmail" | "trialDays" | "graceDays" | "accessTokenTtlMinutes" | "refreshTokenTtlDays" | "emailVerifyTtlHours" | "passwordResetTtlMinutes" | "presignUploadTtlSeconds" | "presignDownloadTtlSeconds" | "orderPendingTtlMinutes" | "invoicePendingTtlHours" | "defaultDownloadLimit" | "updatedById" | "updatedAt", ExtArgs["result"]["systemSettings"]>
+export type SystemSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "supportEmail" | "trialDays" | "graceDays" | "accessTokenTtlMinutes" | "refreshTokenTtlDays" | "emailVerifyTtlHours" | "passwordResetTtlMinutes" | "presignUploadTtlSeconds" | "presignDownloadTtlSeconds" | "orderPendingTtlMinutes" | "invoicePendingTtlHours" | "defaultDownloadLimit" | "updatedById" | "updatedAt", ExtArgs["result"]["systemSettings"]>
 
 export type $SystemSettingsPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "SystemSettings"
   objects: {}
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
-    platformName: string | null
     supportEmail: string | null
     trialDays: number
     graceDays: number
@@ -1186,7 +1160,6 @@ export interface Prisma__SystemSettingsClient<T, Null = never, ExtArgs extends r
  */
 export interface SystemSettingsFieldRefs {
   readonly id: Prisma.FieldRef<"SystemSettings", 'String'>
-  readonly platformName: Prisma.FieldRef<"SystemSettings", 'String'>
   readonly supportEmail: Prisma.FieldRef<"SystemSettings", 'String'>
   readonly trialDays: Prisma.FieldRef<"SystemSettings", 'Int'>
   readonly graceDays: Prisma.FieldRef<"SystemSettings", 'Int'>

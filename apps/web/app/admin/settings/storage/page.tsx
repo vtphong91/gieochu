@@ -2,6 +2,7 @@ import { requireAdminAccess } from "../../../../lib/page-guards";
 import { getSystemStorageConfig } from "../../../../lib/system-storage";
 import { AdminPageHeader, SettingsGrid } from "../../_ui/kit";
 import { StorageForm } from "./storage-form";
+import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 
 export default async function AdminStorageSettingsPage() {
   await requireAdminAccess("/admin/settings/storage");
@@ -27,7 +28,7 @@ export default async function AdminStorageSettingsPage() {
             maskedAccessKeyId: config?.maskedSecrets.accessKeyId,
             maskedSecretAccessKey: config?.maskedSecrets.secretAccessKey,
             lastVerifiedAt: config?.lastVerifiedAt
-              ? config.lastVerifiedAt.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })
+              ? config.lastVerifiedAt.toLocaleString("vi-VN", { timeZone: DISPLAY_TIME_ZONE })
               : null,
           }}
         />

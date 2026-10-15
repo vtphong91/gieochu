@@ -5,6 +5,7 @@ import { cloudinaryDeliveryUrl } from "@gieochu/core/cloudinary-url";
 import { productPath } from "@gieochu/core/product-path";
 import { postDisplayTitle, type PublicPostProduct, type PublicPostSummary } from "../../../lib/post";
 import { IconDoc, IconNewspaper, IconPin } from "../../admin/_ui/icons";
+import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 
 /*
  * ADR-029 mục 5 (M10b) + ADR-025 — mảnh giao diện bài viết cho TRANG HỆ THỐNG `/[tenantSlug]/posts` và
@@ -20,7 +21,7 @@ const BLUE = brandColors.primary;
 const SURFACE = brandColors.surface;
 const ACCENT_SOFT = brandColors.accentSoft;
 
-const DATE_ONLY = new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit", year: "numeric" });
+const DATE_ONLY = new Intl.DateTimeFormat("vi-VN", { timeZone: DISPLAY_TIME_ZONE, day: "2-digit", month: "2-digit", year: "numeric" });
 const vnd = new Intl.NumberFormat("vi-VN");
 
 /** Ngày theo giờ Việt Nam, ví dụ "28/09/2026". */

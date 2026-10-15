@@ -315,6 +315,7 @@ export const ProductScalarFieldEnum = {
   downloadLimit: 'downloadLimit',
   ratingSum: 'ratingSum',
   ratingCount: 'ratingCount',
+  soldCount: 'soldCount',
   status: 'status',
   categoryId: 'categoryId',
   createdAt: 'createdAt',
@@ -346,7 +347,6 @@ export type ProductFileScalarFieldEnum = (typeof ProductFileScalarFieldEnum)[key
 
 export const SystemSettingsScalarFieldEnum = {
   id: 'id',
-  platformName: 'platformName',
   supportEmail: 'supportEmail',
   trialDays: 'trialDays',
   graceDays: 'graceDays',

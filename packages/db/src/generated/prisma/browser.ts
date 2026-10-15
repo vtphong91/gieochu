@@ -158,8 +158,9 @@ export type ProductFile = Prisma.ProductFileModel
  * hạn khai báo ở packages/core/src/settings/system-settings.ts — DB default
  * chỉ để dòng cũ/dòng mới luôn có giá trị; lúc đọc vẫn parse phòng thủ (giá
  * trị ngoài khoảng → mặc định + log warn). Đổi giá trị chỉ áp cho thao tác mới.
- * platformName/supportEmail: cột cũ (form /admin/settings) — nullable từ
- * ADR-032; tên nền tảng hiệu lực lấy từ SystemBranding, không đọc cột này.
+ * supportEmail: form /admin/settings. Cột platformName đã xoá (ADR-032) —
+ * tên nền tảng chỉ lấy từ SystemBranding / DEFAULT_BRAND.
+ * trialDays: lưu + validate nhưng CHƯA dùng (Free Forever, ADR-021).
  */
 export type SystemSettings = Prisma.SystemSettingsModel
 /**

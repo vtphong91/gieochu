@@ -4,9 +4,10 @@ import { listStorefrontMessages, STOREFRONT_MESSAGES_PAGE_SIZE, type StorefrontI
 import { AdminPageHeader, Badge, EmptyState } from "../../../admin/_ui/kit";
 import { IconExternalLink, IconMail } from "../../../admin/_ui/icons";
 import { MessageActions } from "./message-actions";
+import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 
 function formatVnDateTime(date: Date): string {
-  return date.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", dateStyle: "short", timeStyle: "short" });
+  return date.toLocaleString("vi-VN", { timeZone: DISPLAY_TIME_ZONE, dateStyle: "short", timeStyle: "short" });
 }
 
 const INK = "#12213A";

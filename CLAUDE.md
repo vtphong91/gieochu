@@ -73,7 +73,9 @@ ràng buộc bằng chỉ dẫn, không phải cơ chế công cụ. **Nguồn s
 | `pnpm --filter @gieochu/db run setup-app-role` | Tạo/cập nhật role Postgres `gieochu_app` (chạy 1 lần/môi trường Neon mới) |
 | `docker compose -f docker/docker-compose.yml up` | MinIO + Mailpit (+ `--profile local-db` để có Postgres local) |
 
-Trước `pnpm dev`/test lần đầu: copy `.env.example` → `.env`, điền đủ biến (mục 11). Env thiếu biến bắt buộc sẽ
+Trước `pnpm dev`/test lần đầu: copy `.env.example` → `.env`, điền đủ biến (danh sách hiện hành: `packages/config/src/env.ts`
+— runtime chỉ 8 biến hạ tầng + secret theo ADR-032; mục 11 đặc tả gốc đã cũ). ⚠️ `pnpm db:seed` ghi đè nội dung trang chủ
+CMS — không chạy khi `.env` còn trỏ DB production. Env thiếu biến bắt buộc sẽ
 làm ứng dụng dừng ngay khi khởi động (`packages/config/src/env.ts`), kể cả khi chỉ mở trang marketing —
 đây là hành vi cố ý (fail-fast).
 
@@ -108,9 +110,18 @@ Xem sơ đồ đầy đủ ở `docs/GIEOCHU_PROMPT_MVP_PHASE1.md` §4.4. Tóm t
 - URL trang tài liệu (ADR-030): luôn dựng bằng `productPath(tenantSlug, productSlug)` → `/{tenantSlug}/{productSlug}`.
   Thêm route tĩnh mới dưới `app/[tenantSlug]/` thì **phải** thêm tên đó vào `RESERVED_PRODUCT_SLUGS`
   (`packages/core/src/product/path.ts`) và quét slug trùng trên DB prod.
+- **Một DB duy nhất (ADR-034):** máy dev, Vercel Preview và Production dùng **cùng** database Neon — mọi thao tác DB
+  từ máy dev là thao tác trên production. Agent **không tự chạy** `db:migrate`/DDL khi chưa được Quốc duyệt; migration
+  theo expand → contract (deploy chỉ *thêm* cột/bảng; `DROP`/`RENAME` chỉ sau khi code không còn dùng đã lên prod).
+  **Không chạy `pnpm db:seed`**. Integration test/script thủ công phải dọn dữ liệu tạm, không đụng cấu hình dùng chung,
+  không gửi email tới địa chỉ thật.
 - ID: **cuid2** — dùng thuộc tính Prisma gốc `@default(cuid(2))` cho mọi `@id`. Không dùng UUID (xem
   `docs/DECISIONS.md`).
-- Không hard-code chuỗi thương hiệu ("Gieo Chữ", "Gieo", slogan) — luôn đọc từ `@gieochu/config/brand`.
+- Không hard-code chuỗi thương hiệu ("Gieo Chữ", "Gieo", slogan) — đọc bằng `getEffectiveBrand()`
+  (`apps/web/lib/branding.ts`, DB `SystemBranding`, fallback `DEFAULT_BRAND` ở `@gieochu/config/brand`); client
+  component nhận tên qua prop từ server (ADR-032).
+- Cấu hình nghiệp vụ/TTL đọc qua `getSystemSettings()` (`apps/web/lib/system-settings.ts`, ADR-032), không qua env;
+  múi giờ hiển thị dùng hằng `DISPLAY_TIME_ZONE` (`@gieochu/core`).
 - Không `import` `@prisma/client` trực tiếp trong `apps/web` — chỉ qua helper của `@gieochu/db`
   (ESLint `no-restricted-imports`, xem `packages/config/eslint-preset.mjs`).
 - Lỗi nghiệp vụ ném `AppError` (`@gieochu/core`), không ném `Error` trần trong route handler.

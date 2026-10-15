@@ -4,6 +4,7 @@
  * (subpath client-safe, không kéo barrel server-only).
  */
 import { POST_STATUS_LABELS } from "@gieochu/core/post";
+import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 
 export type StudioPostStatus = keyof typeof POST_STATUS_LABELS;
 export type StudioProductStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
@@ -23,7 +24,7 @@ export const PRODUCT_STATUS_SUFFIX: Record<StudioProductStatus, string> = {
 };
 
 const DATE_TIME = new Intl.DateTimeFormat("vi-VN", {
-  timeZone: "Asia/Ho_Chi_Minh",
+  timeZone: DISPLAY_TIME_ZONE,
   day: "2-digit",
   month: "2-digit",
   year: "numeric",

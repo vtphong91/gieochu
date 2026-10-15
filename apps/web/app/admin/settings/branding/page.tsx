@@ -9,7 +9,7 @@ export default async function AdminBrandingSettingsPage() {
 
   const branding = await getSystemBranding();
   // ADR-032: giá trị dự phòng khi ô tên/slogan để trống là DEFAULT_BRAND (không còn env).
-  const envBrand = DEFAULT_BRAND;
+  const defaultBrand = DEFAULT_BRAND;
 
   return (
     <main className="px-5 py-8 lg:px-8">
@@ -30,8 +30,8 @@ export default async function AdminBrandingSettingsPage() {
           ogImageUrl: branding?.ogImageUrl ?? "",
           brandName: branding?.brandName ?? "",
           brandSlogan: branding?.brandSlogan ?? "",
-          envBrandName: envBrand.name,
-          envBrandSlogan: envBrand.slogan,
+          defaultBrandName: defaultBrand.name,
+          defaultBrandSlogan: defaultBrand.slogan,
           navbarLogoHeightPx: branding?.navbarLogoHeightPx ?? 40,
           primaryColorHex: branding?.primaryColorHex ?? "",
           accentColorHex: branding?.accentColorHex ?? "",

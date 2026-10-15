@@ -23,22 +23,31 @@ function IconBag({ className }: { className?: string }) {
   );
 }
 
-const OPTIONS: { value: AccountType; title: string; desc: string; Icon: (p: { className?: string }) => React.ReactElement }[] = [
+/** `desc` nhận tên thương hiệu hiệu lực (ADR-032) — không hard-code chuỗi thương hiệu. */
+const OPTIONS: { value: AccountType; title: string; desc: (brandName: string) => string; Icon: (p: { className?: string }) => React.ReactElement }[] = [
   {
     value: "TENANT",
     title: "Giáo viên / Coach / Chuyên gia",
-    desc: "Mở gian hàng riêng, bán tài liệu, slide bài giảng, khoá học.",
+    desc: () => "Mở gian hàng riêng, bán tài liệu, slide bài giảng, khoá học.",
     Icon: IconChalkboard,
   },
   {
     value: "CUSTOMER",
     title: "Khách hàng",
-    desc: "Tìm và mua tài liệu từ giáo viên, coach trên Gieo Chữ.",
+    desc: (brandName) => `Tìm và mua tài liệu từ giáo viên, coach trên ${brandName}.`,
     Icon: IconBag,
   },
 ];
 
-export function AccountTypeSelect({ value, onChange }: { value: AccountType | null; onChange: (v: AccountType) => void }) {
+export function AccountTypeSelect({
+  value,
+  onChange,
+  brandName,
+}: {
+  value: AccountType | null;
+  onChange: (v: AccountType) => void;
+  brandName: string;
+}) {
   return (
     <div role="group" aria-label="Loại tài khoản" className="grid gap-3 sm:grid-cols-2">
       {OPTIONS.map((opt) => {
@@ -65,7 +74,7 @@ export function AccountTypeSelect({ value, onChange }: { value: AccountType | nu
               {opt.title}
             </span>
             <span className="text-xs leading-snug" style={{ color: INK_SOFT }}>
-              {opt.desc}
+              {opt.desc(brandName)}
             </span>
           </button>
         );

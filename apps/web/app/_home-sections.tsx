@@ -1,9 +1,13 @@
+import { useId } from "react";
 import Link from "next/link";
 import type { HomeSection } from "@gieochu/core";
 import { brandColors } from "@gieochu/config/theme";
+import { cloudinaryDeliveryUrl } from "@gieochu/core/cloudinary-url";
+import type { HomeFeaturedProduct, HomeFeaturedTenant, HomeSearchCategory, HomeStatItem } from "../lib/home";
 
 const INK_SOFT = brandColors.inkSoft;
 const PAPER_ALT = brandColors.backgroundAlt;
+const INK = brandColors.ink;
 const LINE = brandColors.line;
 const BLUE = brandColors.primary;
 const BLUE_DEEP = brandColors.primaryDeep;
@@ -83,6 +87,14 @@ function IconSearch({ className, style }: { className?: string; style?: React.CS
   );
 }
 
+function IconChevron({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
 function IconDocs({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
@@ -93,9 +105,9 @@ function IconDocs({ className }: { className?: string }) {
   );
 }
 
-function IconStar({ className }: { className?: string }) {
+function IconStar({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor">
+    <svg viewBox="0 0 24 24" className={className} style={style} fill="currentColor" aria-hidden="true">
       <path d="M12 2.8l2.7 5.6 6.1.8-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.8Z" />
     </svg>
   );
@@ -121,12 +133,13 @@ const BENEFIT_TONES = [
 
 function initialsOf(name: string): string {
   const cleaned = name.replace(/^(Cô|Thầy|Coach)\s+/i, "");
-  const parts = cleaned.split(" ").filter(Boolean);
-  return (parts[0]?.[0] ?? "") + (parts[parts.length - 1]?.[0] ?? "");
+  const parts = cleaned.split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "";
+  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "";
+  return (first + last).toLocaleUpperCase("vi");
 }
 
 type HeroData = Extract<HomeSection, { type: "hero" }>["data"];
-type StatsData = Extract<HomeSection, { type: "stats" }>["data"];
 type SearchData = Extract<HomeSection, { type: "search" }>["data"];
 type BenefitsData = Extract<HomeSection, { type: "benefits" }>["data"];
 type CoachesData = Extract<HomeSection, { type: "coaches" }>["data"];
@@ -220,30 +233,96 @@ export function HeroSection({ data }: { data: HeroData }) {
   );
 }
 
-export function StatsSection({ data }: { data: StatsData }) {
+const vnNumber = new Intl.NumberFormat("vi-VN");
+
+function formatCount(value: number): string {
+  return vnNumber.format(value);
+}
+
+function formatVnd(amount: number): string {
+  return `${vnNumber.format(amount)} ₫`;
+}
+
+/** "4,6" — 1 chữ số thập phân kiểu vi-VN (giống thẻ storefront, ADR-029). */
+function formatRating(average: number): string {
+  return average.toLocaleString("vi-VN", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
+/**
+ * Số liệu nổi bật: < 1.000 hiện đúng số; từ 1.000 làm tròn XUỐNG hàng trăm kèm "+" ("1.234" → "1.200+") — gọn và
+ * không bao giờ phóng đại. `spoken` là bản cho trình đọc màn hình ("Hơn 1.200").
+ */
+function formatStat(value: number): { visual: string; spoken: string } {
+  if (value < 1000) return { visual: formatCount(value), spoken: formatCount(value) };
+  const floored = Math.floor(value / 100) * 100;
+  return floored === value
+    ? { visual: formatCount(value), spoken: formatCount(value) }
+    : { visual: `${formatCount(floored)}+`, spoken: `Hơn ${formatCount(floored)}` };
+}
+
+/** ADR-033: `items` đã lọc sẵn (ô bật trong CMS và giá trị > 0) — page không render section khi rỗng. */
+export function StatsSection({ items }: { items: HomeStatItem[] }) {
   return (
-    <section className="py-8 sm:py-10" style={{ background: PAPER_ALT }}>
-      <div className="container-page grid grid-cols-2 gap-6 sm:flex sm:items-center sm:justify-between">
-        {data.items.map((item) => (
-          <div key={item.label} className="text-center">
-            <div className="font-[family-name:var(--font-heading)] text-[22px] font-bold sm:text-[26px] lg:text-[30px]" style={{ color: BLUE }}>
-              {item.value}
+    <section aria-label="Số liệu nổi bật" className="py-8 sm:py-10" style={{ background: PAPER_ALT }}>
+      {/* dl: nhãn (dt) đứng trước số (dd) trong DOM để trình đọc màn hình đọc "Nhãn: số"; hiển thị đảo bằng flex-col-reverse. */}
+      <dl
+        className={`container-page grid gap-x-6 gap-y-7 sm:flex sm:flex-wrap sm:items-start sm:justify-around ${
+          items.length === 1 ? "grid-cols-1" : "grid-cols-2 [&>*:last-child:nth-child(odd)]:col-span-2"
+        }`}
+      >
+        {items.map((item) => {
+          const stat = formatStat(item.value);
+          return (
+            <div key={item.key} className="flex min-w-0 flex-col-reverse items-center text-center sm:min-w-[140px]">
+              <dt className="mt-1 text-[13px] leading-snug sm:text-sm" style={{ color: INK_SOFT }}>
+                {item.label}
+              </dt>
+              <dd className="font-[family-name:var(--font-heading)] text-[24px] leading-tight font-bold tabular-nums sm:text-[28px] lg:text-[32px]" style={{ color: BLUE }}>
+                <span aria-hidden="true">{stat.visual}</span>
+                <span className="sr-only">{stat.spoken}</span>
+              </dd>
             </div>
-            <div className="mt-1 text-xs sm:text-sm" style={{ color: INK_SOFT }}>
-              {item.label}
-            </div>
-          </div>
-        ))}
-      </div>
+          );
+        })}
+      </dl>
     </section>
   );
 }
 
-export function SearchSection({ data }: { data: SearchData }) {
+/** Số chip hiện sẵn; phần còn lại nằm trong <details> (mở được bằng bàn phím) thay vì cắt mất hoặc cuộn ngang. */
+const SEARCH_CHIPS_VISIBLE = 10;
+
+function CategoryChip({ category }: { category: HomeSearchCategory }) {
   return (
-    <section className="py-14 sm:py-20 lg:py-24">
+    <li
+      className="inline-flex max-w-full items-center gap-1.5 rounded-full border bg-white px-3.5 py-1.5 text-[13px] font-semibold sm:text-sm"
+      style={{ borderColor: LINE, color: INK }}
+    >
+      <span className="[overflow-wrap:anywhere]">{category.name}</span>
+      <span className="text-xs font-medium tabular-nums" style={{ color: INK_SOFT }}>
+        <span aria-hidden="true">· </span>
+        {formatCount(category.productCount)}
+        <span className="sr-only"> tài liệu</span>
+      </span>
+    </li>
+  );
+}
+
+/**
+ * ADR-033 mục 3: chip lấy từ danh mục đang có tài liệu Công khai. Chưa có trang tìm kiếm/danh mục công khai nên chip
+ * là nhãn tĩnh (li), KHÔNG phải link/nút — không giả làm phần tử bấm được. Ô tìm kiếm giữ nguyên hiện trạng.
+ */
+export function SearchSection({ data, categories }: { data: SearchData; categories: HomeSearchCategory[] }) {
+  const titleId = useId();
+  const chipsLabelId = useId();
+  const visible = categories.slice(0, SEARCH_CHIPS_VISIBLE);
+  const rest = categories.slice(SEARCH_CHIPS_VISIBLE);
+  return (
+    <section aria-labelledby={titleId} className="py-14 sm:py-20 lg:py-24">
       <div className="container-page flex flex-col items-center gap-4 text-center">
-        <h2 className="font-[family-name:var(--font-heading)] text-[25px] font-semibold sm:text-[30px] lg:text-[34px]">{data.title}</h2>
+        <h2 id={titleId} className="font-[family-name:var(--font-heading)] text-[25px] font-semibold sm:text-[30px] lg:text-[34px]">
+          {data.title}
+        </h2>
         <p className="mb-1 text-sm sm:text-base" style={{ color: INK_SOFT }}>
           {data.subtitle}
         </p>
@@ -256,13 +335,35 @@ export function SearchSection({ data }: { data: SearchData }) {
             Tìm kiếm
           </button>
         </div>
-        <div className="mt-1 flex w-full gap-2.5 overflow-x-auto sm:w-auto sm:justify-center sm:overflow-visible">
-          {data.chips.map((label) => (
-            <span key={label} className="shrink-0 rounded-full border bg-white px-4 py-2 text-xs font-semibold whitespace-nowrap sm:text-sm" style={{ borderColor: LINE, color: INK_SOFT }}>
-              {label}
-            </span>
-          ))}
-        </div>
+        {categories.length > 0 ? (
+          <div className="mt-2 flex w-full max-w-[880px] flex-col items-center gap-2.5">
+            <p id={chipsLabelId} className="text-xs font-semibold tracking-wide uppercase" style={{ color: INK_SOFT }}>
+              Danh mục đang có tài liệu
+            </p>
+            <ul aria-labelledby={chipsLabelId} className="flex flex-wrap justify-center gap-2 sm:gap-2.5">
+              {visible.map((category) => (
+                <CategoryChip key={category.id} category={category} />
+              ))}
+            </ul>
+            {rest.length > 0 ? (
+              <details className="group w-full">
+                <summary
+                  className="mx-auto flex min-h-11 w-fit cursor-pointer list-none items-center gap-1.5 rounded-full px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-details-marker]:hidden"
+                  style={{ color: BLUE, outlineColor: BLUE }}
+                >
+                  <span className="group-open:hidden">Xem thêm {formatCount(rest.length)} danh mục</span>
+                  <span className="hidden group-open:inline">Thu gọn</span>
+                  <IconChevron className="h-4 w-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
+                </summary>
+                <ul aria-label="Danh mục khác" className="mt-2 flex flex-wrap justify-center gap-2 sm:gap-2.5">
+                  {rest.map((category) => (
+                    <CategoryChip key={category.id} category={category} />
+                  ))}
+                </ul>
+              </details>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </section>
   );
@@ -303,107 +404,206 @@ export function BenefitsSection({ data }: { data: BenefitsData }) {
   );
 }
 
-export function CoachesSection({ data }: { data: CoachesData }) {
+/** "★ 4,6 (12 đánh giá)" — sao là ký hiệu trang trí (≥3:1), chữ số màu INK để đạt 4.5:1; trình đọc màn hình nghe câu đầy đủ. */
+function RatingInline({ average, count, long = false }: { average: number; count: number; long?: boolean }) {
+  const avg = formatRating(average);
   return (
-    <section className="py-14 sm:py-20 lg:py-24">
+    <span className="inline-flex items-center gap-1 tabular-nums">
+      <IconStar className="h-3.5 w-3.5 shrink-0" style={{ color: AMBER }} />
+      <span aria-hidden="true" className="font-semibold" style={{ color: INK }}>
+        {avg}
+      </span>
+      <span aria-hidden="true" style={{ color: INK_SOFT }}>
+        ({formatCount(count)}
+        {long ? " đánh giá" : ""})
+      </span>
+      <span className="sr-only">
+        Điểm trung bình {avg} trên 5, {formatCount(count)} đánh giá
+      </span>
+    </span>
+  );
+}
+
+/** Tiêu đề + mô tả section (h2) — dùng chung cho 2 section thẻ nổi bật. */
+function FeaturedHeading({ id, title, subtitle }: { id: string; title: string; subtitle: string }) {
+  return (
+    <div className="mb-8 sm:mb-10">
+      <h2 id={id} className="font-[family-name:var(--font-heading)] text-[25px] font-semibold sm:text-[28px] lg:text-[32px]">
+        {title}
+      </h2>
+      <p className="mt-2.5 text-[14.5px] sm:text-[15.5px]" style={{ color: INK_SOFT }}>
+        {subtitle}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Thẻ bấm được toàn bộ bằng "stretched link" trên tiêu đề (1 link/thẻ → tên truy cập = tên giáo viên/tài liệu, không
+ * lặp "Xem chi tiết"); vòng focus vẽ trên cả thẻ. Nhấc nhẹ khi hover chỉ khi người dùng không giảm chuyển động.
+ */
+const CARD_CLASS =
+  "group relative flex h-full flex-col overflow-hidden rounded-3xl border bg-white transition-[box-shadow,transform] duration-200 hover:shadow-[0_16px_36px_-18px_rgba(18,33,58,0.35)] motion-safe:hover:-translate-y-0.5 has-[a:focus-visible]:outline-3 has-[a:focus-visible]:outline-offset-2";
+
+const STRETCHED_LINK = "outline-none after:absolute after:inset-0 after:content-['']";
+
+/** ADR-033 mục 4 — thẻ giáo viên/coach: avatar, tên, số tài liệu, sao (khi có), "Đã bán" (khi > 0), link storefront. */
+export function CoachesSection({ data, tenants }: { data: CoachesData; tenants: HomeFeaturedTenant[] }) {
+  const titleId = useId();
+  return (
+    <section aria-labelledby={titleId} className="py-14 sm:py-20 lg:py-24">
       <div className="container-page">
-        <div className="mb-8 flex items-end justify-between sm:mb-10">
-          <div>
-            <h2 className="font-[family-name:var(--font-heading)] text-[25px] font-semibold sm:text-[28px] lg:text-[32px]">{data.title}</h2>
-            <p className="mt-2.5 text-[14.5px] sm:text-[15.5px]" style={{ color: INK_SOFT }}>
-              {data.subtitle}
-            </p>
-          </div>
-          <span className="hidden items-center gap-1.5 text-[14.5px] font-semibold sm:flex" style={{ color: BLUE }}>
-            Xem tất cả <IconArrow className="h-3.5 w-3.5" />
-          </span>
-        </div>
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-[26px]">
-          {data.items.map((c, i) => (
-            <div key={c.name} className="flex flex-col items-center gap-2.5 rounded-3xl border bg-white p-6 text-center sm:p-[26px]" style={{ borderColor: LINE }}>
-              <div className="flex h-[68px] w-[68px] items-center justify-center rounded-full sm:h-[72px] sm:w-[72px]" style={{ background: ROTATING_COLORS[i % ROTATING_COLORS.length] }}>
-                <span className="font-[family-name:var(--font-heading)] text-xl font-bold text-white sm:text-[22px]">{initialsOf(c.name)}</span>
-              </div>
-              <div className="text-[16px] font-bold sm:text-[16.5px]">{c.name}</div>
-              <span className="rounded-full border px-3.5 py-1 text-[12.5px]" style={{ borderColor: LINE, color: INK_SOFT }}>
-                {c.subject}
-              </span>
-              <div className="flex items-center gap-1.5 text-[13.5px] font-semibold" style={{ color: AMBER }}>
-                <IconStar className="h-3.5 w-3.5" /> {c.rating}{" "}
-                <span className="font-medium" style={{ color: INK_SOFT }}>
-                  ({c.reviews} đánh giá)
+        <FeaturedHeading id={titleId} title={data.title} subtitle={data.subtitle} />
+        <ul className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4 lg:gap-[26px]">
+          {tenants.map((c, i) => (
+            <li key={c.id}>
+              <article className={`${CARD_CLASS} items-center gap-2 p-4 text-center sm:gap-2.5 sm:p-[26px]`} style={{ borderColor: LINE, outlineColor: BLUE }}>
+                <div
+                  aria-hidden="true"
+                  className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full sm:h-[72px] sm:w-[72px]"
+                  style={{ background: ROTATING_COLORS[i % ROTATING_COLORS.length] }}
+                >
+                  {c.logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- ảnh đã tối ưu qua cloudinaryDeliveryUrl (ADR-028)
+                    <img src={c.logoUrl} alt="" width={72} height={72} loading="lazy" decoding="async" className="h-full w-full bg-white object-cover" />
+                  ) : (
+                    <span className="font-[family-name:var(--font-heading)] text-xl font-bold text-white sm:text-[22px]">{initialsOf(c.name)}</span>
+                  )}
+                </div>
+                <h3 className="line-clamp-2 text-[15px] leading-snug font-bold [overflow-wrap:anywhere] sm:text-[16.5px]">
+                  <Link href={c.href} className={STRETCHED_LINK}>
+                    {c.name}
+                  </Link>
+                </h3>
+                <span className="rounded-full border px-3 py-0.5 text-[12.5px] tabular-nums" style={{ borderColor: LINE, color: INK_SOFT }}>
+                  {formatCount(c.productCount)} tài liệu
                 </span>
-              </div>
-              <div className="text-[13px]" style={{ color: INK_SOFT }}>
-                {c.sold}
-              </div>
-              <span className="mt-2 w-full rounded-full border px-4 py-2.5 text-[13.5px] font-semibold" style={{ borderColor: LINE }}>
-                Xem gian hàng
-              </span>
-            </div>
+                {c.ratingAvg !== null || c.soldCount > 0 ? (
+                  <div className="flex flex-col items-center gap-1 text-[13px] sm:text-[13.5px]">
+                    {c.ratingAvg !== null ? <RatingInline average={c.ratingAvg} count={c.ratingCount} long /> : null}
+                    {c.soldCount > 0 ? (
+                      <span className="tabular-nums" style={{ color: INK_SOFT }}>
+                        Đã bán {formatCount(c.soldCount)}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+                <span
+                  aria-hidden="true"
+                  className="mt-auto inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-full border border-[color:var(--home-line)] px-3 text-[13px] font-semibold transition-colors group-hover:border-[color:var(--brand-primary,#0F3B82)] group-hover:text-[color:var(--brand-primary,#0F3B82)] sm:text-[13.5px]"
+                  style={{ ["--home-line" as string]: LINE }}
+                >
+                  Xem gian hàng <IconArrow className="h-3.5 w-3.5" />
+                </span>
+              </article>
+            </li>
           ))}
-        </div>
+        </ul>
       </div>
     </section>
   );
 }
 
-export function DocumentsSection({ data }: { data: DocumentsData }) {
+/** ADR-033 mục 4 — thẻ tài liệu: ảnh bìa tối ưu, tên, gian hàng, giá hiệu lực (khuyến mãi), sao, "Đã bán", link `productPath`. */
+export function DocumentsSection({ data, products }: { data: DocumentsData; products: HomeFeaturedProduct[] }) {
+  const titleId = useId();
   return (
-    <section className="py-14 sm:py-20 lg:py-24" style={{ background: PAPER_ALT }}>
+    <section aria-labelledby={titleId} className="py-14 sm:py-20 lg:py-24" style={{ background: PAPER_ALT }}>
       <div className="container-page">
-        <div className="mb-8 flex items-end justify-between sm:mb-10">
-          <div>
-            <h2 className="font-[family-name:var(--font-heading)] text-[25px] font-semibold sm:text-[28px] lg:text-[32px]">{data.title}</h2>
-            <p className="mt-2.5 text-[14.5px] sm:text-[15.5px]" style={{ color: INK_SOFT }}>
-              {data.subtitle}
-            </p>
-          </div>
-          <span className="hidden items-center gap-1.5 text-[14.5px] font-semibold sm:flex" style={{ color: BLUE }}>
-            Khám phá thêm <IconArrow className="h-3.5 w-3.5" />
-          </span>
-        </div>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-7">
-          {data.items.map((d, i) => {
+        <FeaturedHeading id={titleId} title={data.title} subtitle={data.subtitle} />
+        <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-7">
+          {products.map((d, i) => {
             const tone = ROTATING_COLORS[i % ROTATING_COLORS.length];
+            const free = d.effectivePriceVnd === 0;
+            const discountPercent = d.onSale && d.priceVnd > 0 ? Math.max(1, Math.round((1 - d.effectivePriceVnd / d.priceVnd) * 100)) : 0;
             return (
-              <div key={d.title} className="overflow-hidden rounded-3xl border bg-white" style={{ borderColor: LINE }}>
-                <div
-                  className="relative flex h-[160px] items-center justify-center sm:h-[176px]"
-                  style={{ background: `color-mix(in srgb, ${tone} 10%, transparent)`, color: tone }}
-                >
-                  <span className="absolute top-4 left-4 rounded-full bg-white px-3 py-1 text-xs font-bold" style={{ color: tone }}>
-                    {d.tag}
-                  </span>
-                  <IconDocs className="h-12 w-12 sm:h-14 sm:w-14" />
-                </div>
-                <div className="p-5 sm:p-[22px]">
-                  <div className="mb-3.5 text-[15px] leading-[1.4] font-bold sm:text-base">{d.title}</div>
-                  <div className="mb-2.5 flex items-center gap-2">
-                    <div className="h-[22px] w-[22px] rounded-full" style={{ background: tone }} />
-                    <span className="text-[13.5px]" style={{ color: INK_SOFT }}>
-                      {d.seller}
-                    </span>
+              <li key={d.id}>
+                <article className={CARD_CLASS} style={{ borderColor: LINE, outlineColor: BLUE }}>
+                  <div
+                    className="relative flex aspect-[16/10] items-center justify-center"
+                    style={{ background: `color-mix(in srgb, ${tone} 10%, white)`, color: tone }}
+                  >
+                    {d.coverUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- ảnh đã tối ưu qua cloudinaryDeliveryUrl (ADR-028)
+                      <img
+                        src={cloudinaryDeliveryUrl(d.coverUrl, { width: 640 })}
+                        alt=""
+                        width={640}
+                        height={400}
+                        loading="lazy"
+                        decoding="async"
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                    ) : (
+                      <IconDocs className="h-12 w-12 opacity-80 sm:h-14 sm:w-14" />
+                    )}
+                    {discountPercent > 0 ? (
+                      <span className="absolute top-3 left-3 rounded-full px-2.5 py-1 text-xs font-bold text-white shadow-sm" style={{ background: "#B91C1C" }}>
+                        Giảm {discountPercent}%
+                      </span>
+                    ) : null}
                   </div>
-                  <div className="mb-4 flex items-center gap-1.5 text-[13px] font-semibold" style={{ color: AMBER }}>
-                    <IconStar className="h-[13px] w-[13px]" /> {d.rating}{" "}
-                    <span className="font-medium" style={{ color: INK_SOFT }}>
-                      · {d.sold}
-                    </span>
+                  <div className="flex grow flex-col p-5 sm:p-[22px]">
+                    <h3 className="line-clamp-2 text-[15px] leading-[1.4] font-bold [overflow-wrap:anywhere] sm:text-base">
+                      <Link href={d.href} className={STRETCHED_LINK}>
+                        {d.title}
+                      </Link>
+                    </h3>
+                    <p className="mt-2 flex min-w-0 items-center gap-2 text-[13.5px]" style={{ color: INK_SOFT }}>
+                      <span
+                        aria-hidden="true"
+                        className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                        style={{ background: tone }}
+                      >
+                        {initialsOf(d.tenant.name).slice(0, 1)}
+                      </span>
+                      <span className="sr-only">Người bán: </span>
+                      <span className="truncate" title={d.tenant.name}>
+                        {d.tenant.name}
+                      </span>
+                    </p>
+                    {d.ratingAvg !== null || d.soldCount > 0 ? (
+                      <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
+                        {d.ratingAvg !== null ? <RatingInline average={d.ratingAvg} count={d.ratingCount} /> : null}
+                        {d.ratingAvg !== null && d.soldCount > 0 ? (
+                          <span aria-hidden="true" style={{ color: INK_SOFT }}>
+                            ·
+                          </span>
+                        ) : null}
+                        {d.soldCount > 0 ? (
+                          <span className="tabular-nums" style={{ color: INK_SOFT }}>
+                            Đã bán {formatCount(d.soldCount)}
+                          </span>
+                        ) : null}
+                      </p>
+                    ) : null}
+                    <div className="mt-auto flex items-end justify-between gap-3 pt-4">
+                      <p className="flex flex-wrap items-baseline gap-x-2 tabular-nums">
+                        {d.onSale ? <span className="sr-only">Giá khuyến mãi </span> : null}
+                        <span className="font-[family-name:var(--font-heading)] text-[17px] font-bold sm:text-[18px]" style={{ color: BLUE }}>
+                          {free ? "Miễn phí" : formatVnd(d.effectivePriceVnd)}
+                        </span>
+                        {d.onSale ? (
+                          <span className="text-[13px] line-through" style={{ color: INK_SOFT }}>
+                            <span className="sr-only">, giá gốc </span>
+                            {formatVnd(d.priceVnd)}
+                          </span>
+                        ) : null}
+                      </p>
+                      <span
+                        aria-hidden="true"
+                        className="inline-flex shrink-0 items-center gap-1 rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition-colors"
+                        style={{ borderColor: LINE }}
+                      >
+                        Xem chi tiết <IconArrow className="h-3.5 w-3.5" />
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-[family-name:var(--font-heading)] text-[17px] font-bold sm:text-[18px]" style={{ color: BLUE }}>
-                      {d.price}
-                    </span>
-                    <span className="rounded-full border px-4 py-2 text-[13px] font-semibold" style={{ borderColor: LINE }}>
-                      Xem chi tiết
-                    </span>
-                  </div>
-                </div>
-              </div>
+                </article>
+              </li>
             );
           })}
-        </div>
+        </ul>
       </div>
     </section>
   );

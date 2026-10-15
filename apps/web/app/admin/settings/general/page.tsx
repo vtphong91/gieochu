@@ -1,33 +1,67 @@
-import { SYSTEM_SETTING_KEYS } from "@gieochu/core";
+import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 import { requireAdminAccess } from "../../../../lib/page-guards";
 import { getSystemSettingsPageData } from "../../../../lib/system-settings";
 import { AdminPageHeader } from "../../_ui/kit";
+import { IconAlertTriangle } from "../../_ui/icons";
+import { GeneralSettingsForm } from "./general-settings-form";
 
-/**
- * ADR-032 — trang cấu hình hệ thống. Bản tối thiểu (guard + loader, chỉ đọc) do Hiếu dựng để có route;
- * form sửa (gọi `updateSystemSettingsAction` ở ./actions.ts) do Phong làm theo contract.
- */
+const dateTime = new Intl.DateTimeFormat("vi-VN", {
+  timeZone: DISPLAY_TIME_ZONE,
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+/** ADR-032 — cấu hình hệ thống: thời hạn phiên/liên kết/URL ký, ân hạn, đơn/hoá đơn chờ, lượt tải mặc định. */
 export default async function AdminGeneralSettingsPage() {
   await requireAdminAccess("/admin/settings/general");
   const data = await getSystemSettingsPageData();
 
+  // Khoá đang ẩn (chưa có nghiệp vụ dùng) không có ô để sửa → không cảnh báo.
+  const invalidVisible = data.invalidKeys.filter((key) => !data.inactiveKeys.includes(key));
+
   return (
     <main className="px-5 py-8 lg:px-8">
-      <AdminPageHeader title="Cấu hình chung" subtitle="Thời hạn phiên, liên kết, dùng thử/ân hạn, đơn hàng và lượt tải mặc định. Thay đổi chỉ áp dụng cho thao tác mới." />
-      <dl className="mt-6 grid gap-2 text-sm">
-        {SYSTEM_SETTING_KEYS.map((key) => {
-          const bound = data.bounds[key];
-          return (
-            <div key={key} className="flex justify-between gap-4 border-b py-2">
-              <dt>{bound.label}</dt>
-              <dd>
-                {data.values[key]} {bound.unit} ({bound.min}–{bound.max})
-                {data.invalidKeys.includes(key) ? " — giá trị lưu không hợp lệ, đang dùng mặc định" : ""}
-              </dd>
-            </div>
-          );
-        })}
-      </dl>
+      <AdminPageHeader
+        title="Cấu hình chung"
+        subtitle="Thời hạn phiên và liên kết, ân hạn gói, đơn/hoá đơn chờ thanh toán và lượt tải mặc định. Thay đổi chỉ áp dụng cho thao tác mới."
+      />
+
+      <p className="mt-3 text-sm" style={{ color: "#4B5563" }}>
+        {data.isDefault || !data.updatedAt ? (
+          "Chưa lưu lần nào — hệ thống đang dùng giá trị mặc định."
+        ) : (
+          <>
+            Cập nhật lần cuối <time dateTime={data.updatedAt.toISOString()}>{dateTime.format(data.updatedAt)}</time>
+            {data.updatedByEmail ? (
+              <>
+                {" "}
+                bởi <span className="font-medium [overflow-wrap:anywhere]" style={{ color: "#12213A" }}>{data.updatedByEmail}</span>
+              </>
+            ) : null}
+            .
+          </>
+        )}
+      </p>
+
+      {invalidVisible.length > 0 ? (
+        <div
+          role="status"
+          className="mt-4 flex items-start gap-3 rounded-xl border px-4 py-3.5 text-sm"
+          style={{ background: "#FFFBEB", borderColor: "#FDE68A", color: "#92400E" }}
+        >
+          <IconAlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+          <div>
+            <p className="font-semibold">Một số giá trị đang lưu không hợp lệ — hệ thống tạm dùng mặc định:</p>
+            <p className="mt-1">{invalidVisible.map((key) => data.bounds[key].label).join(", ")}.</p>
+            <p className="mt-1">Kiểm tra lại các ô này rồi bấm Lưu cấu hình.</p>
+          </div>
+        </div>
+      ) : null}
+
+      <GeneralSettingsForm values={data.values} bounds={data.bounds} inactiveKeys={data.inactiveKeys} />
     </main>
   );
 }

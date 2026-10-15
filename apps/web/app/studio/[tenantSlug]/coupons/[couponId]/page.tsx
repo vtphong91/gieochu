@@ -6,12 +6,13 @@ import { listProducts } from "../../../../../lib/product";
 import { CouponForm } from "../coupon-form";
 import { updateCouponAction } from "../actions";
 import { AdminPageHeader, SettingsGrid } from "../../../../admin/_ui/kit";
+import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 
 /** Wall-clock time in Asia/Ho_Chi_Minh for a `datetime-local` input's defaultValue — same helper as the product edit page. */
 function toDatetimeLocal(date: Date | null): string {
   if (!date) return "";
   const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Ho_Chi_Minh",
+    timeZone: DISPLAY_TIME_ZONE,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",

@@ -6,12 +6,13 @@ import { AdminPageHeader, GhostLinkButton } from "../../../../admin/_ui/kit";
 import { IconChevronLeft } from "../../../../admin/_ui/icons";
 import { ProductEditor, type CreatedNotice } from "../_ui/product-editor";
 import { PRODUCT_STATUS_LABEL } from "../_ui/editor-bits";
+import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 
 /** For a `datetime-local` input's defaultValue — wall-clock time in Asia/Ho_Chi_Minh, no timezone suffix. */
 function toDatetimeLocal(date: Date | null): string {
   if (!date) return "";
   const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Ho_Chi_Minh",
+    timeZone: DISPLAY_TIME_ZONE,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -24,7 +25,7 @@ function toDatetimeLocal(date: Date | null): string {
 }
 
 function formatVnDate(date: Date): string {
-  return date.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit", year: "numeric" });
+  return date.toLocaleDateString("vi-VN", { timeZone: DISPLAY_TIME_ZONE, day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 function hostOf(url: string): string {

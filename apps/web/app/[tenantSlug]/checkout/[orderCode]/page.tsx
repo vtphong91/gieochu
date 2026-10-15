@@ -12,6 +12,7 @@ import { systemFontVars } from "../../../_ui/system-fonts";
 import { CheckoutPoll } from "./checkout-poll";
 import { CouponPanel } from "./coupon-panel";
 import { ProviderPanel } from "./provider-panel";
+import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 
 // ADR-025: checkout là trang HỆ THỐNG — màu lấy từ token hệ thống như trang chi tiết tài liệu.
 const INK = brandColors.ink;
@@ -34,7 +35,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 function formatVnDateTime(date: Date): string {
-  return date.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+  return date.toLocaleString("vi-VN", { timeZone: DISPLAY_TIME_ZONE });
 }
 
 export default async function CheckoutPage({ params }: { params: Promise<{ tenantSlug: string; orderCode: string }> }) {

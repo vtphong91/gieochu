@@ -39,6 +39,7 @@ export type ProductAvgAggregateOutputType = {
   downloadLimit: number | null
   ratingSum: number | null
   ratingCount: number | null
+  soldCount: number | null
 }
 
 export type ProductSumAggregateOutputType = {
@@ -47,6 +48,7 @@ export type ProductSumAggregateOutputType = {
   downloadLimit: number | null
   ratingSum: number | null
   ratingCount: number | null
+  soldCount: number | null
 }
 
 export type ProductMinAggregateOutputType = {
@@ -66,6 +68,7 @@ export type ProductMinAggregateOutputType = {
   downloadLimit: number | null
   ratingSum: number | null
   ratingCount: number | null
+  soldCount: number | null
   status: $Enums.ProductStatus | null
   categoryId: string | null
   createdAt: Date | null
@@ -89,6 +92,7 @@ export type ProductMaxAggregateOutputType = {
   downloadLimit: number | null
   ratingSum: number | null
   ratingCount: number | null
+  soldCount: number | null
   status: $Enums.ProductStatus | null
   categoryId: string | null
   createdAt: Date | null
@@ -113,6 +117,7 @@ export type ProductCountAggregateOutputType = {
   downloadLimit: number
   ratingSum: number
   ratingCount: number
+  soldCount: number
   status: number
   categoryId: number
   createdAt: number
@@ -127,6 +132,7 @@ export type ProductAvgAggregateInputType = {
   downloadLimit?: true
   ratingSum?: true
   ratingCount?: true
+  soldCount?: true
 }
 
 export type ProductSumAggregateInputType = {
@@ -135,6 +141,7 @@ export type ProductSumAggregateInputType = {
   downloadLimit?: true
   ratingSum?: true
   ratingCount?: true
+  soldCount?: true
 }
 
 export type ProductMinAggregateInputType = {
@@ -154,6 +161,7 @@ export type ProductMinAggregateInputType = {
   downloadLimit?: true
   ratingSum?: true
   ratingCount?: true
+  soldCount?: true
   status?: true
   categoryId?: true
   createdAt?: true
@@ -177,6 +185,7 @@ export type ProductMaxAggregateInputType = {
   downloadLimit?: true
   ratingSum?: true
   ratingCount?: true
+  soldCount?: true
   status?: true
   categoryId?: true
   createdAt?: true
@@ -201,6 +210,7 @@ export type ProductCountAggregateInputType = {
   downloadLimit?: true
   ratingSum?: true
   ratingCount?: true
+  soldCount?: true
   status?: true
   categoryId?: true
   createdAt?: true
@@ -312,6 +322,7 @@ export type ProductGroupByOutputType = {
   downloadLimit: number
   ratingSum: number
   ratingCount: number
+  soldCount: number
   status: $Enums.ProductStatus
   categoryId: string | null
   createdAt: Date
@@ -359,6 +370,7 @@ export type ProductWhereInput = {
   downloadLimit?: Prisma.IntFilter<"Product"> | number
   ratingSum?: Prisma.IntFilter<"Product"> | number
   ratingCount?: Prisma.IntFilter<"Product"> | number
+  soldCount?: Prisma.IntFilter<"Product"> | number
   status?: Prisma.EnumProductStatusFilter<"Product"> | $Enums.ProductStatus
   categoryId?: Prisma.StringNullableFilter<"Product"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Product"> | Date | string
@@ -391,6 +403,7 @@ export type ProductOrderByWithRelationInput = {
   downloadLimit?: Prisma.SortOrder
   ratingSum?: Prisma.SortOrder
   ratingCount?: Prisma.SortOrder
+  soldCount?: Prisma.SortOrder
   status?: Prisma.SortOrder
   categoryId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -427,6 +440,7 @@ export type ProductWhereUniqueInput = Prisma.AtLeast<{
   downloadLimit?: Prisma.IntFilter<"Product"> | number
   ratingSum?: Prisma.IntFilter<"Product"> | number
   ratingCount?: Prisma.IntFilter<"Product"> | number
+  soldCount?: Prisma.IntFilter<"Product"> | number
   status?: Prisma.EnumProductStatusFilter<"Product"> | $Enums.ProductStatus
   categoryId?: Prisma.StringNullableFilter<"Product"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Product"> | Date | string
@@ -459,6 +473,7 @@ export type ProductOrderByWithAggregationInput = {
   downloadLimit?: Prisma.SortOrder
   ratingSum?: Prisma.SortOrder
   ratingCount?: Prisma.SortOrder
+  soldCount?: Prisma.SortOrder
   status?: Prisma.SortOrder
   categoryId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -491,6 +506,7 @@ export type ProductScalarWhereWithAggregatesInput = {
   downloadLimit?: Prisma.IntWithAggregatesFilter<"Product"> | number
   ratingSum?: Prisma.IntWithAggregatesFilter<"Product"> | number
   ratingCount?: Prisma.IntWithAggregatesFilter<"Product"> | number
+  soldCount?: Prisma.IntWithAggregatesFilter<"Product"> | number
   status?: Prisma.EnumProductStatusWithAggregatesFilter<"Product"> | $Enums.ProductStatus
   categoryId?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Product"> | Date | string
@@ -514,6 +530,7 @@ export type ProductCreateInput = {
   downloadLimit?: number
   ratingSum?: number
   ratingCount?: number
+  soldCount?: number
   status?: $Enums.ProductStatus
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -545,6 +562,7 @@ export type ProductUncheckedCreateInput = {
   downloadLimit?: number
   ratingSum?: number
   ratingCount?: number
+  soldCount?: number
   status?: $Enums.ProductStatus
   categoryId?: string | null
   createdAt?: Date | string
@@ -574,6 +592,7 @@ export type ProductUpdateInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   ratingSum?: Prisma.IntFieldUpdateOperationsInput | number
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -605,6 +624,7 @@ export type ProductUncheckedUpdateInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   ratingSum?: Prisma.IntFieldUpdateOperationsInput | number
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -635,6 +655,7 @@ export type ProductCreateManyInput = {
   downloadLimit?: number
   ratingSum?: number
   ratingCount?: number
+  soldCount?: number
   status?: $Enums.ProductStatus
   categoryId?: string | null
   createdAt?: Date | string
@@ -658,6 +679,7 @@ export type ProductUpdateManyMutationInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   ratingSum?: Prisma.IntFieldUpdateOperationsInput | number
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -681,6 +703,7 @@ export type ProductUncheckedUpdateManyInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   ratingSum?: Prisma.IntFieldUpdateOperationsInput | number
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -728,6 +751,7 @@ export type ProductCountOrderByAggregateInput = {
   downloadLimit?: Prisma.SortOrder
   ratingSum?: Prisma.SortOrder
   ratingCount?: Prisma.SortOrder
+  soldCount?: Prisma.SortOrder
   status?: Prisma.SortOrder
   categoryId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -740,6 +764,7 @@ export type ProductAvgOrderByAggregateInput = {
   downloadLimit?: Prisma.SortOrder
   ratingSum?: Prisma.SortOrder
   ratingCount?: Prisma.SortOrder
+  soldCount?: Prisma.SortOrder
 }
 
 export type ProductMaxOrderByAggregateInput = {
@@ -759,6 +784,7 @@ export type ProductMaxOrderByAggregateInput = {
   downloadLimit?: Prisma.SortOrder
   ratingSum?: Prisma.SortOrder
   ratingCount?: Prisma.SortOrder
+  soldCount?: Prisma.SortOrder
   status?: Prisma.SortOrder
   categoryId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -782,6 +808,7 @@ export type ProductMinOrderByAggregateInput = {
   downloadLimit?: Prisma.SortOrder
   ratingSum?: Prisma.SortOrder
   ratingCount?: Prisma.SortOrder
+  soldCount?: Prisma.SortOrder
   status?: Prisma.SortOrder
   categoryId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -794,6 +821,7 @@ export type ProductSumOrderByAggregateInput = {
   downloadLimit?: Prisma.SortOrder
   ratingSum?: Prisma.SortOrder
   ratingCount?: Prisma.SortOrder
+  soldCount?: Prisma.SortOrder
 }
 
 export type ProductScalarRelationFilter = {
@@ -1010,6 +1038,7 @@ export type ProductCreateWithoutTenantInput = {
   downloadLimit?: number
   ratingSum?: number
   ratingCount?: number
+  soldCount?: number
   status?: $Enums.ProductStatus
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1039,6 +1068,7 @@ export type ProductUncheckedCreateWithoutTenantInput = {
   downloadLimit?: number
   ratingSum?: number
   ratingCount?: number
+  soldCount?: number
   status?: $Enums.ProductStatus
   categoryId?: string | null
   createdAt?: Date | string
@@ -1098,6 +1128,7 @@ export type ProductScalarWhereInput = {
   downloadLimit?: Prisma.IntFilter<"Product"> | number
   ratingSum?: Prisma.IntFilter<"Product"> | number
   ratingCount?: Prisma.IntFilter<"Product"> | number
+  soldCount?: Prisma.IntFilter<"Product"> | number
   status?: Prisma.EnumProductStatusFilter<"Product"> | $Enums.ProductStatus
   categoryId?: Prisma.StringNullableFilter<"Product"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Product"> | Date | string
@@ -1121,6 +1152,7 @@ export type ProductCreateWithoutFilesInput = {
   downloadLimit?: number
   ratingSum?: number
   ratingCount?: number
+  soldCount?: number
   status?: $Enums.ProductStatus
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1151,6 +1183,7 @@ export type ProductUncheckedCreateWithoutFilesInput = {
   downloadLimit?: number
   ratingSum?: number
   ratingCount?: number
+  soldCount?: number
   status?: $Enums.ProductStatus
   categoryId?: string | null
   createdAt?: Date | string
@@ -1195,6 +1228,7 @@ export type ProductUpdateWithoutFilesInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   ratingSum?: Prisma.IntFieldUpdateOperationsInput | number
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1225,6 +1259,7 @@ export type ProductUncheckedUpdateWithoutFilesInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   ratingSum?: Prisma.IntFieldUpdateOperationsInput | number
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1253,6 +1288,7 @@ export type ProductCreateWithoutCategoryInput = {
   downloadLimit?: number
   ratingSum?: number
   ratingCount?: number
+  soldCount?: number
   status?: $Enums.ProductStatus
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1283,6 +1319,7 @@ export type ProductUncheckedCreateWithoutCategoryInput = {
   downloadLimit?: number
   ratingSum?: number
   ratingCount?: number
+  soldCount?: number
   status?: $Enums.ProductStatus
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1337,6 +1374,7 @@ export type ProductCreateWithoutOrderItemsInput = {
   downloadLimit?: number
   ratingSum?: number
   ratingCount?: number
+  soldCount?: number
   status?: $Enums.ProductStatus
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1367,6 +1405,7 @@ export type ProductUncheckedCreateWithoutOrderItemsInput = {
   downloadLimit?: number
   ratingSum?: number
   ratingCount?: number
+  soldCount?: number
   status?: $Enums.ProductStatus
   categoryId?: string | null
   createdAt?: Date | string
@@ -1411,6 +1450,7 @@ export type ProductUpdateWithoutOrderItemsInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   ratingSum?: Prisma.IntFieldUpdateOperationsInput | number
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1441,6 +1481,7 @@ export type ProductUncheckedUpdateWithoutOrderItemsInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   ratingSum?: Prisma.IntFieldUpdateOperationsInput | number
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1469,6 +1510,7 @@ export type ProductCreateWithoutEntitlementsInput = {
   downloadLimit?: number
   ratingSum?: number
   ratingCount?: number
+  soldCount?: number
   status?: $Enums.ProductStatus
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1499,6 +1541,7 @@ export type ProductUncheckedCreateWithoutEntitlementsInput = {
   downloadLimit?: number
   ratingSum?: number
   ratingCount?: number
+  soldCount?: number
   status?: $Enums.ProductStatus
   categoryId?: string | null
   createdAt?: Date | string
@@ -1543,6 +1586,7 @@ export type ProductUpdateWithoutEntitlementsInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   ratingSum?: Prisma.IntFieldUpdateOperationsInput | number
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1573,6 +1617,7 @@ export type ProductUncheckedUpdateWithoutEntitlementsInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   ratingSum?: Prisma.IntFieldUpdateOperationsInput | number
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1601,6 +1646,7 @@ export type ProductCreateWithoutShareLinksInput = {
   downloadLimit?: number
   ratingSum?: number
   ratingCount?: number
+  soldCount?: number
   status?: $Enums.ProductStatus
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1631,6 +1677,7 @@ export type ProductUncheckedCreateWithoutShareLinksInput = {
   downloadLimit?: number
   ratingSum?: number
   ratingCount?: number
+  soldCount?: number
   status?: $Enums.ProductStatus
   categoryId?: string | null
   createdAt?: Date | string
@@ -1675,6 +1722,7 @@ export type ProductUpdateWithoutShareLinksInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   ratingSum?: Prisma.IntFieldUpdateOperationsInput | number
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1705,6 +1753,7 @@ export type ProductUncheckedUpdateWithoutShareLinksInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   ratingSum?: Prisma.IntFieldUpdateOperationsInput | number
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1733,6 +1782,7 @@ export type ProductCreateWithoutReviewsInput = {
   downloadLimit?: number
   ratingSum?: number
   ratingCount?: number
+  soldCount?: number
   status?: $Enums.ProductStatus
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1763,6 +1813,7 @@ export type ProductUncheckedCreateWithoutReviewsInput = {
   downloadLimit?: number
   ratingSum?: number
   ratingCount?: number
+  soldCount?: number
   status?: $Enums.ProductStatus
   categoryId?: string | null
   createdAt?: Date | string
@@ -1807,6 +1858,7 @@ export type ProductUpdateWithoutReviewsInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   ratingSum?: Prisma.IntFieldUpdateOperationsInput | number
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1837,6 +1889,7 @@ export type ProductUncheckedUpdateWithoutReviewsInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   ratingSum?: Prisma.IntFieldUpdateOperationsInput | number
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1865,6 +1918,7 @@ export type ProductCreateWithoutPostsInput = {
   downloadLimit?: number
   ratingSum?: number
   ratingCount?: number
+  soldCount?: number
   status?: $Enums.ProductStatus
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1895,6 +1949,7 @@ export type ProductUncheckedCreateWithoutPostsInput = {
   downloadLimit?: number
   ratingSum?: number
   ratingCount?: number
+  soldCount?: number
   status?: $Enums.ProductStatus
   categoryId?: string | null
   createdAt?: Date | string
@@ -1939,6 +1994,7 @@ export type ProductUpdateWithoutPostsInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   ratingSum?: Prisma.IntFieldUpdateOperationsInput | number
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1969,6 +2025,7 @@ export type ProductUncheckedUpdateWithoutPostsInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   ratingSum?: Prisma.IntFieldUpdateOperationsInput | number
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1997,6 +2054,7 @@ export type ProductCreateManyTenantInput = {
   downloadLimit?: number
   ratingSum?: number
   ratingCount?: number
+  soldCount?: number
   status?: $Enums.ProductStatus
   categoryId?: string | null
   createdAt?: Date | string
@@ -2020,6 +2078,7 @@ export type ProductUpdateWithoutTenantInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   ratingSum?: Prisma.IntFieldUpdateOperationsInput | number
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2049,6 +2108,7 @@ export type ProductUncheckedUpdateWithoutTenantInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   ratingSum?: Prisma.IntFieldUpdateOperationsInput | number
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2078,6 +2138,7 @@ export type ProductUncheckedUpdateManyWithoutTenantInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   ratingSum?: Prisma.IntFieldUpdateOperationsInput | number
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2102,6 +2163,7 @@ export type ProductCreateManyCategoryInput = {
   downloadLimit?: number
   ratingSum?: number
   ratingCount?: number
+  soldCount?: number
   status?: $Enums.ProductStatus
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -2124,6 +2186,7 @@ export type ProductUpdateWithoutCategoryInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   ratingSum?: Prisma.IntFieldUpdateOperationsInput | number
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2154,6 +2217,7 @@ export type ProductUncheckedUpdateWithoutCategoryInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   ratingSum?: Prisma.IntFieldUpdateOperationsInput | number
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2183,6 +2247,7 @@ export type ProductUncheckedUpdateManyWithoutCategoryInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   ratingSum?: Prisma.IntFieldUpdateOperationsInput | number
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2282,6 +2347,7 @@ export type ProductSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   downloadLimit?: boolean
   ratingSum?: boolean
   ratingCount?: boolean
+  soldCount?: boolean
   status?: boolean
   categoryId?: boolean
   createdAt?: boolean
@@ -2315,6 +2381,7 @@ export type ProductSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   downloadLimit?: boolean
   ratingSum?: boolean
   ratingCount?: boolean
+  soldCount?: boolean
   status?: boolean
   categoryId?: boolean
   createdAt?: boolean
@@ -2341,6 +2408,7 @@ export type ProductSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   downloadLimit?: boolean
   ratingSum?: boolean
   ratingCount?: boolean
+  soldCount?: boolean
   status?: boolean
   categoryId?: boolean
   createdAt?: boolean
@@ -2367,13 +2435,14 @@ export type ProductSelectScalar = {
   downloadLimit?: boolean
   ratingSum?: boolean
   ratingCount?: boolean
+  soldCount?: boolean
   status?: boolean
   categoryId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tenantId" | "slug" | "title" | "description" | "type" | "summary" | "coverImageKey" | "coverImageUrl" | "tags" | "priceVnd" | "salePriceVnd" | "saleStartsAt" | "saleEndsAt" | "downloadLimit" | "ratingSum" | "ratingCount" | "status" | "categoryId" | "createdAt" | "updatedAt", ExtArgs["result"]["product"]>
+export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tenantId" | "slug" | "title" | "description" | "type" | "summary" | "coverImageKey" | "coverImageUrl" | "tags" | "priceVnd" | "salePriceVnd" | "saleStartsAt" | "saleEndsAt" | "downloadLimit" | "ratingSum" | "ratingCount" | "soldCount" | "status" | "categoryId" | "createdAt" | "updatedAt", ExtArgs["result"]["product"]>
 export type ProductInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
   category?: boolean | Prisma.Product$categoryArgs<ExtArgs>
@@ -2435,6 +2504,11 @@ export type $ProductPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     downloadLimit: number
     ratingSum: number
     ratingCount: number
+    /**
+     * ADR-033 mục 1: cache "số đã bán" = số order_items của đơn FULFILLED có entitlement chưa thu hồi (CHECK ≥ 0
+     * trong SQL). Chỉ ghi qua `recomputeProductSoldCounts` (scope system_job, tính lại toàn phần).
+     */
+    soldCount: number
     status: $Enums.ProductStatus
     /**
      * ADR-026: danh mục tài liệu (L1, System Admin quản lý). Nháp được để
@@ -2892,6 +2966,7 @@ export interface ProductFieldRefs {
   readonly downloadLimit: Prisma.FieldRef<"Product", 'Int'>
   readonly ratingSum: Prisma.FieldRef<"Product", 'Int'>
   readonly ratingCount: Prisma.FieldRef<"Product", 'Int'>
+  readonly soldCount: Prisma.FieldRef<"Product", 'Int'>
   readonly status: Prisma.FieldRef<"Product", 'ProductStatus'>
   readonly categoryId: Prisma.FieldRef<"Product", 'String'>
   readonly createdAt: Prisma.FieldRef<"Product", 'DateTime'>

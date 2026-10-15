@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireVerifiedAccess } from "../../../lib/page-guards";
 import { listCustomerOrders } from "../../../lib/library";
+import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING: "Chờ thanh toán",
@@ -12,7 +13,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 function formatVnDateTime(date: Date): string {
-  return date.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+  return date.toLocaleString("vi-VN", { timeZone: DISPLAY_TIME_ZONE });
 }
 
 /** §"M9": "Lịch sử đơn hàng ... mở lại trang checkout cho đơn PENDING". */

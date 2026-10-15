@@ -19,6 +19,11 @@ mục 3). **Đã xong code** (chưa commit tại 2026-09-29). **Chưa xác nhậ
 [[01-Architecture-Decisions/ADR-004-Csp-Nonce-Proxy|ADR-004 (≙ ADR-016)]]. Quy trình thao tác:
 [[04-Operations-Runbooks/Deploy-Vercel-Runbook|Deploy-Vercel-Runbook]].
 
+> **Cập nhật 2026-10-15:** danh sách biến env runtime được rút còn 8 biến và thương hiệu/cấu hình nghiệp vụ chuyển vào DB theo
+> [[01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-From-System-Center|ADR-018 (≙ ADR-032)]]; root layout nay đọc thêm
+> `system_settings` mỗi request (TTL cho `SessionRefresh`) ✅. Theo `docs/DECISIONS.md` đã có bản chạy production trên Vercel
+> trước sự cố 2026-10-15 🟡.
+
 ---
 
 ## 2. Bối Cảnh (Context)

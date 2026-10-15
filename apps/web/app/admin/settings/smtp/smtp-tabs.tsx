@@ -119,7 +119,7 @@ function ConfigTab({ initial }: { initial: SmtpInitial }) {
               hint="Gmail yêu cầu trùng (hoặc là alias của) địa chỉ đăng nhập."
               required
             />
-            <TextField id="smtp-fromName" label="From Name" name="fromName" defaultValue={initial.fromName || "Gieo Chữ"} required />
+            <TextField id="smtp-fromName" label="From Name" name="fromName" defaultValue={initial.fromName} required />
             <TextField
               id="smtp-replyTo"
               label="Reply-To"

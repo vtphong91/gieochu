@@ -1,6 +1,7 @@
 import { canManuallyConfirmOrder, matchPaymentAmount, type OrderStatus } from "@gieochu/core";
 import { withTenant, type Prisma } from "@gieochu/db";
 import { markOrderPaid, sendOrderPaidEmails } from "./order";
+import { recomputeProductSoldCounts } from "./product-sold-count";
 import type { PaymentProcessJobData } from "./jobs";
 
 /**
@@ -16,7 +17,7 @@ import type { PaymentProcessJobData } from "./jobs";
  * rejected outright (INSERT), not just read stale data.
  */
 export async function processPaymentEvent(data: PaymentProcessJobData): Promise<void> {
-  const fulfilledOrderId = await withTenant(data.tenantId, async (tx) => {
+  const fulfilled = await withTenant(data.tenantId, async (tx): Promise<{ orderId: string; productIds: string[] } | false> => {
     const order = data.reference ? await tx.order.findUnique({ where: { code: data.reference } }) : null;
 
     if (!order) {
@@ -52,10 +53,12 @@ export async function processPaymentEvent(data: PaymentProcessJobData): Promise<
 
     const source = data.provider === "SEPAY" ? "SEPAY_WEBHOOK" : "MOMO_IPN";
     const result = await markOrderPaid(tx, order.id, source);
-    return result.fulfilled ? order.id : false;
+    return result.fulfilled ? { orderId: order.id, productIds: result.productIds } : false;
   });
 
-  if (fulfilledOrderId) {
-    await sendOrderPaidEmails(fulfilledOrderId);
+  if (fulfilled) {
+    // ADR-033: số đã bán tính lại sau khi transaction đổi trạng thái đơn đã commit.
+    await recomputeProductSoldCounts(fulfilled.productIds);
+    await sendOrderPaidEmails(fulfilled.orderId);
   }
 }

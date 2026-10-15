@@ -6,6 +6,7 @@ tags:
   - security
   - status/living
 date: 2026-09-28
+updated: 2026-10-15
 author: Long (tài liệu)
 ---
 
@@ -15,6 +16,17 @@ author: Long (tài liệu)
 > (`packages/db/prisma/seed.ts` — `pnpm db:seed`). Script tự từ chối chạy nếu không qua đủ chốt an toàn (§2).
 > Mức xác minh: ✅ đã đọc code `apps/web/scripts/demo-reviews.ts` ngày 2026-09-28 · 🟡 theo báo cáo · ❓ cần chạy thật.
 > Long **chưa tự chạy** script — mọi kết quả chạy thật là ❓.
+
+
+> ⚠️ **Dữ liệu demo đang nằm trên PRODUCTION (ADR-034, 2026-10-15)** 🟡 — chủ dự án quyết dùng **một database duy nhất** cho
+> máy dev, Vercel Preview và Production
+> ([[01-Architecture-Decisions/ADR-020-Single-Database-Dev-Preview-Production|ADR-020 (≙ ADR-034)]]). "DB dev" trong trang này
+> **chính là DB production**: 5 khách `demo+…@gieochu.test`, 3 sản phẩm `demo-*` và đơn/đánh giá của tenant `phongweb` đang
+> **hiển thị công khai** và được tính vào số liệu thật trên trang chủ (ADR-033).
+> - **Bắt buộc chạy `demo:clean` trước khi mở cho người dùng thật** (Deploy-Vercel-Runbook §9.3).
+> - **Không chạy lại `demo:seed`** khi chưa được Quốc duyệt.
+> - **Không** thêm host DB production vào `DEMO_SEED_BLOCKED_DB_HOSTS` — chốt này chặn cả `demo:clean` ✅ (`assertDevEnvironment()`
+>   chạy trước cả `seed` lẫn `clean`).
 
 ## 1. Mục Đích & Vị Trí
 

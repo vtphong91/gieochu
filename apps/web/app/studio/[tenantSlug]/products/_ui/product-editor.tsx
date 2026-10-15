@@ -86,7 +86,11 @@ type EditorProps = {
   categories: { id: string; name: string }[];
   allowedHosts: string[];
 } & (
-  | { mode: "create" }
+  | {
+      mode: "create";
+      /** ADR-032: lượt tải mặc định hệ thống (System Center, 0 = không giới hạn) — Phong dùng làm defaultValue ô downloadLimit. */
+      defaultDownloadLimit?: number;
+    }
   | {
       mode: "edit";
       product: EditorProduct;
@@ -147,6 +151,8 @@ export function ProductEditor(props: EditorProps) {
   const [draftPublished, setDraftPublished] = useState(false);
   const status = product?.status ?? (draftId ? (draftPublished ? "PUBLISHED" : "DRAFT") : null);
   const notice = isEdit ? props.notice : null;
+  // ADR-032: trang Tạo dùng lượt tải mặc định hệ thống làm giá trị ban đầu; trang Sửa giữ giá trị của sản phẩm.
+  const systemDownloadLimit = isEdit ? undefined : props.defaultDownloadLimit;
 
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -857,9 +863,13 @@ export function ProductEditor(props: EditorProps) {
                   min={0}
                   max={1000}
                   step={1}
-                  defaultValue={product?.downloadLimit ?? 0}
+                  defaultValue={product?.downloadLimit ?? systemDownloadLimit ?? 0}
                   error={fieldErrors.downloadLimit}
-                  hint="0 = không giới hạn. Tối đa 1000. Áp dụng cho cả file và link."
+                  hint={
+                    systemDownloadLimit !== undefined
+                      ? `Mặc định hệ thống: ${vnd.format(systemDownloadLimit)} (0 = không giới hạn). Tối đa 1000. Áp dụng cho cả file và link.`
+                      : "0 = không giới hạn. Tối đa 1000. Áp dụng cho cả file và link."
+                  }
                 />
               </ConfigCard>
 

@@ -26,8 +26,8 @@ export interface BrandingInitial {
   ogImageUrl: string;
   brandName: string;
   brandSlogan: string;
-  envBrandName: string;
-  envBrandSlogan: string;
+  defaultBrandName: string;
+  defaultBrandSlogan: string;
   navbarLogoHeightPx: number;
   primaryColorHex: string;
   accentColorHex: string;
@@ -122,11 +122,11 @@ function NameSloganForm({ initial }: { initial: BrandingInitial }) {
         <p className="font-[family-name:var(--font-heading)] font-semibold" style={{ color: "#12213A" }}>
           Tên & Slogan
         </p>
-        <p className="text-sm text-gray-500">Xuất hiện trong title trang, metadata, và các vị trí logo dạng chữ. Để trống sẽ dùng giá trị cấu hình mặc định.</p>
+        <p className="text-sm text-gray-500">Xuất hiện trong title trang, metadata, và các vị trí logo dạng chữ. Để trống sẽ dùng tên/slogan mặc định hệ thống.</p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <TextField id="brandName" name="brandName" label="Tên thương hiệu" defaultValue={initial.brandName} placeholder={initial.envBrandName} hint={`Mặc định: ${initial.envBrandName}`} />
-        <TextField id="brandSlogan" name="brandSlogan" label="Slogan" defaultValue={initial.brandSlogan} placeholder={initial.envBrandSlogan} hint={`Mặc định: ${initial.envBrandSlogan}`} />
+        <TextField id="brandName" name="brandName" label="Tên thương hiệu" defaultValue={initial.brandName} placeholder={initial.defaultBrandName} hint={`Để trống = mặc định hệ thống: ${initial.defaultBrandName}`} />
+        <TextField id="brandSlogan" name="brandSlogan" label="Slogan" defaultValue={initial.brandSlogan} placeholder={initial.defaultBrandSlogan} hint={`Để trống = mặc định hệ thống: ${initial.defaultBrandSlogan}`} />
       </div>
       <div>
         <label htmlFor="navbarLogoHeightPx" className="block text-sm font-medium" style={{ color: "#12213A" }}>
@@ -214,10 +214,10 @@ function PreviewTab({ initial }: { initial: BrandingInitial }) {
       <p className="mb-5 text-sm text-gray-500">Preview logo trong các vị trí thực tế trên hệ thống.</p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <PreviewCard label="Trang đăng nhập" bg="white">
-          <LogoOrFallback url={initial.logoLightUrl} name={initial.brandName || initial.envBrandName} dark={false} />
+          <LogoOrFallback url={initial.logoLightUrl} name={initial.brandName || initial.defaultBrandName} dark={false} />
         </PreviewCard>
         <PreviewCard label="Admin sidebar" bg="#0F3B82">
-          <LogoOrFallback url={sidebarLogo} name={initial.brandName || initial.envBrandName} dark />
+          <LogoOrFallback url={sidebarLogo} name={initial.brandName || initial.defaultBrandName} dark />
         </PreviewCard>
         <PreviewCard label="Tab trình duyệt (favicon)" bg="white">
           {initial.faviconUrl ? (
@@ -228,7 +228,7 @@ function PreviewTab({ initial }: { initial: BrandingInitial }) {
           )}
         </PreviewCard>
         <PreviewCard label="Footer landing" bg="#12213A">
-          <LogoOrFallback url={footerLogo} name={initial.brandName || initial.envBrandName} dark />
+          <LogoOrFallback url={footerLogo} name={initial.brandName || initial.defaultBrandName} dark />
         </PreviewCard>
       </div>
     </div>

@@ -68,7 +68,8 @@ const GROUPS: NavGroup[] = [
     label: "Cấu hình hệ thống",
     Icon: IconGear,
     items: [
-      { href: "/admin/settings", label: "Cấu hình chung", Icon: IconGear },
+      { href: "/admin/settings/general", label: "Cấu hình chung", Icon: IconGear },
+      { href: "/admin/settings", label: "Email hỗ trợ", Icon: IconMail },
       { href: "/admin/settings/branding", label: "Nhận diện thương hiệu", Icon: IconLayers },
       { href: "/admin/settings/storage", label: "Lưu trữ file", Icon: IconDatabase },
       { href: "/admin/settings/cloudinary", label: "Cloudinary Upload", Icon: IconDatabase },

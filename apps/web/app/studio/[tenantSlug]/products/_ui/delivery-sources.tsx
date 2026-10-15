@@ -16,6 +16,7 @@ import { IconExternalLink, IconFile, IconTrash, IconUpload } from "../../../../a
 import { IconLinkChain } from "../../../../_ui/editor/toolbar-icons";
 import { formatBytes, uploadProductFile, type UploadedProductFile } from "./upload-client";
 import { GHOST_BTN, GREEN_TEXT, PRIMARY_BTN, ProgressBar, ROW_BTN, UploadError, WarningNote } from "./editor-bits";
+import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 
 /**
  * Id form KHÔNG tồn tại: gán qua thuộc tính `form` cho các ô nằm trong <form> sản phẩm nhưng không thuộc
@@ -65,7 +66,7 @@ export type EnsureProductResult = { ok: true; productId: string } | { ok: false;
 const RED = "#DC2626";
 const GRAY_LINE = "#E5E7EB";
 
-const vnDate = new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit", year: "numeric" });
+const vnDate = new Intl.DateTimeFormat("vi-VN", { timeZone: DISPLAY_TIME_ZONE, day: "2-digit", month: "2-digit", year: "numeric" });
 
 function hostOf(url: string): string {
   try {

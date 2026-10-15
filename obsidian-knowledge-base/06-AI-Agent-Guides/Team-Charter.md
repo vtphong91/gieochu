@@ -5,6 +5,7 @@ tags:
   - ui-ux
   - status/living
 date: 2026-09-26
+updated: 2026-10-15
 author: Long (A08)
 ---
 
@@ -109,7 +110,7 @@ Các thư mục `0X-*` ở bảng trên nằm trong `obsidian-knowledge-base/` (
   - Không `import '@prisma/client'` trong `apps/web` — chỉ qua helper `@gieochu/db`.
   - Hai hệ thống thanh toán Platform/Tenant không chung bảng/secret/route; mọi hàm thanh toán nhận `PaymentScope`.
   - ID dùng cuid2 (`@default(cuid(2))`); không đặt `user.id` vào URL slug (ADR-022).
-  - Chuỗi thương hiệu đọc từ `@gieochu/config/brand`.
+  - Chuỗi thương hiệu đọc qua `getEffectiveBrand()` (`apps/web/lib/branding.ts`, DB `SystemBranding`); fallback duy nhất `DEFAULT_BRAND` ở `@gieochu/config/brand` (ADR-032).
   - Token chỉ trong cookie `httpOnly` (cùng các quy tắc bảo mật khác ở `CLAUDE.md` mục "Quy tắc bảo mật").
 - Thiếu dữ kiện nghiệp vụ, hoặc điểm mơ hồ ảnh hưởng tiền/bảo mật/dữ liệu cá nhân → dừng và hỏi Quốc.
 - Contract/schema đổi → báo tác động tài liệu cho Quốc để giao Long; không tự sửa KB hay `docs/`.
@@ -134,7 +135,7 @@ Nguồn: `.claude/agents/phong.md` ✅ (đối chiếu 2026-09-26).
 - Chuẩn bắt buộc: tương phản ≥ 4.5:1, focus ring nhìn thấy được, `aria-label` cho nút chỉ có icon, label cho
   input, heading tuần tự, tôn trọng `prefers-reduced-motion`; responsive mobile-first, không cuộn ngang, target
   bấm ≥ 44×44px; mỗi màn hình dữ liệu đủ trạng thái loading / empty / error; icon SVG từ `admin/_ui/icons.tsx`,
-  không dùng emoji làm icon; chuỗi thương hiệu từ `@gieochu/config/brand`.
+  không dùng emoji làm icon; chuỗi thương hiệu nhận qua prop từ server (`getEffectiveBrand()`, ADR-032).
 - **Không sửa** logic lấy dữ liệu/gọi `@gieochu/db`, `requireUser()`/`requireRole()`/kiểm tra quyền, Server
   Actions, `route.ts`, `proxy.ts`, `apps/web/lib/**`, `packages/**` (trừ `theme.ts` khi brief nêu rõ), schema,
   KB và `docs/`. Layout cần dữ liệu/field/action chưa có → mô tả contract trong báo cáo để Quốc giao Hiếu.
@@ -199,7 +200,8 @@ trò** như §2–§3.
 6. **ID dùng cuid2** (`@default(cuid(2))` gốc của Prisma) cho mọi `@id` — không dùng UUID (ADR-001).
 7. **Không bao giờ đặt `user.id` vào URL slug** (ADR-022, sửa bug `resolveLandingPath()` redirect sai sau đăng
    nhập) — landing path tra theo `Tenant.ownerId` để lấy `tenant.slug`.
-8. **Không hard-code chuỗi thương hiệu** ("Gieo Chữ", slogan...) — luôn đọc từ `@gieochu/config/brand`.
+8. **Không hard-code chuỗi thương hiệu** ("Gieo Chữ", slogan...) — đọc qua `getEffectiveBrand()` (DB `SystemBranding`); mặc định
+   chỉ khai một chỗ `DEFAULT_BRAND` trong `@gieochu/config/brand` (ADR-032).
 9. **Không thêm/bớt số lượng test case** so với mốc test (trần gốc 91/50 (mục 9); trần hiện 94/53 theo ADR-026; số thực xem `pnpm test:count`) nếu chưa hỏi lại người dùng.
 10. **Hỏi trước khi code.** Chủ dự án đã nhiều lần yêu cầu xác nhận phạm vi trước khi sửa/viết code (ví dụ:
     chia M5 làm 2 phần vì máy code không có Docker — ADR-014; chuyển cấu hình storage sang System Admin —
@@ -207,6 +209,14 @@ trò** như §2–§3.
     dự án trước khi giao Hiếu/Phong. Khi đặc tả mơ hồ: chọn phương án an toàn/đơn giản nhất, ghi ADR ngắn; nếu ảnh
     hưởng tiền, bảo mật, hoặc dữ liệu cá nhân — **dừng lại và hỏi** (`CLAUDE.md` mục "Khi đặc tả mơ hồ").
 11. **Không commit trừ khi được yêu cầu rõ ràng** — áp dụng cho cả Quốc, Long, Hiếu, Phong.
+12. **Một DB duy nhất cho dev, Preview và production (ADR-034)** — mọi thao tác DB từ máy dev là thao tác trên production.
+    **Không tự chạy migrate/DDL** (`pnpm db:migrate`, SQL DDL tay) khi chưa được Quốc duyệt; không `prisma migrate dev/reset`.
+    Migration theo **expand → contract**: bản deploy chỉ được *thêm* (bảng/cột/index/policy); `DROP`/`RENAME` chỉ chạy **sau khi**
+    code mới không còn dùng cột đó đã lên production (sự cố 2026-10-15 —
+    [[04-Operations-Runbooks/Deploy-Vercel-Runbook|Deploy-Vercel-Runbook]] §9).
+13. **Không chạy `pnpm db:seed`** (ghi đè nội dung trang chủ CMS — `.env` luôn trỏ DB production theo ADR-034). Integration
+    test/script thủ công ghi dữ liệu thật: chỉ chạy khi cần, tự dọn dữ liệu tạm, không đụng cấu hình dùng chung, không gửi email
+    tới địa chỉ thật; Preview chỉ để xem giao diện.
 
 *Ghi chú:* `.claude/settings.json` không còn quyền shell rộng `Bash(cat > *)` (bỏ ngày 2026-09-26) để giảm nguy
 cơ ghi đè file ngoài vùng mà không bị hỏi lại ✅ (grep file cấu hình 2026-09-26).

@@ -164,14 +164,32 @@ export type { LockRejectReason, LockTargetUser, LockUserDecision } from "./admin
 export { isValidPlanInput } from "./admin/plan-validation";
 export type { PlanInput } from "./admin/plan-validation";
 export { cmsBlocksSchema, isValidCmsBlocks } from "./admin/cms-blocks";
-export { homeSectionsSchema, homeSectionSchema, isValidHomeSections, HOME_SECTION_LABELS } from "./admin/home-sections";
-export type { HomeSection, HomeSectionType } from "./admin/home-sections";
+export {
+  homeSectionsSchema,
+  homeSectionSchema,
+  isValidHomeSections,
+  parseHomeSections,
+  defaultHomeStatsData,
+  HOME_SECTION_LABELS,
+  HOME_STAT_KEYS,
+  HOME_STAT_DEFAULT_LABELS,
+  HOME_FEATURED_LIMIT_MIN,
+  HOME_FEATURED_LIMIT_MAX,
+  HOME_PINNED_MAX,
+  HOME_COACHES_DEFAULT_LIMIT,
+  HOME_DOCUMENTS_DEFAULT_LIMIT,
+  DEFAULT_HOME_SEARCH_DATA,
+  DEFAULT_HOME_COACHES_TEXT,
+  DEFAULT_HOME_DOCUMENTS_TEXT,
+} from "./admin/home-sections";
+export type { HomeSection, HomeSectionType, HomeStatKey } from "./admin/home-sections";
 export { buildAdminDashboardSummary } from "./admin/dashboard-summary";
 export type { AdminDashboardCounts, AdminDashboardSummary } from "./admin/dashboard-summary";
 
 export {
   DEFAULT_SYSTEM_SETTINGS,
   DISPLAY_TIME_ZONE,
+  INACTIVE_SYSTEM_SETTINGS,
   parseStoredSystemSettings,
   SYSTEM_SETTING_KEYS,
   SYSTEM_SETTINGS_BOUNDS,

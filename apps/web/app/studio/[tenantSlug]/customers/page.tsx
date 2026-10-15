@@ -2,9 +2,10 @@ import { requireTenantMemberPage } from "../../../../lib/page-guards";
 import { listTenantCustomers } from "../../../../lib/order";
 import { AdminPageHeader, DataTable, EmptyState, Td, Tr } from "../../../admin/_ui/kit";
 import { IconUsers } from "../../../admin/_ui/icons";
+import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 
 function formatVnDate(date: Date): string {
-  return date.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+  return date.toLocaleDateString("vi-VN", { timeZone: DISPLAY_TIME_ZONE });
 }
 
 export default async function StudioCustomersPage({ params }: { params: Promise<{ tenantSlug: string }> }) {

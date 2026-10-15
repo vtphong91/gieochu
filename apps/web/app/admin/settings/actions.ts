@@ -2,16 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { logger, systemSettingsSchema } from "@gieochu/core";
+import { logger } from "@gieochu/core";
 import { getPrismaClient } from "@gieochu/db";
 import { requireRole } from "../../../lib/session";
 
-const settingsSchema = z.object({
-  platformName: z.string().trim().min(1),
-  supportEmail: z.string().trim().email(),
-  // ADR-032: cùng giới hạn với /admin/settings/general (packages/core) — không để form cũ ghi vượt khoảng.
-  trialDays: systemSettingsSchema.shape.trialDays,
-  graceDays: systemSettingsSchema.shape.graceDays,
+/**
+ * Form `/admin/settings` — chỉ còn email hỗ trợ (ADR-032). Tên nền tảng lấy từ Nhận diện thương hiệu
+ * (/admin/settings/branding); dùng thử/ân hạn và các thời hạn khác ở /admin/settings/general.
+ */
+const supportEmailSchema = z.object({
+  supportEmail: z.string().trim().email("Email hỗ trợ không hợp lệ."),
 });
 
 export interface SettingsActionState {
@@ -19,27 +19,25 @@ export interface SettingsActionState {
   success?: boolean;
 }
 
-export async function updateSystemSettingsAction(
+export async function updateSupportEmailAction(
   _prevState: SettingsActionState,
   formData: FormData,
 ): Promise<SettingsActionState> {
   const actor = await requireRole("SYSTEM_ADMIN");
 
-  const parsed = settingsSchema.safeParse(Object.fromEntries(formData));
+  const parsed = supportEmailSchema.safeParse({ supportEmail: formData.get("supportEmail") ?? "" });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ." };
   }
 
   const prisma = getPrismaClient();
+  const data = { supportEmail: parsed.data.supportEmail, updatedById: actor.userId };
   await prisma.systemSettings.upsert({
     where: { id: "default" },
-    update: { ...parsed.data, updatedById: actor.userId },
-    create: { id: "default", ...parsed.data, updatedById: actor.userId },
+    update: data,
+    create: { id: "default", ...data },
   });
-  logger.info(
-    { actorId: actor.userId, trialDays: parsed.data.trialDays, graceDays: parsed.data.graceDays },
-    "system_settings: cập nhật thông tin nền tảng / dùng thử / ân hạn (/admin/settings)",
-  );
+  logger.info({ actorId: actor.userId }, "system_settings: cập nhật email hỗ trợ (/admin/settings)");
 
   revalidatePath("/admin/settings");
   return { success: true };

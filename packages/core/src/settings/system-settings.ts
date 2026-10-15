@@ -43,6 +43,14 @@ export type SystemSettingsValues = Record<SystemSettingKey, number>;
 
 export const SYSTEM_SETTING_KEYS = Object.keys(SYSTEM_SETTINGS_BOUNDS) as SystemSettingKey[];
 
+/**
+ * Khoá được lưu + validate nhưng CHƯA có nghiệp vụ nào dùng — UI ẩn đi; Server Action không bắt buộc
+ * gửi (vắng → giữ giá trị cũ). Gửi lên thì vẫn validate theo giới hạn.
+ */
+export const INACTIVE_SYSTEM_SETTINGS: Readonly<Partial<Record<SystemSettingKey, string>>> = Object.freeze({
+  trialDays: "Chưa dùng — mô hình Free Forever, ADR-021.",
+});
+
 export const DEFAULT_SYSTEM_SETTINGS: Readonly<SystemSettingsValues> = Object.freeze(
   Object.fromEntries(SYSTEM_SETTING_KEYS.map((key) => [key, SYSTEM_SETTINGS_BOUNDS[key].default])) as SystemSettingsValues,
 );

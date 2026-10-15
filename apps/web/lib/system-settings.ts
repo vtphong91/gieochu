@@ -2,6 +2,7 @@ import { cache } from "react";
 import {
   AppError,
   ErrorCodes,
+  INACTIVE_SYSTEM_SETTINGS,
   logger,
   parseStoredSystemSettings,
   SYSTEM_SETTING_KEYS,
@@ -51,6 +52,10 @@ export interface SystemSettingsPageData {
   bounds: typeof SYSTEM_SETTINGS_BOUNDS;
   /** Khoá đang lưu sai/ngoài khoảng trong DB (đang dùng mặc định) — UI nên cảnh báo. */
   invalidKeys: SystemSettingKey[];
+  /** Khoá chưa có nghiệp vụ dùng (hiện: `trialDays`) — UI ẩn; action không bắt buộc gửi. */
+  inactiveKeys: SystemSettingKey[];
+  /** Lý do theo khoá inactive, vd `{ trialDays: "Chưa dùng — mô hình Free Forever, ADR-021." }`. */
+  inactiveReasons: Partial<Record<SystemSettingKey, string>>;
   /** `true` khi chưa có dòng cấu hình (mọi giá trị là mặc định). */
   isDefault: boolean;
   updatedAt: Date | null;
@@ -69,6 +74,8 @@ export async function getSystemSettingsPageData(): Promise<SystemSettingsPageDat
     values: parsed.values,
     bounds: SYSTEM_SETTINGS_BOUNDS,
     invalidKeys: parsed.invalidKeys,
+    inactiveKeys: SYSTEM_SETTING_KEYS.filter((key) => key in INACTIVE_SYSTEM_SETTINGS),
+    inactiveReasons: { ...INACTIVE_SYSTEM_SETTINGS },
     isDefault: parsed.missing,
     updatedAt: row?.updatedAt ?? null,
     updatedByEmail: updatedBy?.email ?? null,
@@ -92,10 +99,18 @@ export interface SystemSettingsActionState {
 /**
  * Validate (zod, ngoài khoảng → từ chối cả form) rồi ghi 11 khoá, log thay đổi cũ→mới. Người gọi
  * (Server Action) đã `requireRole("SYSTEM_ADMIN")`. Chỉ ghi các khoá cấu hình — không đụng
- * `platformName/supportEmail` (cột cũ).
+ * `supportEmail` (form /admin/settings).
  */
 export async function saveSystemSettings(actor: CurrentUser, formData: FormData): Promise<SystemSettingsActionState> {
-  const raw = Object.fromEntries(SYSTEM_SETTING_KEYS.map((key) => [key, formData.get(key) ?? undefined]));
+  const previous = await loadSystemSettings();
+  // Khoá inactive (UI ẩn) vắng mặt trong form → giữ giá trị cũ; khoá khác vắng → lỗi "bắt buộc".
+  const raw = Object.fromEntries(
+    SYSTEM_SETTING_KEYS.map((key) => {
+      const value = formData.get(key);
+      if (value === null && key in INACTIVE_SYSTEM_SETTINGS) return [key, previous[key]];
+      return [key, value ?? undefined];
+    }),
+  );
   const parsed = systemSettingsSchema.safeParse(raw);
   if (!parsed.success) {
     const fieldErrors: SystemSettingsFieldErrors = {};
@@ -107,7 +122,6 @@ export async function saveSystemSettings(actor: CurrentUser, formData: FormData)
   }
 
   const next = parsed.data as SystemSettingsValues;
-  const previous = await loadSystemSettings();
   await getPrismaClient().systemSettings.upsert({
     where: { id: CONFIG_ID },
     update: { ...next, updatedById: actor.userId },

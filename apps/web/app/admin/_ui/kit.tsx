@@ -148,16 +148,22 @@ function FieldShell({ label, htmlFor, hint, error, children }: { label: string; 
       </label>
       <div className="mt-1.5">{children}</div>
       {error ? (
-        <p role="alert" className="mt-1.5 text-sm" style={{ color: RED }}>
+        <p id={`${htmlFor}-error`} role="alert" className="mt-1.5 text-sm" style={{ color: RED }}>
           {error}
         </p>
       ) : hint ? (
-        <p className="mt-1.5 text-xs" style={{ color: INK_SOFT }}>
+        <p id={`${htmlFor}-hint`} className="mt-1.5 text-xs" style={{ color: INK_SOFT }}>
           {hint}
         </p>
       ) : null}
     </div>
   );
+}
+
+/** id phần tử mô tả (lỗi ưu tiên hơn gợi ý) — khớp id mà FieldShell gắn cho dòng lỗi/gợi ý. */
+function describedById(id: string | undefined, hint?: string, error?: string): string | undefined {
+  if (!id) return undefined;
+  return error ? `${id}-error` : hint ? `${id}-hint` : undefined;
 }
 
 const inputBase =
@@ -172,7 +178,14 @@ export function TextField({
 }: ComponentProps<"input"> & { label: string; hint?: string; error?: string }) {
   return (
     <FieldShell label={label} htmlFor={id!} hint={hint} error={error}>
-      <input id={id} className={inputBase} style={{ borderColor: error ? RED : GRAY_LINE }} {...rest} />
+      <input
+        id={id}
+        className={inputBase}
+        style={{ borderColor: error ? RED : GRAY_LINE }}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedById(id, hint, error)}
+        {...rest}
+      />
     </FieldShell>
   );
 }
@@ -187,7 +200,14 @@ export function SelectField({
 }: ComponentProps<"select"> & { label: string; hint?: string; error?: string }) {
   return (
     <FieldShell label={label} htmlFor={id!} hint={hint} error={error}>
-      <select id={id} className={inputBase} style={{ borderColor: error ? RED : GRAY_LINE }} {...rest}>
+      <select
+        id={id}
+        className={inputBase}
+        style={{ borderColor: error ? RED : GRAY_LINE }}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedById(id, hint, error)}
+        {...rest}
+      >
         {children}
       </select>
     </FieldShell>

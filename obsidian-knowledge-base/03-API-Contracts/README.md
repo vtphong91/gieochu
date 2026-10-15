@@ -3,7 +3,7 @@ tags:
   - meta
   - contract
 date: 2026-09-26
-updated: 2026-09-28
+updated: 2026-10-15
 ---
 
 # 🔌 API Contracts & Data Interface
@@ -19,7 +19,10 @@ tenant nơi giáo viên/coach bán tài liệu số cho học viên.
   (`ProductActionState`, field FormData — ADR-026/027); §11 contract ảnh Cloudinary hệ thống
   (`CloudinarySignatureResult`, `registerTenantImageAction`, mã lỗi hạn mức — ADR-028); §12 action/hàm lib đánh giá
   M10a (`upsertMyReviewAction`, action kiểm duyệt Studio, `PublicReview`, mã lỗi `REVIEW_*` — ADR-029); §13 action/hàm lib bài viết M10b (`createPostAction`… `PostActionState`,
-  `listPublishedPosts`, mã lỗi `POST_*`, subpath `@gieochu/core/post` — ADR-029).
+  `listPublishedPosts`, mã lỗi `POST_*`, subpath `@gieochu/core/post` — ADR-029); §14 action/hàm lib cấu hình hệ thống
+  (`updateSystemSettingsAction`, `updateSupportEmailAction`, `getSystemSettings`, `getEffectiveBrand` — ADR-032) và CMS trang chủ
+  (`searchHomeTenantOptionsAction`/`searchHomeProductOptionsAction`, loader `lib/home.ts`, `recomputeProductSoldCounts`,
+  `markOrderPaid` trả `productIds` — ADR-033).
 - `[[Database-Schema-Reference]]` — Lược đồ 42 model + 24 enum trong `packages/db/prisma/schema.prisma`, phân
   theo layer L1 (System) / L2 (Tenant, RLS) / L3 (góc nhìn Customer trên bảng L2), cùng quy ước cuid2 (ADR-001),
   mã hoá secret AES-256-GCM (§7.3 CLAUDE.md), và bảng RBAC `Role`/`Permission`/`RolePermission` (ADR-022); §7 ghi RLS tách đọc/ghi 7 bảng, quy tắc bảng L2 mới và mẫu

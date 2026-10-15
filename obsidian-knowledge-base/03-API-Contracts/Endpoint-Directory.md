@@ -5,7 +5,7 @@ tags:
   - endpoint
   - status/living
 date: 2026-06-15
-updated: 2026-09-28
+updated: 2026-10-15
 author: System Architect
 ---
 
@@ -293,7 +293,7 @@ không có hàm/route nào cho System Admin (§7.9).
 
 | Kiểu | File | Trường thêm |
 | :-- | :-- | :-- |
-| `PublicProduct` (thẻ tài liệu storefront) | `apps/web/lib/storefront.ts` | `ratingAvg: number \| null` (từ `computeRatingAverage`), `ratingCount: number` |
+| `PublicProduct` (thẻ tài liệu storefront) | `apps/web/lib/storefront.ts` | `ratingAvg: number \| null` (từ `computeRatingAverage`), `ratingCount: number`; **`soldCount: number`** (ADR-033 — cột cache `products.soldCount`; 0 = UI không hiện "đã bán") |
 | `ProductPreviewData.product` | `apps/web/lib/product.ts` | `ratingSum: number`, `ratingCount: number` (đưa vào `getProductRatingSummary`) |
 | `LibraryEntitlement` | `apps/web/lib/library.ts` | `canReview: boolean` (= entitlement chưa thu hồi), `review: { id, rating, status } \| null` |
 
@@ -388,7 +388,49 @@ hằng `POST_TITLE_MAX_LENGTH` (200), `POST_EXCERPT_MAX_LENGTH` (300), `POST_MAX
 
 ---
 
-## 14. Tài Liệu Tham Chiếu & Liên Kết
+## 14. Server Actions & hàm lib — Cấu hình hệ thống (ADR-032) và CMS trang chủ (ADR-033) ✅
+
+Đối chiếu code 2026-10-15. Chi tiết quyết định: [[01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-From-System-Center|ADR-018 (≙ ADR-032)]],
+[[01-Architecture-Decisions/ADR-019-Home-Page-Real-Data-Sold-Count|ADR-019 (≙ ADR-033)]].
+
+### 14.1. Server Actions
+
+| Action | File | Guard | Input → Output |
+| :-- | :-- | :-- | :-- |
+| `updateSystemSettingsAction(prevState, formData)` | `app/admin/settings/general/actions.ts` | `requireRole("SYSTEM_ADMIN")` (lỗi quyền trả về state, không ném) | FormData field = tên khoá (`accessTokenTtlMinutes`…); khoá inactive (`trialDays`) vắng → giữ giá trị cũ → `SystemSettingsActionState { ok, error?, code?, fieldErrors?, values? }`; `code` ∈ `VALIDATION_ERROR` / `UNAUTHORIZED` / `FORBIDDEN` / `INTERNAL_ERROR`. Ngoài khoảng → từ chối cả form. Revalidate `/admin/settings/general`, `/admin/settings` |
+| `updateSupportEmailAction(prevState, formData)` | `app/admin/settings/actions.ts` | `requireRole("SYSTEM_ADMIN")` | `supportEmail` (zod email) → ghi `system_settings.supportEmail` + `updatedById` |
+| `searchHomeTenantOptionsAction(search, includeIds)` | `app/admin/cms/home-editor/actions.ts` | `requireRole("SYSTEM_ADMIN")` | `search` chuỗi (khác chuỗi → bỏ), `includeIds` mảng id 1–64 ký tự, tối đa 12 → `HomeTenantOption[]` `{ id, name, slug, productCount, eligible }` (≤ 200 + id đang ghim) |
+| `searchHomeProductOptionsAction(search, includeIds)` | `app/admin/cms/home-editor/actions.ts` | `requireRole("SYSTEM_ADMIN")` | như trên → `HomeProductOption[]` `{ id, title, tenantName, tenantSlug }` — id ghim không còn Công khai **không** được trả |
+
+Các action có sẵn của editor trang chủ (`saveHomeDraftAction`, `publishHomeAction`, `restoreLiveHomeAction`) giữ nguyên guard
+`requireRole("SYSTEM_ADMIN")`; lúc lưu validate chặt bằng `homeSectionsSchema` (schema mới ADR-033).
+
+### 14.2. Hàm lib
+
+| Hàm | File | Ghi chú |
+| :-- | :-- | :-- |
+| `getSystemSettings()` | `lib/system-settings.ts` | `cache()` theo request; parse phòng thủ → `SystemSettingsValues` (11 khoá) |
+| `getSystemSettingsPageData()` | `lib/system-settings.ts` | Loader trang `/admin/settings/general` (không cache): `values`, `bounds`, `invalidKeys`, `inactiveKeys`, `inactiveReasons`, `isDefault`, `updatedAt`, `updatedByEmail` |
+| `getAccessTokenTtlSeconds()`, `getRefreshTokenTtl()` | `lib/jwt-context.ts` | TTL cho token **mới** |
+| `getEffectiveBrand()` | `lib/branding.ts` | `Brand { name, shortName, slogan }` = `resolveBrand(SystemBranding)`; thay `getBrand()` đã bỏ |
+| `getHomeStats`, `buildHomeStatItems`, `getHomeSearchCategories`, `getHomeFeaturedTenants`, `getHomeFeaturedProducts`, `listHomeTenantOptions`, `listHomeProductOptions` | `lib/home.ts` | Mọi truy vấn trong `withPublic`; không đọc `orders` |
+| `recomputeProductSoldCounts(productIds)` | `lib/product-sold-count.ts` | `withSystemJob`, gọi sau commit; lỗi chỉ log |
+| `markOrderPaid(tx, orderId, source)` | `lib/order.ts` | Trả `{ fulfilled, productIds }` (đổi contract — bản HEAD trả `{ fulfilled: boolean }` ✅ `git show HEAD`) |
+| `sendEmailNow(message)` | `lib/email-dispatch.ts` | Thiếu cấu hình SMTP + env → `{ ok:false, code:"EMAIL_NOT_CONFIGURED" }`; `emailNotConfiguredError()` = `AppError` 503 (ném ở luồng admin gửi lại email kích hoạt) |
+
+### 14.3. Subpath dùng được ở client
+
+* `@gieochu/core/system-settings` → `packages/core/src/settings/system-settings.ts`: `SYSTEM_SETTINGS_BOUNDS`,
+  `SYSTEM_SETTING_KEYS`, `DEFAULT_SYSTEM_SETTINGS`, `INACTIVE_SYSTEM_SETTINGS`, `systemSettingsSchema`,
+  `parseStoredSystemSettings`, `DISPLAY_TIME_ZONE`.
+* `@gieochu/core/home-sections` → `packages/core/src/admin/home-sections.ts`: `homeSectionSchema(s)`, `parseHomeSections`,
+  `HOME_STAT_KEYS`, `HOME_STAT_DEFAULT_LABELS`, `HOME_FEATURED_LIMIT_MIN/MAX` (3/12), `HOME_PINNED_MAX` (12),
+  `HOME_COACHES_DEFAULT_LIMIT` (4), `HOME_DOCUMENTS_DEFAULT_LIMIT` (6), `HOME_SECTION_LABELS`.
+* `@gieochu/config/brand`: `DEFAULT_BRAND`, `resolveBrand`, kiểu `Brand`.
+
+---
+
+## 15. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * [[Database-Schema-Reference]] — Lược đồ dữ liệu ([Database-Schema-Reference.md](./Database-Schema-Reference.md))
@@ -399,5 +441,6 @@ hằng `POST_TITLE_MAX_LENGTH` (200), `POST_EXCERPT_MAX_LENGTH` (300), `POST_MAX
 * [[02-System-Specs/Reviews-Specs|Reviews-Specs]] — nghiệp vụ đánh giá M10a ([Reviews-Specs.md](../02-System-Specs/Reviews-Specs.md)) · [[01-Architecture-Decisions/ADR-015-M10-Reviews-Posts-Rls-Split-Writes|ADR-015 (≙ ADR-029)]] ([ADR-015-M10-Reviews-Posts-Rls-Split-Writes.md](../01-Architecture-Decisions/ADR-015-M10-Reviews-Posts-Rls-Split-Writes.md))
 * [[02-System-Specs/Posts-Specs|Posts-Specs]] — nghiệp vụ bài viết M10b ([Posts-Specs.md](../02-System-Specs/Posts-Specs.md))
 * [[01-Architecture-Decisions/ADR-016-Short-Product-Url-No-Sticky-Publish-Card|ADR-016 (≙ ADR-030)]] — URL tài liệu rút gọn, redirect 301 ([ADR-016-Short-Product-Url-No-Sticky-Publish-Card.md](../01-Architecture-Decisions/ADR-016-Short-Product-Url-No-Sticky-Publish-Card.md))
+* [[01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-From-System-Center|ADR-018 (≙ ADR-032)]] ([ADR-018-System-Settings-And-Brand-From-System-Center.md](../01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-From-System-Center.md)) · [[01-Architecture-Decisions/ADR-019-Home-Page-Real-Data-Sold-Count|ADR-019 (≙ ADR-033)]] ([ADR-019-Home-Page-Real-Data-Sold-Count.md](../01-Architecture-Decisions/ADR-019-Home-Page-Real-Data-Sold-Count.md))
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

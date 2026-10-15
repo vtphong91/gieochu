@@ -26,7 +26,7 @@ Vì vậy:
 - **Không** tạo lại một bộ ~67 "báo cáo lịch sử Gieo Chữ" giả để mô phỏng cấu trúc cũ — đó sẽ là bịa ra một
   lịch sử dự án không hề xảy ra (các cuộc họp, quyết định, sprint chưa từng có).
 - Mọi nội dung trong thư mục này **chỉ được lấy từ 3 nguồn thật, có thể kiểm chứng**:
-  1. [`docs/DECISIONS.md`](../../docs/DECISIONS.md) — 31 ADR thật (ADR-001 → ADR-031).
+  1. [`docs/DECISIONS.md`](../../docs/DECISIONS.md) — 34 ADR thật (ADR-001 → ADR-034).
   2. [`docs/PLAN.md`](../../docs/PLAN.md) — tiến độ module M0–M12 thật.
   3. [`docs/BACKLOG.md`](../../docs/BACKLOG.md) — việc còn thiếu/hoãn thật.
   4. Lịch sử `git log` thật của repo (không suy diễn ngày tháng).
@@ -39,10 +39,10 @@ Vì vậy:
 ## Nội dung thư mục (nhỏ, có chủ đích — không phải một archive lớn)
 
 - [[Module-Build-History]] — timeline build module M0–M9, đối chiếu `PLAN.md` với git log thật.
-- [[Architecture-Decisions-Timeline]] — mục lục đầy đủ 31 ADR (ADR-001 → ADR-031).
+- [[Architecture-Decisions-Timeline]] — mục lục đầy đủ 34 ADR (ADR-001 → ADR-034).
 - [[Known-Gaps-And-Backlog]] — tóm tắt việc còn thiếu/hoãn từ `BACKLOG.md`, tính tới 2026-09-26.
 
 Xem thêm [[01-Architecture-Decisions/README|01-Architecture-Decisions]] để có nội dung đầy đủ của các ADR
-quan trọng nhất (một tập con của 31 ADR, được diễn giải sâu hơn).
+quan trọng nhất (một tập con của 34 ADR, được diễn giải sâu hơn).
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

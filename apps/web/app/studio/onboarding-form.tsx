@@ -8,11 +8,11 @@ import { INK_SOFT, LINE } from "../(auth)/_ui/colors";
 
 const initialState: CreateTenantActionState = {};
 
-export function StudioOnboardingForm() {
+export function StudioOnboardingForm({ brandName, siteHost }: { brandName: string; siteHost: string }) {
   const [state, formAction, isPending] = useActionState(createTenantAction, initialState);
 
   return (
-    <AuthCard title="Mở trang của bạn" subtitle="Tạo trang bán tài liệu riêng của bạn trên Gieo Chữ.">
+    <AuthCard title="Mở trang của bạn" subtitle={`Tạo trang bán tài liệu riêng của bạn trên ${brandName}.`}>
       <form action={formAction} className="space-y-4">
         <TextField id="name" label="Tên trang" name="name" required />
         <div>
@@ -20,7 +20,7 @@ export function StudioOnboardingForm() {
             Đường dẫn (tuỳ chọn — tự tạo từ tên nếu bỏ trống)
           </label>
           <div className="mt-1.5 flex items-center rounded-lg border px-3.5 py-2.5 text-[15px]" style={{ borderColor: LINE, color: INK_SOFT }}>
-            <span>gieochu.net/</span>
+            <span>{siteHost}/</span>
             <input id="slug" name="slug" placeholder="ten-trang-cua-ban" className="w-full outline-none" style={{ color: "#12213A" }} />
           </div>
         </div>

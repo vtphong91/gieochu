@@ -5,12 +5,12 @@ tags:
   - adr
   - history
 date: 2026-09-26
-updated: 2026-09-29
+updated: 2026-10-15
 ---
 
 # Architecture Decisions Timeline — Gieo Chữ
 
-Mục lục đầy đủ theo trình tự đánh số của **31 ADR thật** (ADR-001…ADR-031), nguồn duy nhất: [`docs/DECISIONS.md`](../../docs/DECISIONS.md).
+Mục lục đầy đủ theo trình tự đánh số của **34 ADR thật** (ADR-001…ADR-034), nguồn duy nhất: [`docs/DECISIONS.md`](../../docs/DECISIONS.md).
 Đây chỉ là "mục lục theo thời gian" (một dòng mỗi ADR) — không lặp lại toàn văn Bối cảnh/Quyết định/Lý do.
 
 Xem [[01-Architecture-Decisions/README|01-Architecture-Decisions]] để có nội dung đầy đủ của các ADR quan
@@ -49,5 +49,8 @@ trọng nhất; trang này chỉ là mốc thời gian đầy đủ 29 quyết �
 | ADR-029 | M10 giai đoạn 1: Đánh giá (M10a) + Bài viết tối giản (M10b); siết RLS `products`/`product_files` | Phạm vi M10a → M10b, M10c sang BACKLOG; đánh giá chỉ cho khách có đơn hoàn tất + entitlement chưa thu hồi, 1 đánh giá/khách/sản phẩm, cache điểm số nguyên dưới `system_job`; section "Đánh giá" thật, section cũ thành "Cảm nhận". Bổ sung theo triển khai: siết RLS ghi **7 bảng** (`select_access` + `write_*` chỉ tenant/`system_job`), quy tắc không `FOR ALL` khi có nhánh public/customer; `reviews` gắn `orderItemId`, trigger `reviews_guard_columns`. Chưa thêm test. |
 | ADR-030 | URL tài liệu rút gọn `/{tenantSlug}/{productSlug}`; bỏ sticky card xuất bản | URL chuẩn `/{tenantSlug}/{productSlug}`, URL cũ `/{tenantSlug}/products/{productSlug}` → 301; hàm dựng URL duy nhất `productPath`; 23 slug dành riêng ở `packages/core`; card xuất bản editor sản phẩm/bài viết không dính khi cuộn (thay phần "card xuất bản dính" của ADR-027). Bổ sung theo triển khai: redirect bằng Route Handler (Next trả 308 nếu dùng `permanentRedirect`/`redirects`), `/{tenantSlug}/products` → 404, canonical tuyệt đối, slug tự nhập trùng → `INVALID_SLUG`, tự sinh trùng → hậu tố; quét slug trùng trên DB prod trước deploy. |
 | ADR-031 | Deploy Vercel: build không cần DB/env; `PRISMA_MIGRATE_URL` không bao giờ ở runtime | `apps/web/vercel.json` (`buildCommand: "next build"`, Root Directory `apps/web`), Prisma client sinh sẵn được commit; root `app/layout.tsx` `force-dynamic` (build không cần env, nonce CSP gắn mọi trang); `PRISMA_MIGRATE_URL` xoá khỏi schema env runtime, chỉ CLI `migrate`/`studio` + `setup-app-role` đọc, `db seed` dùng `DATABASE_URL`; migration prod chạy ngoài Vercel; worker pg-boss cần host riêng (chưa có). |
+| ADR-032 | Cấu hình hệ thống và thương hiệu lấy từ System Center (DB); env chỉ còn hạ tầng + secret | Env runtime còn 8 biến (`APP_URL`, `DATABASE_URL`, `DIRECT_URL`, 3 biến JWT, 2 khoá mã hoá); thương hiệu chỉ từ `SystemBranding` + mặc định một chỗ `@gieochu/config/brand`; 11 khoá cấu hình (TTL, ân hạn, đơn/hoá đơn chờ, lượt tải mặc định) ở bảng L1 `system_settings` + `/admin/settings/general`, có giới hạn, chỉ áp cho thao tác mới; múi giờ hiển thị là hằng. Sự cố 2026-10-15: migration drop `platformName` chạy trên DB dev = DB production làm production 500, khôi phục bằng `ADD COLUMN IF NOT EXISTS`, drop lại chỉ sau deploy (expand → contract). |
+| ADR-033 | Trang chủ hệ thống dùng dữ liệu thật (số liệu, danh mục, giáo viên, tài liệu nổi bật, số đã bán) | Cột cache `products.soldCount` (đơn FULFILLED, trừ entitlement đã thu hồi), trang chủ không đọc `orders`; số liệu nổi bật thật, ô = 0 ẩn; chip từ danh mục có tài liệu Công khai; giáo viên/tài liệu nổi bật = ghim + tự bù theo điểm đánh giá rồi mới nhất; giữ nhập tay Hero/Vì sao chọn/Mở gian hàng/Cảm nhận người dùng/CTA. Bổ sung theo triển khai: "Công khai" = PUBLISHED + tenant ACTIVE, tính lại `soldCount` sau commit ở mọi đường đổi trạng thái đơn/entitlement, chưa có job đối soát. |
+| ADR-034 | Một database duy nhất cho dev, Preview và production | Chủ dự án không tách DB sau sự cố 2026-10-15: máy dev, Vercel Preview và Production dùng cùng database Neon; migration chỉ Quốc duyệt/chạy theo expand → contract, không `prisma migrate dev/reset`, không `pnpm db:seed`, integration test/script ghi dữ liệu thật phải dọn, Preview chỉ xem giao diện, dữ liệu demo trên production dọn bằng `demo:clean` trước khi mở cho người dùng thật. Thay khuyến nghị "tách DB dev bằng Neon branch". |
 
 *Quay lại: [[05-Historical-Archive/README|05-Historical-Archive]] · [[MOC-Home]] (../00-Index/MOC-Home.md)*

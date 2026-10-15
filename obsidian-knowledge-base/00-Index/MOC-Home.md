@@ -4,7 +4,7 @@ tags:
   - index
   - moc
 date: 2026-09-26
-updated: 2026-09-29
+updated: 2026-10-15
 author: System Architect
 ---
 
@@ -60,7 +60,12 @@ hệ thống (ADR-025), editor sản phẩm GĐ1 — danh mục bắt buộc khi
 `/{tenantSlug}/{productSlug}` + slug dành riêng + bỏ card xuất bản dính (ADR-030,
 [[01-Architecture-Decisions/ADR-016-Short-Product-Url-No-Sticky-Publish-Card|ADR-016 KB]]), deploy Vercel — build không cần
 DB/env, root layout `force-dynamic`, `PRISMA_MIGRATE_URL` không bao giờ ở runtime (ADR-031,
-[[01-Architecture-Decisions/ADR-017-Vercel-Deploy-Build-Without-Env|ADR-017 KB]]). Tổng cộng 31 ADR gốc.
+[[01-Architecture-Decisions/ADR-017-Vercel-Deploy-Build-Without-Env|ADR-017 KB]]), cấu hình hệ thống + thương hiệu lấy từ System
+Center (DB), env runtime chỉ còn 8 biến, kèm sự cố 2026-10-15 và quy tắc migration expand → contract (ADR-032,
+[[01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-From-System-Center|ADR-018 KB]]), trang chủ hệ thống dùng dữ liệu thật +
+cột cache `products.soldCount` (ADR-033, [[01-Architecture-Decisions/ADR-019-Home-Page-Real-Data-Sold-Count|ADR-019 KB]]), một database
+duy nhất cho dev/Preview/production + kỷ luật thao tác DB (ADR-034,
+[[01-Architecture-Decisions/ADR-020-Single-Database-Dev-Preview-Production|ADR-020 KB]]). Tổng cộng 34 ADR gốc.
 ([Đường dẫn](../01-Architecture-Decisions/README.md))
 
 ### 2. [[02-System-Specs/README|02-System-Specs]] — Đặc tả Hệ thống Sống (Living Specs)
@@ -89,9 +94,10 @@ lưu trữ qua System Admin (`/admin/settings/storage`, `/admin/billing/payment`
 công đã dùng để bắt lỗi thật (ví dụ lỗi CSP chặn hydrate React, seed thiếu `UserProfile`) trong các module
 trước.
 Hệ thống thiết kế UI (token, chuẩn độ rộng layout 1280px theo ADR-024, kit component, editor sản phẩm 2 cột + card xuất bản
-đầu sidebar (không dính khi cuộn — ADR-030) + trang Xem trước theo ADR-026/027, TiptapEditor upload ảnh theo ADR-028, giao diện đánh giá M10a §10, giao diện bài viết M10b §11) ở
+đầu sidebar (không dính khi cuộn — ADR-030) + trang Xem trước theo ADR-026/027, TiptapEditor upload ảnh theo ADR-028, giao diện đánh giá M10a §10, giao diện bài viết M10b §11, trang chủ dữ liệu thật + PinPicker + form "Cấu hình chung" §12 — ADR-032/033) ở
 [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] ([UI-Design-System.md](../04-Operations-Runbooks/UI-Design-System.md)).
-Deploy lên Vercel (ADR-031: cấu hình project, env runtime, chuẩn bị DB prod, worker pg-boss cần host riêng, sự cố đã gặp) ở
+Deploy lên Vercel (ADR-031/032: cấu hình project, 8 biến env runtime + biến cần xoá, chuẩn bị DB prod, worker pg-boss cần host
+riêng, sự cố đã gặp, **quy trình migration expand → contract + kỷ luật một DB duy nhất (ADR-034) sau sự cố 2026-10-15**) ở
 [[04-Operations-Runbooks/Deploy-Vercel-Runbook|Deploy-Vercel-Runbook]] ([Deploy-Vercel-Runbook.md](../04-Operations-Runbooks/Deploy-Vercel-Runbook.md)).
 Script dữ liệu demo **chỉ cho dev** (`demo:seed`/`demo:clean`, đánh giá trên tenant `phongweb`) ở
 [[04-Operations-Runbooks/Dev-Demo-Data-Runbook|Dev-Demo-Data-Runbook]] ([Dev-Demo-Data-Runbook.md](../04-Operations-Runbooks/Dev-Demo-Data-Runbook.md)).
@@ -100,7 +106,7 @@ Script dữ liệu demo **chỉ cho dev** (`demo:seed`/`demo:clean`, đánh giá
 ### 5. [[05-Historical-Archive/README|05-Historical-Archive]] — Lịch sử thật, không bịa (Cold Storage)
 Gieo Chữ còn ở giai đoạn rất sớm (18 commit git, 2026-09-17 → 2026-09-20) nên thư mục này **nhỏ và có chủ
 đích** — chỉ 3 trang dựng từ nguồn thật: [[Module-Build-History]] (đối chiếu `docs/PLAN.md` với git log thật),
-[[Architecture-Decisions-Timeline]] (mục lục đủ 31 ADR, ADR-001…ADR-031), [[Known-Gaps-And-Backlog]] (từ `docs/BACKLOG.md`).
+[[Architecture-Decisions-Timeline]] (mục lục đủ 34 ADR, ADR-001…ADR-034), [[Known-Gaps-And-Backlog]] (từ `docs/BACKLOG.md`).
 Không có báo cáo/sprint log giả lập nào được tạo thêm cho khớp quy mô một dự án lâu năm.
 ([Đường dẫn](../05-Historical-Archive/README.md))
 

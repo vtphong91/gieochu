@@ -28,6 +28,7 @@ import { sendEmailNow } from "./email-dispatch";
 import { getEffectiveBrand } from "./branding";
 import { getSystemSettings } from "./system-settings";
 import { hideReviewsForRevokedItems, recomputeProductRatings } from "./review";
+import { recomputeProductSoldCounts } from "./product-sold-count";
 
 const ORDER_CODE_RETRIES = 10;
 
@@ -51,13 +52,21 @@ function formatVnd(amountVnd: number): string {
  * the caller's RLS transaction (`withTenant`/`withSystemJob`) — never opens
  * its own, so it composes with whichever scope the caller already set up.
  * Already-PAID/FULFILLED is a no-op (idempotent).
+ * ADR-033: trả về `productIds` của đơn vừa FULFILLED (rỗng khi no-op) — caller gọi `recomputeProductSoldCounts`
+ * SAU khi transaction commit (hàm này chạy trong transaction của caller nên không tự tính được).
  */
 export type MarkOrderPaidSource = "SEPAY_WEBHOOK" | "MOMO_IPN" | "MANUAL_CONFIRM" | "ZERO_AMOUNT";
 
-export async function markOrderPaid(tx: Tx, orderId: string, source: MarkOrderPaidSource): Promise<{ fulfilled: boolean }> {
+export interface MarkOrderPaidResult {
+  fulfilled: boolean;
+  /** Sản phẩm của đơn vừa chuyển FULFILLED (rỗng khi no-op) — cần tính lại `soldCount` sau commit. */
+  productIds: string[];
+}
+
+export async function markOrderPaid(tx: Tx, orderId: string, source: MarkOrderPaidSource): Promise<MarkOrderPaidResult> {
   const order = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
   if (order.status === "PAID" || order.status === "FULFILLED") {
-    return { fulfilled: false };
+    return { fulfilled: false, productIds: [] };
   }
 
   const now = new Date();
@@ -122,7 +131,7 @@ export async function markOrderPaid(tx: Tx, orderId: string, source: MarkOrderPa
   const fulfilledStatus = transitionOrderStatus(paidStatus, "FULFILL");
   await tx.order.update({ where: { id: orderId }, data: { status: fulfilledStatus } });
 
-  return { fulfilled: true };
+  return { fulfilled: true, productIds: [...new Set(items.map((item) => item.productId))] };
 }
 
 /** Sends the buyer + owner emails (SMTP đồng bộ, không hàng đợi) — called by the caller *after* the markOrderPaid transaction commits, never from inside it (giữ transaction ngắn, không chờ SMTP bên trong). */
@@ -240,7 +249,8 @@ export async function createOrder(customerId: string, tenantSlug: string, produc
   );
 
   if (order.totalVnd === 0) {
-    await withTenant(tenant.id, (tx) => markOrderPaid(tx, order.id, "ZERO_AMOUNT"));
+    const paid = await withTenant(tenant.id, (tx) => markOrderPaid(tx, order.id, "ZERO_AMOUNT"));
+    await recomputeProductSoldCounts(paid.productIds);
     await sendOrderPaidEmails(order.id);
   }
 
@@ -316,7 +326,8 @@ export async function applyCouponToOrder(tenantId: string, orderId: string, cust
   });
 
   if (updated.totalVnd === 0) {
-    await withTenant(tenantId, (tx) => markOrderPaid(tx, orderId, "ZERO_AMOUNT"));
+    const paid = await withTenant(tenantId, (tx) => markOrderPaid(tx, orderId, "ZERO_AMOUNT"));
+    await recomputeProductSoldCounts(paid.productIds);
     await sendOrderPaidEmails(orderId);
   }
 
@@ -396,10 +407,11 @@ export async function confirmOrderManually(tenantId: string, orderId: string, no
     throw new AppError({ code: "ORDER_NOT_CONFIRMABLE", message: "Đơn hàng không ở trạng thái có thể xác nhận thủ công.", httpStatus: 409 });
   }
 
-  await withTenant(tenantId, async (tx) => {
+  const paid = await withTenant(tenantId, async (tx) => {
     await tx.order.update({ where: { id: orderId }, data: { confirmNote: note.trim() } });
-    await markOrderPaid(tx, orderId, "MANUAL_CONFIRM");
+    return markOrderPaid(tx, orderId, "MANUAL_CONFIRM");
   });
+  await recomputeProductSoldCounts(paid.productIds);
   await sendOrderPaidEmails(orderId);
 }
 
@@ -414,21 +426,25 @@ export async function cancelOrder(tenantId: string, orderId: string): Promise<vo
 /**
  * Only valid from FULFILLED — revokes every entitlement the order created so downloads stop working.
  * ADR-029 mục 2: đánh giá gắn với các dòng đơn này tự ẩn (HIDDEN, lý do REFUNDED) trong cùng transaction, điểm
- * sản phẩm tính lại sau khi commit.
+ * sản phẩm tính lại sau khi commit. ADR-033: `soldCount` của sản phẩm trong đơn cũng tính lại sau commit.
  */
 export async function markOrderRefunded(tenantId: string, orderId: string): Promise<void> {
   const order = await withTenant(tenantId, (tx) => tx.order.findUnique({ where: { id: orderId } }));
   if (!order) throw notFound("Không tìm thấy đơn hàng.");
   const nextStatus = transitionOrderStatus(order.status as OrderStatus, "REFUND");
 
-  const affectedProductIds = await withTenant(tenantId, async (tx) => {
+  const { reviewProductIds, orderProductIds } = await withTenant(tenantId, async (tx) => {
     await tx.order.update({ where: { id: orderId }, data: { status: nextStatus } });
-    const items = await tx.orderItem.findMany({ where: { orderId }, select: { id: true } });
+    const items = await tx.orderItem.findMany({ where: { orderId }, select: { id: true, productId: true } });
     const itemIds = items.map((i) => i.id);
     await tx.entitlement.updateMany({ where: { orderItemId: { in: itemIds } }, data: { revokedAt: new Date() } });
-    return hideReviewsForRevokedItems(tx, tenantId, itemIds);
+    return {
+      reviewProductIds: await hideReviewsForRevokedItems(tx, tenantId, itemIds),
+      orderProductIds: items.map((i) => i.productId),
+    };
   });
-  await recomputeProductRatings(affectedProductIds);
+  await recomputeProductRatings(reviewProductIds);
+  await recomputeProductSoldCounts(orderProductIds);
 }
 
 export interface OrderListFilters {

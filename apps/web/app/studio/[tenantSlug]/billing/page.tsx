@@ -7,6 +7,7 @@ import { RenewForm } from "./renew-form";
 import { BillingPoll } from "./billing-poll";
 import { AdminPageHeader, Badge, ConfigCard, DataTable, EmptyState, Td, Tr } from "../../../admin/_ui/kit";
 import { IconCard, IconReceipt } from "../../../admin/_ui/icons";
+import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 
 const STATUS_LABEL: Record<string, string> = {
   ACTIVE: "Đang hoạt động",
@@ -31,7 +32,7 @@ const INVOICE_STATUS_TONE: Record<string, "success" | "warning" | "neutral" | "d
 const UPGRADE_TRIGGER_RATIO = 0.8;
 
 function formatVnDate(date: Date): string {
-  return date.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+  return date.toLocaleDateString("vi-VN", { timeZone: DISPLAY_TIME_ZONE });
 }
 
 function UsageBar({ label, used, limit, unit }: { label: string; used: number; limit: number; unit: string }) {
@@ -113,7 +114,7 @@ export default async function StudioBillingPage({ params }: { params: Promise<{ 
           <ConfigCard icon={<IconReceipt className="h-5 w-5" />} title="Hoá đơn đang chờ thanh toán">
             <p className="text-sm text-gray-500">
               Mã: {pendingInvoice.code} · {pendingInvoice.amountVnd.toLocaleString("vi-VN")}đ · hạn{" "}
-              {pendingInvoice.dueAt.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}
+              {pendingInvoice.dueAt.toLocaleString("vi-VN", { timeZone: DISPLAY_TIME_ZONE })}
             </p>
             {(() => {
               const checkout = pendingInvoice.checkoutPayload as CheckoutResult | null;

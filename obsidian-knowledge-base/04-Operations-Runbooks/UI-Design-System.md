@@ -5,7 +5,7 @@ tags:
   - design-system
   - status/living
 date: 2026-05-24
-updated: 2026-09-28
+updated: 2026-10-15
 author: System Architect
 ---
 
@@ -232,13 +232,13 @@ module that depends on useState into a Server Component module".
 | Component | Vai trò |
 | :--- | :--- |
 | `AdminPageHeader` | Tiêu đề trang + mô tả + khối hành động bên phải — dùng ở đầu mọi trang cấu hình/CMS |
-| `SettingsGrid` | Grid nhiều `ConfigCard` xếp ngang, `auto-fit` tránh khoảng trắng chết |
+| `SettingsGrid` | Grid nhiều `ConfigCard` xếp ngang, `auto-fit` tránh khoảng trắng chết. ⚠️ Cột `minmax(380px, 960px)` → **cuộn ngang ở viewport 375px** ✅ (đọc code; BACKLOG). Trang "Cấu hình chung" không dùng component này (lưới riêng `xl:grid-cols-2`) |
 | `MainAsideGrid` | (ADR-026) Bố cục 2 cột `main` + `aside` (`aside` có `aria-label` qua `asideLabel`): 1 cột dưới `xl`, từ `xl` là `minmax(0,1fr) 320px`, `items-start`, `gap-6` ✅. Editor sản phẩm **không** dùng component này — tự dựng lưới riêng `minmax(0,1fr) 360px` trong `<form>`, khung 1440px (§9.1) |
 | `ConfigCard` | Card cấu hình 1 module: icon + tiêu đề + badge trạng thái + toggle bên phải + nội dung + footer |
 | `TableCard` | Card bọc 1 bảng tham khảo — icon + tiêu đề + mô tả, không có toggle (khác `ConfigCard`) |
 | `Badge` | Huy hiệu trạng thái, 5 tone: `success` / `warning` / `danger` / `neutral` / `info` |
-| `TextField`, `SelectField` | Input/select có label, hint, error — dùng `FieldShell` nội bộ chung |
-| `PasswordField`, `Toggle` | Client component (từ `kit-interactive.tsx`), re-export qua `kit.tsx` |
+| `TextField`, `SelectField` | Input/select có label, hint, error — dùng `FieldShell` nội bộ chung. **Tự gắn a11y khi có `id`** (2026-10-15 ✅): `aria-invalid` khi có `error`; `aria-describedby` trỏ `${id}-error` (ưu tiên) hoặc `${id}-hint` — đúng id `FieldShell` gắn cho dòng lỗi (`role="alert"`) / dòng gợi ý; có lỗi thì dòng gợi ý không render. Trang gọi **không** tự đặt lại hai thuộc tính này |
+| `PasswordField`, `Toggle` | Client component (từ `kit-interactive.tsx`), re-export qua `kit.tsx`. **`Toggle`** (2026-10-15 ✅): input thật `sr-only` + vòng focus vẽ trên rãnh switch (`peer-focus-visible:outline-2`, màu `#0F3B82` — WCAG 2.4.7); có prop `checked` (controlled) thì **luôn theo prop**, không lệch màu khi cha đổi giá trị; không có `checked` thì tự giữ state từ `defaultChecked` |
 | `PrimaryButton`, `GhostButton` | Nút submit chính/phụ trong form |
 | `PrimaryLinkButton`, `GhostLinkButton` | Nút dạng `<Link>` — dùng cho pattern "bấm để hiện form" qua query param (`?new=1`) thay vì client state |
 | `RowActionButton` | Nút hành động nhỏ trong dòng bảng, 4 tone: `primary` / `success` / `danger` / `neutral`; prop `size`: `sm` (mặc định, dòng bảng desktop) · **`touch`** (ADR-029 — thẻ/danh sách dùng cả trên mobile: `min-h-11` = 44px dưới `lg`, gọn như `sm` từ `lg`) ✅ |
@@ -269,6 +269,9 @@ liệt kê 35 tên — số đúng trước đợt này là 35 ✅ `git show HEA
 
 Dùng làm `icon` prop cho `ConfigCard`/`TableCard`/`EmptyState`, hoặc độc lập trong nút/menu hành động
 (`RowActionButton`, kebab menu).
+
+**A11y mặc định (2026-10-15 ✅):** cả 42 `<svg>` trong `icons.tsx` đều có `aria-hidden="true"` — icon là trang trí; nút/link chỉ
+có icon phải tự có tên truy cập (`aria-label` hoặc chữ `sr-only`).
 
 ---
 
@@ -766,7 +769,87 @@ Mục **"Bài viết"** (icon `IconNewspaper`, key `posts`) đứng ngay sau "S�
 
 ---
 
-## 12. Tài Liệu Tham Chiếu & Liên Kết
+## 12. Trang Chủ Dữ Liệu Thật, System Center "Cấu Hình Chung" và Thương Hiệu (ADR-032/033) ✅
+
+Quyết định: [[01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-From-System-Center|ADR-018 (≙ ADR-032)]],
+[[01-Architecture-Decisions/ADR-019-Home-Page-Real-Data-Sold-Count|ADR-019 (≙ ADR-033)]]. Quyết định thiết kế theo brief của Quốc
+(Phong làm), Long đối chiếu code 2026-10-15.
+
+### 12.1. Thẻ trang chủ — link phủ cả thẻ (`app/_home-sections.tsx`)
+
+* `CARD_CLASS`: `group relative flex h-full flex-col … rounded-3xl border bg-white`, hover đổ bóng + nhấc `-translate-y-0.5` **chỉ
+  khi** `motion-safe`; vòng focus vẽ trên **cả thẻ** bằng `has-[a:focus-visible]:outline-3 outline-offset-2` (màu qua
+  `outlineColor`).
+* `STRETCHED_LINK = "outline-none after:absolute after:inset-0 after:content-['']"` gắn vào **link duy nhất** trên tiêu đề thẻ
+  (`<h3><Link>`) → bấm đâu trên thẻ cũng đi; tên truy cập = tên giáo viên/tài liệu, không lặp "Xem chi tiết". Nhãn "Xem gian
+  hàng" cuối thẻ chỉ là `span aria-hidden`.
+* Áp cho thẻ "Giáo viên & Coach nổi bật" (link `/{tenantSlug}`) và "Tài liệu nổi bật" (link `productPath`). Avatar/ảnh trang trí
+  `alt=""`/`aria-hidden`. Không đặt thêm link/nút khác bên trong thẻ (sẽ bị lớp `after:` phủ).
+* "Đã bán N" và sao chỉ hiện khi > 0 / có đánh giá; cả khối ẩn khi không có gì.
+
+### 12.2. Định dạng số
+
+* Số đếm thường: `Intl.NumberFormat("vi-VN")` ("1.234").
+* **Số liệu nổi bật** (`formatStat`): < 1.000 hiện đúng số; từ 1.000 làm tròn **xuống** hàng trăm kèm "+" — hiển thị "1.200+",
+  bản cho trình đọc màn hình "Hơn 1.200" (không bao giờ phóng đại); số tròn trăm hiện nguyên.
+* Điểm đánh giá 1 chữ số thập phân kiểu vi-VN ("4,6"), giá `"… ₫"`.
+
+### 12.3. Section "Tìm tài liệu" — chip tĩnh + `<details>`
+
+* Chip danh mục là `<li>` **tĩnh** (tên + "· N" kèm `sr-only` "tài liệu"), **không** phải link/nút — chưa có trang tìm kiếm/danh
+  mục công khai nên không giả làm phần tử bấm được. Danh sách có nhãn "Danh mục đang có tài liệu" (`aria-labelledby`).
+* Hiện sẵn 10 chip (`SEARCH_CHIPS_VISIBLE`); phần còn lại trong `<details>`/`<summary>` ("Xem thêm N danh mục" / "Thu gọn",
+  `min-h-11`, focus-visible outline, mũi tên xoay tắt khi `motion-reduce`) — không cắt mất, không cuộn ngang.
+* Ô tìm + nút "Tìm kiếm" giữ hiện trạng (chưa có hành vi) — BACKLOG "trang tìm kiếm/danh mục công khai".
+
+### 12.4. Mẫu `PinPicker` (`app/admin/cms/home-editor/pin-picker.tsx`, client)
+
+Ô chọn ghim cho section "Giáo viên & Coach nổi bật" / "Tài liệu nổi bật" trong editor CMS trang chủ:
+
+* Props: `id`, `label`, `searchLabel`, `searchPlaceholder?`, `value: string[]` (thứ tự = thứ tự hiển thị), `max`, `limit`,
+  `initialOptions: PinOption[]` (`{ id, label, hint?, eligible }`), `search(query, includeIds)` (gọi Server Action
+  `searchHomeTenantOptionsAction`/`searchHomeProductOptionsAction`), `onChange`.
+* Danh sách đã ghim: nút **Lên/Xuống** thay kéo-thả (WCAG 2.5.7) + "Bỏ ghim"; nút icon 44px dưới `lg`, 36px từ `lg`; dùng
+  `aria-disabled` thay `disabled` để focus không mất khi chạm đầu/cuối.
+* Mục `eligible:false` hoặc id không còn trong dữ liệu → nhãn **chữ** "Không còn hiển thị" (không chỉ dùng màu); mục vượt `limit`
+  → nhãn "Ngoài số thẻ hiển thị".
+* Ô tìm: debounce 300ms, Enter tìm ngay, bỏ kết quả cũ nếu có yêu cầu mới hơn. Thông báo thao tác (đã ghim/bỏ/chuyển vị trí, số
+  kết quả) qua **một** vùng `role="status"` ẩn — không dời focus.
+
+### 12.5. Mẫu form cấu hình chung (`/admin/settings/general`)
+
+* `AdminPageHeader` + dòng "Cập nhật lần cuối … bởi …" (`<time>`, giờ theo `DISPLAY_TIME_ZONE`) hoặc "Chưa lưu lần nào — hệ thống
+  đang dùng giá trị mặc định."; cảnh báo vàng `role="status"` khi DB đang lưu giá trị không hợp lệ.
+* Nhóm ô theo `ConfigCard` (lưới `xl:grid-cols-2`, trong card `sm:grid-cols-2`); mỗi ô là `TextField type="number"
+  inputMode="numeric"` có `min/max/step=1`, nhãn "Tên (đơn vị)", gợi ý giới hạn; `noValidate` — validate ở server.
+* **Tóm tắt lỗi** đầu form: `role="alert"`, `tabIndex=-1`, nhận focus sau khi gửi lỗi, tiêu đề "Chưa lưu — N ô cần sửa", mỗi lỗi
+  là link `#<khoá>` tới ô.
+* Thanh hành động: ghi chú "Thay đổi chỉ áp cho thao tác mới…", nút phụ **"Điền giá trị mặc định"** (chỉ điền lại ô phía client,
+  không lưu; tắt khi đang lưu hoặc đã là mặc định) + nút chính "Lưu cấu hình"/"Đang lưu...". Kết quả qua `FormBanner`.
+* Khoá chưa dùng (`trialDays`) không có ô.
+
+### 12.6. Menu System Center (`admin/_ui/sidebar-nav.tsx`)
+
+Nhóm cài đặt hệ thống nay có: **"Cấu hình chung"** → `/admin/settings/general` (`IconGear`), **"Email hỗ trợ"** →
+`/admin/settings` (`IconMail`), rồi "Nhận diện thương hiệu", "Lưu trữ file", "Cloudinary Upload", "Cấu hình Mail" như cũ.
+
+### 12.7. Thương hiệu và múi giờ trên giao diện
+
+* Trang `/login`, `/register` (server) đọc `getEffectiveBrand()` rồi truyền **`brandName`** xuống form client (`LoginForm`,
+  `RegisterForm`); form onboarding Studio (`studio/onboarding-form.tsx`) cũng nhận `brandName` qua prop. Client component **không**
+  tự đọc thương hiệu (không có DB) và không import hằng `DEFAULT_BRAND` để hiển thị.
+* Định dạng ngày giờ dùng hằng chung `DISPLAY_TIME_ZONE` (`@gieochu/core/system-settings`) — `apps/web` không còn chỗ hard-code
+  chuỗi múi giờ ✅ (2026-10-15, sau khi Quốc sửa `lib/subscription-sweep.ts`).
+
+### 12.8. Việc còn mở (BACKLOG, liên quan UI)
+
+* `SettingsGrid` `minmax(380px, …)` gây cuộn ngang ở 375px.
+* Editor CMS trang chủ: "Xem trang chủ ↗" là `<Link>` bọc `<button>` (phần tử tương tác lồng nhau).
+* Chip/ô tìm trang chủ chưa thành link — chờ trang tìm kiếm/danh mục công khai.
+
+---
+
+## 13. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * `apps/web/app/admin/_ui/kit.tsx`, `apps/web/app/admin/_ui/kit-interactive.tsx`, `apps/web/app/admin/_ui/icons.tsx`
@@ -783,6 +866,7 @@ Mục **"Bài viết"** (icon `IconNewspaper`, key `posts`) đứng ngay sau "S�
 * [[02-System-Specs/Product-Editor-And-Publishing-Specs|Product-Editor-And-Publishing-Specs]] ([Product-Editor-And-Publishing-Specs.md](../02-System-Specs/Product-Editor-And-Publishing-Specs.md))
 * `apps/web/app/[tenantSlug]/_ui/{review-parts,product-reviews,review-composer,storefront-reviews}.tsx`, `studio/[tenantSlug]/reviews/_ui/review-card.tsx` (§10) · [[02-System-Specs/Reviews-Specs|Reviews-Specs]] ([Reviews-Specs.md](../02-System-Specs/Reviews-Specs.md)) · [[01-Architecture-Decisions/ADR-015-M10-Reviews-Posts-Rls-Split-Writes|ADR-015 (≙ ADR-029)]]
 * `apps/web/app/studio/[tenantSlug]/posts/_ui/{post-list,post-editor,post-bits}.ts(x)`, `apps/web/app/[tenantSlug]/_ui/{post-parts,storefront-posts}.tsx` (§11) · [[02-System-Specs/Posts-Specs|Posts-Specs]] ([Posts-Specs.md](../02-System-Specs/Posts-Specs.md))
+* `apps/web/app/_home-sections.tsx`, `apps/web/app/admin/cms/home-editor/{pin-picker,home-sections-editor}.tsx`, `apps/web/app/admin/settings/general/*`, `apps/web/app/admin/_ui/sidebar-nav.tsx` (§12) · [[01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-From-System-Center|ADR-018 (≙ ADR-032)]] · [[01-Architecture-Decisions/ADR-019-Home-Page-Real-Data-Sold-Count|ADR-019 (≙ ADR-033)]]
 * [[04-Operations-Runbooks/README|Quay lại danh mục Operations Runbooks]]
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

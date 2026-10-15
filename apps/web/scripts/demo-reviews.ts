@@ -23,6 +23,7 @@ import { calculateOrderPricing, computeOrderExpiresAt, computeRatingAverage, gen
 import { sanitizeRichTextHtml } from "@gieochu/core/content/sanitize-html";
 import { getPrismaClient, withCustomer, withSystemJob, withTenant, type ProductType, type Tx } from "@gieochu/db";
 import { markOrderPaid } from "../lib/order";
+import { recomputeProductSoldCounts } from "../lib/product-sold-count";
 import { addProductExternalLink, createProduct, publishProduct } from "../lib/product";
 import { hideReview, recomputeProductRatings, replyToReview, upsertMyReview } from "../lib/review";
 import { getSystemCloudinaryCloudName } from "../lib/system-cloudinary";
@@ -274,16 +275,20 @@ async function cleanDemo(): Promise<void> {
 
   // 2) Dữ liệu L2 của khách demo ở mọi tenant (thường chỉ phongweb) — xoá dưới scope của đúng tenant đó.
   const tenantIds = new Set<string>([tenant.id]);
+  const touchedSoldProductIds = new Set<string>();
   if (demoUserIds.length > 0) {
-    const rows = await withSystemJob(async (tx) => {
-      const [orders, ents, customers] = await Promise.all([
+    const { rows, orderedProductIds } = await withSystemJob(async (tx) => {
+      const [orders, ents, customers, items] = await Promise.all([
         tx.order.findMany({ where: { customerId: { in: demoUserIds } }, select: { tenantId: true } }),
         tx.entitlement.findMany({ where: { userId: { in: demoUserIds } }, select: { tenantId: true } }),
         tx.tenantCustomer.findMany({ where: { userId: { in: demoUserIds } }, select: { tenantId: true } }),
+        tx.orderItem.findMany({ where: { order: { customerId: { in: demoUserIds } } }, select: { productId: true } }),
       ]);
-      return [...orders, ...ents, ...customers];
+      return { rows: [...orders, ...ents, ...customers], orderedProductIds: items.map((i) => i.productId) };
     });
     rows.forEach((r) => tenantIds.add(r.tenantId));
+    // ADR-033: sản phẩm thật từng được khách demo mua → tính lại số đã bán sau khi xoá đơn.
+    orderedProductIds.forEach((id) => touchedSoldProductIds.add(id));
   }
 
   const counts = { downloadEvents: 0, entitlements: 0, orders: 0, tenantCustomers: 0, products: 0 };
@@ -332,6 +337,7 @@ async function cleanDemo(): Promise<void> {
   // 5) Sản phẩm thật từng được khách demo đánh giá → tính lại điểm.
   const remaining = [...touchedProductIds].filter((id) => !demoProductIds.includes(id));
   await recomputeProductRatings(remaining);
+  await recomputeProductSoldCounts([...touchedSoldProductIds].filter((id) => !demoProductIds.includes(id)));
 
   console.log(
     `[demo] đã dọn: ${users.count} user, ${counts.products} sản phẩm, ${counts.orders} đơn, ${counts.entitlements} entitlement, ` +
@@ -514,6 +520,7 @@ async function seedDemo(): Promise<void> {
     }
   }
   await recomputeProductRatings([...productIdByKey.values()]);
+  await recomputeProductSoldCounts([...productIdByKey.values()]);
 
   // ───── Báo cáo ─────
   const stats = await withTenant(tenant.id, async (tx) => {

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { homeSectionsSchema } from "@gieochu/core";
 import { getPrismaClient, Prisma } from "@gieochu/db";
 import { requireRole } from "../../../../lib/session";
+import { listHomeProductOptions, listHomeTenantOptions, type HomeProductOption, type HomeTenantOption } from "../../../../lib/home";
 
 export interface HomeEditorActionState {
   error?: string;
@@ -42,4 +43,23 @@ export async function restoreLiveHomeAction(pageId: string): Promise<HomeEditorA
   await prisma.cmsPage.update({ where: { id: pageId }, data: { blocksDraft: Prisma.DbNull } });
   revalidatePath("/admin/cms/home");
   return { success: true };
+}
+
+/**
+ * ADR-033 — tìm lựa chọn cho ô ghim "Giáo viên & Coach nổi bật" / "Tài liệu nổi bật" (tối đa 200, lọc theo tên).
+ * `includeIds` = id đang ghim để luôn trả kèm. Chỉ dữ liệu công khai (tên, slug, số tài liệu Công khai) — §7.9.
+ */
+export async function searchHomeTenantOptionsAction(search: unknown, includeIds: unknown): Promise<HomeTenantOption[]> {
+  await requireRole("SYSTEM_ADMIN");
+  return listHomeTenantOptions({ search: typeof search === "string" ? search : undefined, includeIds: toIdList(includeIds) });
+}
+
+export async function searchHomeProductOptionsAction(search: unknown, includeIds: unknown): Promise<HomeProductOption[]> {
+  await requireRole("SYSTEM_ADMIN");
+  return listHomeProductOptions({ search: typeof search === "string" ? search : undefined, includeIds: toIdList(includeIds) });
+}
+
+function toIdList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((id): id is string => typeof id === "string" && id.length > 0 && id.length <= 64).slice(0, 12);
 }

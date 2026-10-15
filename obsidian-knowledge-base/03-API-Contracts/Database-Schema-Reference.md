@@ -5,7 +5,7 @@ tags:
   - schema
   - status/living
 date: 2026-06-20
-updated: 2026-09-28
+updated: 2026-10-15
 author: System Architect
 ---
 
@@ -109,7 +109,7 @@ erDiagram
 | `CmsPage` | Nội dung trang marketing (`blocks` = bản live, `blocksDraft` = bản đang sửa — publish copy draft → live) | — | `CmsPageStatus` |
 | `Subscription` | Subscription SaaS của 1 tenant — có `tenantId` nhưng **không** RLS (không nằm trong danh sách §4): billing là nghiệp vụ system-managed, quyền đọc gác ở app layer (`requireTenantMember` cho owner, `requireRole SYSTEM_ADMIN` cho admin), cùng nhóm với `Plan`/`SubscriptionInvoice` | Tenant, Plan, SubscriptionInvoice | `SubscriptionStatus` |
 | `TenantSlugHistory` | Lịch sử đổi slug tenant (redirect 301 slug cũ → mới), có `tenantId` nhưng không RLS | Tenant | — |
-| `SystemSettings` | Cấu hình 1-row (`platformName`, `trialDays`, `graceDays` — nguồn sự thật sau khi seed, không còn đọc lại từ env) | — | — |
+| `SystemSettings` | (ADR-032) Cấu hình hệ thống 1 dòng `id="default"` (`@@map("system_settings")`): `supportEmail String?` + 11 khoá `Int` có default — `accessTokenTtlMinutes` 15, `refreshTokenTtlDays` 7, `emailVerifyTtlHours` 24, `passwordResetTtlMinutes` 30, `presignUploadTtlSeconds` 600, `presignDownloadTtlSeconds` 600, `trialDays` 14 (chưa dùng), `graceDays` 7, `orderPendingTtlMinutes` 60, `invoicePendingTtlHours` 24, `defaultDownloadLimit` 5 — giới hạn ở `SYSTEM_SETTINGS_BOUNDS` (app, không có CHECK ở DB); `updatedById String?` (không FK), `updatedAt`. **`platformName` đã bỏ khỏi schema** ✅ nhưng cột còn trên DB production sau sự cố 2026-10-15 🟡 (§7). Đọc qua `getSystemSettings()`, sửa ở `/admin/settings/general` + `/admin/settings` (`supportEmail`) | — | — |
 | `SystemStorageConfig` | Cấu hình object storage duy nhất của platform (R2 prod); `encryptedSecrets` mã hoá **AES-256-GCM** bằng `STORAGE_ENCRYPTION_KEY` | — | — |
 | `SystemCloudinaryConfig` | Tài khoản Cloudinary cho ảnh CMS (khác `SystemStorageConfig` — đó là R2 cho file tài liệu/ảnh bìa sản phẩm); cùng mã hoá bằng `STORAGE_ENCRYPTION_KEY` | — | — |
 | `SystemSmtpConfig` | Cấu hình gửi email hệ thống (SMTP/Gmail App Password); `encryptedSecrets` mã hoá bằng `STORAGE_ENCRYPTION_KEY` | — | — |
@@ -133,7 +133,7 @@ erDiagram
 | :-- | :-- | :-- | :-- | :-- |
 | `Tenant` | Gian hàng của 1 giáo viên/coach (`ownerId` unique — 1 user = 1 tenant ở MVP); là **root** của L2 nên chính bảng này không cần RLS (định danh bằng `id` của chính nó). Từ ADR-023 có thêm 2 cột Json `storefrontSections` (bản live) / `storefrontSectionsDraft` (nháp) — `null` = chưa xuất bản → nội dung demo sinh trong code; validate bằng `storefrontSectionsSchema` (`@gieochu/core`) | Không (là root) | User (owner), TenantMember, Product, Subscription, TenantPaymentConfig, Coupon, Order, TenantCustomer, ShareLink, DownloadEvent, StorefrontMessage, TenantMediaAsset | `TenantStatus` |
 | `TenantMember` | Thành viên tenant (`role` OWNER/STAFF) — MVP chỉ tạo dòng OWNER, schema đã sẵn cho STAFF | ✅ `rls_m4` | Tenant, User | `TenantMemberRole` |
-| `Product` | Tài liệu số rao bán (`type`: TEMPLATE/SLIDE/EBOOK/EXAM/OTHER, `priceVnd`, `salePriceVnd`, `downloadLimit`, 0 = không giới hạn — ADR-015). ADR-026: `categoryId String?` FK → `DocumentCategory` `ON DELETE SET NULL`, index `products_categoryId_idx` (nháp được trống, xuất bản bắt buộc). ADR-027: `summary String?` (mô tả ngắn văn bản thuần ≤300 ký tự — giới hạn ở tầng ứng dụng `normalizeProductSummary`, DB là `TEXT`), `coverImageUrl String?` (ảnh bìa Cloudinary, chỉ `https://res.cloudinary.com/...` — kiểm ở app bằng `isCloudinaryImageUrl`); `coverImageKey` (R2 cũ) chỉ còn là fallback hiển thị ✅. ADR-029 (M10a): `ratingSum Int @default(0)`, `ratingCount Int @default(0)` — cache điểm đánh giá bằng số nguyên (chỉ review `VISIBLE`), CHECK `products_rating_cache_nonnegative`; chỉ ghi dưới `system_job` ✅ | ✅ `rls_m5`, `rls_m9_products_customer`, **`rls_adr029_split_write_policies`** (`20260927130000` — policy tách theo lệnh, xem §7) | Tenant, DocumentCategory, ProductFile, OrderItem, Entitlement, ShareLink | `ProductType`, `ProductStatus` |
+| `Product` | Tài liệu số rao bán (`type`: TEMPLATE/SLIDE/EBOOK/EXAM/OTHER, `priceVnd`, `salePriceVnd`, `downloadLimit`, 0 = không giới hạn — ADR-015). ADR-026: `categoryId String?` FK → `DocumentCategory` `ON DELETE SET NULL`, index `products_categoryId_idx` (nháp được trống, xuất bản bắt buộc). ADR-027: `summary String?` (mô tả ngắn văn bản thuần ≤300 ký tự — giới hạn ở tầng ứng dụng `normalizeProductSummary`, DB là `TEXT`), `coverImageUrl String?` (ảnh bìa Cloudinary, chỉ `https://res.cloudinary.com/...` — kiểm ở app bằng `isCloudinaryImageUrl`); `coverImageKey` (R2 cũ) chỉ còn là fallback hiển thị ✅. ADR-029 (M10a): `ratingSum Int @default(0)`, `ratingCount Int @default(0)` — cache điểm đánh giá bằng số nguyên (chỉ review `VISIBLE`), CHECK `products_rating_cache_nonnegative`; chỉ ghi dưới `system_job` ✅. ADR-033: **`soldCount Int @default(0)`** — cache số lượt mua (dòng đơn FULFILLED, trừ entitlement đã thu hồi), CHECK `products_sold_count_nonnegative` (chỉ trong SQL), tính lại toàn phần bằng `recomputeProductSoldCounts` dưới `system_job`; trang public chỉ đọc cột này, không đọc `orders` ✅ | ✅ `rls_m5`, `rls_m9_products_customer`, **`rls_adr029_split_write_policies`** (`20260927130000` — policy tách theo lệnh, xem §7) | Tenant, DocumentCategory, ProductFile, OrderItem, Entitlement, ShareLink | `ProductType`, `ProductStatus` |
 | `ProductFile` | Nguồn giao hàng của sản phẩm: file thật trong bucket **private** (`sourceKind = FILE`) **hoặc** link tài liệu ngoài (`sourceKind = EXTERNAL_URL`, ADR-026 — nhãn lưu ở `fileName`, URL ở `externalUrl`). `tenantId` denormalize từ `Product` để RLS scope không cần join; `removedAt` chỉ soft-hide, không xoá object đã có người mua. Từ ADR-026 `objectKey` (vẫn `@unique`), `mimeType`, `scanStatus` thành **nullable**; hình dạng dòng ép bằng CHECK `product_files_source_shape` (xem §7) ✅ | ✅ `rls_m5`, `rls_m9_product_files_customer`, `rls_adr026_product_files` (`20260926120100`), `rls_adr029_split_write_policies` (`20260927130000`) | Product, DownloadToken, DownloadEvent | `ProductFileSource`, `ProductFileScanStatus` |
 | `TenantPaymentConfig` | Cổng thanh toán **online** tenant tự cấu hình (1 dòng/provider); `encryptedSecrets` mã hoá **AES-256-GCM** bằng `PAYMENT_ENCRYPTION_KEY`, UI chỉ hiện `••••abcd` | ✅ `rls_m7` | Tenant | `PaymentProviderId` |
 | `Coupon` | Mã giảm giá của tenant; `productIds` là JSON array (null/rỗng = áp mọi sản phẩm) | ✅ `rls_m6`, `rls_adr029_split_write_policies` | Tenant, CouponRedemption | `CouponType` |
@@ -312,6 +312,16 @@ cả hai. Không secret nào trả plaintext về client (UI chỉ hiện `•�
     `prisma migrate dev` có thể coi là drift và sinh migration xoá index; đọc SQL sinh ra trước khi áp (ADR-029 bổ sung M10b).
     Runtime dựa vào index này để bắt đua ghim (`P2002` → `POST_PIN_CONFLICT`).
   Chi tiết nghiệp vụ: [[02-System-Specs/Posts-Specs|Posts-Specs]].
+- **Migration ADR-032/033** ✅ đọc SQL (2026-10-15):
+  - `20260929090000_adr032_system_settings` — bỏ `NOT NULL` của `platformName`, `supportEmail`; default `trialDays=14`,
+    `graceDays=7`; thêm 10 cột (9 `INTEGER NOT NULL DEFAULT …` + `updatedById TEXT`). Bảng L1, không RLS.
+  - `20260929100000_adr032_drop_platform_name` — `DROP COLUMN "platformName"` (**không** `IF EXISTS`; loại *contract*). Đã chạy
+    trên DB dùng chung dev/production gây sự cố 500, cột được thêm lại bằng tay `ADD COLUMN IF NOT EXISTS "platformName" TEXT`
+    🟡. Migration contract mới `DROP COLUMN IF EXISTS` phải chạy **sau** khi deploy bản không dùng cột
+    ([[04-Operations-Runbooks/Deploy-Vercel-Runbook|Deploy-Vercel-Runbook]] §9.4).
+  - `20260929120000_adr033_product_sold_count` — `products.soldCount INTEGER NOT NULL DEFAULT 0`, CHECK
+    `products_sold_count_nonnegative`, backfill bằng cùng công thức với `recomputeProductSoldCounts` (không chạm `updatedAt`).
+  - Hai file sau chưa commit (untracked) ✅ `git status`.
 - **Không có tầng Store Factory / In-Memory Store nào** trong Gieo Chữ (khác các dự án khác từng dùng mẫu
   Dual-Store) — route/Server Action gọi thẳng `getPrismaClient()` (L1) hoặc `withTenant`/`withCustomer`/
   `withPublic`/`withSystemJob` (L2), không có interface trung gian để hoán đổi backend.

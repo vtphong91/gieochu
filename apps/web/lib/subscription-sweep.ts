@@ -1,4 +1,4 @@
-import { computeGraceEndsAt, logger, transitionSubscriptionStatus, type SubscriptionStatus } from "@gieochu/core";
+import { computeGraceEndsAt, DISPLAY_TIME_ZONE, logger, transitionSubscriptionStatus, type SubscriptionStatus } from "@gieochu/core";
 import { getPrismaClient, type Tenant } from "@gieochu/db";
 import { renderSubscriptionStatusEmail, type SubscriptionEmailStage } from "@gieochu/email";
 import { getEnv } from "@gieochu/config";
@@ -9,7 +9,7 @@ import { getSystemSettings } from "./system-settings";
 const REMINDER_DAYS = { EARLY: 7, LATE: 1 } as const;
 
 function formatVnDate(date: Date): string {
-  return date.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+  return date.toLocaleDateString("vi-VN", { timeZone: DISPLAY_TIME_ZONE });
 }
 
 async function notify(tenant: Pick<Tenant, "name" | "slug" | "ownerId">, stage: SubscriptionEmailStage, periodEnd?: Date) {

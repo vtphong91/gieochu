@@ -6,7 +6,7 @@ tags:
   - security
   - status/living
 date: 2026-09-26
-updated: 2026-09-26
+updated: 2026-10-15
 author: System Architect
 ---
 
@@ -55,7 +55,8 @@ flowchart TB
         F2["/admin/billing/invoices — Hoá đơn"]
     end
     subgraph G5["Cấu hình hệ thống"]
-        S1["/admin/settings — Cấu hình chung"]
+        S0["/admin/settings/general — Cấu hình chung (ADR-032)"]
+        S1["/admin/settings — Email hỗ trợ"]
         S2["/admin/settings/branding — Nhận diện thương hiệu"]
         S3["/admin/settings/storage — Lưu trữ file (R2)"]
         S4["/admin/settings/cloudinary — Cloudinary Upload (ảnh CMS)"]
@@ -125,13 +126,15 @@ không có bảng `SessionRecord` liệt kê từng thiết bị:
 | :--- | :--- | :--- |
 | `/admin/plans` | CRUD gói dịch vụ, `isFree`/`features` JSON | `createPlanAction`/`updatePlanAction`, `packages/core/src/admin/plan-validation.ts` |
 | `/admin/tenants` | `lockTenantAction`/`unlockTenantAction` (`TenantStatus.LOCKED` ↔ `ACTIVE`) — **không** đọc order/customer của tenant | `apps/web/app/admin/tenants/actions.ts` |
-| `/admin/cms` | CRUD trang CMS marketing, `blocksDraft` (nháp) tách khỏi `blocks` (live) | `packages/core/src/admin/cms-blocks.ts` |
+| `/admin/cms` | CRUD trang CMS marketing, `blocksDraft` (nháp) tách khỏi `blocks` (live). Trang chủ (`slug=home`) dùng schema riêng `homeSectionsSchema`; từ ADR-033 bốn section `stats`/`search`/`coaches`/`documents` lấy dữ liệu thật, CMS chỉ lưu nhãn/`limit`/id ghim (ô chọn ghim `PinPicker`) | `packages/core/src/admin/cms-blocks.ts`, `packages/core/src/admin/home-sections.ts`, `apps/web/lib/home.ts` — xem [[01-Architecture-Decisions/ADR-019-Home-Page-Real-Data-Sold-Count|ADR-019 (≙ ADR-033)]] |
 | `/admin/categories` | Danh mục tài liệu (metadata sản phẩm, không phải dữ liệu riêng tư của tenant) | `apps/web/app/admin/categories/*` |
 | `/admin/billing/payment` | Cấu hình `PlatformPaymentConfig` (Manual QR/SePay/MoMo) | xem [[Payment-And-Billing]] |
 | `/admin/billing/invoices` | Duyệt `SubscriptionInvoice` chuyển khoản thủ công | `subscription-billing.ts` |
-| `/admin/settings` | `SystemSettings` (singleton — `trialDays`...) | `apps/web/lib/system-settings.ts` |
+| `/admin/settings/general` | (ADR-032) "Cấu hình chung": 10 khoá đang dùng của `SystemSettings` (TTL access/refresh, hạn link xác minh/đặt lại mật khẩu, hạn presign tải lên/tải xuống, ân hạn, đơn/hoá đơn chờ, lượt tải mặc định) — có giới hạn, chỉ áp cho thao tác mới; `trialDays` lưu nhưng ẩn (chưa dùng — ADR-021) | `apps/web/lib/system-settings.ts`, `updateSystemSettingsAction`; xem [[01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-From-System-Center|ADR-018 (≙ ADR-032)]] |
+| `/admin/settings` | Chỉ còn **Email hỗ trợ** (`SystemSettings.supportEmail`) | `updateSupportEmailAction` (`app/admin/settings/actions.ts`) |
+| `/admin/settings/branding` | `SystemBranding` — nguồn **duy nhất** của tên thương hiệu/slogan (ADR-032; trống → `DEFAULT_BRAND`), logo, màu | `apps/web/lib/branding.ts` (`getEffectiveBrand`) |
 | `/admin/settings/storage` | `SystemStorageConfig` (R2 credential mã hoá) | xem [[File-Storage-And-Downloads-Specs]] |
-| `/admin/settings/smtp` | Cấu hình gửi mail (SMTP/Resend) | `packages/email` |
+| `/admin/settings/smtp` | Cấu hình gửi mail (SMTP) — nguồn production; env email chỉ là fallback dev (ADR-032). Thiếu cả hai → `EMAIL_NOT_CONFIGURED` | `packages/email`, `apps/web/lib/email-dispatch.ts` |
 | `/admin/roles` | Trang **chỉ đọc**, giải thích 3 lớp tài khoản (System/Tenant/Customer) | xem [[Tenant-RBAC-And-Permissions]] |
 
 `getSystemRoleCounts()`/`getTenantOwnerCount()` (`apps/web/lib/admin-roles.ts`) là ví dụ đúng chuẩn: đếm số

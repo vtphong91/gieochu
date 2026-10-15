@@ -48,7 +48,9 @@ export function Toggle({
   onChange,
   ...rest
 }: ComponentProps<"input"> & { label?: string }) {
-  const [isOn, setIsOn] = useState(Boolean(checked ?? defaultChecked));
+  const [uncontrolledOn, setIsOn] = useState(Boolean(checked ?? defaultChecked));
+  // Có `checked` (controlled) → luôn theo prop, tránh lệch màu khi cha đổi giá trị từ bên ngoài.
+  const isOn = checked !== undefined ? Boolean(checked) : uncontrolledOn;
 
   return (
     <label className="inline-flex cursor-pointer items-center gap-2.5">
@@ -64,8 +66,9 @@ export function Toggle({
           }}
           {...rest}
         />
+        {/* Input thật bị sr-only → vòng focus vẽ trên rãnh switch (WCAG 2.4.7). */}
         <span
-          className="absolute inset-0 rounded-full transition-colors"
+          className="absolute inset-0 rounded-full transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#0F3B82]"
           style={{ background: isOn ? brandColors.secondary : "#D1D5DB" }}
         />
         <span

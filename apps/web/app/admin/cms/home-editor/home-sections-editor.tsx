@@ -5,12 +5,79 @@ import Link from "next/link";
 // Import trực tiếp từ subpath (không qua barrel "@gieochu/core") — đây là
 // "use client" component, còn barrel index.ts kéo theo cả code server-only
 // (argon2) khiến Next cố bundle cho browser rồi lỗi "Module not found: fs".
-import { HOME_SECTION_LABELS, type HomeSection } from "@gieochu/core/home-sections";
-import { GhostButton, PrimaryButton, TextField } from "../../_ui/kit";
+import {
+  HOME_FEATURED_LIMIT_MAX,
+  HOME_FEATURED_LIMIT_MIN,
+  HOME_PINNED_MAX,
+  HOME_SECTION_LABELS,
+  HOME_STAT_KEYS,
+  type HomeSection,
+  type HomeStatKey,
+} from "@gieochu/core/home-sections";
+import { GhostButton, PrimaryButton, SelectField, TextField, Toggle } from "../../_ui/kit";
 import { IconChevronDown, IconCheckCircle } from "../../_ui/icons";
 import { ArrayObjectEditor } from "./array-object-editor";
 import { ImageUploadField } from "../../_ui/image-upload-field";
-import { publishHomeAction, restoreLiveHomeAction, saveHomeDraftAction } from "./actions";
+import {
+  publishHomeAction,
+  restoreLiveHomeAction,
+  saveHomeDraftAction,
+  searchHomeProductOptionsAction,
+  searchHomeTenantOptionsAction,
+} from "./actions";
+import { PinPicker, type PinOption } from "./pin-picker";
+import { toProductPinOption, toTenantPinOption } from "./pin-options";
+
+/** Tên ô số liệu trong editor (không phải nhãn hiển thị — nhãn hiển thị sửa được). */
+const STAT_EDITOR_NAMES: Record<HomeStatKey, string> = {
+  tenants: "Số người bán đang hoạt động",
+  products: "Số tài liệu Công khai",
+  sold: "Tổng lượt mua",
+  reviews: "Số đánh giá hiển thị",
+};
+
+async function searchTenantPins(query: string, includeIds: string[]): Promise<PinOption[]> {
+  return (await searchHomeTenantOptionsAction(query, includeIds)).map(toTenantPinOption);
+}
+
+async function searchProductPins(query: string, includeIds: string[]): Promise<PinOption[]> {
+  return (await searchHomeProductOptionsAction(query, includeIds)).map(toProductPinOption);
+}
+
+const LIMIT_CHOICES = Array.from({ length: HOME_FEATURED_LIMIT_MAX - HOME_FEATURED_LIMIT_MIN + 1 }, (_, i) => HOME_FEATURED_LIMIT_MIN + i);
+
+/** Chọn số thẻ bằng danh sách cố định (3–12) — không có trạng thái nhập sai/kẹp giá trị khi đang gõ. */
+function LimitField({ id, value, onChange }: { id: string; value: number; onChange: (v: number) => void }) {
+  return (
+    <SelectField
+      id={id}
+      label="Số thẻ hiển thị"
+      hint={`Từ ${HOME_FEATURED_LIMIT_MIN} đến ${HOME_FEATURED_LIMIT_MAX} thẻ. Mục ghim vượt số này sẽ không hiện.`}
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+    >
+      {LIMIT_CHOICES.map((n) => (
+        <option key={n} value={n}>
+          {n} thẻ
+        </option>
+      ))}
+    </SelectField>
+  );
+}
+
+/** Ghi chú cố định đầu form của section lấy dữ liệu thật (ADR-033). */
+function LiveDataNote({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="rounded-lg border px-3.5 py-2.5 text-sm" style={{ background: "#E8F1FF", borderColor: "#BFDBFE", color: "#1E3A8A" }}>
+      {children}
+    </p>
+  );
+}
+
+export interface HomeEditorPinOptions {
+  tenants: PinOption[];
+  products: PinOption[];
+}
 
 function CtaEditor({ label, value, onChange }: { label: string; value: { label: string; href: string }; onChange: (v: { label: string; href: string }) => void }) {
   return (
@@ -45,7 +112,15 @@ function LinesField({ id, label, value, onChange }: { id: string; label: string;
   );
 }
 
-function SectionFields({ section, onChange }: { section: HomeSection; onChange: (data: HomeSection["data"]) => void }) {
+function SectionFields({
+  section,
+  pinOptions,
+  onChange,
+}: {
+  section: HomeSection;
+  pinOptions: HomeEditorPinOptions;
+  onChange: (data: HomeSection["data"]) => void;
+}) {
   switch (section.type) {
     case "hero": {
       const d = section.data;
@@ -75,16 +150,45 @@ function SectionFields({ section, onChange }: { section: HomeSection; onChange: 
     case "stats": {
       const d = section.data;
       return (
-        <ArrayObjectEditor
-          label="Số liệu"
-          items={d.items}
-          fields={[
-            { key: "value", label: "Giá trị" },
-            { key: "label", label: "Nhãn" },
-          ]}
-          emptyItem={{ value: "", label: "" }}
-          onChange={(items) => onChange({ ...d, items })}
-        />
+        <div className="space-y-4">
+          <LiveDataNote>
+            Con số lấy tự động từ dữ liệu thật. Ô đang tắt hoặc có giá trị 0 sẽ tự ẩn; ẩn hết thì cả section không hiển thị. Thứ tự cố
+            định như dưới đây.
+          </LiveDataNote>
+          <ol className="grid gap-3 sm:grid-cols-2">
+            {HOME_STAT_KEYS.map((key, index) => {
+              const metric = d.metrics[key];
+              const labelError = metric.label.trim() ? undefined : "Nhập nhãn hiển thị (tối đa 60 ký tự).";
+              return (
+                <li key={key} className="rounded-lg border p-3.5" style={{ borderColor: "#E5E7EB", background: metric.enabled ? "white" : "#F9FAFB" }}>
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <p className="text-sm font-semibold" style={{ color: "#12213A" }}>
+                      <span className="mr-1.5 tabular-nums" style={{ color: "#6B7280" }}>
+                        {index + 1}.
+                      </span>
+                      {STAT_EDITOR_NAMES[key]}
+                    </p>
+                    <Toggle
+                      checked={metric.enabled}
+                      aria-label={`Hiển thị ô ${STAT_EDITOR_NAMES[key]}`}
+                      onChange={(e) => onChange({ ...d, metrics: { ...d.metrics, [key]: { ...metric, enabled: e.target.checked } } })}
+                    />
+                  </div>
+                  <TextField
+                    id={`stats-${key}-label`}
+                    label="Nhãn hiển thị"
+                    maxLength={60}
+                    required
+                    value={metric.label}
+                    error={labelError}
+                    hint={metric.enabled ? "Hiện dưới con số trên trang chủ." : "Đang tắt — ô này không hiển thị."}
+                    onChange={(e) => onChange({ ...d, metrics: { ...d.metrics, [key]: { ...metric, label: e.target.value } } })}
+                  />
+                </li>
+              );
+            })}
+          </ol>
+        </div>
       );
     }
     case "search": {
@@ -93,8 +197,14 @@ function SectionFields({ section, onChange }: { section: HomeSection; onChange: 
         <div className="space-y-4">
           <TextField id="search-title" label="Tiêu đề" value={d.title} onChange={(e) => onChange({ ...d, title: e.target.value })} />
           <TextField id="search-subtitle" label="Mô tả" value={d.subtitle} onChange={(e) => onChange({ ...d, subtitle: e.target.value })} />
-          <TextField id="search-placeholder" label="Placeholder ô tìm kiếm" value={d.placeholder} onChange={(e) => onChange({ ...d, placeholder: e.target.value })} />
-          <LinesField id="search-chips" label="Nhãn gợi ý (chip)" value={d.chips} onChange={(chips) => onChange({ ...d, chips })} />
+          <TextField
+            id="search-placeholder"
+            label="Gợi ý trong ô tìm kiếm"
+            hint="Chữ mờ hiện trong ô tìm khi chưa gõ."
+            value={d.placeholder}
+            onChange={(e) => onChange({ ...d, placeholder: e.target.value })}
+          />
+          <LiveDataNote>Chip danh mục lấy tự động từ danh mục đang hoạt động có ít nhất 1 tài liệu công khai (nhiều tài liệu xếp trước).</LiveDataNote>
         </div>
       );
     }
@@ -122,20 +232,21 @@ function SectionFields({ section, onChange }: { section: HomeSection; onChange: 
       const d = section.data;
       return (
         <div className="space-y-4">
+          <LiveDataNote>Thẻ lấy từ gian hàng đang hoạt động có tài liệu công khai: tên, logo, số tài liệu, điểm đánh giá, số đã bán.</LiveDataNote>
           <TextField id="coaches-title" label="Tiêu đề" value={d.title} onChange={(e) => onChange({ ...d, title: e.target.value })} />
           <TextField id="coaches-subtitle" label="Mô tả" value={d.subtitle} onChange={(e) => onChange({ ...d, subtitle: e.target.value })} />
-          <ArrayObjectEditor
-            label="Giáo viên / Coach nổi bật"
-            items={d.items}
-            fields={[
-              { key: "name", label: "Tên" },
-              { key: "subject", label: "Môn / chuyên môn" },
-              { key: "rating", label: "Điểm đánh giá" },
-              { key: "reviews", label: "Số lượt đánh giá" },
-              { key: "sold", label: "Số liệu bán (text)" },
-            ]}
-            emptyItem={{ name: "", subject: "", rating: "", reviews: "", sold: "" }}
-            onChange={(items) => onChange({ ...d, items })}
+          <LimitField id="coaches-limit" value={d.limit} onChange={(limit) => onChange({ ...d, limit })} />
+          <PinPicker
+            id="coaches-pins"
+            label="Giáo viên / Coach ghim trước"
+            searchLabel="Tìm giáo viên / coach để ghim"
+            searchPlaceholder="Tên gian hàng…"
+            value={d.pinnedTenantIds}
+            max={HOME_PINNED_MAX}
+            limit={d.limit}
+            initialOptions={pinOptions.tenants}
+            search={searchTenantPins}
+            onChange={(pinnedTenantIds) => onChange({ ...d, pinnedTenantIds })}
           />
         </div>
       );
@@ -144,21 +255,21 @@ function SectionFields({ section, onChange }: { section: HomeSection; onChange: 
       const d = section.data;
       return (
         <div className="space-y-4">
+          <LiveDataNote>Thẻ lấy từ tài liệu công khai: ảnh bìa, tên, gian hàng, giá hiệu lực (khuyến mãi), điểm đánh giá, số đã bán.</LiveDataNote>
           <TextField id="documents-title" label="Tiêu đề" value={d.title} onChange={(e) => onChange({ ...d, title: e.target.value })} />
           <TextField id="documents-subtitle" label="Mô tả" value={d.subtitle} onChange={(e) => onChange({ ...d, subtitle: e.target.value })} />
-          <ArrayObjectEditor
-            label="Tài liệu nổi bật"
-            items={d.items}
-            fields={[
-              { key: "tag", label: "Nhãn (VD: Đề thi)" },
-              { key: "title", label: "Tên tài liệu" },
-              { key: "seller", label: "Người bán" },
-              { key: "rating", label: "Điểm đánh giá" },
-              { key: "sold", label: "Số lượt mua (text)" },
-              { key: "price", label: "Giá" },
-            ]}
-            emptyItem={{ tag: "", title: "", seller: "", rating: "", sold: "", price: "" }}
-            onChange={(items) => onChange({ ...d, items })}
+          <LimitField id="documents-limit" value={d.limit} onChange={(limit) => onChange({ ...d, limit })} />
+          <PinPicker
+            id="documents-pins"
+            label="Tài liệu ghim trước"
+            searchLabel="Tìm tài liệu để ghim"
+            searchPlaceholder="Tên tài liệu…"
+            value={d.pinnedProductIds}
+            max={HOME_PINNED_MAX}
+            limit={d.limit}
+            initialOptions={pinOptions.products}
+            search={searchProductPins}
+            onChange={(pinnedProductIds) => onChange({ ...d, pinnedProductIds })}
           />
         </div>
       );
@@ -179,10 +290,10 @@ function SectionFields({ section, onChange }: { section: HomeSection; onChange: 
       const d = section.data;
       return (
         <ArrayObjectEditor
-          label="Đánh giá"
+          label="Cảm nhận người dùng (nhập tay, về nền tảng)"
           items={d.items}
           fields={[
-            { key: "quote", label: "Nội dung đánh giá" },
+            { key: "quote", label: "Nội dung cảm nhận" },
             { key: "name", label: "Tên" },
             { key: "role", label: "Vai trò / khu vực" },
           ]}
@@ -204,7 +315,17 @@ function SectionFields({ section, onChange }: { section: HomeSection; onChange: 
   }
 }
 
-export function HomeSectionsEditor({ pageId, live, draft }: { pageId: string; live: HomeSection[]; draft: HomeSection[] | null }) {
+export function HomeSectionsEditor({
+  pageId,
+  live,
+  draft,
+  pinOptions,
+}: {
+  pageId: string;
+  live: HomeSection[];
+  draft: HomeSection[] | null;
+  pinOptions: HomeEditorPinOptions;
+}) {
   const [sections, setSections] = useState<HomeSection[]>(draft ?? live);
   const [hasDraft, setHasDraft] = useState(draft !== null);
   const [selectedId, setSelectedId] = useState<string>(sections[0]?.id ?? "");
@@ -279,15 +400,22 @@ export function HomeSectionsEditor({ pageId, live, draft }: { pageId: string; li
                 background: s.id === selectedId ? "rgba(217,119,6,0.08)" : "white",
               }}
             >
-              <input type="checkbox" checked={s.visible} onChange={() => toggleVisible(s.id)} className="h-4 w-4 shrink-0 rounded" title="Hiện/ẩn section" />
+              <input
+                type="checkbox"
+                checked={s.visible}
+                onChange={() => toggleVisible(s.id)}
+                className="h-4 w-4 shrink-0 rounded"
+                title="Hiện/ẩn section"
+                aria-label={`Hiển thị section ${HOME_SECTION_LABELS[s.type]}`}
+              />
               <button type="button" onClick={() => setSelectedId(s.id)} className="min-w-0 flex-1 truncate text-left text-sm font-medium" style={{ color: "#12213A" }}>
                 {HOME_SECTION_LABELS[s.type]}
               </button>
               <div className="flex shrink-0 flex-col">
-                <button type="button" disabled={i === 0} onClick={() => move(s.id, -1)} aria-label="Đưa lên" className="text-gray-400 hover:text-gray-700 disabled:opacity-30">
+                <button type="button" disabled={i === 0} onClick={() => move(s.id, -1)} aria-label={`Đưa ${HOME_SECTION_LABELS[s.type]} lên`} className="text-gray-500 hover:text-gray-700 disabled:opacity-30">
                   <IconChevronDown className="h-3 w-3 rotate-180" />
                 </button>
-                <button type="button" disabled={i === sections.length - 1} onClick={() => move(s.id, 1)} aria-label="Đưa xuống" className="text-gray-400 hover:text-gray-700 disabled:opacity-30">
+                <button type="button" disabled={i === sections.length - 1} onClick={() => move(s.id, 1)} aria-label={`Đưa ${HOME_SECTION_LABELS[s.type]} xuống`} className="text-gray-500 hover:text-gray-700 disabled:opacity-30">
                   <IconChevronDown className="h-3 w-3" />
                 </button>
               </div>
@@ -330,7 +458,7 @@ export function HomeSectionsEditor({ pageId, live, draft }: { pageId: string; li
           </p>
         ) : null}
 
-        {selected ? <SectionFields section={selected} onChange={updateSelectedData} /> : null}
+        {selected ? <SectionFields key={selected.id} section={selected} pinOptions={pinOptions} onChange={updateSelectedData} /> : null}
       </section>
     </div>
   );

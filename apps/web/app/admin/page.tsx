@@ -288,7 +288,7 @@ export default async function AdminDashboardPage() {
               <div className="text-sm font-semibold">Gói dịch vụ</div>
               <div className="text-xs opacity-80">Sửa giá &amp; giới hạn</div>
             </Link>
-            <Link href="/admin/settings" className="rounded-xl p-4 text-white" style={{ background: "#334155" }}>
+            <Link href="/admin/settings/general" className="rounded-xl p-4 text-white" style={{ background: "#334155" }}>
               <IconTrendUp className="mb-2 h-5 w-5" />
               <div className="text-sm font-semibold">Cấu hình</div>
               <div className="text-xs opacity-80">Thiết lập hệ thống</div>

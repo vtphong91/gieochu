@@ -8,6 +8,7 @@ import { AdminPageHeader, Badge, SettingsGrid } from "../../_ui/kit";
 import { ManualQrForm } from "./manual-qr-form";
 import { SepayForm } from "./sepay-form";
 import { MomoForm } from "./momo-form";
+import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 
 const COMING_SOON = [
   { name: "VNPay", desc: "Cổng thanh toán nội địa — hỗ trợ hầu hết ngân hàng Việt Nam." },
@@ -67,7 +68,7 @@ export default async function AdminBillingPaymentPage() {
             isEnabled: momo?.isEnabled ?? false,
             maskedSecret: momo?.maskedSecrets.secretKey,
             lastVerifiedAt: momo?.lastVerifiedAt
-              ? momo.lastVerifiedAt.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })
+              ? momo.lastVerifiedAt.toLocaleString("vi-VN", { timeZone: DISPLAY_TIME_ZONE })
               : null,
           }}
         />

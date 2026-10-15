@@ -59,6 +59,8 @@ export interface PublicProduct {
   /** ADR-029 mục 3: điểm TB làm tròn 1 chữ số từ cache số nguyên; null khi chưa có đánh giá (thẻ hiện sao từ 1 đánh giá). */
   ratingAvg: number | null;
   ratingCount: number;
+  /** ADR-033 mục 1: số đã bán (cache `products.soldCount`); 0 = UI không hiển thị "đã bán". */
+  soldCount: number;
 }
 
 /**
@@ -66,7 +68,7 @@ export interface PublicProduct {
  * app.scope='public' AND status='PUBLISHED' — is the actual gate, not just
  * this query's WHERE clause.
  */
-const PUBLIC_PRODUCT_SELECT = {
+export const PUBLIC_PRODUCT_SELECT = {
   id: true,
   slug: true,
   title: true,
@@ -82,9 +84,10 @@ const PUBLIC_PRODUCT_SELECT = {
   saleEndsAt: true,
   ratingSum: true,
   ratingCount: true,
+  soldCount: true,
 } as const;
 
-interface PublicProductRow {
+export interface PublicProductRow {
   id: string;
   slug: string;
   title: string;
@@ -100,6 +103,7 @@ interface PublicProductRow {
   saleEndsAt: Date | null;
   ratingSum: number;
   ratingCount: number;
+  soldCount: number;
 }
 
 export async function getPublishedProducts(tenantId: string): Promise<PublicProduct[]> {
@@ -113,7 +117,8 @@ export async function getPublishedProducts(tenantId: string): Promise<PublicProd
   return toPublicProducts(rows);
 }
 
-async function toPublicProducts(rows: PublicProductRow[]): Promise<PublicProduct[]> {
+/** Dòng `PUBLIC_PRODUCT_SELECT` → `PublicProduct` (giá hiệu lực tính ở server, ảnh bìa hiệu lực). Giữ nguyên thứ tự. */
+export async function toPublicProducts(rows: PublicProductRow[]): Promise<PublicProduct[]> {
   if (rows.length === 0) return [];
 
   // Chỉ đọc cấu hình storage khi còn sản phẩm dùng ảnh bìa R2 cũ.
@@ -152,6 +157,7 @@ async function toPublicProducts(rows: PublicProductRow[]): Promise<PublicProduct
       coverUrl: resolveProductCoverUrl(row, publicBaseUrl),
       ratingAvg: computeRatingAverage(row.ratingSum, row.ratingCount),
       ratingCount: row.ratingCount,
+      soldCount: row.soldCount,
     };
   });
 }
