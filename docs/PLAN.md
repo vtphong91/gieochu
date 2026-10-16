@@ -25,7 +25,7 @@ BACKLOG) → M12 → hoàn thiện M2.
 | M8 | Checkout và Đơn hàng | ✅ Xong | `apps/web/lib/{order,payment-process}.ts`, `packages/core/src/order` | 10 / 9 |
 | M9 | Thư viện, Tải xuống, Share link | ✅ Xong | `apps/web/lib/{download,share-link,library,entitlement}.ts`, `packages/core/src/download` | 7 / 5 |
 | M10 | Social Feed và Đánh giá (tách theo ADR-029) | 🟡 **GĐ1 hoàn tất code** (nợ test): **M10a Đánh giá: xong code** (verify thủ công) · **M10b Bài viết tối giản: xong code** (verify thủ công) · M10c (bình luận/thả tim/theo dõi): chuyển `docs/BACKLOG.md` | M10a: `apps/web/lib/review.ts`, `packages/core/src/review`, `apps/web/app/studio/[tenantSlug]/reviews`; M10b: `apps/web/lib/post.ts`, `packages/core/src/content/post.ts`, `apps/web/app/studio/[tenantSlug]/posts`, `apps/web/app/[tenantSlug]/posts` | 4 / 3 (ngân sách gốc — chưa dùng, ADR-029 chọn chưa thêm test) |
-| M11 | Email và Background Jobs | 🟡 Khung đã có (cùng M1) — job/worker còn lại thêm khi có nghiệp vụ tương ứng | `packages/jobs`, `packages/email`, `apps/web/worker.ts` | 0 / 0 (tính trong module khác) |
+| M11 | Email và Background Jobs | 🟡 Email gửi đồng bộ (`sendEmailNow`); **job nền theo ADR-036: xong code, chưa commit/deploy** — `after()` drain hàng đợi trong route + Vercel Cron hằng ngày `GET /api/cron/daily`, `worker.ts` chỉ còn cho local | `packages/jobs`, `packages/email`, `apps/web/lib/{jobs,job-handlers,job-runner}.ts`, `apps/web/app/api/cron/daily`, `apps/web/worker.ts` | 0 / 0 (tính trong module khác) |
 | M12 | Audit Log, Thống kê, Báo cáo vi phạm | ⬜ Chưa làm | audit + stats + reports | 0 / 2 |
 | | **Tổng** | | | Trần gốc mục 9: **91 / 50** · trần hiện **94 / 53** (ADR-026) · thực **93 / 52** (`pnpm test:count` 2026-10-15). Cộng cột theo module ra 92 / 51 — cột là ngân sách gốc từng module, không phải số thực |
 
@@ -318,7 +318,9 @@ tồn tại → 404.
   hoàn tiền) và `/studio/[tenantSlug]/customers` (danh sách khách hàng). Dashboard Studio nối 2 StatCard từng
   để trống "Cần M8" (doanh thu 30 ngày, đơn chờ xác nhận) bằng dữ liệu thật.
 - Job `order.sweep` chạy mỗi 5 phút (không phải mỗi giờ như `subscription.sweep`) — TTL đơn PENDING mặc định
-  chỉ 60 phút nên lịch mỗi giờ có thể để đơn hết hạn hiển thị PENDING sai tới gần 1 giờ.
+  chỉ 60 phút nên lịch mỗi giờ có thể để đơn hết hạn hiển thị PENDING sai tới gần 1 giờ. *(ADR-036, 2026-10-16: trên Vercel sweep
+  chạy hằng ngày qua `/api/cron/daily`; luồng đọc/thanh toán dùng `effectiveOrderStatus` nên đơn quá hạn là EXPIRED ngay — lịch 5 phút
+  chỉ còn ở `worker.ts` local.)*
 - Hoàn thành nốt integration test hoãn từ M6 ("coupon chỉ tính lượt khi đơn PAID, 2 đơn đồng thời không vượt
   `usageLimit`") — 9/8 test M8 (8 gốc + 1 hoãn từ M6).
 
@@ -524,7 +526,7 @@ từ dành riêng. Nợ test redirect 301 + chặn slug dành riêng: `docs/BACK
 `apps/web`; Prisma client sinh sẵn đã commit); root `app/layout.tsx` `force-dynamic` (build không cần env, nonce CSP gắn mọi
 trang); `PRISMA_MIGRATE_URL` xoá khỏi schema env runtime — chỉ CLI `migrate`/`studio` + `setup-app-role` trên máy dev/CI,
 `db seed` dùng `DATABASE_URL`. Migration prod chạy từ máy dev/CI. **Worker pg-boss chưa có host** (BACKLOG mục "Phát sinh
-trong đợt ADR-031"). Quy trình: KB `04-Operations-Runbooks/Deploy-Vercel-Runbook.md`.
+trong đợt ADR-031") — *2026-10-16: thay bằng job trong app + Vercel Cron theo ADR-036, xem mục ADR-036 dưới.* Quy trình: KB `04-Operations-Runbooks/Deploy-Vercel-Runbook.md`.
 
 **Số test:** `pnpm test:count` = **93/94 unit, 52/53 integration** — không đổi.
 
@@ -626,6 +628,39 @@ với dữ liệu thật đạt.
 `02-System-Specs/Shop-Marketplace-Specs.md`, `03-API-Contracts/Endpoint-Directory.md` §15–§16,
 `04-Operations-Runbooks/UI-Design-System.md` §13–§14.
 
+## Job nền trong app + Vercel Cron hằng ngày (ADR-036) — xong code, chưa commit/deploy — 2026-10-16
+
+**Đã xong code, chưa commit, chưa deploy.** Quyết định: ADR-036 + "Chủ dự án chốt (2026-10-16)". Bối cảnh: Vercel không chạy worker
+thường trực (ADR-031 mục 4); kiểm chỉ đọc hàng đợi thấy job tồn đều từ integration test, không có đơn khách thật kẹt.
+
+- **`packages/jobs`** (`src/queue.ts`): `createJobQueue(conn, { schedule?, supervise? })` (mặc định bật như pg-boss); thêm `fetch`
+  (nhận job, khoá dòng), `complete`, `fail` (chỉ ghi `name`/`message` của lỗi), `supervise` (một lượt bảo trì, không REINDEX); `send`
+  nhận `SendJobOptions` (`retryLimit`/`retryDelay`/`retryBackoff`).
+- **Web app:** `apps/web/lib/jobs.ts` chạy pg-boss với `schedule: false, supervise: false`, `getStartedQueue` export, start lỗi thì lần
+  sau thử lại; job từ request gửi kèm `retryDelay: 60` + backoff. `apps/web/lib/job-handlers.ts` — bảng handler `payment.process`/`file.scan`
+  dùng chung worker và runner. `apps/web/lib/job-runner.ts` — `drainQueues` (ngân sách thời gian mềm, lô 5, job lỗi `fail` + log rồi chạy
+  tiếp), `scheduleQueueDrain` (bọc `after()`, không bao giờ ném), `superviseQueues`.
+- **Route:** webhook tenant `api/webhooks/tenants/[tenantId]/[provider]` và `api/studio/[tenantSlug]/uploads/complete` drain hàng đợi
+  tương ứng ngay sau response bằng `after()`, `maxDuration = 60`. **Route mới `GET /api/cron/daily`**: Bearer `CRON_SECRET`
+  (`timingSafeEqual`); chạy `runSubscriptionSweep` → `runOrderSweep` → bảo trì hàng đợi → drain `payment.process`/`file.scan` (40 giây),
+  mỗi bước cô lập; 200 `{ ok, requestId, results }` / 401 / 500 `CRON_STEP_FAILED` / 503 `CRON_NOT_CONFIGURED`; chỉ trả số đếm.
+  `apps/web/vercel.json` thêm `crons` `0 20 * * *` UTC (03:00 giờ VN).
+- **Env:** `CRON_SECRET` tuỳ chọn (rỗng = chưa đặt; nếu đặt phải ≥ 32 ký tự, ngắn hơn làm app fail-fast; thiếu → route cron 503). Env
+  runtime = 8 biến bắt buộc (ADR-032) + `CRON_SECRET` tuỳ chọn (+ `CLAMAV_HOST` tuỳ chọn như cũ).
+- **M8:** `effectiveOrderStatus` (`packages/core/src/order/expiry.ts`) — đơn PENDING quá `expiresAt` là EXPIRED khi đọc; áp vào áp/gỡ
+  coupon, checkout, huỷ đơn, danh sách/chi tiết đơn (tenant + khách), thư viện khách, dashboard, `canManuallyConfirmOrder`. Giữ quy tắc
+  thanh toán trễ 24h (chủ dự án chốt): webhook khớp trong 24h sau `expiresAt` thì tự fulfil, trễ hơn ghi MATCHED để tenant xử lý tay.
+  `runOrderSweep` trả số đơn chuyển EXPIRED.
+- **`apps/web/worker.ts`:** không deploy, chỉ local/server riêng; vẫn bật schedule/supervise (`order.sweep` 5 phút, `subscription.sweep`
+  hằng giờ); handler dùng chung `job-handlers.ts`.
+- **Test:** integration M8 `order.test.ts` `afterAll` dọn job pg-boss do chính lượt test tạo (chưa chạy thật). Không thêm test case.
+- **Vận hành (chủ dự án làm):** chạy `docs/ops/2026-10-16-pgboss-cleanup.sql` (dọn job test + job sweep tồn + lịch pg-boss cũ, bước 1 kiểm
+  kỳ vọng trước); đặt `CRON_SECRET` trên Vercel (Production) rồi redeploy, kiểm Settings → Cron Jobs.
+
+**Số test:** `pnpm test:count` = **93/94 unit, 52/53 integration** — không đổi. Nợ test + việc còn lại: `docs/BACKLOG.md` mục "Phát sinh
+trong đợt ADR-036". KB: `02-System-Specs/Background-Jobs-Specs.md`, `02-System-Specs/Order-State-Machine.md` §3.1/§3.4,
+`03-API-Contracts/Endpoint-Directory.md` §17, `04-Operations-Runbooks/Deploy-Vercel-Runbook.md` §3.4/§6.
+
 ## Câu hỏi còn mở (đã chọn phương án an toàn, xem ADR tương ứng)
 
 - ID strategy: cuid2 (ADR-001).
@@ -649,7 +684,7 @@ với dữ liệu thật đạt.
 - `file.scan` không có ClamAV thật → luôn `CLEAN` sau kiểm tra định dạng, kể cả khi có set `CLAMAV_HOST`
   (ADR-018) — đúng phương án dự phòng đặc tả đã gợi ý.
 - `order.sweep` chạy mỗi 5 phút thay vì mỗi giờ như các job sweep khác, vì TTL đơn PENDING ngắn hơn nhiều so
-  với chu kỳ subscription (ADR-019).
+  với chu kỳ subscription (ADR-019). *(ADR-036 thay trên Vercel: sweep hằng ngày qua cron + `effectiveOrderStatus` khi đọc.)*
 - `DownloadToken` là bảng L1 (không RLS), `ShareLink`/`DownloadEvent` là L2 — và 3 policy RLS đã có
   (`products`, `product_files` từ M4/M5) được sửa thêm nhánh "customer" ở M9 sau khi chính test thật bắt
   được lỗ hổng (ADR-020).

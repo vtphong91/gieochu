@@ -28,6 +28,15 @@ const envSchema = z.object({
    * storage credentials reach every tenant's files, so they never share a key with payment secrets. */
   STORAGE_ENCRYPTION_KEY: z.string().min(1),
 
+  /**
+   * ADR-036: secret của route cron `/api/cron/daily` (Vercel Cron gửi `Authorization: Bearer <CRON_SECRET>`).
+   * Tuỳ chọn — thiếu thì route trả 503, app vẫn khởi động. Chuỗi rỗng coi như chưa đặt.
+   */
+  CRON_SECRET: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().min(32, "CRON_SECRET phải có ít nhất 32 ký tự").optional(),
+  ),
+
   /** Tuỳ chọn — không đặt thì bỏ qua quét virus (apps/web/lib/file-scan.ts). */
   CLAMAV_HOST: z.string().optional(),
 

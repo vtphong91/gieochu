@@ -3,7 +3,12 @@ import { decryptSecret, extractSepayReference, getProvider, type PaymentProvider
 import { logger } from "@gieochu/core";
 import { getEnv } from "@gieochu/config";
 import { withSystemJob } from "@gieochu/db";
+import { QUEUE_NAMES } from "@gieochu/jobs";
 import { enqueuePaymentProcess } from "../../../../../../lib/jobs";
+import { scheduleQueueDrain } from "../../../../../../lib/job-runner";
+
+// ADR-036: after() runs inside this function's lifetime — leave room for the ~20s queue drain.
+export const maxDuration = 60;
 
 const VALID_PROVIDERS = new Set<PaymentProviderId>(["MANUAL_QR", "SEPAY", "MOMO"]);
 
@@ -11,7 +16,8 @@ const VALID_PROVIDERS = new Set<PaymentProviderId>(["MANUAL_QR", "SEPAY", "MOMO"
  * §"M7"/§"M8": verifies the signature, records the event for idempotency
  * (webhook_events), then enqueues `payment.process` with the already-parsed
  * event and returns 200 — order matching + `markOrderPaid()` happen in the
- * job, per §7.4 "trả 2xx nhanh rồi xử lý nặng trong job".
+ * job, per §7.4 "trả 2xx nhanh rồi xử lý nặng trong job". ADR-036: no long-lived worker on Vercel —
+ * the job is drained by `after()` once this 200 has been sent (and by the daily cron as a fallback).
  */
 export async function POST(
   request: Request,
@@ -89,6 +95,9 @@ export async function POST(
   });
 
   logger.info({ tenantId, provider: providerId, providerEventId: event.providerEventId, reference }, "tenant payment webhook enqueued for processing");
+
+  // Runs after the response — never delays or fails the provider's 2xx (scheduleQueueDrain never throws).
+  scheduleQueueDrain([QUEUE_NAMES.PAYMENT_PROCESS]);
 
   return NextResponse.json({ success: true });
 }

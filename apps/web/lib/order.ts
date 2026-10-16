@@ -5,6 +5,7 @@ import {
   canManuallyConfirmOrder,
   canPurchaseProduct,
   computeOrderExpiresAt,
+  effectiveOrderStatus,
   generateOrderCode,
   internalError,
   logger,
@@ -40,6 +41,16 @@ async function resolveUniqueOrderCode(prefix: string): Promise<string> {
     if (!existing) return code;
   }
   throw internalError("Không tạo được mã đơn hàng, vui lòng thử lại.");
+}
+
+/** ADR-036 mục 3: an overdue PENDING order is EXPIRED for every decision, even before the daily sweep writes it. */
+function isEffectivelyPending(order: { status: OrderStatus; expiresAt: Date }, now = new Date()): boolean {
+  return effectiveOrderStatus(order.status, order.expiresAt, now) === "PENDING";
+}
+
+/** Read paths return the effective status (ADR-036) so pages never offer payment on an overdue order. */
+function withEffectiveStatus<T extends { status: OrderStatus; expiresAt: Date }>(order: T, now = new Date()): T {
+  return { ...order, status: effectiveOrderStatus(order.status, order.expiresAt, now) };
 }
 
 function formatVnd(amountVnd: number): string {
@@ -274,7 +285,7 @@ function couponErrorMessage(code: string): string {
 export async function applyCouponToOrder(tenantId: string, orderId: string, customerId: string, couponCode: string) {
   const order = await withTenant(tenantId, (tx) => tx.order.findUnique({ where: { id: orderId } }));
   if (!order || order.customerId !== customerId) throw notFound("Không tìm thấy đơn hàng.");
-  if (order.status !== "PENDING") {
+  if (!isEffectivelyPending(order)) {
     throw new AppError({ code: "ORDER_NOT_PENDING", message: "Đơn hàng không còn ở trạng thái chờ thanh toán.", httpStatus: 409 });
   }
 
@@ -338,7 +349,7 @@ export async function applyCouponToOrder(tenantId: string, orderId: string, cust
 export async function removeCouponFromOrder(tenantId: string, orderId: string, customerId: string) {
   const order = await withTenant(tenantId, (tx) => tx.order.findUnique({ where: { id: orderId } }));
   if (!order || order.customerId !== customerId) throw notFound("Không tìm thấy đơn hàng.");
-  if (order.status !== "PENDING") {
+  if (!isEffectivelyPending(order)) {
     throw new AppError({ code: "ORDER_NOT_PENDING", message: "Đơn hàng không còn ở trạng thái chờ thanh toán.", httpStatus: 409 });
   }
 
@@ -356,7 +367,7 @@ export async function removeCouponFromOrder(tenantId: string, orderId: string, c
 export async function initiateOrderCheckout(tenantId: string, orderId: string, customerId: string, provider: PaymentProviderId) {
   const order = await withTenant(tenantId, (tx) => tx.order.findUnique({ where: { id: orderId } }));
   if (!order || order.customerId !== customerId) throw notFound("Không tìm thấy đơn hàng.");
-  if (order.status !== "PENDING") {
+  if (!isEffectivelyPending(order)) {
     throw new AppError({ code: "ORDER_NOT_PENDING", message: "Đơn hàng không còn ở trạng thái chờ thanh toán.", httpStatus: 409 });
   }
 
@@ -392,7 +403,7 @@ export async function getOrderForCustomer(customerId: string, orderCode: string)
     tx.order.findFirst({ where: { code: orderCode, customerId }, include: { items: true, tenant: { select: { name: true, slug: true } } } }),
   );
   if (!order) throw notFound("Không tìm thấy đơn hàng.");
-  return order;
+  return withEffectiveStatus(order);
 }
 
 /** §"M8": "Xác nhận thanh toán thủ công (chỉ đơn PENDING hoặc EXPIRED trong vòng 24 giờ; bắt buộc nhập ghi chú)". */
@@ -419,7 +430,8 @@ export async function confirmOrderManually(tenantId: string, orderId: string, no
 export async function cancelOrder(tenantId: string, orderId: string): Promise<void> {
   const order = await withTenant(tenantId, (tx) => tx.order.findUnique({ where: { id: orderId } }));
   if (!order) throw notFound("Không tìm thấy đơn hàng.");
-  const nextStatus = transitionOrderStatus(order.status as OrderStatus, "CANCEL");
+  // ADR-036: an overdue PENDING order is EXPIRED — CANCEL is not a valid transition from there (same as after the sweep).
+  const nextStatus = transitionOrderStatus(effectiveOrderStatus(order.status, order.expiresAt, new Date()), "CANCEL");
   await withTenant(tenantId, (tx) => tx.order.update({ where: { id: orderId }, data: { status: nextStatus } }));
 }
 
@@ -451,14 +463,23 @@ export interface OrderListFilters {
   status?: OrderStatus;
 }
 
+/** ADR-036: filters and labels by effective status — PENDING excludes overdue orders, EXPIRED includes them. */
+function effectiveStatusWhere(status: OrderStatus, now: Date): Prisma.OrderWhereInput {
+  if (status === "PENDING") return { status: "PENDING", expiresAt: { gte: now } };
+  if (status === "EXPIRED") return { OR: [{ status: "EXPIRED" }, { status: "PENDING", expiresAt: { lt: now } }] };
+  return { status };
+}
+
 export async function listOrders(tenantId: string, filters: OrderListFilters = {}) {
-  return withTenant(tenantId, (tx) =>
+  const now = new Date();
+  const orders = await withTenant(tenantId, (tx) =>
     tx.order.findMany({
-      where: { tenantId, ...(filters.status ? { status: filters.status } : {}) },
+      where: { tenantId, ...(filters.status ? effectiveStatusWhere(filters.status, now) : {}) },
       include: { customer: { select: { email: true } }, items: true },
       orderBy: { createdAt: "desc" },
     }),
   );
+  return orders.map((order) => withEffectiveStatus(order, now));
 }
 
 export async function getOrderDetail(tenantId: string, orderId: string) {
@@ -469,7 +490,7 @@ export async function getOrderDetail(tenantId: string, orderId: string) {
     }),
   );
   if (!order || order.tenantId !== tenantId) throw notFound("Không tìm thấy đơn hàng.");
-  return order;
+  return withEffectiveStatus(order);
 }
 
 export async function listTenantCustomers(tenantId: string) {
@@ -488,21 +509,27 @@ export async function getOrderDashboardStats(tenantId: string): Promise<{ revenu
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const [paidOrders, pendingOrdersCount] = await Promise.all([
       tx.order.findMany({ where: { tenantId, status: { in: ["PAID", "FULFILLED"] }, paidAt: { gte: since } }, select: { totalVnd: true } }),
-      tx.order.count({ where: { tenantId, status: "PENDING" } }),
+      tx.order.count({ where: { tenantId, status: "PENDING", expiresAt: { gte: new Date() } } }),
     ]);
     return { revenue30dVnd: paidOrders.reduce((sum, o) => sum + o.totalVnd, 0), pendingOrdersCount };
   });
 }
 
-/** §"M8" hourly job: PENDING past `expiresAt` -> EXPIRED. Coupon usage is untouched — it's only ever consumed inside `markOrderPaid()`. */
-export async function runOrderSweep(): Promise<void> {
+/**
+ * §"M8" sweep: PENDING past `expiresAt` -> EXPIRED. Coupon usage is untouched — it's only ever consumed inside
+ * `markOrderPaid()`. ADR-036: runs once a day from `/api/cron/daily` — it only syncs the stored status; every
+ * read/payment path already treats an overdue PENDING order as EXPIRED (`effectiveOrderStatus`). Returns the
+ * number of orders expired.
+ */
+export async function runOrderSweep(): Promise<number> {
   const now = new Date();
-  await withSystemJob(async (tx) => {
+  return withSystemJob(async (tx) => {
     const expiring = await tx.order.findMany({ where: { status: "PENDING", expiresAt: { lt: now } } });
     for (const order of expiring) {
       const nextStatus = transitionOrderStatus(order.status as OrderStatus, "EXPIRE");
       await tx.order.update({ where: { id: order.id }, data: { status: nextStatus } });
     }
+    return expiring.length;
   });
 }
 

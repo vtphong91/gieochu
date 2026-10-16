@@ -3,7 +3,7 @@ tags:
   - meta
   - runbook
 date: 2026-09-26
-updated: 2026-10-15
+updated: 2026-10-16
 ---
 
 # 🚀 Operations Runbooks & DevOps
@@ -31,7 +31,8 @@ viên.
 - `[[Deploy-Vercel-Runbook]]`: Deploy app lên **Vercel** theo ADR-031/032 — cấu hình project (Root Directory `apps/web`,
   `vercel.json` `buildCommand: "next build"`), env runtime **8 biến bắt buộc** + biến cần xoá trên Vercel + biến **không** đặt
   (`PRISMA_MIGRATE_URL`…), chuẩn bị DB prod từ máy dev (`setup-app-role`, `db:migrate`, `db:seed`, quét slug dành riêng),
-  cấu hình Admin sau deploy, worker pg-boss cần host riêng, 5 sự cố đã gặp (gồm 500 production 2026-10-15), rủi ro client
+  cấu hình Admin sau deploy, §6 job nền trong app theo ADR-036 (`after()` + Vercel Cron `/api/cron/daily` 03:00 giờ VN, env tuỳ chọn
+  `CRON_SECRET` ≥ 32 ký tự, SQL dọn job `docs/ops/2026-10-16-pgboss-cleanup.sql` do chủ dự án chạy, `worker.ts` không deploy), 5 sự cố đã gặp (gồm 500 production 2026-10-15), rủi ro client
   Prisma commit lệch schema, §9 một DB duy nhất (ADR-034) — migration expand → contract, kỷ luật thao tác DB, dọn demo trước go-live; §9.5 migration Cửa hàng ADR-035 (`unaccent`) đã áp trước deploy + quét slug dành riêng. Bản ADR-032/033 chưa deploy ❓ ([Deploy-Vercel-Runbook.md](./Deploy-Vercel-Runbook.md)).
 - `[[Dev-Demo-Data-Runbook]]`: **Công cụ chỉ cho dev** — script `apps/web/scripts/demo-reviews.ts`
   (`ALLOW_DEMO_SEED=1 pnpm --filter @gieochu/db run demo:seed|demo:clean`): chốt an toàn, dữ liệu demo đánh giá trên tenant

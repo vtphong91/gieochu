@@ -4,10 +4,8 @@ import { createJobQueue, QUEUE_NAMES } from "@gieochu/jobs";
 import { getEnv } from "@gieochu/config";
 import { logger } from "@gieochu/core";
 import { runSubscriptionSweep } from "./lib/subscription-sweep";
-import { runFileScan } from "./lib/file-scan";
 import { runOrderSweep } from "./lib/order";
-import { processPaymentEvent } from "./lib/payment-process";
-import type { FileScanJobData, PaymentProcessJobData } from "./lib/jobs";
+import { JOB_HANDLERS } from "./lib/job-handlers";
 
 // Email KHÔNG còn qua hàng đợi/worker — gửi đồng bộ ngay trong Server
 // Action/route qua sendEmailNow() (lib/email-dispatch.ts). Quyết định đổi
@@ -16,6 +14,10 @@ import type { FileScanJobData, PaymentProcessJobData } from "./lib/jobs";
 // lỗi nào hiện ra) — gửi trực tiếp cho phép thành công/thất bại phản hồi
 // ngay cho người dùng. worker.ts vẫn cần chạy cho các job KHÔNG phải email
 // (subscription sweep, file scan, payment process, order sweep).
+//
+// ADR-036: KHÔNG deploy lên Vercel — ở đó job xử lý trong app (lib/job-runner.ts: after() + cron
+// /api/cron/daily). File này giữ cho chạy local/server riêng; handler payment/file dùng chung
+// lib/job-handlers.ts với job-runner.
 
 async function main() {
   loadEnv({ path: fileURLToPath(new URL("../../.env", import.meta.url)) });
@@ -41,15 +43,9 @@ async function main() {
     logger.info("subscription sweep ran");
   });
 
-  await queue.work<FileScanJobData>(QUEUE_NAMES.FILE_SCAN, async (data) => {
-    await runFileScan(data.productFileId);
-    logger.info({ productFileId: data.productFileId }, "file scan ran");
-  });
+  await queue.work<object>(QUEUE_NAMES.FILE_SCAN, JOB_HANDLERS[QUEUE_NAMES.FILE_SCAN]);
 
-  await queue.work<PaymentProcessJobData>(QUEUE_NAMES.PAYMENT_PROCESS, async (data) => {
-    await processPaymentEvent(data);
-    logger.info({ tenantId: data.tenantId, provider: data.provider }, "payment event processed");
-  });
+  await queue.work<object>(QUEUE_NAMES.PAYMENT_PROCESS, JOB_HANDLERS[QUEUE_NAMES.PAYMENT_PROCESS]);
 
   await queue.work<Record<string, never>>(QUEUE_NAMES.ORDER_SWEEP, async () => {
     await runOrderSweep();

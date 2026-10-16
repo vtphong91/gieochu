@@ -5,7 +5,7 @@ tags:
   - recovery
   - status/living
 date: 2026-05-27
-updated: 2026-10-15
+updated: 2026-10-16
 author: System Architect
 ---
 
@@ -133,8 +133,10 @@ schema Postgres mới ngoài `public`/`pgboss`.
     `REVOKE` ở trên bằng role owner ngay sau đó, rồi kiểm lại bằng `has_database_privilege`.
   - Môi trường/branch Neon mới: sau `setup-app-role` cần chạy `REVOKE` thủ công cho tới khi script được sửa (BACKLOG — việc của Hiếu,
     chưa làm).
-* ❓ **Chưa rõ thứ tự với pg-boss trên DB mới:** nếu `REVOKE` trước khi schema `pgboss` tồn tại, worker/`createJobQueue` có thể không
-  tự tạo được schema. Chưa ai thử — cần Quốc chốt cách làm (tạo schema `pgboss` bằng role owner trước, hay để script giữ `GRANT` rồi
+* ❓ **Chưa rõ thứ tự với pg-boss trên DB mới:** nếu `REVOKE` trước khi schema `pgboss` tồn tại, `createJobQueue().start()` có thể không
+  tự tạo được schema. Từ ADR-036 (2026-10-16, chưa deploy) người khởi động pg-boss đầu tiên trên production **không còn là worker** mà là
+  chính web app trên Vercel — lần enqueue đầu (webhook tenant/upload) hoặc lần chạy đầu của cron `/api/cron/daily` (`getStartedQueue()`,
+  `apps/web/lib/jobs.ts`) ✅ đọc code. Chưa ai thử — cần Quốc chốt cách làm (tạo schema `pgboss` bằng role owner trước, hay để script giữ `GRANT` rồi
   `REVOKE` sau lần khởi động worker đầu tiên).
 
 ```sql
@@ -205,14 +207,15 @@ pnpm db:seed                                           # prisma db seed, dùng D
 ```
 
 Sau `setup-app-role`: chạy `REVOKE CREATE ON DATABASE … FROM gieochu_app` theo §4.1 (script chưa tự làm — lưu ý ❓ thứ tự với
-pg-boss). `db:migrate` tự tạo extension `unaccent` + hàm `gieochu_unaccent` (§4.2). `db:seed` **chỉ** dùng cho DB trống hoàn toàn —
+pg-boss). Trên Vercel nhớ đặt lại `CRON_SECRET` (tuỳ chọn, ≥ 32 ký tự — ADR-036) để cron hằng ngày chạy:
+[[04-Operations-Runbooks/Deploy-Vercel-Runbook|Deploy-Vercel-Runbook]] §6.2. `db:migrate` tự tạo extension `unaccent` + hàm `gieochu_unaccent` (§4.2). `db:seed` **chỉ** dùng cho DB trống hoàn toàn —
 DB đang có dữ liệu thì không chạy (ADR-034).
 
 Trước khi chạy, `.env` phải đủ biến bắt buộc — env fail-fast qua zod (`packages/config/src/env.ts`) sẽ làm
 app dừng ngay khi khởi động nếu thiếu, kể cả khi chỉ mở trang marketing (hành vi cố ý, không phải bug).
 
 ❓ **Chưa có lịch backup tự động nào được xác nhận trong repo** (không có cron job, script, hay cấu hình nào
-sao lưu định kỳ ngoài PITR có sẵn của Neon) — mục "Vận hành xuyên suốt" trong `docs/PLAN.md` liệt kê
+sao lưu định kỳ ngoài PITR có sẵn của Neon — cron Vercel `/api/cron/daily` của ADR-036 chỉ chạy sweep + dọn hàng đợi, **không** sao lưu ✅) — mục "Vận hành xuyên suốt" trong `docs/PLAN.md` liệt kê
 "backup/PITR" như một việc **còn nằm trong roadmap tương lai**, chưa triển khai. Trước khi coi PITR của Neon
 là đủ, xác nhận lại chính sách retention thật của gói Neon đang dùng.
 

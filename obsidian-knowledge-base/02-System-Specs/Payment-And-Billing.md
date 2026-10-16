@@ -5,7 +5,7 @@ tags:
   - billing
   - status/living
 date: 2026-09-26
-updated: 2026-09-26
+updated: 2026-10-16
 author: System Architect
 ---
 
@@ -73,6 +73,7 @@ sequenceDiagram
         R->>DB: INSERT webhook_events (scope, provider, providerEventId) — unique constraint chặn trùng
         R->>J: enqueuePaymentProcess(...) — KHÔNG xử lý nghiệp vụ nặng trong request
         R-->>P: 200 OK ngay
+        Note over R,J: ADR-036 — after() chạy drainQueues ngay sau response (fetch → complete/fail); cron hằng ngày dọn job sót
         J->>O: job "payment.process" — so khớp orderId theo mã tham chiếu
         O->>DB: withTenant(tenantId) — ghi TenantPaymentTransaction (MATCHED/UNMATCHED/MISMATCH_AMOUNT)
         O->>O: markOrderPaid() nếu khớp và đơn còn hợp lệ (PENDING hoặc EXPIRED trong 24h)
@@ -84,6 +85,14 @@ sequenceDiagram
 - **`webhook_events`** (`@@unique([scope, provider, providerEventId])`): cùng một event id từ provider không
   bao giờ được xử lý 2 lần cho cùng scope+provider — ghi qua `withSystemJob` (chưa có tenant session lúc
   webhook thô vừa tới).
+- **Ai xử lý job `payment.process` (ADR-036, chưa deploy) ✅:** trên Vercel không có worker thường trực — route webhook tenant gọi
+  `scheduleQueueDrain([PAYMENT_PROCESS])` (`apps/web/lib/job-runner.ts`) **sau** khi đã enqueue, bọc `after()` của Next.js: response
+  200 trả trước, rồi trong cùng function (`maxDuration = 60`) bộ xử lý lấy job bằng pg-boss `fetch`, gọi `processPaymentEvent`, đánh
+  dấu `complete`/`fail`. Lỗi → job còn trong hàng đợi, thử lại sau (`retryDelay` 60 giây + backoff); cron `GET /api/cron/daily` dọn
+  phần sót. `scheduleQueueDrain` không bao giờ ném lỗi nên không biến 2xx thành 500. Chi tiết:
+  [[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]].
+- **Webhook trễ hơn 24h sau `expiresAt` (chủ dự án chốt 2026-10-16) ✅:** giao dịch vẫn ghi `MATCHED` nhưng **không** tự fulfil —
+  tenant đối soát/xử lý tay ([[Order-State-Machine]] §3.1).
 - **Khoảng lệch đã biết giữa 2 module (ADR-019):** route webhook **Tenant** (M8) làm đúng đặc tả — chỉ xác
   thực + ghi `webhook_events` + đẩy job `payment.process`. Route webhook **Platform** (M3,
   `POST /api/webhooks/platform/[provider]`) xử lý đồng bộ trong request (gọi `markInvoicePaid()` trực tiếp) —
@@ -128,8 +137,9 @@ stateDiagram-v2
   điểm tạo — đổi giá gói sau đó không viết lại hoá đơn đã phát hành.
 - **Dedupe hoá đơn PENDING (ADR-013):** bấm "Gia hạn" nhiều lần liên tiếp khi hoá đơn `PENDING` cũ còn hạn sẽ
   tái sử dụng hoá đơn đó, không tạo hoá đơn trùng cho cùng kỳ.
-- **Sweep** (`subscription-sweep.ts`, cron hằng giờ qua pg-boss in-process — không phải HTTP cron) loại trừ
-  Free khỏi mọi truy vấn (`plan: { isFree: false }`).
+- **Sweep** (`subscription-sweep.ts`) loại trừ Free khỏi mọi truy vấn (`plan: { isFree: false }`). Lịch chạy (ADR-036, chưa
+  deploy) ✅: trên Vercel gọi trực tiếp **mỗi ngày một lần** trong HTTP cron `GET /api/cron/daily` (03:00 giờ VN) — chuyển trạng
+  thái thuê bao có thể trễ tới ~24h; lịch pg-boss hằng giờ (`0 * * * *`) chỉ còn khi chạy `apps/web/worker.ts` local/server riêng.
 
 ---
 
@@ -152,5 +162,8 @@ stateDiagram-v2
   ADR-013 (dedupe/tự tắt config), ADR-019 (webhook Tenant qua job, khoảng lệch với Platform), ADR-021 (Hybrid
   Monetization)
 * [docs/GIEOCHU_HYBRID_MONETIZATION_BILLING_PROPOSAL_V2.md](../../docs/GIEOCHU_HYBRID_MONETIZATION_BILLING_PROPOSAL_V2.md)
-* Mã nguồn: `packages/payments/src/*`, `apps/web/lib/{order,payment-process,platform-payment,subscription-billing,subscription-sweep,tenant-payment}.ts`,
+* [[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]] — job nền + cron (ADR-036) ([Background-Jobs-Specs.md](./Background-Jobs-Specs.md))
+* Mã nguồn: `packages/payments/src/*`, `apps/web/lib/{order,payment-process,platform-payment,subscription-billing,subscription-sweep,tenant-payment,job-runner,job-handlers}.ts`,
   `packages/core/src/billing/*`
+
+*Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

@@ -6,7 +6,7 @@ tags:
   - security
   - status/living
 date: 2026-09-26
-updated: 2026-09-28
+updated: 2026-10-16
 author: System Architect
 ---
 
@@ -84,6 +84,11 @@ khỏi object storage + đánh dấu `REJECTED` + trừ lại dung lượng đã
 
 `readObjectForScan()` (`packages/storage/src/scan.ts`) đọc object **một lần duy nhất** (stream), vừa hash
 SHA-256 vừa lấy đầu file để nhận diện magic bytes — tránh buffer cả file vào memory.
+
+**Ai chạy job `file.scan` (ADR-036, chưa deploy) ✅:** route `POST /api/studio/[tenantSlug]/uploads/complete` sau khi
+`completeProductFileUpload` enqueue job gọi `scheduleQueueDrain([FILE_SCAN])` — job được xử lý trong `after()` ngay sau response
+(`maxDuration = 60`), cron `GET /api/cron/daily` dọn phần sót. Không còn phụ thuộc worker thường trực; file chỉ kẹt "Đang quét"
+khi cả `after()` lẫn cron đều lỗi. Chi tiết: [[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]].
 
 ---
 

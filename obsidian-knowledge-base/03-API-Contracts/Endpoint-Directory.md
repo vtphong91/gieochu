@@ -5,7 +5,7 @@ tags:
   - endpoint
   - status/living
 date: 2026-06-15
-updated: 2026-10-15
+updated: 2026-10-16
 author: System Architect
 ---
 
@@ -27,7 +27,9 @@ author: System Architect
 > `route.ts`** (đếm lại 2026-09-28: vẫn 20 ✅) — contract Server Action + hàm lib đánh giá ghi ở §12. Đợt M10b Bài viết
 > (ADR-029, 2026-09-28) cũng **không thêm `route.ts`** (đếm lại 2026-09-28: vẫn 20 ✅) — contract ghi ở §13. Đợt Cửa hàng
 > (ADR-035 GĐ1 + GĐ2, 2026-10-15) cũng **không thêm `route.ts`** (đếm lại 2026-10-15: 20 dưới `/api`, 21 toàn app ✅) — action
-> CMS ở §15, trang công khai `/cua-hang` + loader `lib/shop.ts` ở §16.
+> CMS ở §15, trang công khai `/cua-hang` + loader `lib/shop.ts` ở §16. Đợt ADR-036 (2026-10-16, **chưa commit/deploy**) **thêm 1
+> `route.ts`**: `GET /api/cron/daily` (§17) — đếm lại 2026-10-16: **21 dưới `/api`, 22 toàn app** ✅; hai route webhook tenant và
+> `uploads/complete` thêm xử lý job sau response (§6, §9).
 
 ## 1. Quy Ước Chung
 
@@ -116,7 +118,7 @@ trong path — MVP chưa có `STAFF` được cấp quyền upload).
 | Method | Endpoint | Truy cập | Mô tả |
 | :-- | :-- | :-- | :-- |
 | `POST` | `/api/studio/[tenantSlug]/uploads/presign` | `requireTenantMember` | Cấp URL presigned PUT (bucket **private**) để tải 1 `ProductFile` lên — kiểm giới hạn dung lượng/số file theo `Plan` (`maxFileMb`, `storageMb`) bên trong `presignProductFileUpload()` (`apps/web/lib/product-upload.ts`). |
-| `POST` | `/api/studio/[tenantSlug]/uploads/complete` | `requireTenantMember` | Xác nhận upload xong (`completeProductFileUpload()`). ADR-026 ✅: (1) `objectKey` client gửi lên phải khớp tiền tố `tenants/<tenantId>/products/<productId>/<uuid>/<tênĐãSanitize>` (`isProductObjectKeyFor`, kind `file`) + đuôi trong allowlist, kiểm **trước mọi lời gọi storage** — sai → `400 INVALID_OBJECT_KEY`; (2) `objectKey` đã ghi nhận → `409 UPLOAD_ALREADY_COMPLETED`; (3) `HeadObject` thật: không thấy → `400 UPLOAD_NOT_FOUND`, dung lượng lệch khai báo → xoá object + `400 UPLOAD_SIZE_MISMATCH`; (4) kiểm lại `assertPlanLimit("fileSize"/"storage")` bằng **dung lượng thật** — vượt → xoá object + lỗi giới hạn gói; (5) tạo `ProductFile` (`scanStatus=PENDING`), cộng `storageUsedBytes` theo dung lượng thật, enqueue `file.scan`. |
+| `POST` | `/api/studio/[tenantSlug]/uploads/complete` | `requireTenantMember` | Xác nhận upload xong (`completeProductFileUpload()`). ADR-026 ✅: (1) `objectKey` client gửi lên phải khớp tiền tố `tenants/<tenantId>/products/<productId>/<uuid>/<tênĐãSanitize>` (`isProductObjectKeyFor`, kind `file`) + đuôi trong allowlist, kiểm **trước mọi lời gọi storage** — sai → `400 INVALID_OBJECT_KEY`; (2) `objectKey` đã ghi nhận → `409 UPLOAD_ALREADY_COMPLETED`; (3) `HeadObject` thật: không thấy → `400 UPLOAD_NOT_FOUND`, dung lượng lệch khai báo → xoá object + `400 UPLOAD_SIZE_MISMATCH`; (4) kiểm lại `assertPlanLimit("fileSize"/"storage")` bằng **dung lượng thật** — vượt → xoá object + lỗi giới hạn gói; (5) tạo `ProductFile` (`scanStatus=PENDING`), cộng `storageUsedBytes` theo dung lượng thật, enqueue `file.scan`. ADR-036 ✅: sau đó `scheduleQueueDrain([file.scan])` — job quét chạy trong `after()` **sau** khi trả response (response không đổi); `export const maxDuration = 60`. |
 | `POST` | `/api/studio/[tenantSlug]/uploads/cover-presign` | `requireTenantMember` | Cấp URL presigned PUT cho ảnh bìa sản phẩm (bucket **public** R2, PNG/JPG/JPEG ≤ 5 MB theo khai báo). **Luồng cũ** — từ ADR-027 editor dùng ảnh bìa Cloudinary (§10); route giữ tới khi dọn (BACKLOG). |
 | `POST` | `/api/studio/[tenantSlug]/uploads/cover-complete` | `requireTenantMember` | Xác nhận ảnh bìa R2, ghi `Product.coverImageKey`. ADR-026 ✅: kiểm `objectKey` khớp `tenants/<tenantId>/products/<productId>/cover/<tên>` (`isProductObjectKeyFor`, kind `cover`) + đuôi png/jpg/jpeg trước khi gọi storage → sai `400 INVALID_OBJECT_KEY`. Chưa kiểm dung lượng thật của ảnh (BACKLOG). |
 
@@ -139,7 +141,7 @@ trong path — MVP chưa có `STAFF` được cấp quyền upload).
 | Method | Endpoint | Truy cập | Mô tả |
 | :-- | :-- | :-- | :-- |
 | `POST` | `/api/webhooks/platform/[provider]` | Public + xác thực chữ ký provider (`SEPAY`, `MOMO`) | Webhook thanh toán **phí subscription nền tảng** (Tenant → Gieo Chữ). Xác thực chữ ký trước (`provider.verifyWebhook`), ghi `WebhookEvent` (`scope=PLATFORM`) để idempotent, đối soát `SubscriptionInvoice` theo mã tham chiếu + số tiền, gọi `markInvoicePaid()` nếu khớp, luôn ghi `PlatformPaymentTransaction` (khớp hoặc `UNMATCHED` để admin xử lý tay). |
-| `POST` | `/api/webhooks/tenants/[tenantId]/[provider]` | Public + xác thực chữ ký provider (`SEPAY`, `MOMO` — không nhận `MANUAL_QR`, vì đó không có webhook) | Webhook thanh toán **đơn hàng khách mua sản phẩm của tenant**. Đọc `TenantPaymentConfig` (giải mã `encryptedSecrets` bằng `PAYMENT_ENCRYPTION_KEY`), xác thực chữ ký, ghi `WebhookEvent` (`scope=TENANT`) để idempotent, rồi **trả 200 ngay** và đẩy việc nặng (khớp `Order`, `markOrderPaid()`) vào job `payment.process` qua `enqueuePaymentProcess()` — đúng CLAUDE.md §7.4 "trả 2xx nhanh rồi xử lý nặng trong job". |
+| `POST` | `/api/webhooks/tenants/[tenantId]/[provider]` | Public + xác thực chữ ký provider (`SEPAY`, `MOMO` — không nhận `MANUAL_QR`, vì đó không có webhook) | Webhook thanh toán **đơn hàng khách mua sản phẩm của tenant**. Đọc `TenantPaymentConfig` (giải mã `encryptedSecrets` bằng `PAYMENT_ENCRYPTION_KEY`), xác thực chữ ký, ghi `WebhookEvent` (`scope=TENANT`) để idempotent, rồi **trả 200 ngay** và đẩy việc nặng (khớp `Order`, `markOrderPaid()`) vào job `payment.process` qua `enqueuePaymentProcess()` — đúng CLAUDE.md §7.4 "trả 2xx nhanh rồi xử lý nặng trong job". ADR-036 ✅: không có worker thường trực trên Vercel — sau khi enqueue gọi `scheduleQueueDrain([payment.process])`, job được xử lý trong `after()` sau khi `200 { success: true }` đã gửi (hàm không bao giờ ném nên không đổi mã trả về); `export const maxDuration = 60`; cron §17 dọn job sót. |
 
 ---
 
@@ -536,7 +538,32 @@ riêng khác chữ ("Mẫu / Template", "Đề thi / Đề kiểm tra") — BACK
 
 ---
 
-## 17. Tài Liệu Tham Chiếu & Liên Kết
+## 17. Cron (`/api/cron`) — 1 route (ADR-036) ✅
+
+Đối chiếu `apps/web/app/api/cron/daily/route.ts` working tree 2026-10-16 (**chưa commit/deploy**). Nghiệp vụ:
+[[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]] §5.
+
+| Method | Endpoint | Truy cập | Mô tả |
+| :-- | :-- | :-- | :-- |
+| `GET` | `/api/cron/daily` | Header `Authorization: Bearer <CRON_SECRET>` (so sánh `timingSafeEqual` cả chuỗi; khác độ dài → từ chối trước). Không dùng cookie/session | Vercel Cron gọi mỗi ngày (`apps/web/vercel.json`: `0 20 * * *` UTC = 03:00 giờ VN). Chạy tuần tự, mỗi bước cô lập: `runSubscriptionSweep()` → `runOrderSweep()` → `superviseQueues([payment.process, file.scan])` → `drainQueues(cùng 2 hàng đợi, ngân sách 40 giây)`. `maxDuration = 60`, `dynamic = "force-dynamic"`. |
+
+**Response** — chỉ số đếm, không dữ liệu tenant/đơn/khách (CLAUDE.md §7.9):
+
+| HTTP | Thân | Khi nào |
+| :-: | :-- | :-- |
+| `200` | `{ ok: true, requestId, results }` | Mọi bước thành công |
+| `500` | `{ error: { code: "CRON_STEP_FAILED", message, requestId }, results }` | Ít nhất một bước lỗi (các bước khác vẫn chạy; chi tiết lỗi chỉ ở log) |
+| `401` | `{ error: { code: "UNAUTHORIZED", message, requestId } }` | Thiếu/sai header `Authorization` |
+| `503` | `{ error: { code: "CRON_NOT_CONFIGURED", message, requestId } }` | Env `CRON_SECRET` chưa đặt (biến tuỳ chọn) |
+
+`results` = `{ subscriptionSweep, orderSweep, queueMaintenance, queues }`, mỗi phần tử dạng `{ ok: true, result }` hoặc `{ ok: false }`:
+`subscriptionSweep.result = {}`; `orderSweep.result = { expired: number }` (số đơn chuyển `EXPIRED`); `queueMaintenance.result =
+{ queues: number }`; `queues.result = { processed, failed, budgetExhausted }`. Lưu ý: `500 CRON_STEP_FAILED` có thêm khoá `results`
+ngoài khung lỗi chuẩn `{ error }`.
+
+---
+
+## 18. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * [[Database-Schema-Reference]] — Lược đồ dữ liệu ([Database-Schema-Reference.md](./Database-Schema-Reference.md))
@@ -548,6 +575,7 @@ riêng khác chữ ("Mẫu / Template", "Đề thi / Đề kiểm tra") — BACK
 * [[02-System-Specs/Posts-Specs|Posts-Specs]] — nghiệp vụ bài viết M10b ([Posts-Specs.md](../02-System-Specs/Posts-Specs.md))
 * [[01-Architecture-Decisions/ADR-016-Short-Product-Url-No-Sticky-Publish-Card|ADR-016 (≙ ADR-030)]] — URL tài liệu rút gọn, redirect 301 ([ADR-016-Short-Product-Url-No-Sticky-Publish-Card.md](../01-Architecture-Decisions/ADR-016-Short-Product-Url-No-Sticky-Publish-Card.md))
 * [[01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-From-System-Center|ADR-018 (≙ ADR-032)]] ([ADR-018-System-Settings-And-Brand-From-System-Center.md](../01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-From-System-Center.md)) · [[01-Architecture-Decisions/ADR-019-Home-Page-Real-Data-Sold-Count|ADR-019 (≙ ADR-033)]] ([ADR-019-Home-Page-Real-Data-Sold-Count.md](../01-Architecture-Decisions/ADR-019-Home-Page-Real-Data-Sold-Count.md))
+* [[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]] — job nền, `after()`, cron hằng ngày (ADR-036) ([Background-Jobs-Specs.md](../02-System-Specs/Background-Jobs-Specs.md))
 * [[02-System-Specs/Shop-Marketplace-Specs|Shop-Marketplace-Specs]] ([Shop-Marketplace-Specs.md](../02-System-Specs/Shop-Marketplace-Specs.md)) · [[01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First|ADR-021 (≙ ADR-035)]] ([ADR-021-Shop-Marketplace-Cms-First.md](../01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First.md))
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

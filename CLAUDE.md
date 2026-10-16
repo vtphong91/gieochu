@@ -74,7 +74,7 @@ ràng buộc bằng chỉ dẫn, không phải cơ chế công cụ. **Nguồn s
 | `docker compose -f docker/docker-compose.yml up` | MinIO + Mailpit (+ `--profile local-db` để có Postgres local) |
 
 Trước `pnpm dev`/test lần đầu: copy `.env.example` → `.env`, điền đủ biến (danh sách hiện hành: `packages/config/src/env.ts`
-— runtime chỉ 8 biến hạ tầng + secret theo ADR-032; mục 11 đặc tả gốc đã cũ). ⚠️ `pnpm db:seed` ghi đè nội dung trang chủ
+— runtime chỉ 8 biến hạ tầng + secret theo ADR-032, cộng `CRON_SECRET` tuỳ chọn theo ADR-036 — nếu đặt thì ≥32 ký tự, ngắn hơn làm app fail-fast; mục 11 đặc tả gốc đã cũ). ⚠️ `pnpm db:seed` ghi đè nội dung trang chủ
 CMS — không chạy khi `.env` còn trỏ DB production. Env thiếu biến bắt buộc sẽ
 làm ứng dụng dừng ngay khi khởi động (`packages/config/src/env.ts`), kể cả khi chỉ mở trang marketing —
 đây là hành vi cố ý (fail-fast).
@@ -94,8 +94,12 @@ Xem sơ đồ đầy đủ ở `docs/GIEOCHU_PROMPT_MVP_PHASE1.md` §4.4. Tóm t
   bảng L2 (có `tenantId`); `getPrismaClient()` trực tiếp chỉ dành cho bảng L1 (users, tokens, plans...).
   **Quan trọng:** app kết nối bằng role `gieochu_app` (tạo qua `packages/db/scripts/setup-app-role.mts`), **không
   phải** role owner Neon mặc định — role owner có `BYPASSRLS` nên RLS vô hiệu nếu dùng nó (xem ADR-010).
-- `packages/auth`, `packages/payments`, `packages/storage`, `packages/email`, `packages/jobs` — skeleton hiện
-  tại, mỗi package có comment ghi rõ sẽ triển khai ở module nào (xem source).
+- `packages/auth`, `packages/payments`, `packages/storage`, `packages/email`, `packages/jobs` — đã triển khai theo
+  các module tương ứng (xem source).
+- **Job nền (ADR-036):** Vercel không chạy worker thường trực. Job `payment.process`/`file.scan` được drain ngay sau
+  response bằng `after()` (`apps/web/lib/job-runner.ts`); sweep thuê bao/đơn + dọn job sót chạy qua Vercel Cron
+  `GET /api/cron/daily` (Bearer `CRON_SECRET`). `worker.ts` **không deploy** và **không chạy local trên DB dùng chung**
+  (sẽ tạo lại lịch pg-boss và chạy song song với cron) trừ khi Quốc duyệt.
 - `docker/docker-compose.yml` — MinIO (+ tạo bucket), Mailpit, Postgres 16 (`profile: local-db`, tuỳ chọn).
 
 ## Quy ước code

@@ -474,6 +474,8 @@ lộ ra 2 lỗi cả 2 đều tồn tại từ trước, không riêng module n�
   (`SUBSCRIPTION_SWEEP`). Email **không** phụ thuộc worker (gửi đồng bộ).
 - **Gửi job pg-boss từ Vercel (serverless):** `apps/web/lib/jobs.ts` giả định tiến trình Node sống lâu — cần kiểm hành vi
   thật trên Vercel (độ trễ khởi động, số kết nối `DIRECT_URL`).
+  *(2026-10-16: hai mục trên được thay bằng ADR-036 — job xử lý trong app bằng `after()` + Vercel Cron hằng ngày; không cần host
+  worker cho production. Phần còn mở chuyển sang mục "Phát sinh trong đợt ADR-036".)*
 
 **Build**
 - **Cân nhắc build command `pnpm --filter @gieochu/db run generate && next build`** thay cho `next build` để tránh Prisma client
@@ -578,3 +580,35 @@ mục GĐ1:
 
 **Chưa kiểm thực tế** (dev server dữ liệu thật đã đạt ở luồng chính): trạng thái rỗng toàn trang; `error.tsx` khi lỗi thật; phân trang
 nhiều trang; nhánh SEO từ CMS đã xuất bản (`seoTitle`/`seoDescription` — editor chưa có ô sửa).
+
+## Phát sinh trong đợt ADR-036 (job nền trong app + Vercel Cron hằng ngày)
+
+**Vận hành — chủ dự án làm**
+- **Chạy SQL dọn job** `docs/ops/2026-10-16-pgboss-cleanup.sql` trong Neon SQL Editor (role owner, không chạy khi đang có integration
+  test): bước 1 chỉ đọc, đối chiếu kỳ vọng (35 job `payment.process` của test — 18 created/15 failed/2 completed; 0 job thuộc tenant còn
+  tồn tại; 89 `order.sweep` + 6 `subscription.sweep` created) — khác kỳ vọng thì dừng, báo Quốc; bước 2 xoá trong transaction.
+- **Đặt `CRON_SECRET` trên Vercel** (Production): sinh bằng `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+  (≥ 32 ký tự — ngắn hơn làm cả app fail-fast), redeploy, kiểm Settings → Cron Jobs có `/api/cron/daily`. Thiếu biến → route trả 503,
+  sweep + dọn hàng đợi không chạy.
+
+**Giới hạn đã chấp nhận**
+- **Job `active` kẹt** (drain bị cắt bởi timeout function) chỉ được trả lại khi cron chạy `supervise` — tối đa ~24h. Muốn dày hơn: cắm
+  thêm lịch ngoài (vd cron-job.org) gọi cùng route `/api/cron/daily` với header Bearer.
+- **Sweep thuê bao trễ tối đa ~24h** (trước: hằng giờ qua worker) — chuyển trạng thái thuê bao có thể chậm tới một ngày.
+- **Hành vi thật trên Vercel chưa kiểm:** `after()` có chạy hết drain trong `maxDuration = 60` không; số kết nối `DIRECT_URL` khi nhiều
+  instance mở pg-boss; Vercel Cron có gửi đúng header Bearer.
+- **Chạy `worker.ts` local trên DB dùng chung** sẽ tạo lại lịch pg-boss `order.sweep`/`subscription.sweep` (vừa xoá bằng SQL dọn) và chạy
+  song song với cron — cần chốt có cho phép không.
+
+**Test**
+- **Integration test "the hourly sweep expires an overdue PENDING order…"** (`order.test.ts`) đọc trạng thái qua `getOrderDetail` — hàm
+  này nay trả trạng thái hiệu lực nên test qua kể cả khi `runOrderSweep` không ghi DB. Nên đọc status thô (`tx.order.findUnique`) để test
+  còn kiểm đúng sweep; tên test còn chữ "hourly".
+- **`afterAll` dọn job pg-boss trong `order.test.ts`** chưa chạy thật.
+- **Nợ test** (không thêm test đợt này, số test giữ 93/52; thêm cần chủ dự án duyệt nâng trần): unit `effectiveOrderStatus` (biên
+  `expiresAt == now`, trạng thái khác PENDING giữ nguyên) và `canManuallyConfirmOrder` với PENDING quá hạn; `drainQueues` (job lỗi
+  `fail` không dừng lô, hết ngân sách); xác thực route cron (thiếu secret → 503, sai header → 401, đúng → 200).
+
+**Tài liệu gốc lệch**
+- `docs/ARCHITECTURE.md` (sơ đồ "pg-boss workers", `order.sweep` 5 phút "tất cả trong `apps/web/worker.ts`", cây thư mục `worker.ts`
+  có `email.send`) và `CLAUDE.md` ("runtime chỉ 8 biến") chưa cập nhật theo ADR-036 — chờ Quốc.

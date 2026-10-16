@@ -808,3 +808,35 @@
   bọc (migration expand, Quốc duyệt và chạy theo ADR-034).
 - **Chủ dự án chốt (2026-10-15):** kệ "Bán chạy" xếp theo **tổng đã bán mọi thời gian** (`soldCount`); số bán 30 ngày
   **chỉ dùng để xếp hạng** gian hàng nổi bật, **không hiển thị công khai** (thẻ gian hàng hiện tổng đã bán + sao).
+
+## ADR-036 — Xử lý job nền ngay trong app (không worker thường trực): `after()` + Vercel Cron hằng ngày
+
+- **Bối cảnh (2026-10-16):** Vercel không chạy tiến trình thường trực nên `apps/web/worker.ts` (pg-boss `work`) không có
+  nơi chạy (ADR-031 mục 4). Kiểm chỉ đọc hàng đợi: 18 job `payment.process` ở trạng thái `created` — **tất cả từ
+  integration test** (`evt_m8test_*`, tenant đã xoá), không có đơn khách thật bị kẹt; job `order.sweep`/`subscription.sweep`
+  tồn do lịch pg-boss từ những lần chạy worker local. Chủ dự án chọn phương án tự xử lý trong project (không dùng
+  cron-job.org hay server riêng).
+- **Quyết định:**
+  1. **Job phát sinh từ request** (`payment.process` từ webhook tenant, `file.scan` từ upload): vẫn `send` vào pg-boss
+     trước (bản ghi bền), rồi `after()` (Next.js) chạy bộ xử lý hàng đợi ngay sau khi trả response — lấy job bằng
+     pg-boss `fetch` (khoá job, chống xử lý trùng), `complete`/`fail` tường minh, có ngân sách thời gian. Lỗi/bị ngắt →
+     job còn trong hàng đợi, pg-boss tự thử lại theo cấu hình retry.
+  2. **Việc định kỳ:** một route `GET /api/cron/daily` do **Vercel Cron** gọi mỗi ngày (gói Hobby chỉ cho tần suất
+     ngày): chạy `runSubscriptionSweep()`, `runOrderSweep()` trực tiếp (không qua hàng đợi) và dọn job còn sót của
+     `payment.process`/`file.scan`. Xác thực bằng header `Authorization: Bearer <CRON_SECRET>` so sánh `timingSafeEqual`;
+     thiếu `CRON_SECRET` → route trả 503 (biến env **tuỳ chọn**, không làm app fail-fast). Có thể cắm thêm cron-job.org
+     vào cùng route sau này nếu cần tần suất dày hơn.
+  3. **Đơn PENDING quá hạn** (`orderPendingTtlMinutes`): luồng đọc/thanh toán phải coi đơn quá hạn là hết hạn ngay
+     (không phụ thuộc sweep 5 phút); sweep hằng ngày chỉ đồng bộ trạng thái DB.
+  4. `worker.ts` giữ lại cho chạy local/server riêng sau này; không deploy.
+  5. Job lạ/không hợp lệ (tenant không tồn tại) → `fail`, log, không làm hỏng cả lô.
+- **Hệ quả:** không phụ thuộc dịch vụ ngoài; thanh toán được giao gần như tức thì; sweep thuê bao chính xác theo ngày.
+  Dữ liệu job tồn từ test cần dọn (DML trên DB dùng chung — chủ dự án chạy, ADR-034); integration test phải dọn job
+  pg-boss mình tạo.
+- **Chủ dự án chốt (2026-10-16):** giữ quy tắc thanh toán trễ — webhook khớp đơn PENDING hoặc đã hết hạn **trong 24h**
+  sau `expiresAt` thì tự fulfil; trễ hơn 24h thì **không** tự fulfil, giao dịch ghi MATCHED để tenant đối soát/xử lý
+  tay. Đơn PENDING quá `expiresAt` được coi là EXPIRED khi đọc (`effectiveOrderStatus`). SQL dọn job test tồn đọng:
+  `docs/ops/2026-10-16-pgboss-cleanup.sql` (chủ dự án chạy).
+- **Làm rõ (2026-10-16):** "không làm app fail-fast" chỉ đúng khi **thiếu** `CRON_SECRET`; nếu đặt giá trị < 32 ký tự
+  thì zod làm cả app dừng khi khởi động. Không chạy `worker.ts` local trên DB dùng chung (tạo lại lịch pg-boss, chạy
+  song song cron) trừ khi Quốc duyệt.

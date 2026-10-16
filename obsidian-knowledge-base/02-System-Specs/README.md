@@ -3,7 +3,7 @@ tags:
   - meta
   - spec
 date: 2026-09-26
-updated: 2026-10-15
+updated: 2026-10-16
 ---
 
 # 📐 System Specifications (Living Specs)
@@ -52,6 +52,10 @@ bộ nội dung được viết lại từ nguồn thật: `CLAUDE.md`, `docs/AR
   `/cua-hang` + `/cua-hang/tai-lieu`: "Công khai" = PUBLISHED + tenant ACTIVE trong `withPublic`, quy tắc từng kệ, số bán 30 ngày
   dưới `withSystemJob` (chỉ xếp hạng, không hiển thị), tìm không dấu `gieochu_unaccent`, Suspense theo vị trí, SEO/noindex, 6 slug
   tenant dành riêng ([Shop-Marketplace-Specs.md](./Shop-Marketplace-Specs.md)).
+- `[[Background-Jobs-Specs]]`: Job nền M11 theo ADR-036 — **xong code (2026-10-16), chưa commit/deploy**. Không worker thường trực trên
+  Vercel: `payment.process`/`file.scan` vẫn `send` vào pg-boss rồi `after()` drain ngay sau response (`fetch` → `complete`/`fail`, ngân
+  sách thời gian, retry 60 giây + backoff); `GET /api/cron/daily` (Vercel Cron 03:00 giờ VN, Bearer `CRON_SECRET`) chạy sweep thuê bao/đơn
+  + bảo trì + dọn hàng đợi; `effectiveOrderStatus`; `worker.ts` chỉ còn cho local ([Background-Jobs-Specs.md](./Background-Jobs-Specs.md)).
 
 ## Ghi chú lịch sử
 

@@ -6,7 +6,7 @@ tags:
   - rollback
   - status/living
 date: 2026-07-02
-updated: 2026-10-15
+updated: 2026-10-16
 author: System Architect
 ---
 
@@ -18,7 +18,8 @@ author: System Architect
 > (`.github/workflows/ci.yml`, chạy lint/typecheck/test trên push `main` và pull request). **Deploy hiện là
 > thủ công.** Từ **ADR-031 (2026-09-29)** nền tảng hosting app là **Vercel** (`apps/web/vercel.json` ✅) — quy trình chi
 > tiết ở [[04-Operations-Runbooks/Deploy-Vercel-Runbook|Deploy-Vercel-Runbook]]; deploy thành công đầu tiên chưa xác nhận ❓.
-> Worker pg-boss chưa có host.
+> Job nền không cần worker riêng nữa: từ **ADR-036** (2026-10-16, xong code, chưa commit/deploy) job xử lý trong app bằng `after()` +
+> Vercel Cron hằng ngày `GET /api/cron/daily` — cần đặt env `CRON_SECRET` trên Vercel (Deploy-Vercel-Runbook §6.2).
 
 ## 1. CI Hiện Có (`.github/workflows/ci.yml`)
 

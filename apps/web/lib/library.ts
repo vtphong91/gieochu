@@ -1,4 +1,4 @@
-import { normalizeExternalDocumentUrl } from "@gieochu/core";
+import { effectiveOrderStatus, normalizeExternalDocumentUrl } from "@gieochu/core";
 import { withCustomer, type ReviewStatus } from "@gieochu/db";
 import { getMyReviewsByProduct } from "./review";
 
@@ -116,6 +116,7 @@ export async function listCustomerOrders(userId: string): Promise<LibraryOrder[]
     }),
   );
 
+  const now = new Date();
   return orders.map((order) => ({
     id: order.id,
     code: order.code,
@@ -123,7 +124,8 @@ export async function listCustomerOrders(userId: string): Promise<LibraryOrder[]
     tenantSlug: order.tenant.slug,
     productTitle: order.items.map((item) => item.titleSnapshot).join(", "),
     totalVnd: order.totalVnd,
-    status: order.status,
+    // ADR-036: overdue PENDING shows as EXPIRED (no checkout link) even before the daily sweep.
+    status: effectiveOrderStatus(order.status, order.expiresAt, now),
     createdAt: order.createdAt,
   }));
 }

@@ -143,7 +143,7 @@ export type { ReviewHiddenReasonValue, ReviewTextResult, TenantReviewHideReason 
 export { transitionOrderStatus } from "./order/state";
 export type { OrderEvent, OrderStatus } from "./order/state";
 export { generateOrderCode, isValidOrderCode } from "./order/code";
-export { canManuallyConfirmOrder, computeOrderExpiresAt } from "./order/expiry";
+export { canManuallyConfirmOrder, computeOrderExpiresAt, effectiveOrderStatus } from "./order/expiry";
 export { matchPaymentAmount } from "./order/payment-match";
 export type { PaymentMatchStatus } from "./order/payment-match";
 export { calculateOrderPricing } from "./order/pricing";

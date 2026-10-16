@@ -7,7 +7,7 @@ tags:
   - jobs
   - status/living
 date: 2026-09-29
-updated: 2026-10-15
+updated: 2026-10-16
 author: Long
 ---
 
@@ -18,7 +18,8 @@ author: Long
 > **ADR-032** — [[01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-From-System-Center|ADR-018 (≙ ADR-032)]]; một DB duy
 > nhất cho dev/Preview/production theo **ADR-034** —
 > [[01-Architecture-Decisions/ADR-020-Single-Database-Dev-Preview-Production|ADR-020 (≙ ADR-034)]]; quy trình migration sau
-> **sự cố 2026-10-15** ở §9. Checklist chung trước phát hành,
+> **sự cố 2026-10-15** ở §9; job nền chạy trong app (`after()` + Vercel Cron hằng ngày) theo **ADR-036** (chưa có bản trích KB) ở §6 —
+> nghiệp vụ: [[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]]. Checklist chung trước phát hành,
 > CI và rollback: [[04-Operations-Runbooks/Publish-And-Rollback-Runbook|Publish-And-Rollback-Runbook]]. Dựng lại DB từ đầu:
 > [[04-Operations-Runbooks/Disaster-Recovery-Runbook|Disaster-Recovery-Runbook]].
 >
@@ -28,6 +29,8 @@ author: Long
 > **Trạng thái (2026-10-15):** theo `docs/DECISIONS.md` (sự cố 2026-10-15) đã có **một bản đang chạy production trên Vercel** —
 > bản trước ADR-032, còn đọc cột `system_settings.platformName` 🟡. Bản ADR-032/033 (8 biến env) **chưa deploy** ❓. Máy dev,
 > Preview và Production dùng **một DB duy nhất** (ADR-034, quyết định lâu dài) — xem §9.
+> **2026-10-16:** code ADR-036 (cron `/api/cron/daily`, `CRON_SECRET`, drain hàng đợi bằng `after()`) **xong code, chưa commit/deploy** ✅
+> (đối chiếu working tree).
 
 ---
 
@@ -38,7 +41,9 @@ author: Long
 | App Next.js 16 (`apps/web`) | **Vercel** | Root layout `force-dynamic` → mọi trang render lúc request ✅ |
 | Postgres | **Neon** | Runtime dùng role `gieochu_app` (ADR-010) ✅ |
 | Migration (`prisma migrate deploy`) | **Máy dev / CI**, không phải Vercel | Cần `PRISMA_MIGRATE_URL` (role owner) — chỉ ở máy chạy lệnh ✅ |
-| Worker pg-boss (`apps/web/worker.ts`) | **Chưa có** — cần host chạy lâu dài riêng | Xem §6 ✅ (code) / ❓ (host) |
+| Job nền pg-boss (`payment.process`, `file.scan`) | **Trong chính app trên Vercel** — `after()` sau response (ADR-036) | Xem §6 ✅ (code) / ❓ (hành vi Vercel) |
+| Việc định kỳ (sweep thuê bao/đơn, bảo trì + dọn hàng đợi) | **Vercel Cron** gọi `GET /api/cron/daily` mỗi ngày 03:00 giờ VN (ADR-036) | Xem §6 ✅ (code) / ❓ (chưa deploy) |
+| Worker pg-boss (`apps/web/worker.ts`) | **Không deploy** — chỉ local/server riêng (ADR-036 mục 4) | §6.4 |
 | Object storage (R2), Cloudinary, SMTP, cổng thanh toán | Dịch vụ ngoài, **cấu hình trong Admin** (lưu DB mã hoá) | Không phải biến env (ADR-017 gốc, ADR-028) ✅ |
 
 ---
@@ -61,9 +66,12 @@ author: Long
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "buildCommand": "next build"
+  "buildCommand": "next build",
+  "crons": [{ "path": "/api/cron/daily", "schedule": "0 20 * * *" }]
 }
 ```
+
+Khoá `crons` thêm theo ADR-036 (working tree 2026-10-16, chưa commit) — lịch tính theo **UTC**: `0 20 * * *` = 03:00 giờ Việt Nam.
 
 **Vì sao không dùng `turbo run build`:** script `build` của `@gieochu/db` là `prisma generate && tsc …` ✅ — Vercel không cần
 chạy lại vì Prisma client sinh sẵn đã được **commit** ở `packages/db/src/generated/prisma` (`git ls-files` có file) ✅. Hệ quả:
@@ -95,7 +103,7 @@ Nguồn: `packages/config/src/env.ts` ✅ (ADR-032), `.env.example` ✅. Đặt 
 `NODE_ENV` do nền tảng đặt (schema mặc định `development`; cookie `Secure` chỉ bật khi `NODE_ENV=production` — `lib/cookies.ts`
 ✅; Vercel tự đặt `production` cho Production 🟡 — **kiểm lại sau deploy** ❓).
 
-> ⚠️ Hai khoá mã hoá phải **giữ nguyên** giữa các lần deploy và giữa Vercel với host worker — đổi khoá thì cấu hình đã lưu
+> ⚠️ Hai khoá mã hoá phải **giữ nguyên** giữa các lần deploy và giữa Vercel với worker local/server riêng (nếu chạy) — đổi khoá thì cấu hình đã lưu
 > trong Admin không giải mã được nữa (suy ra từ cơ chế mã hoá DB ✅; chưa có quy trình xoay khoá).
 
 ### 3.2. Thương hiệu và cấu hình nghiệp vụ — KHÔNG còn là env (ADR-032)
@@ -122,7 +130,12 @@ cấu hình dev:
 
 ### 3.4. Tuỳ chọn
 
-`CLAMAV_HOST` (chưa có client ClamAV thật — ADR-018 gốc) ✅.
+* `CLAMAV_HOST` (chưa có client ClamAV thật — ADR-018 gốc) ✅.
+* **`CRON_SECRET`** (ADR-036) ✅ `packages/config/src/env.ts`: tuỳ chọn; chuỗi rỗng = chưa đặt. **Nếu đặt thì phải ≥ 32 ký tự** — ngắn
+  hơn thì `getEnv()` lỗi và **cả app dừng** (fail-fast), không chỉ route cron. Không đặt → app chạy bình thường nhưng
+  `GET /api/cron/daily` trả `503 CRON_NOT_CONFIGURED` → sweep thuê bao/đơn và dọn hàng đợi hằng ngày **không chạy**. Cách đặt: §6.2.
+
+Env runtime hiện hành = **8 biến bắt buộc** (§3.1) + 2 biến tuỳ chọn (`CRON_SECRET`, `CLAMAV_HOST`).
 
 ### 3.5. KHÔNG đặt trên Vercel
 
@@ -204,35 +217,78 @@ Các trang trên tồn tại trong `apps/web/app/admin/**` ✅. Cổng thanh to�
 3. **Trang chính:** `/`, `/pricing`, `/register`, storefront `/{tenantSlug}`, trang tài liệu `/{tenantSlug}/{productSlug}`, URL cũ
    `/{tenantSlug}/products/{productSlug}` → **301**, `/admin`, `/studio/{tenantSlug}`, `/account/library`.
 4. **Email:** gửi thử từ `/admin/settings/smtp`; kiểm link trong email dùng đúng `APP_URL` (không `//`).
-5. **Upload:** tải một file thử trong Studio — nếu không có worker, file sẽ đứng ở "Đang quét" (§6).
+5. **Upload:** tải một file thử trong Studio — sau vài giây (tải lại trang) file phải rời trạng thái "Đang quét" nhờ `after()` (§6);
+   còn kẹt → xem log function `uploads/complete` (`after(): queue drain …`).
 6. **ADR-032/033:** `/admin/settings/general` mở được và lưu được; trang chủ `/` hiện số liệu/giáo viên/tài liệu thật (section
    rỗng thì ẩn); tên thương hiệu trên `/login` đúng giá trị ở `/admin/settings/branding`.
+7. **Cron (ADR-036):** Settings → Cron Jobs thấy `/api/cron/daily`; gọi tay không header → `401`; xem log lần chạy đầu (§6.2).
 
 ---
 
-## 6. Worker pg-boss — KHÔNG chạy trên Vercel
+## 6. Job nền trên Vercel — `after()` + Vercel Cron hằng ngày (ADR-036)
 
-`apps/web/worker.ts` là tiến trình chạy lâu dài (`pnpm --filter @gieochu/web run worker` → `tsx worker.ts`), kết nối
-`DIRECT_URL`, đăng ký 4 hàng đợi ✅:
+Nguồn: **ADR-036** + "Chủ dự án chốt (2026-10-16)" trong `docs/DECISIONS.md`. Code đối chiếu working tree 2026-10-16 (**chưa commit/
+deploy**) ✅. Nghiệp vụ chi tiết: [[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]].
 
-| Hàng đợi | Lịch | Thiếu worker thì |
+### 6.1. Ai xử lý job nào
+
+| Việc | Trên Vercel | Nếu không chạy được |
 | :-- | :-- | :-- |
-| `FILE_SCAN` | theo job (khi upload xong) | File sản phẩm kẹt trạng thái `PENDING` — Studio hiện nhãn **"Đang quét"** (`delivery-sources.tsx`) ✅ |
-| `PAYMENT_PROCESS` | theo job (webhook thanh toán **tenant** enqueue ở `api/webhooks/tenants/[tenantId]/[provider]/route.ts`) | Webhook vẫn nhận/trả 2xx nhưng sự kiện **không được xử lý** → đơn không chuyển trạng thái ✅ (code) |
-| `ORDER_SWEEP` | `*/5 * * * *` | Đơn `PENDING` quá `orderPendingTtlMinutes` (System Center, ADR-032) **không hết hạn** ✅ |
-| `SUBSCRIPTION_SWEEP` | `0 * * * *` | Việc quét subscription theo giờ (`runSubscriptionSweep`) không chạy ✅ |
+| `FILE_SCAN` (upload xong) | `after()` trong `POST /api/studio/[tenantSlug]/uploads/complete` + cron dọn sót ✅ | File kẹt "Đang quét" (`delivery-sources.tsx`) tới lần cron kế tiếp |
+| `PAYMENT_PROCESS` (webhook tenant) | `after()` trong `POST /api/webhooks/tenants/[tenantId]/[provider]` + cron dọn sót ✅ | Webhook vẫn trả 2xx; đơn chưa fulfil tới lần cron kế tiếp |
+| Hết hạn đơn `PENDING` | Đọc/thanh toán dùng `effectiveOrderStatus` ngay; `runOrderSweep()` trong cron chỉ đồng bộ DB ✅ | Khách vẫn không thanh toán được đơn quá hạn; DB còn ghi `PENDING` tới lần cron kế |
+| Sweep thuê bao | `runSubscriptionSweep()` trong cron ✅ | Chuyển trạng thái thuê bao trễ (tối đa ~24h khi cron chạy bình thường) |
+| Bảo trì hàng đợi (job `active` kẹt) | `supervise()` trong cron ✅ (web tắt timer bảo trì của pg-boss) | Job bị cắt giữa chừng chỉ được trả lại khi cron chạy (≤ 24h) |
 
-**Email không phụ thuộc worker:** comment đầu `worker.ts` ghi email đã chuyển sang gửi **đồng bộ** qua `sendEmailNow()`
-(`lib/email-dispatch.ts`) ✅ — thiếu worker **không** làm mất email (khác với mô tả trong brief, xem KB-Audit §11).
+Web app chạy pg-boss với `schedule: false, supervise: false` (`lib/jobs.ts`) ✅ — không sinh job `order.sweep`/`subscription.sweep` trên
+Vercel. **Email không phụ thuộc job** — gửi đồng bộ qua `sendEmailNow()` ✅.
 
-**Host cho worker:** chưa chọn — ứng viên Railway / Fly.io / VPS 🟡 (theo brief, chưa quyết). Yêu cầu tối thiểu suy từ code ✅:
-Node ≥ 20.9, cài cả monorepo (`pnpm install`), **cùng bộ 8 biến env runtime §3.1** (worker gọi `getEnv()` và đọc `.env` gốc repo;
-cấu hình nghiệp vụ worker đọc lại từ `system_settings` mỗi lần chạy job — ADR-032),
-không `PRISMA_MIGRATE_URL`. Theo dõi: `docs/BACKLOG.md` mục "Phát sinh trong đợt ADR-031".
+### 6.2. Đặt `CRON_SECRET` trên Vercel (chủ dự án/Quốc làm — Long chỉ ghi quy trình) ❓
 
-**Lưu ý phía gửi job trên Vercel ❓:** `apps/web/lib/jobs.ts` khởi động pg-boss lười trong chính tiến trình app để `send()` job;
-comment ghi giả định "một tiến trình Node sống lâu, **không** phải serverless cold-start-per-request". Trên Vercel (serverless)
-giả định này không còn đúng — chưa kiểm hành vi thật (độ trễ, số kết nối `DIRECT_URL`). Đã nêu câu hỏi cho Quốc.
+Trình tự theo brief của Quốc 🟡 — chưa ai chạy thử:
+
+1. Sinh secret trên máy dev (64 ký tự hex, ≥ 32 ký tự như schema yêu cầu):
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   ```
+   (`.env.example` gợi ý tương đương `openssl rand -hex 32` ✅.)
+2. Vercel → Project → Settings → Environment Variables → thêm `CRON_SECRET` cho môi trường **Production**. Không commit giá trị thật.
+3. **Redeploy** Production (biến env chỉ có hiệu lực ở bản deploy mới) 🟡.
+4. Vercel → Settings → **Cron Jobs**: kiểm có job `/api/cron/daily`, lịch `0 20 * * *`. Vercel Cron tự gửi
+   `Authorization: Bearer <CRON_SECRET>` 🟡 (hành vi nền tảng, chưa tự kiểm).
+5. Sau lần chạy đầu (03:00 giờ VN) xem log function: dòng `cron daily finished` kèm `results`; response `200 { ok: true, … }`. Có bước
+   lỗi → `500 CRON_STEP_FAILED` + dòng log `cron daily: step failed` (tên bước). Mã phản hồi:
+   [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §17.
+
+> ⚠️ Đặt `CRON_SECRET` ngắn hơn 32 ký tự làm **toàn bộ app** lỗi khi khởi động (§3.4). Gọi tay để kiểm: phải kèm đúng header Bearer;
+> route chỉ trả số đếm, không trả dữ liệu tenant/đơn/khách.
+
+### 6.3. Dọn job pg-boss tồn đọng — `docs/ops/2026-10-16-pgboss-cleanup.sql` (chủ dự án chạy)
+
+DML một lần trên DB dùng chung (ADR-034) — **không** phải Prisma migration (schema `pgboss` không do Prisma quản lý) ✅ đọc file. Chạy trong
+Neon Console → SQL Editor bằng **role owner**, **không** chạy khi đang có integration test. Agent không chạy.
+
+| Bước | Nội dung | Kỳ vọng ghi trong file |
+| :-: | :-- | :-- |
+| 1 (chỉ đọc) | Đếm job `payment.process` của test (`providerEventId` bắt đầu `evt_m8test_`) theo `state` | Tổng 35: 18 `created`, 15 `failed`, 2 `completed` |
+| 1 (chỉ đọc) | Job test nào thuộc tenant **còn tồn tại** | 0 |
+| 1 (chỉ đọc) | Job `order.sweep`/`subscription.sweep` trạng thái `created` | 89 / 6 |
+| 2 (`BEGIN … COMMIT`) | Xoá job test `payment.process`; xoá job sweep `created`; xoá dòng `pgboss.schedule` của `order.sweep`/`subscription.sweep` | — |
+
+Bước 1 khác kỳ vọng → **dừng, báo Quốc**. Kết quả chạy thật chưa có ❓. Lưu ý: chạy `worker.ts` trên DB dùng chung sau khi dọn sẽ ghi lại
+dòng `pgboss.schedule` (worker vẫn `schedule` hai sweep) ✅ suy từ code.
+
+### 6.4. `apps/web/worker.ts` — không deploy
+
+Giữ cho chạy local/server riêng (`pnpm --filter @gieochu/web run worker` → `tsx worker.ts`) ✅: `schedule`/`supervise` bật,
+`subscription.sweep` hằng giờ, `order.sweep` 5 phút, `work` 4 hàng đợi (handler `payment.process`/`file.scan` dùng chung
+`lib/job-handlers.ts`). Không cần host riêng cho production nữa (ADR-036 thay hướng "worker cần host riêng" của ADR-031 mục 4) 🟡.
+Nếu chạy: cần Node ≥ 20.9, cả monorepo, cùng bộ env runtime §3.1 (đọc `.env` gốc repo), không `PRISMA_MIGRATE_URL`.
+
+### 6.5. Kết nối pg-boss từ serverless ❓
+
+`lib/jobs.ts` khởi động pg-boss lười một lần cho mỗi instance function ấm (start lỗi thì lần sau thử lại) ✅; mỗi instance giữ kết nối
+`DIRECT_URL` (không pooler — ADR-007). Số kết nối thật trên Neon khi nhiều instance song song và độ trễ cold start chưa đo ❓.
 
 ---
 
@@ -258,8 +314,10 @@ Các lỗi dưới theo báo cáo đợt ADR-031 🟡; phần "cách sửa" đã
   `prisma generate` trước ✅. Phương án giảm rủi ro đang cân nhắc: build command
   `pnpm --filter @gieochu/db run generate && next build` (BACKLOG, chưa quyết).
 * **Chi phí render động:** mọi trang render theo request + 1 truy vấn branding/request (ADR-031) 🟡 — chưa đo ❓.
-* **Worker chưa có host** (§6) — file kẹt "Đang quét", đơn không hết hạn, webhook tenant không được xử lý.
-* **pg-boss gửi job từ serverless** (§6) ❓.
+* **Job nền phụ thuộc `after()` + cron 1 lần/ngày** (§6, ADR-036): job `active` bị cắt giữa chừng chỉ được trả lại khi cron chạy
+  (≤ 24h); sweep thuê bao trễ tối đa ~24h; thiếu `CRON_SECRET` thì cả hai đều không chạy. Muốn dày hơn: cắm thêm lịch ngoài
+  (cron-job.org) vào cùng route (BACKLOG).
+* **pg-boss từ serverless** — số kết nối `DIRECT_URL`, cold start (§6.5) ❓.
 * **Một DB cho dev/Preview/production (ADR-034):** `pnpm test:integration`, `demo:seed`, `prisma studio`, thao tác trên Preview
   đều đụng dữ liệu production; `pnpm db:seed` bị cấm (ghi đè `blocks` trang chủ). Kỷ luật ở §9.1.
 * **Truy vấn thêm mỗi request:** root layout đọc `system_settings` (TTL cho `SessionRefresh`) ngoài `SystemBranding` (ADR-032)
@@ -346,6 +404,7 @@ cột đã xoá) **không** quay lại được. Point-in-Time Restore ảnh hư
 * [[01-Architecture-Decisions/ADR-003-Postgres-App-Role-RLS|ADR-003 (≙ ADR-010)]] ([ADR-003-Postgres-App-Role-RLS.md](../01-Architecture-Decisions/ADR-003-Postgres-App-Role-RLS.md))
 * [[01-Architecture-Decisions/ADR-004-Csp-Nonce-Proxy|ADR-004 (≙ ADR-016)]] ([ADR-004-Csp-Nonce-Proxy.md](../01-Architecture-Decisions/ADR-004-Csp-Nonce-Proxy.md))
 * [[01-Architecture-Decisions/ADR-016-Short-Product-Url-No-Sticky-Publish-Card|ADR-016 (≙ ADR-030)]] ([ADR-016-Short-Product-Url-No-Sticky-Publish-Card.md](../01-Architecture-Decisions/ADR-016-Short-Product-Url-No-Sticky-Publish-Card.md)) — slug dành riêng
+* [[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]] — job nền + cron (ADR-036) ([Background-Jobs-Specs.md](../02-System-Specs/Background-Jobs-Specs.md))
 * [[04-Operations-Runbooks/Publish-And-Rollback-Runbook|Publish-And-Rollback-Runbook]] ([Publish-And-Rollback-Runbook.md](./Publish-And-Rollback-Runbook.md))
 * [[04-Operations-Runbooks/Disaster-Recovery-Runbook|Disaster-Recovery-Runbook]] ([Disaster-Recovery-Runbook.md](./Disaster-Recovery-Runbook.md))
 

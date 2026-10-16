@@ -2,6 +2,8 @@ import { createHmac } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { getPrismaClient, withSystemJob, withTenant } from "@gieochu/db";
 import type { CheckoutQrResult } from "@gieochu/payments";
+import { QUEUE_NAMES } from "@gieochu/jobs";
+import { getStartedQueue } from "../../lib/jobs";
 import { createTenantForUser } from "../../lib/create-tenant";
 import { saveTenantProviderConfig } from "../../lib/tenant-payment";
 import { createCoupon } from "../../lib/coupon";
@@ -66,6 +68,16 @@ describe("M8 checkout and orders", () => {
     const tenants = await prisma.tenant.findMany({ where: { slug: { startsWith: RUN_PREFIX } }, select: { id: true } });
     const tenantIds = tenants.map((t) => t.id);
     if (tenantIds.length > 0) {
+      // ADR-036: the SePay webhook test enqueues `payment.process` jobs (providerEventId evt_m8test_*) on the shared
+      // pg-boss queue — delete exactly this run's jobs (matched by tenantId), first, so no real drain picks them up
+      // while the rows below are being removed.
+      const queue = await getStartedQueue();
+      for (const tenantId of tenantIds) {
+        const jobs = await queue.boss.findJobs(QUEUE_NAMES.PAYMENT_PROCESS, { data: { tenantId } });
+        if (jobs.length > 0) {
+          await queue.boss.deleteJob(QUEUE_NAMES.PAYMENT_PROCESS, jobs.map((job) => job.id));
+        }
+      }
       await withSystemJob(async (tx) => {
         await tx.entitlement.deleteMany({ where: { tenantId: { in: tenantIds } } });
         await tx.couponRedemption.deleteMany({ where: { tenantId: { in: tenantIds } } });

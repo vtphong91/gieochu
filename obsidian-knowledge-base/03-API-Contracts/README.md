@@ -3,7 +3,7 @@ tags:
   - meta
   - contract
 date: 2026-09-26
-updated: 2026-10-15
+updated: 2026-10-16
 ---
 
 # 🔌 API Contracts & Data Interface
@@ -13,7 +13,7 @@ tenant nơi giáo viên/coach bán tài liệu số cho học viên.
 
 ## Danh mục Hợp đồng
 
-- `[[Endpoint-Directory]]` — Danh bạ 20 route HTTP thật dưới `apps/web/app/api/**` + 1 route redirect ngoài `/api` (ADR-030, §5.1) (Auth, tài khoản, storefront
+- `[[Endpoint-Directory]]` — Danh bạ 21 route HTTP thật dưới `apps/web/app/api/**` (thêm `GET /api/cron/daily` — ADR-036) + 1 route redirect ngoài `/api` (ADR-030, §5.1) (Auth, tài khoản, storefront
   công khai, upload Studio, downloads/share links, admin, webhooks) kèm cơ chế xác thực và định dạng phản hồi
   lỗi chuẩn (`{ error: { code, message, requestId } }`); §10 ghi contract Server Action của editor sản phẩm Studio
   (`ProductActionState`, field FormData — ADR-026/027); §11 contract ảnh Cloudinary hệ thống
@@ -26,7 +26,9 @@ tenant nơi giáo viên/coach bán tài liệu số cho học viên.
   `restoreLiveShopAction`, `searchShopCategoryOptionsAction`, `getShopCmsEditorData`, `listCategoryPinOptions`, `SYSTEM_CMS_SLUGS`,
   subpath `@gieochu/core/shop-sections` — ADR-035 GĐ1); §16 trang công khai `/cua-hang`, `/cua-hang/tai-lieu` (query, SEO) +
   export của loader `apps/web/lib/shop.ts` (`getShopCmsSections`, `getShopProductShelves`, `getTenantSales30d`, `searchShopProducts`,
-  `parseShopSearchParams`…) + subpath `@gieochu/core/product-type` — ADR-035 GĐ2, không thêm `route.ts`.
+  `parseShopSearchParams`…) + subpath `@gieochu/core/product-type` — ADR-035 GĐ2, không thêm `route.ts`; §17 route cron
+  `GET /api/cron/daily` (Bearer `CRON_SECRET`, 200/401/500 `CRON_STEP_FAILED`/503 `CRON_NOT_CONFIGURED`, `results` chỉ số đếm) — ADR-036,
+  chưa commit/deploy.
 - `[[Database-Schema-Reference]]` — Lược đồ 42 model + 24 enum trong `packages/db/prisma/schema.prisma`, phân
   theo layer L1 (System) / L2 (Tenant, RLS) / L3 (góc nhìn Customer trên bảng L2), cùng quy ước cuid2 (ADR-001),
   mã hoá secret AES-256-GCM (§7.3 CLAUDE.md), và bảng RBAC `Role`/`Permission`/`RolePermission` (ADR-022); §7 ghi RLS tách đọc/ghi 7 bảng, quy tắc bảng L2 mới và mẫu

@@ -4,7 +4,7 @@ tags:
   - index
   - taxonomy
 date: 2026-09-26
-updated: 2026-10-15
+updated: 2026-10-16
 author: System Architect
 ---
 
@@ -59,7 +59,7 @@ giúp phân loại nội dung và tra cứu nhanh cho người và AI agent đ�
 | `#rls` | Row-Level Security — 4 scope `withTenant/withCustomer/withPublic/withSystemJob` |
 | `#security` | Mã hoá secret (AES-256-GCM), hash token, cookie httpOnly, CSP |
 | `#storage` | Upload file, presigned URL, S3-compatible bucket (Cloudflare R2/MinIO) |
-| `#jobs` | Background job/cron qua `packages/jobs` (pg-boss) |
+| `#jobs` | Background job/cron qua `packages/jobs` (pg-boss) — từ ADR-036 xử lý trong app bằng `after()` + Vercel Cron `/api/cron/daily` (`Background-Jobs-Specs`) |
 | `#ui-ux` | Giao diện & trải nghiệm: bố cục, component, accessibility, responsive (owner thiết kế: Phong) |
 | `#design-system` | Design token (màu, font trong `theme.ts`), kit component dùng chung `admin/_ui/` |
 | `#seo` | URL công khai/canonical, metadata, sitemap/robots (vd URL tài liệu rút gọn — ADR-030) |
