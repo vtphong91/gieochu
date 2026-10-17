@@ -12,6 +12,7 @@ import { getPrismaClient, withPublic, withTenant, type Prisma, type ShareLink } 
 import { assertTenantCanWrite } from "./tenant-write-guard";
 import { requireStorageConfig } from "./product-upload";
 import { getSystemSettings } from "./system-settings";
+import { audit } from "./audit";
 
 export interface CreateShareLinkInput {
   label: string;
@@ -32,7 +33,12 @@ export interface CreatedShareLink {
 }
 
 /** §"M9": token shown to the owner exactly once — only its hash is ever persisted. */
-export async function createShareLink(tenantId: string, productId: string, input: CreateShareLinkInput): Promise<CreatedShareLink> {
+export async function createShareLink(
+  tenantId: string,
+  productId: string,
+  input: CreateShareLinkInput,
+  actorId: string | null = null,
+): Promise<CreatedShareLink> {
   const prisma = getPrismaClient();
   const tenant = await prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } });
   assertTenantCanWrite(tenant);
@@ -58,6 +64,23 @@ export async function createShareLink(tenantId: string, productId: string, input
     }),
   );
 
+  // ADR-037: không ghi token/mật khẩu (kể cả hash) — chỉ id + thuộc tính giới hạn.
+  await audit.log({
+    actorId,
+    scope: "TENANT",
+    tenantId,
+    action: "SHARE_LINK_CREATED",
+    targetType: "ShareLink",
+    targetId: shareLink.id,
+    metadata: {
+      productId,
+      protectedLink: passwordHash !== null,
+      maxUses: shareLink.maxUses,
+      expiresAt: shareLink.expiresAt,
+      fileCount: input.fileIds?.length ?? 0,
+    },
+  });
+
   return { shareLink, token };
 }
 
@@ -73,10 +96,19 @@ export async function getShareLinkDetail(tenantId: string, shareLinkId: string) 
   return shareLink;
 }
 
-export async function revokeShareLink(tenantId: string, shareLinkId: string): Promise<void> {
+export async function revokeShareLink(tenantId: string, shareLinkId: string, actorId: string | null = null): Promise<void> {
   const shareLink = await withTenant(tenantId, (tx) => tx.shareLink.findUnique({ where: { id: shareLinkId } }));
   if (!shareLink || shareLink.tenantId !== tenantId) throw notFound("Không tìm thấy link chia sẻ.");
   await withTenant(tenantId, (tx) => tx.shareLink.update({ where: { id: shareLinkId }, data: { revokedAt: new Date() } }));
+  await audit.log({
+    actorId,
+    scope: "TENANT",
+    tenantId,
+    action: "SHARE_LINK_REVOKED",
+    targetType: "ShareLink",
+    targetId: shareLinkId,
+    metadata: { productId: shareLink.productId, alreadyRevoked: shareLink.revokedAt !== null },
+  });
 }
 
 export interface ResolvedShareLink {
@@ -128,7 +160,8 @@ export async function resolveShareLink(rawToken: string): Promise<ResolvedShareL
     withTenant(shareLink.tenantId, (tx) => tx.product.findUniqueOrThrow({ where: { id: shareLink.productId } })),
     getPrismaClient().tenant.findUniqueOrThrow({ where: { id: shareLink.tenantId } }),
   ]);
-  if (tenant.status === "LOCKED") {
+  // ADR-040: gian hàng không ACTIVE (READ_ONLY/LOCKED) không phát tài liệu qua link chia sẻ — 410 như link hết hạn.
+  if (tenant.status !== "ACTIVE") {
     throw new AppError({ code: "SHARE_LINK_TENANT_LOCKED", message: "Link không còn hiệu lực.", httpStatus: 410 });
   }
 
@@ -159,6 +192,12 @@ export async function consumeShareLinkDownload(rawToken: string, fileId: string,
   const usability = isShareLinkUsable(shareLink, new Date());
   if (!usability.usable) {
     throw new AppError({ code: `SHARE_LINK_${usability.reason}`, message: "Link không còn hiệu lực.", httpStatus: 410 });
+  }
+
+  // ADR-040: chặn cả ở bước tải (không chỉ lúc mở trang link) — gian hàng không ACTIVE → 410. tenants là L1.
+  const tenant = await getPrismaClient().tenant.findUnique({ where: { id: shareLink.tenantId }, select: { status: true } });
+  if (!tenant || tenant.status !== "ACTIVE") {
+    throw new AppError({ code: "SHARE_LINK_TENANT_LOCKED", message: "Link không còn hiệu lực.", httpStatus: 410 });
   }
 
   if (shareLink.passwordHash) {

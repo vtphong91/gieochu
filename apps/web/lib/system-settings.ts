@@ -13,6 +13,7 @@ import {
 } from "@gieochu/core";
 import { getPrismaClient } from "@gieochu/db";
 import type { CurrentUser } from "./session";
+import { audit } from "./audit";
 
 /**
  * ADR-032 mục 3 — cấu hình hệ thống (bảng L1 `system_settings`, 1 dòng). Mặc định + giới hạn ở
@@ -131,8 +132,16 @@ export async function saveSystemSettings(actor: CurrentUser, formData: FormData)
   const changes = Object.fromEntries(
     SYSTEM_SETTING_KEYS.filter((key) => previous[key] !== next[key]).map((key) => [key, { from: previous[key], to: next[key] }]),
   );
-  // TODO(M12): ghi thêm audit_logs khi bảng đó có (ADR-032 mục 3).
   logger.info({ actorId: actor.userId, changes }, "system_settings: cập nhật cấu hình hệ thống");
+  // ADR-032 mục 3 / ADR-037: các khoá cấu hình đều là số (TTL, ngày...) — ghi cũ→mới, không có secret.
+  await audit.log({
+    actorId: actor.userId,
+    scope: "SYSTEM",
+    action: "SYSTEM_SETTINGS_UPDATED",
+    targetType: "SystemSettings",
+    targetId: CONFIG_ID,
+    metadata: { form: "general", changes },
+  });
 
   return { ok: true, values: next };
 }

@@ -5,7 +5,7 @@ tags:
   - endpoint
   - status/living
 date: 2026-06-15
-updated: 2026-10-16
+updated: 2026-10-17
 author: System Architect
 ---
 
@@ -29,7 +29,17 @@ author: System Architect
 > (ADR-035 GĐ1 + GĐ2, 2026-10-15) cũng **không thêm `route.ts`** (đếm lại 2026-10-15: 20 dưới `/api`, 21 toàn app ✅) — action
 > CMS ở §15, trang công khai `/cua-hang` + loader `lib/shop.ts` ở §16. Đợt ADR-036 (2026-10-16, **chưa commit/deploy**) **thêm 1
 > `route.ts`**: `GET /api/cron/daily` (§17) — đếm lại 2026-10-16: **21 dưới `/api`, 22 toàn app** ✅; hai route webhook tenant và
-> `uploads/complete` thêm xử lý job sau response (§6, §9).
+> `uploads/complete` thêm xử lý job sau response (§6, §9). Đợt M12a Audit log (ADR-037, 2026-10-16, **chưa commit/deploy**) **không thêm
+> `route.ts`** (đếm lại 2026-10-16: vẫn 22 toàn app ✅) — thêm 2 trang + loader ở §18, bước `audit.purge` vào cron §17; các route
+> `api/auth/login`, `api/auth/refresh` ghi audit nhưng không đổi contract HTTP. Đợt M12b Thống kê (ADR-037, 2026-10-16, **chưa
+> commit/deploy**) **không thêm `route.ts`** (đếm lại 2026-10-16: vẫn 22 toàn app ✅) — thêm bước `stats.aggregate` vào cron §17 (khoá
+> `results.statsAggregate`) và loader dashboard `/admin` ở §19. Đợt M12c Báo cáo vi phạm + ADR-039 (2026-10-16, **chưa commit/deploy**)
+> **thêm 1 `route.ts`**: `POST /api/reports` (§20) — đếm lại 2026-10-17: **22 dưới `/api`, 23 toàn app** ✅; thêm bước
+> `abuse_report.ip_purge` vào cron §17 (khoá `results.reportIpPurge`), Server Action admin/thư viện và mã lỗi mới ở §20; route
+> `/api/downloads` và `/api/downloads/[token]` có thêm mã lỗi remedy (§7). Đợt ADR-040 (2026-10-17, **chưa commit/deploy**) **không thêm
+> `route.ts`** (đếm lại 2026-10-17: vẫn 22 dưới `/api`, 23 toàn app ✅) — đổi điều kiện ở `POST /api/share-links/[token]/download` (§7,
+> 410 `SHARE_LINK_TENANT_LOCKED` khi tenant không `ACTIVE`), `POST /api/reports` (§20.1, 404 khi tenant không `ACTIVE`) và thêm mã
+> `TENANT_NOT_ACTIVE` cho action đánh giá (§12).
 
 ## 1. Quy Ước Chung
 
@@ -126,9 +136,9 @@ trong path — MVP chưa có `STAFF` được cấp quyền upload).
 
 | Method | Endpoint | Truy cập | Mô tả |
 | :-- | :-- | :-- | :-- |
-| `POST` | `/api/downloads` | `requireUser()` | Bước 1 của luồng tải file (M9): kiểm `Entitlement` còn hạn (`downloadsUsed < downloadLimit`, chưa `revokedAt`), phát `DownloadToken` một-lần, TTL 60s. Rate-limit 20 lần/10 phút theo `userId`. Trả `{ url: "/api/downloads/{token}", expiresAt }`, không trả URL bucket thật. ADR-026 ✅: `fileId` có thể là dòng **link ngoài** (`sourceKind = EXTERNAL_URL`) — cùng luồng entitlement/`downloadLimit`/token; dòng không giao được (file chưa `CLEAN`, link không còn qua allowlist, đã gỡ) → `404`. |
-| `GET` | `/api/downloads/[token]` | Public (token = credential một-lần) | Bước 2: tiêu thụ `DownloadToken` (so khớp `tokenHash`; không có/hết hạn/đã dùng → `410 TOKEN_INVALID`), **kiểm lại nguồn giao hàng trước khi trừ lượt** — không còn giao được → `410 DOWNLOAD_SOURCE_UNAVAILABLE` (ADR-026; token lúc này đã bị đánh dấu dùng nhưng lượt tải **không** bị trừ ✅), tăng `Entitlement.downloadsUsed` (hết lượt/thu hồi → `403 DOWNLOAD_LIMIT_REACHED`), ghi `DownloadEvent`, rồi `302` sang: URL presigned GET (FILE — bucket private, `Content-Disposition: attachment`, sống ≤ 10 phút — CLAUDE.md §7.6) **hoặc** chính URL link ngoài đã chuẩn hoá lại qua allowlist (EXTERNAL_URL). |
-| `POST` | `/api/share-links/[token]/download` | Public (mật khẩu tuỳ chọn theo `ShareLink.passwordHash`) | Kiểm mật khẩu (nếu `ShareLink` có đặt), kiểm `fileId` thuộc `fileIds` cho phép, tăng `usedCount` một cách atomic (không vượt `maxUses`), ghi `DownloadEvent`, trả URL presigned GET. Rate-limit 20 lần/10 phút theo **token** (không theo IP — chống brute-force mật khẩu qua proxy). ADR-026 ✅: **không bao giờ giao link ngoài** — chỉ nhận dòng `sourceKind = FILE`, không preview, `CLEAN`, chưa gỡ (`apps/web/lib/share-link.ts`). |
+| `POST` | `/api/downloads` | `requireUser()` | Bước 1 của luồng tải file (M9): kiểm `Entitlement` còn hạn (`downloadsUsed < downloadLimit`, chưa `revokedAt`), phát `DownloadToken` một-lần, TTL 60s. Rate-limit 20 lần/10 phút theo `userId`. Trả `{ url: "/api/downloads/{token}", expiresAt }`, không trả URL bucket thật. ADR-026 ✅: `fileId` có thể là dòng **link ngoài** (`sourceKind = EXTERNAL_URL`) — cùng luồng entitlement/`downloadLimit`/token; dòng không giao được (file chưa `CLEAN`, link không còn qua allowlist, đã gỡ) → `404`. ADR-039 ✅: entitlement chưa thu hồi có `remedyStatus = PENDING_CHOICE` → `403 REMEDY_CHOICE_REQUIRED`; `REFUND_REQUESTED`/`REFUNDED` → `403 DOWNLOAD_BLOCKED_REFUND` (đã thu hồi vẫn báo `ENTITLEMENT_REVOKED`). |
+| `GET` | `/api/downloads/[token]` | Public (token = credential một-lần) | Bước 2: tiêu thụ `DownloadToken` (so khớp `tokenHash`; không có/hết hạn/đã dùng → `410 TOKEN_INVALID`), **kiểm lại nguồn giao hàng trước khi trừ lượt** — không còn giao được → `410 DOWNLOAD_SOURCE_UNAVAILABLE` (ADR-026; token lúc này đã bị đánh dấu dùng nhưng lượt tải **không** bị trừ ✅), tăng `Entitlement.downloadsUsed` (hết lượt/thu hồi → `403 DOWNLOAD_LIMIT_REACHED`; ADR-039: UPDATE chỉ khi `remedyStatus ∈ {NONE, FINAL_DOWNLOAD}` — không khớp do remedy → `403 REMEDY_CHOICE_REQUIRED` / `403 DOWNLOAD_BLOCKED_REFUND`), ghi `DownloadEvent`, rồi `302` sang: URL presigned GET (FILE — bucket private, `Content-Disposition: attachment`, sống ≤ 10 phút — CLAUDE.md §7.6) **hoặc** chính URL link ngoài đã chuẩn hoá lại qua allowlist (EXTERNAL_URL). |
+| `POST` | `/api/share-links/[token]/download` | Public (mật khẩu tuỳ chọn theo `ShareLink.passwordHash`) | Kiểm mật khẩu (nếu `ShareLink` có đặt), kiểm `fileId` thuộc `fileIds` cho phép, tăng `usedCount` một cách atomic (không vượt `maxUses`), ghi `DownloadEvent`, trả URL presigned GET. Rate-limit 20 lần/10 phút theo **token** (không theo IP — chống brute-force mật khẩu qua proxy). ADR-026 ✅: **không bao giờ giao link ngoài** — chỉ nhận dòng `sourceKind = FILE`, không preview, `CLEAN`, chưa gỡ (`apps/web/lib/share-link.ts`). ADR-040 ✅: tenant không `ACTIVE` (`READ_ONLY`/`LOCKED`) → `410 SHARE_LINK_TENANT_LOCKED` (kiểm sau hạn/lượt/thu hồi, trước mật khẩu). Trang `/s/[token]` (`resolveShareLink`) cùng điều kiện — hiển thị "Link không còn hiệu lực." (trang render thông báo, không đặt HTTP 410). |
 
 ## 8. Admin (System Center) — 1 route
 
@@ -259,7 +269,9 @@ không có hàm/route nào cho System Admin (§7.9).
 | `unhideReviewAction` | cùng file | `requireTenantMember` | `(tenantSlug, reviewId)` | `ReviewModerationState` (đánh giá đã `VISIBLE` → thành công, không làm gì) |
 
 - **`ReviewFormState`** = `{ success?, error?, code?, review?: MyReview, created?: boolean }`. `code` ổn định:
-  `VALIDATION_ERROR` · `REVIEW_NOT_ELIGIBLE` · `REVIEW_ALREADY_EXISTS` · `RATE_LIMITED` · `UNAUTHORIZED` · `FORBIDDEN`.
+  `VALIDATION_ERROR` · `REVIEW_NOT_ELIGIBLE` · `REVIEW_ALREADY_EXISTS` · `RATE_LIMITED` · `UNAUTHORIZED` · `FORBIDDEN` ·
+  `TENANT_NOT_ACTIVE` (ADR-040, 2026-10-17 ✅ — `upsertMyReview` khi gian hàng không `ACTIVE`, `httpStatus` 409, message "Gian hàng đang
+  tạm ngưng hoạt động.").
 - **`ReviewModerationState`** = `{ success?, error?, code? }`. `code`: `VALIDATION_ERROR` · `REVIEW_NOT_FOUND` ·
   `REVIEW_INVALID_HIDE_REASON` · `REVIEW_REFUNDED_LOCKED` · `FORBIDDEN` · `UNAUTHORIZED` · `NOT_FOUND`.
 - Lỗi `AppError` có `expose` → trả trong state; lỗi khác bị ném tiếp (Next trả lỗi chung).
@@ -545,7 +557,7 @@ riêng khác chữ ("Mẫu / Template", "Đề thi / Đề kiểm tra") — BACK
 
 | Method | Endpoint | Truy cập | Mô tả |
 | :-- | :-- | :-- | :-- |
-| `GET` | `/api/cron/daily` | Header `Authorization: Bearer <CRON_SECRET>` (so sánh `timingSafeEqual` cả chuỗi; khác độ dài → từ chối trước). Không dùng cookie/session | Vercel Cron gọi mỗi ngày (`apps/web/vercel.json`: `0 20 * * *` UTC = 03:00 giờ VN). Chạy tuần tự, mỗi bước cô lập: `runSubscriptionSweep()` → `runOrderSweep()` → `superviseQueues([payment.process, file.scan])` → `drainQueues(cùng 2 hàng đợi, ngân sách 40 giây)`. `maxDuration = 60`, `dynamic = "force-dynamic"`. |
+| `GET` | `/api/cron/daily` | Header `Authorization: Bearer <CRON_SECRET>` (so sánh `timingSafeEqual` cả chuỗi; khác độ dài → từ chối trước). Không dùng cookie/session | Vercel Cron gọi mỗi ngày (`apps/web/vercel.json`: `0 20 * * *` UTC = 03:00 giờ VN). Chạy tuần tự, mỗi bước cô lập: `runSubscriptionSweep()` → `runOrderSweep()` → `superviseQueues([payment.process, file.scan])` → `audit.purgeExpired()` (bước `audit.purge`, thêm ở M12a — ADR-037) → `runStatsAggregation()` (bước `stats.aggregate`, thêm ở M12b — ADR-037) → `purgeExpiredAbuseReportIps()` (bước `abuse_report.ip_purge`, thêm ở M12c — ADR-038) → `drainQueues(cùng 2 hàng đợi, ngân sách 40 giây)`. `maxDuration = 60`, `dynamic = "force-dynamic"`. |
 
 **Response** — chỉ số đếm, không dữ liệu tenant/đơn/khách (CLAUDE.md §7.9):
 
@@ -556,14 +568,187 @@ riêng khác chữ ("Mẫu / Template", "Đề thi / Đề kiểm tra") — BACK
 | `401` | `{ error: { code: "UNAUTHORIZED", message, requestId } }` | Thiếu/sai header `Authorization` |
 | `503` | `{ error: { code: "CRON_NOT_CONFIGURED", message, requestId } }` | Env `CRON_SECRET` chưa đặt (biến tuỳ chọn) |
 
-`results` = `{ subscriptionSweep, orderSweep, queueMaintenance, queues }`, mỗi phần tử dạng `{ ok: true, result }` hoặc `{ ok: false }`:
-`subscriptionSweep.result = {}`; `orderSweep.result = { expired: number }` (số đơn chuyển `EXPIRED`); `queueMaintenance.result =
-{ queues: number }`; `queues.result = { processed, failed, budgetExhausted }`. Lưu ý: `500 CRON_STEP_FAILED` có thêm khoá `results`
+`results` = `{ subscriptionSweep, orderSweep, queueMaintenance, queues, auditPurge, statsAggregate, reportIpPurge }`, mỗi phần tử dạng `{ ok: true, result }` hoặc
+`{ ok: false }`: `subscriptionSweep.result = {}`; `orderSweep.result = { expired: number }` (số đơn chuyển `EXPIRED`); `queueMaintenance.result =
+{ queues: number }`; `queues.result = { processed, failed, budgetExhausted }`; `auditPurge.result = { deleted: number, skipped: boolean }`
+(số dòng `audit_logs` > 12 tháng đã xoá; `skipped: true` khi bảng chưa tồn tại — M12a, ADR-037); `statsAggregate.result =
+{ skipped, backfilled, fromDate, toDate, upserted }` (`StatsAggregationResult` — `fromDate`/`toDate` dạng `YYYY-MM-DD` ngày VN hoặc `null` khi
+`skipped`; `upserted` = số dòng (tenant, ngày) có hoạt động đã ghi; `backfilled: true` khi bảng trống và lần chạy này backfill — M12b, ADR-037); `reportIpPurge.result = { cleared: number, skipped: boolean }` (số báo cáo cũ hơn
+12 tháng vừa đặt `ip = NULL`; `skipped: true` khi bảng `abuse_reports` chưa tồn tại — M12c, ADR-038). Lưu ý: `500 CRON_STEP_FAILED` có thêm khoá `results`
 ngoài khung lỗi chuẩn `{ error }`.
 
 ---
 
-## 18. Tài Liệu Tham Chiếu & Liên Kết
+## 18. Trang & loader Audit log (M12a, ADR-037) ✅
+
+Đối chiếu working tree 2026-10-16 (**chưa commit/deploy**). **Không có `route.ts`, không có Server Action** — hai trang là Server
+Component đọc bộ lọc từ query string (form `method="get"`). Nghiệp vụ: [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]].
+
+### 18.1. Trang
+
+| Trang | Guard trang | Loader | Query string |
+| :-- | :-- | :-- | :-- |
+| `/admin/audit` | `requireAdminAccess("/admin/audit")` | `listAuditLogs(sp)` — tự `requireRole("SYSTEM_ADMIN")` | `actor` (email hoặc id), `action`, `tenant` (slug hoặc id), `from`, `to` (`YYYY-MM-DD`, giờ VN), `page`, `pageSize` ∈ 10/20/50/100 |
+| `/studio/{slug}/activity` | `requireTenantMemberPage(slug, …)` | `listTenantAuditLogs(tenant.id, sp)` — tự `requireUser()` + chỉ OWNER, ngược lại ném `forbidden` | `action`, `from`, `to`, `page`, `pageSize` (bỏ qua `actor`/`tenant`) |
+
+Cả hai có `loading.tsx` (`AuditLogSkeleton`).
+
+### 18.2. Export của `apps/web/lib/audit-query.ts`
+
+| Export | Ghi chú |
+| :-- | :-- |
+| `listAuditLogs(sp)` / `listTenantAuditLogs(tenantId, sp)` | → `AuditLogListResult` = `{ status: "ok", rows, total, filters, unmatchedFilter: "actor" \| "tenant" \| null }` hoặc `{ status: "unavailable", filters }` (bảng chưa có) |
+| `parseAuditLogFilters(sp)` | Chuẩn hoá bộ lọc → `AuditLogAppliedFilters` (action lạ → `""`, ngày sai → `""`, page ≥ 1, pageSize mặc định 20) |
+| `AUDIT_PAGE_SIZES` | `[10, 20, 50, 100]` |
+| Kiểu `AuditLogSearchParams`, `AuditLogAppliedFilters`, `AuditLogRowView`, `AuditActorView`, `AuditActorKind` | `AuditLogRowView`: `id`, `createdAt` (ISO UTC), `action`, `actionLabel`, `scope`, `scopeLabel`, `actor { id, kind, label, name }`, `tenant` (chỉ view admin), `targetType`, `targetId`, `metadata`, `ip`, `userAgent`. `AuditActorKind` = `SYSTEM` · `ADMIN` · `MEMBER` · `USER` · `CUSTOMER` · `DELETED` |
+
+### 18.3. Export của `apps/web/lib/audit.ts` (ghi — dùng ở server)
+
+`audit.log(input: AuditLogInput) → Promise<boolean>` (không ném), `audit.purgeExpired() → Promise<{ deleted, skipped }>`,
+`auditMetaFromRequest(request)`, `auditMetaFromHeaders()`, `isAuditTableMissing(error)`; kiểu `AuditLogInput`, `AuditRequestMeta`,
+`AuditPurgeResult`. Hằng/hàm thuần ở subpath **`@gieochu/core/audit`** (cũng export ở `@gieochu/core`): `AUDIT_ACTIONS`,
+`AUDIT_ACTION_LABELS`, `AUDIT_SCOPES`, `AUDIT_SCOPE_LABELS`, `auditActionLabel`, `isAuditAction`, `isAuditScope`, `sanitizeAuditMetadata`,
+`maskEmail`, `extractAuditIp`, `normalizeAuditUserAgent`, `AUDIT_REDACTED`, `AUDIT_METADATA_MAX_BYTES`, `AUDIT_IP_MAX_LENGTH`,
+`AUDIT_USER_AGENT_MAX_LENGTH`; kiểu `AuditAction`, `AuditScopeValue`, `AuditMetadata`, `AuditJsonValue`.
+
+### 18.4. Chữ ký hàm lib đổi (contract nội bộ giữa Server Action ↔ lib)
+
+Thêm tham số cuối `actorId: string | null = null`: `archiveProduct`, `confirmOrderManually`, `markOrderRefunded`,
+`grantExtraDownloads`, `revokeEntitlement`, `createShareLink`, `revokeShareLink`, `hideReview`, `unhideReview`,
+`confirmManualInvoicePayment`, `testPlatformProviderConnection`; input lưu cấu hình thanh toán platform/tenant thêm `actorId?`.
+`markInvoicePaid(invoiceId, { source: "PLATFORM_WEBHOOK" | "ADMIN_MANUAL_CONFIRM", actorId? })`. **`unlockUser(actor, targetUserId)`** —
+`actor` bắt buộc (phá chữ ký cũ). Mới: `auditMarkOrderPaid(tenantId, orderId, result, source)`; `MarkOrderPaidResult` thêm
+`couponOverused: { couponId, couponCode } | null`. Từ M12c (ADR-038): `publishProduct(tenantId, productId, actorId: string | null,
+{ rightsConfirmed: boolean })` — `actorId` + options **bắt buộc** (§20.4).
+
+---
+
+## 19. Thống kê bán tài liệu — job + loader dashboard (M12b, ADR-037) ✅
+
+Đối chiếu working tree 2026-10-16 (**chưa commit/deploy**). **Không có `route.ts`/Server Action mới** — job chạy trong cron §17, dashboard
+`/admin` là Server Component đọc loader trong `<Suspense>` riêng. Nghiệp vụ: [[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]].
+
+### 19.1. Export của `apps/web/lib/tenant-stats.ts` (ghi — job)
+
+| Export | Ghi chú |
+| :-- | :-- |
+| `aggregateTenantDailyStats({ fromDate, toDate, tenantIds? }) → Promise<number>` | Ngày VN `YYYY-MM-DD`, tính cả 2 đầu; `fromDate > toDate`, ngày sai, hoặc khoảng > 400 ngày → `AppError VALIDATION_ERROR` (400). Chia cửa sổ 31 ngày, mỗi cửa sổ 1 transaction `withSystemJob` có `pg_advisory_xact_lock(hashtext('stats.aggregate'))`. `tenantIds` chỉ dùng cho test (mảng rỗng → 0). Trả tổng số dòng (tenant, ngày) có hoạt động đã upsert. Bảng chưa có → ném (nơi gọi xử lý) |
+| `runStatsAggregation(now = new Date()) → Promise<StatsAggregationResult>` | Bước cron: hôm qua + hôm nay (giờ VN); bảng trống → backfill từ ngày hoạt động sớm nhất (sàn 400 ngày tính cả hôm nay). Bảng chưa có → `{ skipped: true, backfilled: false, fromDate: null, toDate: null, upserted: 0 }` + `logger.warn` |
+| `vnDateString(at: Date)`, `addDays(date, days)` | Ngày VN `YYYY-MM-DD` của một thời điểm; cộng/trừ ngày lịch thuần |
+| `isStatsTableMissing(error)` | P2021 hoặc 42P01/`tenant_daily_stats ... does not exist` |
+| `MAX_BACKFILL_DAYS` (= 400) | Hằng |
+| Kiểu `TenantDailyStatRow`, `AggregateTenantDailyStatsInput`, `StatsAggregationResult` | `TenantDailyStatRow.gmvVnd` là **chuỗi** BIGINT |
+
+### 19.2. Export của `apps/web/lib/admin-stats.ts` (đọc — dashboard)
+
+`getAdminStatsOverview({ days?, now? }) → Promise<AdminStatsOverview>` — `days` mặc định 30, kẹp 1…366. **Không tự kiểm quyền**: nơi gọi phải
+`requireRole` SYSTEM_ADMIN (trang `/admin` gọi `requireAdminAccess("/admin")` trước) ✅. Chỉ đọc `tenant_daily_stats` + `tenants` (`id`,
+`name`, `slug`) bằng `getPrismaClient()`.
+
+```ts
+type AdminStatsOverview =
+  | { status: "unavailable" }                       // bảng chưa có (trước migration M12b)
+  | {
+      status: "ok";
+      lastAggregatedAt: string | null;              // ISO UTC = MAX(updatedAt) toàn bảng; null khi bảng trống
+      totals: AdminStatsTotals;                     // cửa sổ `days` ngày kết thúc ở HÔM QUA (giờ VN)
+      prevTotals: AdminStatsTotals;                 // `days` ngày liền trước
+      series: AdminStatsSeriesPoint[];              // đủ `days` điểm, cũ → mới; ngày không có dòng = 0
+      topTenants: AdminStatsTopTenant[];            // ≤ 5, theo GMV giảm dần (hoà → tenantId tăng), chỉ tenant GMV > 0
+    };
+interface AdminStatsTotals { gmvVnd: string; ordersPaid: number; newCustomers: number; downloads: number } // gmvVnd = chuỗi số nguyên VND
+interface AdminStatsSeriesPoint extends AdminStatsTotals { date: string }                                   // YYYY-MM-DD ngày VN
+interface AdminStatsTopTenant { tenantId: string; name: string; slug: string; gmvVnd: string; ordersPaid: number }
+```
+
+### 19.3. Trang
+
+| Trang | Guard | Query string | Ghi chú |
+| :-- | :-- | :-- | :-- |
+| `/admin` (dashboard) | `requireAdminAccess("/admin")` | `chi-so` = `gmv` (mặc định, mọi giá trị khác) \| `don` — `parseSalesChartMetric` | Section "Hoạt động bán tài liệu (30 ngày)" (`id="hoat-dong-ban-tai-lieu"`) gọi `getAdminStatsOverview({ days: 30 })` trong `<Suspense fallback={<SalesStatsSkeleton />}>`. Bố cục: [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §16 |
+
+---
+
+## 20. Báo cáo vi phạm & quyền lợi người mua (M12c — ADR-038, ADR-039) ✅
+
+Đối chiếu working tree 2026-10-17 (**chưa commit/deploy**). Nghiệp vụ: [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]].
+
+### 20.1. Route — `POST /api/reports`
+
+| Method | Endpoint | Truy cập | Mô tả |
+| :-- | :-- | :-- | :-- |
+| `POST` | `/api/reports` | Public (đăng nhập tuỳ chọn) + `assertSameOrigin` | Gửi báo cáo vi phạm. Body JSON (`abuseReportSubmissionSchema`, `@gieochu/core/abuse-report`): `{ targetType: "PRODUCT" \| "REVIEW" \| "POST", targetId, type: "COPYRIGHT" \| "INAPPROPRIATE" \| "SCAM" \| "OTHER", description (1–2000 ký tự sau chuẩn hoá NFC/bỏ ký tự điều khiển), evidenceUrls? (≤5, http/https, bỏ trùng), email? (bắt buộc khi chưa đăng nhập; đã đăng nhập → bỏ qua, dùng email tài khoản), website? (honeypot) }`. `dynamic = "force-dynamic"` |
+
+| HTTP | Thân / mã | Khi nào |
+| :-: | :-- | :-- |
+| `201` | `{ ok: true, message }` | Đã ghi — **hoặc** honeypot `website` có giá trị (không ghi gì, cố ý trả thành công) |
+| `400` | `INVALID_JSON` · `VALIDATION_ERROR` · `REPORT_EMAIL_REQUIRED` | Body hỏng / sai schema (chỉ thông điệp lỗi đầu tiên, **không** có trường `field`) / khách thiếu email |
+| `403` | `ORIGIN_MISMATCH` | Thiếu/sai header `Origin` (so với `APP_URL` hoặc origin của request) |
+| `404` | `REPORT_TARGET_NOT_FOUND` | Đối tượng không tồn tại / không công khai (đọc dưới `withPublic`) / tenant **không `ACTIVE`** (`READ_ONLY` hoặc `LOCKED` — ADR-040 ✅; trước đó chỉ `LOCKED`) |
+| `409` | `REPORT_DUPLICATE` | Cùng người báo cáo (email hoặc user) đã có báo cáo `OPEN` cho đối tượng này |
+| `429` | `RATE_LIMITED` | ≥5 báo cáo trong 1 giờ từ cùng IP (đếm trong `abuse_reports`) |
+| `503` | `REPORT_UNAVAILABLE` | Bảng `abuse_reports` chưa có (code lên trước migration) |
+
+Mọi lỗi theo khung `{ error: { code, message, requestId } }`. Kiểm thử thủ công trên dev (201, 409 trùng, 403 thiếu Origin) 🟡 (Quốc báo).
+
+### 20.2. Server Actions — System Center (`app/admin/reports/actions.ts`)
+
+Mỗi action tự `requireRole("SYSTEM_ADMIN")`; trả `ReportActionState = { ok?, error?, code?, resolvedCount? }` (lỗi `AppError` → `{ error, code }`).
+
+| Action | Tham số | Ghi chú |
+| :-- | :-- | :-- |
+| `resolveReportAction(reportId, prev, formData)` | FormData `decision` (`HIDE_CONTENT` \| `ARCHIVE_PRODUCT` \| `LOCK_TENANT` \| `REJECT`), `note` (≤2000, tuỳ chọn, nội bộ), `applyToSameTarget` (`on`/`true`) | Gọi `resolveAbuseReport`; email gửi trong `after()` (`notifyAbuseReportResolution`); revalidate `/admin/reports`, trang công khai tenant (+ `/admin/tenants` khi khoá). Mã lỗi: `REPORT_NOT_FOUND` 404, `REPORT_ALREADY_RESOLVED` 409, `REPORT_INVALID_DECISION` 400, `REPORT_TARGET_GONE` 409, `VALIDATION_ERROR` 400, `REPORT_UNAVAILABLE` 503 |
+| `unlockModerationAction(targetType, targetId)` | `PRODUCT` \| `REVIEW` \| `POST` + id | Gọi `unlockModeration`. Mã lỗi: `CONTENT_NOT_MODERATION_LOCKED` 409, `VALIDATION_ERROR` 400 |
+
+Trang: `/admin/reports` (query `status` = `OPEN` mặc định \| `RESOLVED` \| `REJECTED` \| `ALL`, `type`, `targetType`, `page`, `pageSize` ∈ {10, 20,
+50, 100}) và `/admin/reports/[reportId]` — đều `requireAdminAccess`.
+
+### 20.3. Server Actions — Thư viện khách (`app/account/library/actions.ts`)
+
+Mỗi action tự `requireVerified()`; quyền sở hữu kiểm trong lib (`withCustomer`). Dùng với `useActionState` qua `action.bind(null,
+entitlementId)`; trả `RemedyActionState = { ok?, error?, code? }`; revalidate `/account/library`.
+
+| Action | Kết quả | Mã lỗi |
+| :-- | :-- | :-- |
+| `chooseFinalDownloadAction(entitlementId)` | `PENDING_CHOICE` → `FINAL_DOWNLOAD`, `downloadLimit = downloadsUsed + max(1, số tệp khả dụng)` | 404 (không phải của mình), `REMEDY_NOT_PENDING` 409 |
+| `requestRefundAction(entitlementId)` | `PENDING_CHOICE` → `REFUND_REQUESTED`; email tenant trong `after()` | 404, `REMEDY_NOT_PENDING` 409, `REMEDY_REFUND_NOT_AVAILABLE` 409 (đơn 0đ) |
+
+### 20.4. Thay đổi contract ở module khác ✅
+
+| Chỗ | Thay đổi |
+| :-- | :-- |
+| Studio sản phẩm — `publishProductAction(slug, id, options?)` | Thêm `options?: { rightsConfirmed?: boolean }`; thiếu → `{ error, fieldErrors: { rightsConfirmed } }` (`RIGHTS_CONFIRMATION_REQUIRED`). Các action lưu-và-xuất-bản đọc FormData `rightsConfirmed` (`on`/`true`/`1`) |
+| Studio sản phẩm/đánh giá/bài viết | Thao tác đổi trạng thái trên nội dung bị khoá → `CONTENT_MODERATION_LOCKED` 409 |
+| Studio đơn hàng — `grantExtraDownloads` | `REMEDY_DOWNLOAD_LIMIT_LOCKED` 409 khi entitlement có remedy |
+| Studio đơn hàng — trang `/studio/{slug}/orders` | Query mới `remedy=REFUND_REQUESTED` (`parseOrderRemedyFilter`, kết hợp `status`); `listOrders` trả thêm `refundRequested: boolean`, mỗi item kèm `entitlement { remedyStatus, remedyChosenAt }` |
+| Checkout — `initiateOrderCheckout`, `applyCouponToOrder` | `PRODUCT_UNAVAILABLE` 409 khi tenant không `ACTIVE` hoặc sản phẩm không `PUBLISHED` |
+| Thư viện — `LibraryEntitlement` | Thêm `remedyStatus`, `refundAvailable`, `remedyChosenAt`, `remedyResolvedAt`, `finalDownloadFileCount`, `orderCode` |
+| `TenantNavItem` (sidebar Studio) | Thêm `badge?: { text, srText, urgent? }` |
+
+### 20.5. Export lib & subpath
+
+- `apps/web/lib/abuse-report.ts`: `submitAbuseReport`, `listAbuseReports`, `parseAbuseReportFilters`, `countOpenAbuseReports`,
+  `getAbuseReportDetail`, `resolveAbuseReport`, `notifyAbuseReportResolution`, `unlockModeration`, `purgeExpiredAbuseReportIps`,
+  `ABUSE_REPORTS_PAGE_SIZE_DEFAULT` + kiểu. Mọi loader/hàm admin tự kiểm `SYSTEM_ADMIN`.
+- `apps/web/lib/entitlement-remedy.ts`: `openPurchaseRemedies` (trong transaction xử lý báo cáo), `notifyPurchaseRemedyOpened`,
+  `notifyPurchaseRemedyForOrder`, `chooseFinalDownload`, `requestRefund`, `notifyRefundRequested`, `countPendingRefundRequests(tenantId)` →
+  `{ pending, overdue }`, `countOverdueRefundRequestsByTenant({ tenantId? })` → `[{ tenantId, name, slug, count }]` (chỉ số đếm, §7.9).
+- `apps/web/lib/moderation.ts`: `contentModerationLocked()`, `assertNotModerationLocked(row)`.
+- `apps/web/lib/tenant-lock.ts`: `lockTenantInTx`, `auditTenantLocked`, `lockTenant`, `unlockTenant`.
+- `apps/web/lib/origin-guard.ts`: `assertSameOrigin(request)` (403 `ORIGIN_MISMATCH`).
+- **`@gieochu/core/abuse-report`** (`packages/core/src/report/abuse-report.ts`): hằng enum + nhãn tiếng Việt, giới hạn (`ABUSE_REPORT_RATE_LIMIT`
+  = 5, cửa sổ 1 giờ, mô tả 2000, ≤5 link), `ABUSE_REPORT_HONEYPOT_FIELD = "website"`, `ABUSE_REPORT_ERROR_CODES`,
+  `CONTENT_MODERATION_LOCKED_MESSAGE`, `allowedAbuseDecisions`, `isEnforcementDecision`, `normalizeReportText`, `normalizeEvidenceUrl`,
+  `abuseReportSubmissionSchema`.
+- **`@gieochu/core/entitlement-remedy`** (`packages/core/src/download/entitlement-remedy.ts`): `ENTITLEMENT_REMEDY_STATUSES`,
+  `REMEDY_REFUND_SLA_DAYS = 7`, `ENTITLEMENT_REMEDY_ERROR_CODES` (`REMEDY_CHOICE_REQUIRED`, `DOWNLOAD_BLOCKED_REFUND`, `REMEDY_NOT_PENDING`,
+  `REMEDY_REFUND_NOT_AVAILABLE`, `REMEDY_DOWNLOAD_LIMIT_LOCKED`), `ENTITLEMENT_REMEDY_STATUS_LABELS`, `remedyDownloadBlock`.
+- `@gieochu/email`: `renderAbuseReportResolvedEmail`, `renderContentModeratedEmail`, `renderPurchaseRemedyCustomerEmail`,
+  `renderPurchaseRemedyTenantEmail`, `renderRefundRequestedEmail`.
+
+---
+
+## 21. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * [[Database-Schema-Reference]] — Lược đồ dữ liệu ([Database-Schema-Reference.md](./Database-Schema-Reference.md))
@@ -576,6 +761,9 @@ ngoài khung lỗi chuẩn `{ error }`.
 * [[01-Architecture-Decisions/ADR-016-Short-Product-Url-No-Sticky-Publish-Card|ADR-016 (≙ ADR-030)]] — URL tài liệu rút gọn, redirect 301 ([ADR-016-Short-Product-Url-No-Sticky-Publish-Card.md](../01-Architecture-Decisions/ADR-016-Short-Product-Url-No-Sticky-Publish-Card.md))
 * [[01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-From-System-Center|ADR-018 (≙ ADR-032)]] ([ADR-018-System-Settings-And-Brand-From-System-Center.md](../01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-From-System-Center.md)) · [[01-Architecture-Decisions/ADR-019-Home-Page-Real-Data-Sold-Count|ADR-019 (≙ ADR-033)]] ([ADR-019-Home-Page-Real-Data-Sold-Count.md](../01-Architecture-Decisions/ADR-019-Home-Page-Real-Data-Sold-Count.md))
 * [[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]] — job nền, `after()`, cron hằng ngày (ADR-036) ([Background-Jobs-Specs.md](../02-System-Specs/Background-Jobs-Specs.md))
+* [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]] — audit log M12a (ADR-037) ([Audit-Log-Specs.md](../02-System-Specs/Audit-Log-Specs.md))
+* [[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]] — thống kê hằng ngày M12b (ADR-037) ([Tenant-Stats-Specs.md](../02-System-Specs/Tenant-Stats-Specs.md))
+* [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]] — báo cáo vi phạm M12c + quyền lợi người mua (ADR-038/039) ([Abuse-Reports-Specs.md](../02-System-Specs/Abuse-Reports-Specs.md))
 * [[02-System-Specs/Shop-Marketplace-Specs|Shop-Marketplace-Specs]] ([Shop-Marketplace-Specs.md](../02-System-Specs/Shop-Marketplace-Specs.md)) · [[01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First|ADR-021 (≙ ADR-035)]] ([ADR-021-Shop-Marketplace-Cms-First.md](../01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First.md))
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

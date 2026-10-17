@@ -6,6 +6,7 @@ import { requireTenantMemberPage } from "../../../lib/page-guards";
 import { getEffectiveBrand, getEffectiveLogos } from "../../../lib/branding";
 import { countNewStorefrontMessages } from "../../../lib/storefront-messages";
 import { countReviewsNeedingAttention } from "../../../lib/review";
+import { countPendingRefundRequests } from "../../../lib/entitlement-remedy";
 import { BrandMark } from "../../_ui/brand-mark";
 import { IconExternalLink } from "../../admin/_ui/icons";
 import { TenantSidebarNav, type TenantNavItem } from "./_ui/sidebar-nav";
@@ -25,18 +26,33 @@ export default async function StudioLayout({
   params: Promise<{ tenantSlug: string }>;
 }) {
   const { tenantSlug } = await params;
-  const { user, tenant } = await requireTenantMemberPage(tenantSlug, `/studio/${tenantSlug}`);
+  const { user, tenant, role } = await requireTenantMemberPage(tenantSlug, `/studio/${tenantSlug}`);
   const [brand, logos] = await Promise.all([getEffectiveBrand(), getEffectiveLogos()]);
   const member = await getPrismaClient().user.findUnique({ where: { id: user.userId }, select: { email: true } });
-  const [newMessages, reviewsNeedingAttention] = await Promise.all([
+  const [newMessages, reviewsNeedingAttention, refundRequests] = await Promise.all([
     countNewStorefrontMessages(tenant.id),
     countReviewsNeedingAttention(tenant.id),
+    // ADR-039: yêu cầu hoàn tiền của khách (tài liệu bị gỡ do vi phạm) đang chờ gian hàng xử lý.
+    countPendingRefundRequests(tenant.id),
   ]);
 
   // Icon truyền dạng KEY (chuỗi) — không truyền component (hàm) từ Server sang Client Component.
   const NAV: TenantNavItem[] = [
     { href: `/studio/${tenant.slug}`, label: "Tổng quan", icon: "grid" },
-    { href: `/studio/${tenant.slug}/orders`, label: "Đơn hàng", icon: "receipt" },
+    {
+      href: `/studio/${tenant.slug}/orders`,
+      label: "Đơn hàng",
+      icon: "receipt",
+      ...(refundRequests.pending > 0
+        ? {
+            badge: {
+              text: refundRequests.pending > 99 ? "99+" : String(refundRequests.pending),
+              srText: `${refundRequests.pending} yêu cầu hoàn tiền chờ xử lý${refundRequests.overdue > 0 ? `, ${refundRequests.overdue} quá hạn` : ""}`,
+              urgent: refundRequests.overdue > 0,
+            },
+          }
+        : {}),
+    },
     { href: `/studio/${tenant.slug}/customers`, label: "Khách hàng", icon: "users" },
     { href: `/studio/${tenant.slug}/products`, label: "Sản phẩm", icon: "package" },
     { href: `/studio/${tenant.slug}/posts`, label: "Bài viết", icon: "posts" },
@@ -45,6 +61,8 @@ export default async function StudioLayout({
     { href: `/studio/${tenant.slug}/reviews`, label: reviewsNeedingAttention > 0 ? `Đánh giá (${reviewsNeedingAttention > 99 ? "99+" : reviewsNeedingAttention})` : "Đánh giá", icon: "star" },
     { href: `/studio/${tenant.slug}/messages`, label: newMessages > 0 ? `Hộp thư (${newMessages > 99 ? "99+" : newMessages})` : "Hộp thư", icon: "mail" },
     { href: `/studio/${tenant.slug}/billing`, label: "Gói dịch vụ", icon: "card" },
+    // ADR-037: nhật ký chỉ OWNER xem (listTenantAuditLogs) — ẩn mục với vai trò khác.
+    ...(role === "OWNER" ? [{ href: `/studio/${tenant.slug}/activity`, label: "Hoạt động", icon: "activity" } as const] : []),
     { href: `/studio/${tenant.slug}/settings`, label: "Cài đặt", icon: "gear" },
   ];
 

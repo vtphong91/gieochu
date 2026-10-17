@@ -8,6 +8,7 @@ tags:
   - database
   - status/accepted
 date: 2026-10-15
+updated: 2026-10-16
 decider: vtphong91
 status: Accepted (Chốt — Áp dụng chính thức)
 ---
@@ -66,7 +67,8 @@ hạn**, và refactor xong mới deploy 🟡.
    | `defaultDownloadLimit` | 5 | 0–1000 lượt (0 = không giới hạn) |
 
    Validate server bằng zod (`systemSettingsSchema`; số nguyên, ngoài khoảng → từ chối cả form). Chỉ `SYSTEM_ADMIN` sửa; ghi
-   log thay đổi cũ→mới (audit_logs khi có M12).
+   log thay đổi cũ→mới — từ M12a (2026-10-16) ghi thêm `audit_logs` action `SYSTEM_SETTINGS_UPDATED` (metadata `changes` cũ→mới) ✅,
+   xem [[01-Architecture-Decisions/ADR-023-M12-Audit-Log-Append-Only|ADR-023 (≙ ADR-037)]].
 4. **Múi giờ hiển thị** là hằng `DISPLAY_TIME_ZONE = "Asia/Ho_Chi_Minh"` trong code (`@gieochu/core/system-settings`), không
    cấu hình ✅.
 

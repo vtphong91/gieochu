@@ -5,6 +5,7 @@ tags:
   - monetization
   - status/accepted
 date: 2026-09-26
+updated: 2026-10-16
 decider: vtphong91
 status: Accepted (Chốt — Áp dụng chính thức)
 ---
@@ -35,7 +36,7 @@ Người dùng xác nhận đồng ý mô hình mới cùng 3 điểm cụ thể
 **Thu gọn kiến trúc so với đề xuất gốc** (đã trình bày, người dùng không phản đối):
 - Không có `billing_accounts` — `Tenant` đã 1-1 `Subscription`, không cần bảng trung gian.
 - Không có `usage_meters` — sản phẩm/dung lượng là số liệu tức thời (đếm sống + `Tenant.storageUsedBytes` atomic), không phải usage-theo-kỳ cần ledger.
-- Không có `billing_events` — trùng vai trò `audit_logs` (chưa xây); sự kiện quan trọng ghi qua logger tạm thời.
+- Không có `billing_events` — trùng vai trò `audit_logs` (lúc quyết định chưa xây; sự kiện quan trọng ghi qua logger tạm thời). *(Cập nhật 2026-10-16: `audit_logs` có từ M12a — thanh toán gói ghi `SUBSCRIPTION_PAID`, sửa gói ghi `PLAN_CREATED`/`PLAN_UPDATED`; xem [[01-Architecture-Decisions/ADR-023-M12-Audit-Log-Append-Only|ADR-023 (≙ ADR-037)]].)*
 - `Plan` chỉ thêm 2 cột (`isFree`, `features Json`) — không đổi tên bảng, không tách state machine riêng; state machine `transitionSubscriptionStatus()` đã có giữ nguyên không đổi.
 - Feature gate mới (`canUsePlanFeature()`, `packages/core/src/billing/feature-gate.ts`) luôn đọc `plan.features` (JSON), **không bao giờ** đọc `plan.code` — đúng nguyên tắc entitlement-vs-plan-name.
 

@@ -157,6 +157,15 @@ export { createDownloadToken, evaluateDownloadToken } from "./download/token";
 export type { DownloadTokenRecord, DownloadTokenStatus, NewDownloadToken } from "./download/token";
 export { canDownloadEntitlement } from "./download/entitlement-guard";
 export type { DownloadBlockReason, DownloadGuardResult, EntitlementSnapshot } from "./download/entitlement-guard";
+export {
+  ENTITLEMENT_REMEDY_ERROR_CODES,
+  ENTITLEMENT_REMEDY_STATUS_LABELS,
+  ENTITLEMENT_REMEDY_STATUSES,
+  isEntitlementRemedyStatus,
+  REMEDY_REFUND_SLA_DAYS,
+  remedyDownloadBlock,
+} from "./download/entitlement-remedy";
+export type { EntitlementRemedyStatusValue, RemedyDownloadBlock } from "./download/entitlement-remedy";
 export { isShareLinkUsable } from "./download/share-link";
 export type { ShareLinkBlockReason, ShareLinkSnapshot, ShareLinkUsability } from "./download/share-link";
 export { hashSharePassword, verifySharePassword } from "./download/share-link-password";
@@ -257,3 +266,57 @@ export type {
   SystemSettingKey,
   SystemSettingsValues,
 } from "./settings/system-settings";
+
+export {
+  AUDIT_ACTION_LABELS,
+  AUDIT_ACTIONS,
+  AUDIT_IP_MAX_LENGTH,
+  AUDIT_METADATA_MAX_BYTES,
+  AUDIT_REDACTED,
+  AUDIT_SCOPE_LABELS,
+  AUDIT_SCOPES,
+  AUDIT_USER_AGENT_MAX_LENGTH,
+  auditActionLabel,
+  extractAuditIp,
+  isAuditAction,
+  isAuditScope,
+  maskEmail,
+  normalizeAuditUserAgent,
+  sanitizeAuditMetadata,
+} from "./audit/audit";
+export type { AuditAction, AuditJsonValue, AuditMetadata, AuditScopeValue } from "./audit/audit";
+
+export {
+  ABUSE_REPORT_DECISION_LABELS,
+  ABUSE_REPORT_DECISIONS,
+  ABUSE_REPORT_DESCRIPTION_MAX_LENGTH,
+  ABUSE_REPORT_ERROR_CODES,
+  ABUSE_REPORT_EVIDENCE_MAX,
+  ABUSE_REPORT_HONEYPOT_FIELD,
+  ABUSE_REPORT_NOTE_MAX_LENGTH,
+  ABUSE_REPORT_RATE_LIMIT,
+  ABUSE_REPORT_RATE_WINDOW_MS,
+  ABUSE_REPORT_STATUS_LABELS,
+  ABUSE_REPORT_STATUSES,
+  ABUSE_REPORT_TYPE_LABELS,
+  ABUSE_REPORT_TYPES,
+  ABUSE_TARGET_TYPE_LABELS,
+  ABUSE_TARGET_TYPES,
+  abuseReportSubmissionSchema,
+  allowedAbuseDecisions,
+  CONTENT_MODERATION_LOCKED_MESSAGE,
+  isAbuseReportDecision,
+  isAbuseReportStatus,
+  isAbuseReportType,
+  isAbuseTargetType,
+  isEnforcementDecision,
+  normalizeEvidenceUrl,
+  normalizeReportText,
+} from "./report/abuse-report";
+export type {
+  AbuseReportDecisionValue,
+  AbuseReportStatusValue,
+  AbuseReportSubmission,
+  AbuseReportTypeValue,
+  AbuseTargetTypeValue,
+} from "./report/abuse-report";

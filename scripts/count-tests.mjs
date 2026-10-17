@@ -7,6 +7,8 @@
 // delivery integration tests) — owner-approved, ADR-026 (cap +3/+3 for the whole batch).
 // ADR-028 uses +2/+2 of the remaining headroom without raising the cap (Cloudinary delivery URL + sanitizer
 // image-host unit tests; image quota signature refusal + register folder check integration tests).
+// ADR-037 mục 6 (M12): integration cap 53 -> 55 for exactly the 2 M12 tests of §9 (audit log append-only — M12a;
+// daily stats without personal data + admin dashboard — M12b). Unit cap stays 94.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
@@ -50,9 +52,9 @@ const unitCount = countCases(unitFiles);
 const integrationCount = countCases(integrationFiles);
 
 console.log(`Jest unit test cases (packages/*):        ${unitCount} / 94`);
-console.log(`Vitest integration test cases (apps/web):  ${integrationCount} / 53`);
+console.log(`Vitest integration test cases (apps/web):  ${integrationCount} / 55`);
 
-if (unitCount > 94 || integrationCount > 53) {
+if (unitCount > 94 || integrationCount > 55) {
   console.error("\nTest count exceeds the target in docs/GIEOCHU_PROMPT_MVP_PHASE1.md §9 — check before adding more.");
   process.exitCode = 1;
 }

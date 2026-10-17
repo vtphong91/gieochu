@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { POST_STATUS_LABELS } from "@gieochu/core/post";
 import { Badge, RowActionButton } from "../../../../admin/_ui/kit";
+import { ModerationLockBadge, ModerationLockNotice } from "../../../../admin/_ui/moderation-lock";
 import {
   IconEdit,
   IconExternalLink,
@@ -42,6 +43,10 @@ export interface StudioPostListItem {
   excerpt: string;
   status: StudioPostStatus;
   hiddenReason: string | null;
+  /** ADR-038: bị quản trị hệ thống ẩn do vi phạm (khoá kiểm duyệt) — tenant không đổi trạng thái được. */
+  moderationLocked: boolean;
+  /** Nhãn loại vi phạm (không có danh tính người báo cáo). */
+  moderationReason: string | null;
   isPinned: boolean;
   /** Dòng thời gian đã định dạng giờ VN, ví dụ "Đăng 14:05 28/09/2026". */
   timeLabel: string;
@@ -190,6 +195,7 @@ export function StudioPostList({
                       <Badge tone={POST_STATUS_TONE[post.status]}>
                         {POST_STATUS_LABELS[post.status]}
                       </Badge>
+                      {post.moderationLocked ? <ModerationLockBadge /> : null}
                       {post.isPinned ? (
                         <Badge tone="info">
                           <IconPin className="mr-1 h-3.5 w-3.5" />
@@ -247,7 +253,15 @@ export function StudioPostList({
                       ) : null}
                     </p>
 
-                    {hidden ? (
+                    {post.moderationLocked ? (
+                      <ModerationLockNotice
+                        className="mt-3"
+                        subject="bài viết"
+                        measure="ẩn"
+                        blocked="sửa, đăng lại hay ghim bài (chỉ có thể xoá)"
+                        reason={post.moderationReason ?? post.hiddenReason}
+                      />
+                    ) : hidden ? (
                       <p
                         className="mt-3 flex items-start gap-2 rounded-lg border px-3 py-2 text-sm"
                         style={{

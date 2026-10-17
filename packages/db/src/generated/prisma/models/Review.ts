@@ -53,6 +53,8 @@ export type ReviewMinAggregateOutputType = {
   hiddenAt: Date | null
   reply: string | null
   repliedAt: Date | null
+  moderationLockedAt: Date | null
+  moderationReason: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -71,6 +73,8 @@ export type ReviewMaxAggregateOutputType = {
   hiddenAt: Date | null
   reply: string | null
   repliedAt: Date | null
+  moderationLockedAt: Date | null
+  moderationReason: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -89,6 +93,8 @@ export type ReviewCountAggregateOutputType = {
   hiddenAt: number
   reply: number
   repliedAt: number
+  moderationLockedAt: number
+  moderationReason: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -117,6 +123,8 @@ export type ReviewMinAggregateInputType = {
   hiddenAt?: true
   reply?: true
   repliedAt?: true
+  moderationLockedAt?: true
+  moderationReason?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -135,6 +143,8 @@ export type ReviewMaxAggregateInputType = {
   hiddenAt?: true
   reply?: true
   repliedAt?: true
+  moderationLockedAt?: true
+  moderationReason?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -153,6 +163,8 @@ export type ReviewCountAggregateInputType = {
   hiddenAt?: true
   reply?: true
   repliedAt?: true
+  moderationLockedAt?: true
+  moderationReason?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -258,6 +270,8 @@ export type ReviewGroupByOutputType = {
   hiddenAt: Date | null
   reply: string | null
   repliedAt: Date | null
+  moderationLockedAt: Date | null
+  moderationReason: string | null
   createdAt: Date
   updatedAt: Date
   _count: ReviewCountAggregateOutputType | null
@@ -299,6 +313,8 @@ export type ReviewWhereInput = {
   hiddenAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
   reply?: Prisma.StringNullableFilter<"Review"> | string | null
   repliedAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
+  moderationLockedAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
+  moderationReason?: Prisma.StringNullableFilter<"Review"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Review"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Review"> | Date | string
   tenant?: Prisma.XOR<Prisma.TenantScalarRelationFilter, Prisma.TenantWhereInput>
@@ -321,6 +337,8 @@ export type ReviewOrderByWithRelationInput = {
   hiddenAt?: Prisma.SortOrderInput | Prisma.SortOrder
   reply?: Prisma.SortOrderInput | Prisma.SortOrder
   repliedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  moderationLockedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  moderationReason?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   tenant?: Prisma.TenantOrderByWithRelationInput
@@ -347,6 +365,8 @@ export type ReviewWhereUniqueInput = Prisma.AtLeast<{
   hiddenAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
   reply?: Prisma.StringNullableFilter<"Review"> | string | null
   repliedAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
+  moderationLockedAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
+  moderationReason?: Prisma.StringNullableFilter<"Review"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Review"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Review"> | Date | string
   tenant?: Prisma.XOR<Prisma.TenantScalarRelationFilter, Prisma.TenantWhereInput>
@@ -369,6 +389,8 @@ export type ReviewOrderByWithAggregationInput = {
   hiddenAt?: Prisma.SortOrderInput | Prisma.SortOrder
   reply?: Prisma.SortOrderInput | Prisma.SortOrder
   repliedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  moderationLockedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  moderationReason?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.ReviewCountOrderByAggregateInput
@@ -395,6 +417,8 @@ export type ReviewScalarWhereWithAggregatesInput = {
   hiddenAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Review"> | Date | string | null
   reply?: Prisma.StringNullableWithAggregatesFilter<"Review"> | string | null
   repliedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Review"> | Date | string | null
+  moderationLockedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Review"> | Date | string | null
+  moderationReason?: Prisma.StringNullableWithAggregatesFilter<"Review"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Review"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Review"> | Date | string
 }
@@ -409,6 +433,8 @@ export type ReviewCreateInput = {
   hiddenAt?: Date | string | null
   reply?: string | null
   repliedAt?: Date | string | null
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   tenant: Prisma.TenantCreateNestedOneWithoutReviewsInput
@@ -431,6 +457,8 @@ export type ReviewUncheckedCreateInput = {
   hiddenAt?: Date | string | null
   reply?: string | null
   repliedAt?: Date | string | null
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -445,6 +473,8 @@ export type ReviewUpdateInput = {
   hiddenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   reply?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   repliedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tenant?: Prisma.TenantUpdateOneRequiredWithoutReviewsNestedInput
@@ -467,6 +497,8 @@ export type ReviewUncheckedUpdateInput = {
   hiddenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   reply?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   repliedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -485,6 +517,8 @@ export type ReviewCreateManyInput = {
   hiddenAt?: Date | string | null
   reply?: string | null
   repliedAt?: Date | string | null
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -499,6 +533,8 @@ export type ReviewUpdateManyMutationInput = {
   hiddenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   reply?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   repliedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -517,6 +553,8 @@ export type ReviewUncheckedUpdateManyInput = {
   hiddenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   reply?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   repliedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -550,6 +588,8 @@ export type ReviewCountOrderByAggregateInput = {
   hiddenAt?: Prisma.SortOrder
   reply?: Prisma.SortOrder
   repliedAt?: Prisma.SortOrder
+  moderationLockedAt?: Prisma.SortOrder
+  moderationReason?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -572,6 +612,8 @@ export type ReviewMaxOrderByAggregateInput = {
   hiddenAt?: Prisma.SortOrder
   reply?: Prisma.SortOrder
   repliedAt?: Prisma.SortOrder
+  moderationLockedAt?: Prisma.SortOrder
+  moderationReason?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -590,6 +632,8 @@ export type ReviewMinOrderByAggregateInput = {
   hiddenAt?: Prisma.SortOrder
   reply?: Prisma.SortOrder
   repliedAt?: Prisma.SortOrder
+  moderationLockedAt?: Prisma.SortOrder
+  moderationReason?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -784,6 +828,8 @@ export type ReviewCreateWithoutUserInput = {
   hiddenAt?: Date | string | null
   reply?: string | null
   repliedAt?: Date | string | null
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   tenant: Prisma.TenantCreateNestedOneWithoutReviewsInput
@@ -804,6 +850,8 @@ export type ReviewUncheckedCreateWithoutUserInput = {
   hiddenAt?: Date | string | null
   reply?: string | null
   repliedAt?: Date | string | null
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -851,6 +899,8 @@ export type ReviewScalarWhereInput = {
   hiddenAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
   reply?: Prisma.StringNullableFilter<"Review"> | string | null
   repliedAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
+  moderationLockedAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
+  moderationReason?: Prisma.StringNullableFilter<"Review"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Review"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Review"> | Date | string
 }
@@ -865,6 +915,8 @@ export type ReviewCreateWithoutTenantInput = {
   hiddenAt?: Date | string | null
   reply?: string | null
   repliedAt?: Date | string | null
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   product: Prisma.ProductCreateNestedOneWithoutReviewsInput
@@ -885,6 +937,8 @@ export type ReviewUncheckedCreateWithoutTenantInput = {
   hiddenAt?: Date | string | null
   reply?: string | null
   repliedAt?: Date | string | null
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -925,6 +979,8 @@ export type ReviewCreateWithoutProductInput = {
   hiddenAt?: Date | string | null
   reply?: string | null
   repliedAt?: Date | string | null
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   tenant: Prisma.TenantCreateNestedOneWithoutReviewsInput
@@ -945,6 +1001,8 @@ export type ReviewUncheckedCreateWithoutProductInput = {
   hiddenAt?: Date | string | null
   reply?: string | null
   repliedAt?: Date | string | null
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -985,6 +1043,8 @@ export type ReviewCreateWithoutOrderItemInput = {
   hiddenAt?: Date | string | null
   reply?: string | null
   repliedAt?: Date | string | null
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   tenant: Prisma.TenantCreateNestedOneWithoutReviewsInput
@@ -1005,6 +1065,8 @@ export type ReviewUncheckedCreateWithoutOrderItemInput = {
   hiddenAt?: Date | string | null
   reply?: string | null
   repliedAt?: Date | string | null
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -1048,6 +1110,8 @@ export type ReviewCreateManyUserInput = {
   hiddenAt?: Date | string | null
   reply?: string | null
   repliedAt?: Date | string | null
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -1062,6 +1126,8 @@ export type ReviewUpdateWithoutUserInput = {
   hiddenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   reply?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   repliedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tenant?: Prisma.TenantUpdateOneRequiredWithoutReviewsNestedInput
@@ -1082,6 +1148,8 @@ export type ReviewUncheckedUpdateWithoutUserInput = {
   hiddenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   reply?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   repliedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1099,6 +1167,8 @@ export type ReviewUncheckedUpdateManyWithoutUserInput = {
   hiddenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   reply?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   repliedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1116,6 +1186,8 @@ export type ReviewCreateManyTenantInput = {
   hiddenAt?: Date | string | null
   reply?: string | null
   repliedAt?: Date | string | null
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -1130,6 +1202,8 @@ export type ReviewUpdateWithoutTenantInput = {
   hiddenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   reply?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   repliedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   product?: Prisma.ProductUpdateOneRequiredWithoutReviewsNestedInput
@@ -1150,6 +1224,8 @@ export type ReviewUncheckedUpdateWithoutTenantInput = {
   hiddenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   reply?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   repliedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1167,6 +1243,8 @@ export type ReviewUncheckedUpdateManyWithoutTenantInput = {
   hiddenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   reply?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   repliedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1184,6 +1262,8 @@ export type ReviewCreateManyProductInput = {
   hiddenAt?: Date | string | null
   reply?: string | null
   repliedAt?: Date | string | null
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -1198,6 +1278,8 @@ export type ReviewUpdateWithoutProductInput = {
   hiddenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   reply?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   repliedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tenant?: Prisma.TenantUpdateOneRequiredWithoutReviewsNestedInput
@@ -1218,6 +1300,8 @@ export type ReviewUncheckedUpdateWithoutProductInput = {
   hiddenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   reply?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   repliedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1235,6 +1319,8 @@ export type ReviewUncheckedUpdateManyWithoutProductInput = {
   hiddenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   reply?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   repliedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1252,6 +1338,8 @@ export type ReviewCreateManyOrderItemInput = {
   hiddenAt?: Date | string | null
   reply?: string | null
   repliedAt?: Date | string | null
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -1266,6 +1354,8 @@ export type ReviewUpdateWithoutOrderItemInput = {
   hiddenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   reply?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   repliedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tenant?: Prisma.TenantUpdateOneRequiredWithoutReviewsNestedInput
@@ -1286,6 +1376,8 @@ export type ReviewUncheckedUpdateWithoutOrderItemInput = {
   hiddenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   reply?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   repliedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1303,6 +1395,8 @@ export type ReviewUncheckedUpdateManyWithoutOrderItemInput = {
   hiddenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   reply?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   repliedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1323,6 +1417,8 @@ export type ReviewSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   hiddenAt?: boolean
   reply?: boolean
   repliedAt?: boolean
+  moderationLockedAt?: boolean
+  moderationReason?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
@@ -1345,6 +1441,8 @@ export type ReviewSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   hiddenAt?: boolean
   reply?: boolean
   repliedAt?: boolean
+  moderationLockedAt?: boolean
+  moderationReason?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
@@ -1367,6 +1465,8 @@ export type ReviewSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   hiddenAt?: boolean
   reply?: boolean
   repliedAt?: boolean
+  moderationLockedAt?: boolean
+  moderationReason?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
@@ -1389,11 +1489,13 @@ export type ReviewSelectScalar = {
   hiddenAt?: boolean
   reply?: boolean
   repliedAt?: boolean
+  moderationLockedAt?: boolean
+  moderationReason?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type ReviewOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tenantId" | "productId" | "userId" | "orderItemId" | "rating" | "body" | "displayName" | "status" | "hiddenReason" | "hiddenAt" | "reply" | "repliedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["review"]>
+export type ReviewOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tenantId" | "productId" | "userId" | "orderItemId" | "rating" | "body" | "displayName" | "status" | "hiddenReason" | "hiddenAt" | "reply" | "repliedAt" | "moderationLockedAt" | "moderationReason" | "createdAt" | "updatedAt", ExtArgs["result"]["review"]>
 export type ReviewInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
@@ -1447,6 +1549,12 @@ export type $ReviewPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
      */
     reply: string | null
     repliedAt: Date | null
+    /**
+     * ADR-038 mục 5: khoá kiểm duyệt (admin ẩn do vi phạm, qua `system_job`). Khác null ⇒ tenant không bỏ ẩn được,
+     * hệ thống không tự khôi phục khi khách mua lại. Trigger `reviews_guard_moderation`.
+     */
+    moderationLockedAt: Date | null
+    moderationReason: string | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["review"]>
@@ -1889,6 +1997,8 @@ export interface ReviewFieldRefs {
   readonly hiddenAt: Prisma.FieldRef<"Review", 'DateTime'>
   readonly reply: Prisma.FieldRef<"Review", 'String'>
   readonly repliedAt: Prisma.FieldRef<"Review", 'DateTime'>
+  readonly moderationLockedAt: Prisma.FieldRef<"Review", 'DateTime'>
+  readonly moderationReason: Prisma.FieldRef<"Review", 'String'>
   readonly createdAt: Prisma.FieldRef<"Review", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Review", 'DateTime'>
 }

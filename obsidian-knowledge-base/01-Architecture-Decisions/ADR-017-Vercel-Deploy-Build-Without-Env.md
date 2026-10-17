@@ -6,6 +6,7 @@ tags:
   - security
   - status/accepted
 date: 2026-09-29
+updated: 2026-10-16
 decider: vtphong91
 status: Accepted (Chốt — Áp dụng chính thức)
 ---
@@ -48,7 +49,9 @@ Theo ADR-031 (2026-09-29), deploy Vercel lỗi vì 3 nguyên nhân 🟡 (Long kh
    giả). `db seed` chạy bằng `DATABASE_URL` (role `gieochu_app`). **Không đặt biến này trên Vercel/runtime**; nếu từng đặt
    thì xoá và **đổi mật khẩu role owner**.
 4. **Migration production chạy ngoài Vercel** (máy dev/CI) bằng `pnpm db:migrate`. **Worker pg-boss** (`apps/web/worker.ts`)
-   cần nơi chạy lâu dài riêng — **chưa có** (BACKLOG).
+   cần nơi chạy lâu dài riêng — **chưa có** (BACKLOG). *(Cập nhật 2026-10-16: thay bằng ADR-036 — không cần host worker; job xử lý
+   trong app bằng `after()` + Vercel Cron `/api/cron/daily`, `worker.ts` chỉ còn cho local. Xem
+   [[01-Architecture-Decisions/ADR-022-Background-Jobs-After-And-Daily-Cron|ADR-022 (≙ ADR-036)]].)*
 
 ---
 

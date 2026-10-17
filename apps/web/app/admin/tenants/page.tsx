@@ -1,5 +1,6 @@
 import { getPrismaClient } from "@gieochu/db";
 import { requireAdminAccess } from "../../../lib/page-guards";
+import { countOverdueRefundRequestsByTenant } from "../../../lib/entitlement-remedy";
 import { AdminPageHeader, Badge, DataTable, EmptyState, Td, Tr } from "../_ui/kit";
 import { IconLayers, IconLock, IconUnlock } from "../_ui/icons";
 import { MenuItemButton, RowMenu } from "../_ui/row-menu";
@@ -41,6 +42,8 @@ export default async function AdminTenantsPage({
     }),
     prisma.tenant.count(),
   ]);
+  // ADR-039 mục 3 + §7.9: chỉ số đếm yêu cầu hoàn tiền quá hạn theo tenant.
+  const overdueRefunds = new Map((await countOverdueRefundRequestsByTenant()).map((row) => [row.tenantId, row.count]));
 
   return (
     <main className="px-5 py-8 lg:px-8">
@@ -55,7 +58,12 @@ export default async function AdminTenantsPage({
               {tenants.map((tenant) => (
                 <Tr key={tenant.id}>
                   <Td className="font-medium">
-                    {tenant.name} <span className="text-gray-400">/{tenant.slug}</span>
+                    {tenant.name} <span className="text-gray-500">/{tenant.slug}</span>
+                    {overdueRefunds.get(tenant.id) ? (
+                      <span className="mt-1 block">
+                        <Badge tone="danger">{overdueRefunds.get(tenant.id)} hoàn tiền quá hạn</Badge>
+                      </span>
+                    ) : null}
                   </Td>
                   <Td>{tenant.subscription?.plan.name ?? "—"}</Td>
                   <Td>

@@ -1,104 +1,50 @@
 import Link from "next/link";
-import { productPath } from "@gieochu/core/product-path";
+import { brandColors } from "@gieochu/config/theme";
 import { requireVerifiedAccess } from "../../../lib/page-guards";
 import { listLibraryEntitlements } from "../../../lib/library";
-import { IconStar } from "../../[tenantSlug]/_ui/icons";
-import { PRODUCT_REVIEWS_ANCHOR } from "../../[tenantSlug]/_ui/product-reviews";
-import { DownloadButton } from "./download-button";
+import { LibraryEntitlementCard } from "./_ui/library-entitlement-card";
+import { LIBRARY_FOCUS } from "./_ui/confirm-dialog";
 
-const REVIEW_LINK =
-  "inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] motion-reduce:transition-none";
-
-/**
- * ADR-029: lối vào đánh giá của 1 mục thư viện — dẫn tới khối "Đánh giá" trên trang tài liệu (form viết/sửa nằm ở
- * đó, một chỗ duy nhất). Chưa viết → "Viết đánh giá"; đã viết → "Sửa đánh giá" kèm số sao; bị ẩn → nhãn chữ.
- */
-function ReviewEntry({ href, canReview, review }: { href: string; canReview: boolean; review: { rating: number; status: "VISIBLE" | "HIDDEN" } | null }) {
-  if (!review) {
-    if (!canReview) return null;
-    return (
-      <Link href={href} className={REVIEW_LINK}>
-        <IconStar filled={false} className="h-4 w-4" />
-        Viết đánh giá
-      </Link>
-    );
-  }
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Link href={href} className={REVIEW_LINK}>
-        {canReview ? "Sửa đánh giá" : "Xem đánh giá"}
-        <span className="inline-flex items-center gap-0.5 text-amber-700" aria-hidden="true">
-          <IconStar filled className="h-4 w-4" />
-          {review.rating}
-        </span>
-        <span className="sr-only">(bạn đã chấm {review.rating} trên 5 sao)</span>
-      </Link>
-      {review.status === "HIDDEN" ? (
-        <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-900">Đánh giá đã bị ẩn</span>
-      ) : null}
-    </div>
-  );
-}
-
-/** §"M9": entitlements from every tenant, grouped by tenant. */
+/** §"M9": entitlements from every tenant, grouped by tenant. ADR-039: thẻ tài liệu bị gỡ do vi phạm có khối lựa chọn. */
 export default async function LibraryPage() {
   const user = await requireVerifiedAccess("/account/library");
   const groups = await listLibraryEntitlements(user.userId);
+  const pendingChoices = groups.reduce(
+    (sum, group) => sum + group.entitlements.filter((e) => !e.revoked && e.remedyStatus === "PENDING_CHOICE").length,
+    0,
+  );
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-16">
-      <div className="flex items-center justify-between">
+    <main className="mx-auto max-w-2xl px-4 py-10 sm:py-16">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <h1 className="text-2xl font-bold">Thư viện của bạn</h1>
-        <Link href="/account/orders" className="text-sm text-[var(--color-primary)] underline">
+        <Link href="/account/orders" className={`inline-flex min-h-11 items-center rounded text-sm text-[var(--color-primary)] underline lg:min-h-0 ${LIBRARY_FOCUS}`}>
           Lịch sử đơn hàng
         </Link>
       </div>
 
+      {pendingChoices > 0 ? (
+        <p className="mt-4 rounded-xl border border-l-4 p-4 text-sm leading-relaxed" style={{ borderColor: brandColors.accent, background: brandColors.accentSoft, color: brandColors.ink }}>
+          <strong className="font-semibold">Có {pendingChoices} tài liệu cần bạn lựa chọn.</strong> Tài liệu đã bị gỡ do vi phạm chính sách — xem khung thông
+          báo ở từng tài liệu bên dưới.
+        </p>
+      ) : null}
+
       {groups.length === 0 ? (
-        <p className="mt-4 text-gray-600">Bạn chưa có tài liệu nào.</p>
+        <div className="mt-6 rounded-2xl border border-dashed px-4 py-12 text-center" style={{ borderColor: "#E5E7EB" }}>
+          <p className="font-semibold">Bạn chưa có tài liệu nào.</p>
+          <p className="mt-1 text-sm text-gray-600">Tài liệu bạn mua sẽ xuất hiện ở đây để tải xuống.</p>
+        </div>
       ) : (
         groups.map((group) => (
-          <section key={group.tenantId} className="mt-8">
-            <h2 className="text-lg font-semibold">{group.tenantName}</h2>
+          <section key={group.tenantId} className="mt-8" aria-labelledby={`library-tenant-${group.tenantId}`}>
+            <h2 id={`library-tenant-${group.tenantId}`} className="text-lg font-semibold [overflow-wrap:anywhere]">
+              {group.tenantName}
+            </h2>
             <ul className="mt-3 space-y-3">
-              {group.entitlements.map((entitlement) => {
-                const unlimited = entitlement.downloadLimit === 0;
-                const remaining = unlimited ? null : Math.max(0, entitlement.downloadLimit - entitlement.downloadsUsed);
-                const blocked = entitlement.revoked || (!unlimited && remaining === 0);
-                return (
-                  <li key={entitlement.entitlementId} className="rounded border p-4">
-                    <div className="flex items-center justify-between">
-                      <Link href={productPath(group.tenantSlug, entitlement.productSlug)} className="font-medium hover:underline">
-                        {entitlement.productTitle}
-                      </Link>
-                      <span className="text-xs text-gray-500">
-                        {entitlement.revoked ? "Đã thu hồi" : unlimited ? "Không giới hạn lượt tải" : `Còn ${remaining} lượt tải`}
-                      </span>
-                    </div>
-                    <ul className="mt-2 space-y-2">
-                      {entitlement.files.map((file) => (
-                        <li key={file.id} className="flex items-center justify-between text-sm">
-                          <span>{file.fileName}</span>
-                          <DownloadButton
-                            fileId={file.id}
-                            disabled={blocked}
-                            label={file.kind === "EXTERNAL_URL" ? "Mở link tài liệu" : undefined}
-                          />
-                        </li>
-                      ))}
-                    </ul>
-                    {entitlement.review || entitlement.canReview ? (
-                      <div className="mt-3 border-t pt-3">
-                        <ReviewEntry
-                          href={`${productPath(group.tenantSlug, entitlement.productSlug)}#${PRODUCT_REVIEWS_ANCHOR}`}
-                          canReview={entitlement.canReview}
-                          review={entitlement.review}
-                        />
-                      </div>
-                    ) : null}
-                  </li>
-                );
-              })}
+              {group.entitlements.map((entitlement) => (
+                <LibraryEntitlementCard key={entitlement.entitlementId} entitlement={entitlement} tenantName={group.tenantName} tenantSlug={group.tenantSlug} />
+              ))}
             </ul>
           </section>
         ))

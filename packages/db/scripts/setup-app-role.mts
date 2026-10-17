@@ -59,6 +59,12 @@ async function main() {
     await ownerClient.query(
       `ALTER DEFAULT PRIVILEGES FOR ROLE ${ownerClient.user} IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${APP_ROLE}`,
     );
+    // ADR-037: audit_logs is append-only — the blanket GRANT above re-adds UPDATE, so take it back (the
+    // migration 20261016090000_m12a_audit_logs sets SELECT, INSERT, DELETE; triggers are the real gate).
+    const auditLogs = await ownerClient.query("SELECT to_regclass('public.audit_logs') IS NOT NULL AS present");
+    if (auditLogs.rows[0]?.present) {
+      await ownerClient.query(`REVOKE UPDATE, TRUNCATE ON "audit_logs" FROM ${APP_ROLE}`);
+    }
 
     // pg-boss creates its own "pgboss" schema on first boss.start(). Grant
     // access to it if it already exists (e.g. from earlier local testing).

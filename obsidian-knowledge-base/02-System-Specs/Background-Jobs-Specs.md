@@ -7,14 +7,14 @@ tags:
   - payment
   - status/living
 date: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-17
 author: Long
 ---
 
 # 📐 Đặc Tả: Job Nền & Cron (M11 — Background Jobs, ADR-036)
 
-> Quyết định gốc: **ADR-036** + đoạn "Chủ dự án chốt (2026-10-16)" trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md) (chưa có
-> bản trích trong `01-Architecture-Decisions/` — chờ Quốc duyệt). ADR liên quan: ADR-007 (`DIRECT_URL` cho pg-boss), ADR-019
+> Quyết định gốc: **ADR-036** + đoạn "Chủ dự án chốt (2026-10-16)" trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md) (bản trích KB:
+> [[01-Architecture-Decisions/ADR-022-Background-Jobs-After-And-Daily-Cron|ADR-022 (≙ ADR-036)]]). ADR liên quan: ADR-007 (`DIRECT_URL` cho pg-boss), ADR-019
 > (`order.sweep` 5 phút — nay chỉ còn ở worker local), ADR-031 mục 4 (Vercel không chạy worker), ADR-032 (cấu hình nghiệp vụ
 > đọc từ DB), ADR-034 (một DB dùng chung).
 >
@@ -145,7 +145,18 @@ File: `apps/web/app/api/cron/daily/route.ts` ✅. Contract đầy đủ: [[03-AP
   1. `subscriptionSweep` — `runSubscriptionSweep()` trực tiếp;
   2. `orderSweep` — `runOrderSweep()` trực tiếp, kết quả `{ expired: <số đơn chuyển EXPIRED> }`;
   3. `queueMaintenance` — `superviseQueues([payment.process, file.scan])`, kết quả `{ queues: 2 }`;
-  4. `queues` — `drainQueues` hai hàng đợi trên, ngân sách **40 giây**, kết quả `DrainQueuesResult`.
+  4. `auditPurge` *(thêm ở M12a, ADR-037)* — `audit.purgeExpired()` xoá dòng `audit_logs` cũ hơn 12 tháng, kết quả
+     `{ deleted, skipped }` (`skipped: true` khi bảng chưa tồn tại). Đặt **trước** bước drain vì drain dùng phần lớn ngân sách thời gian.
+     Chi tiết: [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]] §6;
+  5. `statsAggregate` *(thêm ở M12b, ADR-037)* — `runStatsAggregation()` tính lại `tenant_daily_stats` cho hôm qua + hôm nay (giờ VN);
+     bảng trống → backfill ≤ 400 ngày; kết quả `{ skipped, backfilled, fromDate, toDate, upserted }`. Đặt sau `auditPurge`, trước drain.
+     Chi tiết: [[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]] §4;
+  6. `reportIpPurge` *(thêm ở M12c, ADR-038 — bước `abuse_report.ip_purge`)* — `purgeExpiredAbuseReportIps()` đặt `ip = NULL` cho báo
+     cáo vi phạm cũ hơn 12 tháng (giữ báo cáo); kết quả `{ cleared, skipped }`. Đặt sau `statsAggregate`, trước drain. Chi tiết:
+     [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]] §8;
+  7. `queues` — `drainQueues` hai hàng đợi trên, ngân sách **40 giây**, kết quả `DrainQueuesResult`.
+- Email M12c/ADR-039 (kết quả xử lý báo cáo, quyền lợi người mua, yêu cầu hoàn tiền) **không** đi qua hàng đợi — gửi bằng `sendEmailNow`
+  trong `after()` của Server Action, tuần tự ✅ (job theo lô cho sản phẩm nhiều người mua là BACKLOG).
 - **Response:** chỉ có số đếm — không dữ liệu tenant/đơn/khách (§7.9) ✅. Có bước lỗi → **500** `CRON_STEP_FAILED` kèm `results`.
 - `maxDuration = 60`, `dynamic = "force-dynamic"` ✅.
 
@@ -180,8 +191,9 @@ local nữa không.
   hàm này nay trả trạng thái hiệu lực, nên test vẫn qua kể cả khi `runOrderSweep` không ghi DB ✅ (đọc code). Nên đọc status thô.
 - **Integration test M8 dọn job pg-boss** của chính lượt chạy trong `afterAll` (`findJobs` theo `tenantId` rồi `deleteJob`) ✅ đọc code
   — **chưa chạy thật** ❓.
-- **Nợ test:** `drainQueues`, xác thực route cron (401/503), `effectiveOrderStatus`. Số test giữ nguyên **93/94 unit, 52/53
-  integration** ✅ (`pnpm test:count` Long chạy 2026-10-16 — đếm số case, không chạy test).
+- **Nợ test:** `drainQueues`, xác thực route cron (401/503), `effectiveOrderStatus`. Đợt ADR-036 không thêm test: **93/94 unit, 52/53
+  integration** ✅ (`pnpm test:count` Long chạy 2026-10-16 — đếm số case, không chạy test). Sau M12a (ADR-037) số hiện là **93/94 unit,
+  53/55 integration** — test mới là `audit.test.ts`, không phải test job nền.
 
 ---
 

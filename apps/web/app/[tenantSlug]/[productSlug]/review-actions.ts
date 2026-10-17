@@ -15,7 +15,7 @@ export interface ReviewFormState {
   success?: boolean;
   /** Thông điệp an toàn để hiện cho khách. */
   error?: string;
-  /** Mã lỗi ổn định: VALIDATION_ERROR | REVIEW_NOT_ELIGIBLE | REVIEW_ALREADY_EXISTS | RATE_LIMITED | UNAUTHORIZED | FORBIDDEN. */
+  /** Mã lỗi ổn định: VALIDATION_ERROR | REVIEW_NOT_ELIGIBLE | REVIEW_ALREADY_EXISTS | RATE_LIMITED | UNAUTHORIZED | FORBIDDEN | TENANT_NOT_ACTIVE. */
   code?: string;
   /** Đánh giá sau khi lưu (có `displayName` đã chuẩn hoá). */
   review?: MyReview;

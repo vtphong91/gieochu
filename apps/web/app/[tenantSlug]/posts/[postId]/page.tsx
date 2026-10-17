@@ -10,6 +10,7 @@ import { SiteFooter } from "../../../_ui/site-footer";
 import { SiteHeader } from "../../../_ui/site-header";
 import { systemFontVars } from "../../../_ui/system-fonts";
 import { formatPostDate, RelatedProductCard } from "../../_ui/post-parts";
+import { ReportAbuseButton } from "../../_ui/report-abuse";
 
 const INK = brandColors.ink;
 const INK_SOFT = brandColors.inkSoft;
@@ -20,7 +21,8 @@ const NAV_LINK = "inline-flex min-h-11 items-center rounded-full pr-1 font-mediu
 export async function generateMetadata({ params }: { params: Promise<{ tenantSlug: string; postId: string }> }): Promise<Metadata> {
   const { tenantSlug, postId } = await params;
   const tenant = await findTenantBySlugForStorefront(tenantSlug);
-  if (!tenant || tenant.status === "LOCKED") return {};
+  // ADR-040: gian hàng không ACTIVE → khách 404; không lộ tiêu đề qua metadata.
+  if (!tenant || tenant.status !== "ACTIVE") return {};
   const post = await getPublishedPostMeta(tenant.id, postId);
   if (!post) return {};
   return { title: `${postDisplayTitle(post)} — ${tenant.name}`, description: post.excerpt || undefined };
@@ -42,7 +44,9 @@ export default async function TenantPostDetailPage({ params }: { params: Promise
 
   const currentUser = await getCurrentUser();
   const viewer = currentUser?.userId === tenant.ownerId ? "owner" : "guest";
-  if (resolveStorefrontAccess(tenant.status, viewer) === "NOT_FOUND") notFound();
+  // ADR-040: READ_ONLY → khách 404 (SUSPENDED_NOTICE), chủ vẫn xem; LOCKED → khách 404, chủ xem như trước.
+  const access = resolveStorefrontAccess(tenant.status, viewer);
+  if (access === "NOT_FOUND" || access === "SUSPENDED_NOTICE") notFound();
 
   const post = await getPublishedPost(tenant.id, postId);
   if (!post) notFound();
@@ -120,6 +124,13 @@ export default async function TenantPostDetailPage({ params }: { params: Promise
             style={{ borderColor: LINE }}
             dangerouslySetInnerHTML={{ __html: post.bodyHtml }}
           />
+
+          {/* ADR-038: nút báo cáo kín đáo ở chân bài — chủ trang không tự báo cáo. */}
+          {viewer === "owner" ? null : (
+            <div className="mt-8 flex justify-end border-t pt-2" style={{ borderColor: LINE }}>
+              <ReportAbuseButton targetType="POST" targetId={post.id} targetLabel={`Bài viết “${postDisplayTitle(post)}” của ${tenant.name}`} isSignedIn={Boolean(currentUser)} />
+            </div>
+          )}
         </article>
 
         {post.product ? (

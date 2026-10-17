@@ -7,6 +7,9 @@ import { CancelOrderButton, MarkRefundedButton } from "./order-status-actions";
 import { GrantExtraDownloadsForm, RevokeEntitlementButton } from "./entitlement-actions";
 import { AdminPageHeader, Badge } from "../../../../admin/_ui/kit";
 import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
+import { OrderItemRemedy, RefundRequestBadge, isRefundOverdue } from "../_ui/remedy-parts";
+
+const ORDER_ACTIONS_ID = "order-actions";
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING: "Chờ thanh toán",
@@ -56,13 +59,21 @@ export default async function StudioOrderDetailPage({
   const canConfirm = canManuallyConfirmOrder(order.status as OrderStatus, order.expiresAt, now);
   const canCancel = order.status === "PENDING";
   const canRefund = order.status === "FULFILLED";
+  // ADR-039: yêu cầu hoàn tiền của khách (tài liệu bị gỡ do vi phạm) đang chờ trên đơn này.
+  const refundRequest = order.items.find((item) => item.entitlement?.remedyStatus === "REFUND_REQUESTED")?.entitlement ?? null;
+  const refundOverdue = refundRequest ? isRefundOverdue("REFUND_REQUESTED", refundRequest.remedyChosenAt, now) : false;
 
   return (
     <main className="px-5 py-8 lg:px-8">
       <AdminPageHeader
         title={`Đơn hàng ${order.code}`}
         subtitle={order.customer.email}
-        action={<Badge tone={STATUS_TONE[order.status] ?? "neutral"}>{STATUS_LABEL[order.status] ?? order.status}</Badge>}
+        action={
+          <div className="flex flex-wrap gap-2">
+            <Badge tone={STATUS_TONE[order.status] ?? "neutral"}>{STATUS_LABEL[order.status] ?? order.status}</Badge>
+            {refundRequest ? <RefundRequestBadge overdue={refundOverdue} /> : null}
+          </div>
+        }
       />
 
       <section className="mt-6 max-w-[960px] rounded-2xl border bg-white p-5" style={{ borderColor: "#E5E7EB" }}>
@@ -74,19 +85,38 @@ export default async function StudioOrderDetailPage({
                 <span>{item.finalPriceVnd.toLocaleString("vi-VN")}đ</span>
               </div>
               {item.entitlement ? (
-                <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
-                  <span>
-                    {item.entitlement.revokedAt
-                      ? "Quyền tải đã bị thu hồi"
-                      : `Đã tải ${item.entitlement.downloadsUsed}${item.entitlement.downloadLimit === 0 ? "" : `/${item.entitlement.downloadLimit}`} lượt`}
-                  </span>
-                  {item.entitlement.revokedAt ? null : (
-                    <div className="flex items-center gap-3">
-                      <GrantExtraDownloadsForm tenantSlug={tenantSlug} orderId={orderId} entitlementId={item.entitlement.id} />
-                      <RevokeEntitlementButton tenantSlug={tenantSlug} orderId={orderId} entitlementId={item.entitlement.id} />
+                <>
+                  <div className="mt-1 flex flex-col gap-2 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-between">
+                    <span>
+                      {item.entitlement.revokedAt
+                        ? "Quyền tải đã bị thu hồi"
+                        : `Đã tải ${item.entitlement.downloadsUsed}${item.entitlement.downloadLimit === 0 ? "" : `/${item.entitlement.downloadLimit}`} lượt`}
+                    </span>
+                    {item.entitlement.revokedAt ? null : (
+                      <div className="flex flex-wrap items-center gap-3">
+                        {/* ADR-039 bổ sung (b): đã có remedy thì không đổi được downloadLimit — ẩn "Cấp thêm lượt". */}
+                        {item.entitlement.remedyStatus === "NONE" ? (
+                          <GrantExtraDownloadsForm tenantSlug={tenantSlug} orderId={orderId} entitlementId={item.entitlement.id} />
+                        ) : (
+                          <span>Không cấp thêm lượt được cho tài liệu bị gỡ do vi phạm.</span>
+                        )}
+                        <RevokeEntitlementButton tenantSlug={tenantSlug} orderId={orderId} entitlementId={item.entitlement.id} />
+                      </div>
+                    )}
+                  </div>
+                  {item.entitlement.remedyStatus !== "NONE" ? (
+                    <div className="mt-2">
+                      <OrderItemRemedy
+                        status={item.entitlement.remedyStatus}
+                        chosenAt={item.entitlement.remedyChosenAt}
+                        resolvedAt={item.entitlement.remedyResolvedAt}
+                        now={now}
+                        canMarkRefunded={canRefund}
+                        actionsAnchorId={ORDER_ACTIONS_ID}
+                      />
                     </div>
-                  )}
-                </div>
+                  ) : null}
+                </>
               ) : null}
             </li>
           ))}
@@ -131,7 +161,7 @@ export default async function StudioOrderDetailPage({
         </section>
       ) : null}
 
-      <section className="mt-6 flex max-w-[960px] flex-wrap items-start gap-3">
+      <section id={ORDER_ACTIONS_ID} aria-label="Thao tác với đơn hàng" className="mt-6 flex max-w-[960px] scroll-mt-6 flex-wrap items-start gap-3">
         {canConfirm ? (
           <div className="w-full rounded-2xl border bg-white p-5" style={{ borderColor: "#E5E7EB" }}>
             <h2 className="font-[family-name:var(--font-heading)] text-sm font-semibold" style={{ color: "#12213A" }}>

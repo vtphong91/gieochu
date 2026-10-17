@@ -7,7 +7,7 @@ tags:
   - jobs
   - status/living
 date: 2026-09-29
-updated: 2026-10-16
+updated: 2026-10-17
 author: Long
 ---
 
@@ -18,7 +18,8 @@ author: Long
 > **ADR-032** — [[01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-From-System-Center|ADR-018 (≙ ADR-032)]]; một DB duy
 > nhất cho dev/Preview/production theo **ADR-034** —
 > [[01-Architecture-Decisions/ADR-020-Single-Database-Dev-Preview-Production|ADR-020 (≙ ADR-034)]]; quy trình migration sau
-> **sự cố 2026-10-15** ở §9; job nền chạy trong app (`after()` + Vercel Cron hằng ngày) theo **ADR-036** (chưa có bản trích KB) ở §6 —
+> **sự cố 2026-10-15** ở §9; job nền chạy trong app (`after()` + Vercel Cron hằng ngày) theo [[01-Architecture-Decisions/ADR-022-Background-Jobs-After-And-Daily-Cron|ADR-022 (≙ ADR-036)]] ở §6; audit log M12a theo
+> [[01-Architecture-Decisions/ADR-023-M12-Audit-Log-Append-Only|ADR-023 (≙ ADR-037)]] ở §9.6 —
 > nghiệp vụ: [[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]]. Checklist chung trước phát hành,
 > CI và rollback: [[04-Operations-Runbooks/Publish-And-Rollback-Runbook|Publish-And-Rollback-Runbook]]. Dựng lại DB từ đầu:
 > [[04-Operations-Runbooks/Disaster-Recovery-Runbook|Disaster-Recovery-Runbook]].
@@ -160,9 +161,9 @@ production cho phiên này rồi trả lại `.env` dev sau khi xong (tránh ch�
    pnpm --filter @gieochu/db run setup-app-role
    ```
    Script in ra `DATABASE_URL`/`DIRECT_URL` cho role `gieochu_app` (pooled = chèn `-pooler` vào host) ✅ → dùng làm giá trị
-   env trên Vercel (§3.1). Script hiện vẫn `GRANT CREATE ON DATABASE` cho `gieochu_app` ✅ — DB dùng chung đã `REVOKE` quyền này
-   (2026-10-15 🟡); chạy lại script thì phải `REVOKE` lại. Xem
-   [[04-Operations-Runbooks/Disaster-Recovery-Runbook|Disaster-Recovery-Runbook]] §4.1.
+   env trên Vercel (§3.1). Script nay `REVOKE CREATE ON DATABASE` cho `gieochu_app` ✅ (đọc 2026-10-16 — đính chính bản trước ghi "vẫn
+   `GRANT CREATE`"); trên DB mới tạo schema `pgboss` bằng role owner trước rồi chạy lại script — quy trình chính thức (ADR-037 bổ sung), chưa chạy thử ❓. Script cũng thu lại
+   `UPDATE, TRUNCATE` trên `audit_logs` (§9.6). Xem [[04-Operations-Runbooks/Disaster-Recovery-Runbook|Disaster-Recovery-Runbook]] §4.1, §4.3.
 2. **Chạy migration** — cần `PRISMA_MIGRATE_URL` ✅:
    ```bash
    pnpm db:migrate    # prisma migrate deploy
@@ -239,6 +240,9 @@ deploy**) ✅. Nghiệp vụ chi tiết: [[02-System-Specs/Background-Jobs-Specs
 | Hết hạn đơn `PENDING` | Đọc/thanh toán dùng `effectiveOrderStatus` ngay; `runOrderSweep()` trong cron chỉ đồng bộ DB ✅ | Khách vẫn không thanh toán được đơn quá hạn; DB còn ghi `PENDING` tới lần cron kế |
 | Sweep thuê bao | `runSubscriptionSweep()` trong cron ✅ | Chuyển trạng thái thuê bao trễ (tối đa ~24h khi cron chạy bình thường) |
 | Bảo trì hàng đợi (job `active` kẹt) | `supervise()` trong cron ✅ (web tắt timer bảo trì của pg-boss) | Job bị cắt giữa chừng chỉ được trả lại khi cron chạy (≤ 24h) |
+| Xoá audit log > 12 tháng (M12a, ADR-037) | Bước `audit.purge` trong cron, chạy trước drain ✅ | Dòng cũ tồn lâu hơn 12 tháng; không ảnh hưởng nghiệp vụ |
+| Tổng hợp `tenant_daily_stats` (M12b, ADR-037) | Bước `stats.aggregate` trong cron, sau `audit.purge`, trước drain — tính lại hôm qua + hôm nay giờ VN; bảng trống → backfill ≤ 400 ngày ✅ | Dashboard `/admin` hiện số của lần tổng hợp trước (ghi "cập nhật lần cuối …"); bảng trống → section báo "Chưa có hoạt động bán tài liệu" |
+| Xoá IP báo cáo vi phạm > 12 tháng (M12c, ADR-038) | Bước `abuse_report.ip_purge` trong cron, sau `stats.aggregate`, trước drain ✅ | IP tồn lâu hơn 12 tháng; báo cáo không đổi |
 
 Web app chạy pg-boss với `schedule: false, supervise: false` (`lib/jobs.ts`) ✅ — không sinh job `order.sweep`/`subscription.sweep` trên
 Vercel. **Email không phụ thuộc job** — gửi đồng bộ qua `sendEmailNow()` ✅.
@@ -259,6 +263,13 @@ Trình tự theo brief của Quốc 🟡 — chưa ai chạy thử:
 5. Sau lần chạy đầu (03:00 giờ VN) xem log function: dòng `cron daily finished` kèm `results`; response `200 { ok: true, … }`. Có bước
    lỗi → `500 CRON_STEP_FAILED` + dòng log `cron daily: step failed` (tên bước). Mã phản hồi:
    [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §17.
+6. **Backfill thống kê ngay sau lần deploy đầu có M12b** (ADR-037): bảng `tenant_daily_stats` đang trống trên DB dùng chung 🟡 (Quốc kiểm
+   2026-10-16). Để dashboard `/admin` có số liệu ngay thay vì chờ 03:00 hôm sau: Vercel → Settings → **Cron Jobs** → job `/api/cron/daily`
+   → bấm **Run** 🟡 (theo brief của Quốc — chưa ai làm; nút Run là tính năng nền tảng, Long chưa kiểm). Lần chạy này backfill từ ngày có
+   hoạt động sớm nhất (tối đa 400 ngày) — kiểm `results.statsAggregate` trong log: `backfilled: true`, `fromDate`/`toDate`, `upserted`.
+   Nếu bước báo lỗi giữa chừng (vd hết thời gian 60 giây khi dữ liệu nhiều — ❓ chưa đo): mỗi cửa sổ 31 ngày commit riêng nên các cửa sổ
+   đã xong được giữ, nhưng **bảng đã có dòng thì lần chạy sau chỉ tính hôm qua + hôm nay** — các ngày cũ chưa ghi sẽ thiếu, bấm Run lại
+   không bù được ✅ đọc code `runStatsAggregation`. Gặp thì báo Quốc (BACKLOG "ngân sách thời gian cron khi backfill dài"). Chi tiết: [[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]] §4.
 
 > ⚠️ Đặt `CRON_SECRET` ngắn hơn 32 ký tự làm **toàn bộ app** lỗi khi khởi động (§3.4). Gọi tay để kiểm: phải kèm đúng header Bearer;
 > route chỉ trả số đếm, không trả dữ liệu tenant/đơn/khách.
@@ -394,6 +405,63 @@ cột đã xoá) **không** quay lại được. Point-in-Time Restore ảnh hư
   `SELECT id, slug, name, status FROM tenants WHERE slug IN ('cua-hang','tai-lieu','danh-muc','tim-kiem','giao-vien','kham-pha');`
   (theo kế hoạch §4.5; tên bảng/cột ✅ theo `@@map`).
 
+### 9.6. Migration Audit log M12a (ADR-037) — đã áp trước deploy (đúng trình tự expand)
+
+* `20261016090000_m12a_audit_logs` — chỉ *thêm*: enum `AuditScope`, bảng L1 `audit_logs` (không FK) + 3 index, 3 hàm/trigger chỉ-INSERT,
+  khối quyền cho `gieochu_app` (`REVOKE ALL` rồi `GRANT SELECT, INSERT, DELETE`) ✅ đọc SQL. Quốc áp lên DB dùng chung **2026-10-16** và
+  kiểm bằng role `gieochu_app` trong transaction rollback: UPDATE/TRUNCATE → permission denied; DELETE, và DELETE có cờ
+  `gieochu.audit_purge` với dòng mới → trigger `42501`; quyền `DELETE, INSERT, SELECT`; đủ 3 trigger 🟡 (báo cáo Quốc).
+* Bản production hiện tại không biết bảng này → không ảnh hưởng (bước 3 §9.2). Code M12a (ghi audit, 2 trang xem, bước cron
+  `audit.purge`) **chưa commit/deploy** ✅ `git status`. Nếu code lên trước migration ở môi trường khác: `audit.log` bỏ qua ghi, trang
+  hiện "Nhật ký chưa sẵn sàng", bước purge trả `skipped: true` — không lỗi ✅ đọc code.
+* `setup-app-role.mts` có thêm `REVOKE UPDATE, TRUNCATE ON "audit_logs"` — chạy lại script không mở lại UPDATE ✅.
+* **Hệ quả với test (ADR-034 + ADR-037 mục 6):** dòng audit do integration test/script thủ công tạo trên DB dùng chung **không xoá
+  được** tới 12 tháng; lượt `audit.test.ts` 2026-10-16 để lại 5 dòng giả 🟡. Khi dọn dữ liệu demo (§9.3) không xoá được dòng audit.
+* Không có migration contract nào đi kèm.
+* Kiểm sau restore/rebuild: [[04-Operations-Runbooks/Disaster-Recovery-Runbook|Disaster-Recovery-Runbook]] §4.3. Nghiệp vụ:
+  [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]].
+
+### 9.7. Migration Thống kê M12b (ADR-037) — đã áp trước deploy (đúng trình tự expand)
+
+* `20261016120000_m12b_tenant_daily_stats` — chỉ *thêm*: bảng L1 `tenant_daily_stats` + index `(date)` + unique `(tenantId, date)` + FK
+  `tenants` `ON DELETE CASCADE`; không RLS, không trigger; khối `DO` `GRANT SELECT, INSERT, UPDATE, DELETE` cho `gieochu_app` ✅ đọc SQL.
+* Quốc áp lên DB dùng chung **2026-10-16** và kiểm: `gieochu_app` có SELECT/INSERT/UPDATE, không RLS, bảng trống 🟡 (báo cáo Quốc).
+* Bản production hiện tại không biết bảng này → không ảnh hưởng. Code M12b **chưa commit/deploy** ✅ `git status`. Nếu code lên trước
+  migration ở môi trường khác: bước cron `stats.aggregate` trả `skipped: true`, dashboard hiện "Thống kê chưa sẵn sàng" — không lỗi ✅ đọc
+  code.
+* Sau deploy: backfill lần đầu — §6.2 bước 6.
+* Xoá tenant kéo theo xoá dòng thống kê của tenant đó (Cascade) — tổng toàn nền tảng ở các ngày cũ giảm tương ứng sau lần đọc kế tiếp.
+* Không có migration contract nào đi kèm. Nghiệp vụ: [[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]].
+
+### 9.8. Migration Báo cáo vi phạm M12c (ADR-038) + Quyền lợi người mua (ADR-039) — đã áp, **bắt buộc trước code**
+
+* `20261016150000_m12c_abuse_reports` — chỉ *thêm*: 4 enum, bảng L1 `abuse_reports`, cột nullable khoá kiểm duyệt trên
+  `products`/`reviews`/`posts` + cam kết bản quyền trên `products`, CHECK, 3 trigger `*_guard_moderation`, quyền ✅ đọc SQL.
+* `20261016180000_adr039_entitlement_remedy` — chỉ *thêm*: enum `EntitlementRemedyStatus`, 5 cột `remedy*` trên `entitlements` (gồm
+  `remedyResolvedAt`), index, 2 CHECK, trigger `entitlements_guard_remedy`, quyền ✅ đọc SQL.
+* Quốc áp cả hai lên DB dùng chung **2026-10-16** và kiểm bằng `gieochu_app` (rollback): tenant đặt khoá/remedy → `42501`; tenant cấp thêm
+  lượt khi có remedy → `42501`; `system_job` được; CHECK shape chặn; checksum migration ADR-039 khớp file 🟡 (báo cáo Quốc).
+* ⚠️ **Khác M12a/M12b — code KHÔNG chịu được thứ tự ngược:** code mới đọc cột mới của `products`/`reviews`/`posts`/`entitlements` (Prisma
+  chọn đủ cột của model) → nếu code lên môi trường **chưa** có 2 migration này, mọi truy vấn sản phẩm/đánh giá/bài viết/entitlement lỗi
+  **P2022 (500)**. Chỉ phần `abuse_reports` xử lý mềm (503 `REPORT_UNAVAILABLE`, trang admin "chưa sẵn sàng", cron `skipped`). Trên DB dùng
+  chung hiện tại: đã áp → deploy được. **Mọi DB khác (restore, branch mới): `pnpm db:migrate` trước khi deploy code này.**
+* Chiều ngược an toàn: bản production cũ chạy trên schema mới không sao (cột nullable/có default; trigger chỉ chặn đổi cột mới, không bao giờ
+  chạm với code cũ) ✅ theo comment migration — **rollback code** về bản trước M12c không cần đụng DB.
+* **Sau deploy — email đơn hàng bắt đầu gửi thật lần đầu** 🟡 (brief Quốc): bản sửa đọc `orders` dưới `withSystemJob` làm `order_paid`
+  (khách) và `new_sale` (chủ gian hàng) được gửi lần đầu kể từ khi app chạy bằng role `gieochu_app` (trước đó RLS trả 0 dòng nên hàm dừng
+  sớm — [[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.7). Việc cần làm: SMTP System Center đã cấu hình; theo dõi log
+  `email` sau đơn thật đầu tiên; **không** tạo đơn thử với email thật của người khác (ADR-034). Email chỉ gửi cho đơn **fulfil sau deploy**
+  — không gửi bù cho đơn cũ ✅ đọc code.
+* **Sau deploy — thay đổi hành vi checkout:** đơn `PENDING` của tenant không `ACTIVE` (kể cả `READ_ONLY`) hoặc có sản phẩm không `PUBLISHED`
+  nhận 409 `PRODUCT_UNAVAILABLE` khi thanh toán/áp mã ✅ đọc code. Chủ dự án đã chốt chặn qua ADR-040 mục 4 (2026-10-17).
+* **Sau deploy — ADR-040 (không migration):** khách của gian hàng `READ_ONLY` chỉ thấy trang "tạm ngưng" (`noindex`), trang tài liệu/bài
+  viết 404, share link 410, báo cáo vi phạm 404, gửi/sửa đánh giá 409 `TENANT_NOT_ACTIVE` ✅ đọc code — bảng đầy đủ
+  [[02-System-Specs/Storefront-CMS-Specs|Storefront-CMS-Specs]] §1.2. Rollback code không cần đụng DB. Hiện có bao nhiêu tenant `READ_ONLY`
+  trên production ❓ (Long không chạy truy vấn DB).
+* Bước cron mới `abuse_report.ip_purge` không cần cấu hình thêm (§6). Route mới `POST /api/reports` kiểm `Origin` theo `APP_URL` — `APP_URL`
+  phải đúng domain production ✅ đọc code.
+* Không có migration contract nào đi kèm. Nghiệp vụ: [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]].
+
 ---
 
 ## 10. Liên kết
@@ -405,6 +473,9 @@ cột đã xoá) **không** quay lại được. Point-in-Time Restore ảnh hư
 * [[01-Architecture-Decisions/ADR-004-Csp-Nonce-Proxy|ADR-004 (≙ ADR-016)]] ([ADR-004-Csp-Nonce-Proxy.md](../01-Architecture-Decisions/ADR-004-Csp-Nonce-Proxy.md))
 * [[01-Architecture-Decisions/ADR-016-Short-Product-Url-No-Sticky-Publish-Card|ADR-016 (≙ ADR-030)]] ([ADR-016-Short-Product-Url-No-Sticky-Publish-Card.md](../01-Architecture-Decisions/ADR-016-Short-Product-Url-No-Sticky-Publish-Card.md)) — slug dành riêng
 * [[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]] — job nền + cron (ADR-036) ([Background-Jobs-Specs.md](../02-System-Specs/Background-Jobs-Specs.md))
+* [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]] — M12c/ADR-039, §9.8 ([Abuse-Reports-Specs.md](../02-System-Specs/Abuse-Reports-Specs.md))
+* [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]] — audit log M12a (ADR-037) ([Audit-Log-Specs.md](../02-System-Specs/Audit-Log-Specs.md))
+* [[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]] — thống kê hằng ngày M12b (ADR-037) ([Tenant-Stats-Specs.md](../02-System-Specs/Tenant-Stats-Specs.md))
 * [[04-Operations-Runbooks/Publish-And-Rollback-Runbook|Publish-And-Rollback-Runbook]] ([Publish-And-Rollback-Runbook.md](./Publish-And-Rollback-Runbook.md))
 * [[04-Operations-Runbooks/Disaster-Recovery-Runbook|Disaster-Recovery-Runbook]] ([Disaster-Recovery-Runbook.md](./Disaster-Recovery-Runbook.md))
 

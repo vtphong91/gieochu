@@ -77,6 +77,8 @@ export default async function StudioReviewsPage({
     status: r.status,
     hiddenReason: r.hiddenReason,
     hiddenAt: r.hiddenAt ? r.hiddenAt.toISOString() : null,
+    moderationLockedAt: r.moderationLockedAt ? r.moderationLockedAt.toISOString() : null,
+    moderationReason: r.moderationReason,
     reply: r.reply,
     repliedAt: r.repliedAt ? r.repliedAt.toISOString() : null,
     createdAt: r.createdAt.toISOString(),

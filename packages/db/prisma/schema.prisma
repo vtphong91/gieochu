@@ -51,17 +51,19 @@ model User {
   createdAt             DateTime   @default(now())
   updatedAt             DateTime   @updatedAt
 
-  profile            UserProfile?
-  refreshTokens      RefreshToken[]
-  verificationTokens VerificationToken[]
-  ownedTenant        Tenant?
-  tenantMemberships  TenantMember[]
-  orders             Order[]
-  entitlements       Entitlement[]
-  tenantCustomerOf   TenantCustomer[]
-  downloadTokens     DownloadToken[]
-  downloadEvents     DownloadEvent[]
-  reviews            Review[]
+  profile              UserProfile?
+  refreshTokens        RefreshToken[]
+  verificationTokens   VerificationToken[]
+  ownedTenant          Tenant?
+  tenantMemberships    TenantMember[]
+  orders               Order[]
+  entitlements         Entitlement[]
+  tenantCustomerOf     TenantCustomer[]
+  downloadTokens       DownloadToken[]
+  downloadEvents       DownloadEvent[]
+  reviews              Review[]
+  abuseReportsFiled    AbuseReport[]       @relation("AbuseReportReporter")
+  abuseReportsResolved AbuseReport[]       @relation("AbuseReportResolver")
 
   @@map("users")
 }
@@ -323,6 +325,8 @@ model Tenant {
   mediaAssets          TenantMediaAsset[]
   reviews              Review[]
   posts                Post[]
+  dailyStats           TenantDailyStat[]
+  abuseReports         AbuseReport[]
 
   @@map("tenants")
 }
@@ -383,40 +387,49 @@ enum ProductType {
 /// chỉ tính review VISIBLE, luôn tính lại toàn phần (SUM/COUNT) dưới scope
 /// `system_job` (`recomputeProductRating`, apps/web/lib/review.ts).
 model Product {
-  id            String            @id @default(cuid(2))
-  tenantId      String
-  tenant        Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  slug          String
-  title         String
-  description   String?
-  type          ProductType       @default(OTHER)
+  id                  String            @id @default(cuid(2))
+  tenantId            String
+  tenant              Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  slug                String
+  title               String
+  description         String?
+  type                ProductType       @default(OTHER)
   /// ADR-027: mô tả ngắn — văn bản thuần ≤300 ký tự (chuẩn hoá/validate ở `normalizeProductSummary`,
   /// @gieochu/core). Hiển thị trên thẻ storefront và đầu trang chi tiết; không bắt buộc khi xuất bản.
-  summary       String?
+  summary             String?
   /// Ảnh bìa cũ trên R2 public (M5). ADR-027: chỉ còn là fallback khi chưa có `coverImageUrl`.
-  coverImageKey String?
+  coverImageKey       String?
   /// ADR-027: ảnh bìa Cloudinary — chỉ nhận `https://res.cloudinary.com/...` (`isCloudinaryImageUrl`,
   /// cùng luật ADR-023). Ưu tiên hơn `coverImageKey` khi hiển thị (`resolveProductCoverUrl`).
-  coverImageUrl String?
-  tags          String[]          @default([])
-  priceVnd      Int               @default(0)
-  salePriceVnd  Int?
-  saleStartsAt  DateTime?
-  saleEndsAt    DateTime?
-  downloadLimit Int               @default(5)
-  ratingSum     Int               @default(0)
-  ratingCount   Int               @default(0)
+  coverImageUrl       String?
+  tags                String[]          @default([])
+  priceVnd            Int               @default(0)
+  salePriceVnd        Int?
+  saleStartsAt        DateTime?
+  saleEndsAt          DateTime?
+  downloadLimit       Int               @default(5)
+  ratingSum           Int               @default(0)
+  ratingCount         Int               @default(0)
   /// ADR-033 mục 1: cache "số đã bán" = số order_items của đơn FULFILLED có entitlement chưa thu hồi (CHECK ≥ 0
   /// trong SQL). Chỉ ghi qua `recomputeProductSoldCounts` (scope system_job, tính lại toàn phần).
-  soldCount     Int               @default(0)
-  status        ProductStatus     @default(DRAFT)
+  soldCount           Int               @default(0)
+  status              ProductStatus     @default(DRAFT)
+  /// ADR-038 mục 5: khoá kiểm duyệt — admin lưu trữ sản phẩm do vi phạm (qua `system_job`). Khác null ⇒ tenant không
+  /// đổi được `status` (không xuất bản lại/khôi phục) cho tới khi admin gỡ khoá. Trigger `products_guard_moderation`
+  /// chặn mọi scope ngoài `system_job` đặt/gỡ 2 cột này hoặc đổi `status` khi đang khoá.
+  moderationLockedAt  DateTime?
+  /// Lý do hiển thị cho tenant = nhãn loại vi phạm (không chứa danh tính người báo cáo).
+  moderationReason    String?
+  /// ADR-038 mục 7: lần gần nhất tenant tích cam kết bản quyền khi xuất bản (lưu vết, không FK).
+  rightsConfirmedAt   DateTime?
+  rightsConfirmedById String?
   /// ADR-026: danh mục tài liệu (L1, System Admin quản lý). Nháp được để
   /// trống; xuất bản bắt buộc có danh mục đang `isActive` (canPublishProduct).
   /// Danh mục bị xoá (hiện chưa có luồng xoá) → SetNull, sản phẩm giữ nguyên.
-  categoryId    String?
-  category      DocumentCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  categoryId          String?
+  category            DocumentCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
 
   files        ProductFile[]
   orderItems   OrderItem[]
@@ -955,27 +968,51 @@ model TenantCustomer {
 /// `downloadLimit` is a snapshot of `product.downloadLimit` at purchase
 /// time (§5.3 snapshot convention) — a later change to the product's limit
 /// never retroactively changes what an existing buyer already has.
+///
+/// ADR-039 — quyền lợi người mua khi tài liệu bị admin lưu trữ do vi phạm (`remedy*`). Chỉ scope `system_job` đặt/đổi
+/// (trigger `entitlements_guard_remedy`), ngoại lệ duy nhất: tenant hoàn tiền chuyển REFUND_REQUESTED → REFUNDED.
+/// `remedyReportId` trỏ `abuse_reports.id` (L1) — không FK, chỉ để truy vết.
 model Entitlement {
-  id            String    @id @default(cuid(2))
-  userId        String
-  user          User      @relation(fields: [userId], references: [id])
-  tenantId      String
-  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  productId     String
-  product       Product   @relation(fields: [productId], references: [id])
-  orderItemId   String    @unique
-  orderItem     OrderItem @relation(fields: [orderItemId], references: [id])
-  downloadsUsed Int       @default(0)
-  downloadLimit Int
-  revokedAt     DateTime?
-  createdAt     DateTime  @default(now())
+  id                String                  @id @default(cuid(2))
+  userId            String
+  user              User                    @relation(fields: [userId], references: [id])
+  tenantId          String
+  tenant            Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product                 @relation(fields: [productId], references: [id])
+  orderItemId       String                  @unique
+  orderItem         OrderItem               @relation(fields: [orderItemId], references: [id])
+  downloadsUsed     Int                     @default(0)
+  downloadLimit     Int
+  revokedAt         DateTime?
+  createdAt         DateTime                @default(now())
+  remedyStatus      EntitlementRemedyStatus @default(NONE)
+  /// Thời điểm hệ thống mở quyền chọn (admin lưu trữ tài liệu do vi phạm).
+  remedyRequestedAt DateTime?
+  /// Thời điểm khách chọn (tải lần cuối / yêu cầu hoàn tiền) — mốc tính hạn 7 ngày của yêu cầu hoàn tiền.
+  remedyChosenAt    DateTime?
+  /// Thời điểm tenant bấm "Hoàn tiền" cho yêu cầu hoàn tiền (REFUND_REQUESTED → REFUNDED); null ở mọi trạng thái khác.
+  remedyResolvedAt  DateTime?
+  remedyReportId    String?
 
   downloadTokens DownloadToken[]
   downloadEvents DownloadEvent[]
 
   @@index([userId])
   @@index([tenantId])
+  @@index([tenantId, remedyStatus])
   @@map("entitlements")
+}
+
+/// ADR-039. NONE = bình thường; PENDING_CHOICE = chặn tải, chờ khách chọn; FINAL_DOWNLOAD = còn đúng 1 lượt
+/// (`downloadLimit = downloadsUsed + max(1, số tệp khả dụng)` — mỗi tệp 1 lần); REFUND_REQUESTED = chặn tải vĩnh viễn, chờ tenant hoàn tiền; REFUNDED = tenant
+/// đã hoàn tiền (entitlement đã thu hồi).
+enum EntitlementRemedyStatus {
+  NONE
+  PENDING_CHOICE
+  FINAL_DOWNLOAD
+  REFUND_REQUESTED
+  REFUNDED
 }
 
 /// §"M9" — single-use, 60s-TTL token bridging `POST /api/downloads` (creates
@@ -1137,29 +1174,33 @@ enum ReviewHiddenReason {
 /// tenant đổi nội dung của khách. `orderItemId` = dòng đơn chứng minh quyền đánh giá (cập nhật khi khách mua lại
 /// rồi sửa). `displayName` là snapshot tên rút gọn ("Minh A.") lúc ghi — trang public không join hồ sơ L1.
 model Review {
-  id           String              @id @default(cuid(2))
-  tenantId     String
-  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  productId    String
-  product      Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
-  userId       String
-  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  orderItemId  String
-  orderItem    OrderItem           @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  id                 String              @id @default(cuid(2))
+  tenantId           String
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  productId          String
+  product            Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderItemId        String
+  orderItem          OrderItem           @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
   /// 1–5 (CHECK `reviews_rating_range`).
-  rating       Int
+  rating             Int
   /// Văn bản thuần ≤2000 ký tự (CHECK), null = chỉ chấm sao.
-  body         String?
-  displayName  String
-  status       ReviewStatus        @default(VISIBLE)
+  body               String?
+  displayName        String
+  status             ReviewStatus        @default(VISIBLE)
   /// Có giá trị ⇔ status = HIDDEN (CHECK `reviews_hidden_shape`).
-  hiddenReason ReviewHiddenReason?
-  hiddenAt     DateTime?
+  hiddenReason       ReviewHiddenReason?
+  hiddenAt           DateTime?
   /// Trả lời của người bán (1 trả lời/đánh giá, sửa được), văn bản thuần ≤2000 ký tự.
-  reply        String?
-  repliedAt    DateTime?
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
+  reply              String?
+  repliedAt          DateTime?
+  /// ADR-038 mục 5: khoá kiểm duyệt (admin ẩn do vi phạm, qua `system_job`). Khác null ⇒ tenant không bỏ ẩn được,
+  /// hệ thống không tự khôi phục khi khách mua lại. Trigger `reviews_guard_moderation`.
+  moderationLockedAt DateTime?
+  moderationReason   String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
   @@unique([productId, userId])
   @@index([tenantId, createdAt])
@@ -1184,26 +1225,155 @@ enum PostStatus {
 /// (trigger `posts_guard_product_tenant`); xoá sản phẩm → SetNull. Tối đa 1 bài ghim/tenant: partial unique index
 /// `posts_tenantId_pinned_key` (`WHERE "isPinned"`, khai báo trong migration SQL — Prisma không biểu diễn được).
 model Post {
-  id           String     @id @default(cuid(2))
-  tenantId     String
-  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id                 String     @id @default(cuid(2))
+  tenantId           String
+  tenant             Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   /// Tuỳ chọn, ≤200 ký tự (CHECK `posts_title_length`).
-  title        String?
-  body         String
+  title              String?
+  body               String
   /// Văn bản thuần ≤300 ký tự sinh từ `body` khi lưu; "" khi bài chỉ có ảnh.
-  excerpt      String     @default("")
-  productId    String?
-  product      Product?   @relation(fields: [productId], references: [id], onDelete: SetNull)
-  status       PostStatus @default(DRAFT)
+  excerpt            String     @default("")
+  productId          String?
+  product            Product?   @relation(fields: [productId], references: [id], onDelete: SetNull)
+  status             PostStatus @default(DRAFT)
   /// Chỉ có giá trị khi status = HIDDEN (M12 đặt, qua system_job).
-  hiddenReason String?
-  isPinned     Boolean    @default(false)
+  hiddenReason       String?
+  isPinned           Boolean    @default(false)
+  /// ADR-038 mục 5: khoá kiểm duyệt (admin ẩn do vi phạm, qua `system_job`; luôn đi cùng `status = HIDDEN`). Trigger
+  /// `posts_guard_moderation` chặn scope khác đặt/gỡ hoặc đổi `status` khi đang khoá.
+  moderationLockedAt DateTime?
+  moderationReason   String?
   /// Lần xuất bản đầu tiên (giữ nguyên khi gỡ về DRAFT rồi đăng lại). Bắt buộc khi PUBLISHED (CHECK).
-  publishedAt  DateTime?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  publishedAt        DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
 
   @@index([tenantId, status, publishedAt(sort: Desc)])
   @@index([productId])
   @@map("posts")
+}
+
+/// ADR-037 (M12a): ai/hệ thống làm gì — `SYSTEM` = hành động cấp nền tảng (đăng nhập, quản trị hệ thống,
+/// thanh toán gói, job hệ thống); `TENANT` = thành viên tenant thao tác trong Studio; `CUSTOMER` = khách hàng
+/// thao tác (vd. mua lại làm đánh giá hiện lại).
+enum AuditScope {
+  SYSTEM
+  TENANT
+  CUSTOMER
+}
+
+/// ADR-037 mục 2 — §"M12" audit log, bảng L1 (không RLS; owner chỉ đọc qua loader lọc `tenantId` ở server,
+/// apps/web/lib/audit-query.ts). CHỈ INSERT: role `gieochu_app` không có UPDATE, trigger
+/// `audit_logs_block_update` chặn UPDATE mọi trường hợp, `audit_logs_guard_delete` chặn DELETE trừ khi phiên đặt
+/// `gieochu.audit_purge = 'on'` VÀ dòng cũ hơn 12 tháng (cron hằng ngày, ADR-036). KHÔNG khoá ngoại tới
+/// users/tenants (lịch sử bất biến, không chặn xoá dữ liệu khác). `action` là chuỗi (hằng `AUDIT_ACTIONS`,
+/// @gieochu/core) — thêm action không cần DDL. `metadata` đã lọc khoá nhạy cảm (secret/token/password/hash) trước
+/// khi ghi; hành động của tenant chỉ chứa id, không email khách/chi tiết đơn (§7.9). `createdAt` lưu UTC.
+model AuditLog {
+  id         String     @id @default(cuid(2))
+  actorId    String?
+  scope      AuditScope
+  tenantId   String?
+  action     String
+  targetType String?
+  targetId   String?
+  metadata   Json       @default("{}")
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime   @default(now())
+
+  @@index([createdAt])
+  @@index([tenantId, createdAt])
+  @@index([actorId, createdAt])
+  @@map("audit_logs")
+}
+
+/// ADR-037 (M12b) — số liệu tổng hợp theo tenant + ngày giờ VN (`Asia/Ho_Chi_Minh`). Bảng L1: không RLS, admin đọc bằng
+/// getPrismaClient(); chỉ job `stats.aggregate` (cron hằng ngày, chạy dưới withSystemJob) ghi. Chỉ chứa số đếm/tổng —
+/// không email, tên khách hay mã đơn (§7.9). Tính lại được nên xoá theo tenant (Cascade), khác audit_logs.
+model TenantDailyStat {
+  id           String   @id @default(cuid(2))
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  /// Ngày theo giờ Việt Nam (không phải ngày UTC).
+  date         DateTime @db.Date
+  ordersPaid   Int      @default(0)
+  /// GMV gộp (VND, số nguyên) — tổng `orders.totalVnd` của đơn có `paidAt` trong ngày, kể cả đơn sau này hoàn tiền.
+  gmvVnd       BigInt   @default(0)
+  newCustomers Int      @default(0)
+  downloads    Int      @default(0)
+  updatedAt    DateTime @updatedAt
+
+  @@unique([tenantId, date])
+  @@index([date])
+  @@map("tenant_daily_stats")
+}
+
+/// ADR-038 mục 1 — đối tượng bị báo cáo (bình luận chưa có — M10c).
+enum AbuseTargetType {
+  PRODUCT
+  REVIEW
+  POST
+}
+
+/// ADR-038 mục 1 — loại vi phạm.
+enum AbuseReportType {
+  COPYRIGHT
+  INAPPROPRIATE
+  SCAM
+  OTHER
+}
+
+enum AbuseReportStatus {
+  OPEN
+  RESOLVED
+  REJECTED
+}
+
+/// ADR-038 mục 5 — quyết định của admin. `REJECT` ⇔ status REJECTED; 3 giá trị còn lại ⇔ RESOLVED (CHECK
+/// `abuse_reports_decision_shape`).
+enum AbuseReportDecision {
+  HIDE_CONTENT
+  ARCHIVE_PRODUCT
+  LOCK_TENANT
+  REJECT
+}
+
+/// ADR-038 mục 3 — báo cáo vi phạm, bảng L1 (không RLS; chỉ System Admin đọc qua apps/web/lib/abuse-report.ts — §7.9:
+/// tenant KHÔNG bao giờ đọc bảng này, danh tính người báo cáo chỉ admin thấy). `tenantId` = tenant sở hữu đối tượng lúc
+/// gửi (FK Cascade). `targetId` không FK (đối tượng thuộc 3 bảng khác nhau; bị xoá thì báo cáo vẫn giữ). `ip` dùng cho
+/// giới hạn 5 báo cáo/giờ/IP, xoá (SET NULL) sau 12 tháng bởi cron hằng ngày. Thời gian lưu UTC.
+model AbuseReport {
+  id             String               @id @default(cuid(2))
+  targetType     AbuseTargetType
+  targetId       String
+  tenantId       String
+  tenant         Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  type           AbuseReportType
+  /// Văn bản thuần 1–2000 ký tự (CHECK).
+  description    String
+  /// ≤5 URL http/https (CHECK số phần tử; định dạng kiểm ở server).
+  evidenceUrls   String[]             @default([])
+  reporterUserId String?
+  reporter       User?                @relation("AbuseReportReporter", fields: [reporterUserId], references: [id], onDelete: SetNull)
+  /// Email user đăng nhập hoặc email khách nhập — chỉ admin thấy, không bao giờ gửi cho tenant.
+  reporterEmail  String
+  ip             String?
+  status         AbuseReportStatus    @default(OPEN)
+  decision       AbuseReportDecision?
+  /// Ghi chú nội bộ của admin (không gửi cho tenant/người báo cáo).
+  resolutionNote String?
+  resolvedById   String?
+  resolvedBy     User?                @relation("AbuseReportResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolvedAt     DateTime?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+  @@index([tenantId, createdAt])
+  @@index([ip, createdAt])
+  @@index([reporterUserId])
+  @@index([resolvedById])
+  @@map("abuse_reports")
 }

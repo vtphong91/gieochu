@@ -8,6 +8,7 @@ import { POST_MAX_IMAGES, POST_STATUS_LABELS, POST_TITLE_MAX_LENGTH } from "@gie
 import { TiptapEditor, type TiptapImageUpload } from "../../../../_ui/editor/tiptap-editor";
 import type { CloudinarySignatureResult } from "../../../../_ui/cloudinary-actions";
 import { Badge, ConfigCard, SelectField } from "../../../../admin/_ui/kit";
+import { ModerationLockBadge, ModerationLockNotice } from "../../../../admin/_ui/moderation-lock";
 import { IconAlertTriangle, IconCheckCircle, IconExternalLink, IconEyeOff, IconNewspaper, IconPackage, IconPin, IconShield, IconTrash } from "../../../../admin/_ui/icons";
 import { registerTenantImageAction } from "../../media-actions";
 import { GHOST_BTN, GREEN_TEXT, LockedNotice, PRIMARY_BTN, WarningNote } from "../../products/_ui/editor-bits";
@@ -55,6 +56,8 @@ export interface EditorPost {
   productId: string;
   status: StudioPostStatus;
   hiddenReason: string | null;
+  /** ADR-038: khoá kiểm duyệt (bài bị quản trị hệ thống ẩn do vi phạm); null = không bị khoá. */
+  moderationLock?: { reason: string | null; lockedAtLabel: string | null } | null;
   isPinned: boolean;
   publishedLabel: string | null;
 }
@@ -350,16 +353,35 @@ export function PostEditor(props: EditorProps) {
               </ConfigCard>
             </div>
             <aside aria-label="Trạng thái bài viết" className="min-w-0 space-y-6">
-              <ConfigCard icon={<IconShield className="h-5 w-5" />} title="Trạng thái" badges={<Badge tone="danger">{POST_STATUS_LABELS.HIDDEN}</Badge>}>
-                <div className="flex items-start gap-2.5 rounded-lg border px-3.5 py-3 text-sm" style={{ background: RED_SOFT, borderColor: RED_LINE, color: "#991B1B" }}>
-                  <IconEyeOff className="mt-0.5 h-4 w-4 shrink-0" />
-                  <div className="min-w-0 [overflow-wrap:anywhere]">
-                    <p className="font-semibold">
-                      Bị ẩn do vi phạm{post.hiddenReason ? ` — ${post.hiddenReason}` : ""}
-                    </p>
-                    <p className="mt-0.5">Bài không hiện công khai. Bạn không sửa, đăng lại hay ghim được bài này; chỉ có thể xoá.</p>
+              <ConfigCard
+                icon={<IconShield className="h-5 w-5" />}
+                title="Trạng thái"
+                badges={
+                  <>
+                    <Badge tone="danger">{POST_STATUS_LABELS.HIDDEN}</Badge>
+                    {post.moderationLock ? <ModerationLockBadge /> : null}
+                  </>
+                }
+              >
+                {post.moderationLock ? (
+                  <ModerationLockNotice
+                    subject="bài viết"
+                    measure="ẩn"
+                    blocked="sửa, đăng lại hay ghim bài (chỉ có thể xoá)"
+                    reason={post.moderationLock.reason ?? post.hiddenReason}
+                    lockedAtLabel={post.moderationLock.lockedAtLabel}
+                  />
+                ) : (
+                  <div className="flex items-start gap-2.5 rounded-lg border px-3.5 py-3 text-sm" style={{ background: RED_SOFT, borderColor: RED_LINE, color: "#991B1B" }}>
+                    <IconEyeOff className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div className="min-w-0 [overflow-wrap:anywhere]">
+                      <p className="font-semibold">
+                        Bị ẩn do vi phạm{post.hiddenReason ? ` — ${post.hiddenReason}` : ""}
+                      </p>
+                      <p className="mt-0.5">Bài không hiện công khai. Bạn không sửa, đăng lại hay ghim được bài này; chỉ có thể xoá.</p>
+                    </div>
                   </div>
-                </div>
+                )}
                 <div className="space-y-2 border-t pt-4" style={{ borderColor: GRAY_LINE }}>
                   {sideStatus}
                   <button type="button" onClick={removePost} disabled={busy} className={`${GHOST_BTN} w-full`} style={{ borderColor: RED_LINE, color: RED }}>

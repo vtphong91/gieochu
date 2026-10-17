@@ -15,6 +15,7 @@ import {
   createProduct,
   ProductNotPublishableError,
   publishProduct,
+  RIGHTS_CONFIRMATION_REQUIRED,
   removeProductExternalLink,
   removeProductFile,
   restoreProduct,
@@ -76,7 +77,17 @@ const ERROR_FIELD: Record<string, string> = {
   INVALID_EXTERNAL_LINK_LABEL: "label",
   INVALID_PRODUCT_SUMMARY: "summary",
   INVALID_COVER_IMAGE_URL: "coverImageUrl",
+  [RIGHTS_CONFIRMATION_REQUIRED]: "rightsConfirmed",
 };
+
+/**
+ * ADR-038 mục 7: ô "cam kết bản quyền" gửi qua FormData field `rightsConfirmed` (checkbox → "on"; hoặc "true"/"1").
+ * Chỉ có tác dụng khi thao tác này xuất bản sản phẩm (DRAFT/ARCHIVED → PUBLISHED).
+ */
+function readRightsConfirmed(formData: FormData): boolean {
+  const value = formData.get("rightsConfirmed");
+  return value === "on" || value === "true" || value === "1";
+}
 
 function appErrorToState(error: AppError): ProductActionState {
   if (error instanceof ProductNotPublishableError) {
@@ -246,7 +257,7 @@ export async function createProductAction(
   _prevState: ProductActionState,
   formData: FormData,
 ): Promise<ProductActionState> {
-  const { tenant } = await requireTenantMember(tenantSlug);
+  const { tenant, user } = await requireTenantMember(tenantSlug);
   const fields = parseProductFields(formData, await getSystemCloudinaryCloudName());
   if (!fields.ok) return fields.state;
 
@@ -267,7 +278,7 @@ export async function createProductAction(
   if (fields.visibility === "PRIVATE") return { ok: true, saved: true, productId, published: false };
 
   try {
-    await publishProduct(tenant.id, productId);
+    await publishProduct(tenant.id, productId, user.userId, { rightsConfirmed: readRightsConfirmed(formData) });
   } catch (error) {
     if (error instanceof AppError) {
       return { ...appErrorToState(error), ok: true, saved: true, productId, published: false };
@@ -292,7 +303,8 @@ async function saveWithVisibility(
   tenantId: string,
   productId: string,
   formData: FormData,
-  forcedVisibility?: Visibility,
+  forcedVisibility: Visibility | undefined,
+  actorId: string,
 ): Promise<ProductActionState> {
   const fields = parseProductFields(formData, await getSystemCloudinaryCloudName());
   if (!fields.ok) return fields.state;
@@ -312,7 +324,7 @@ async function saveWithVisibility(
   if (visibility === "PRIVATE") return { ok: true, saved: true, productId, published: status === "PUBLISHED" };
 
   try {
-    await publishProduct(tenantId, productId);
+    await publishProduct(tenantId, productId, actorId, { rightsConfirmed: readRightsConfirmed(formData) });
   } catch (error) {
     if (error instanceof AppError) return { ...appErrorToState(error), saved: true, productId, published: false };
     throw error;
@@ -328,8 +340,8 @@ export async function updateProductAction(
   _prevState: ProductActionState,
   formData: FormData,
 ): Promise<ProductActionState> {
-  const { tenant } = await requireTenantMember(tenantSlug);
-  return saveWithVisibility(tenantSlug, tenant.id, productId, formData);
+  const { tenant, user } = await requireTenantMember(tenantSlug);
+  return saveWithVisibility(tenantSlug, tenant.id, productId, formData, undefined, user.userId);
 }
 
 /**
@@ -343,8 +355,8 @@ export async function saveAndPublishProductAction(
   _prevState: ProductActionState,
   formData: FormData,
 ): Promise<ProductActionState> {
-  const { tenant } = await requireTenantMember(tenantSlug);
-  return saveWithVisibility(tenantSlug, tenant.id, productId, formData, "PUBLIC");
+  const { tenant, user } = await requireTenantMember(tenantSlug);
+  return saveWithVisibility(tenantSlug, tenant.id, productId, formData, "PUBLIC", user.userId);
 }
 
 /**
@@ -441,11 +453,11 @@ export async function removeProductLinkAction(tenantSlug: string, productId: str
 async function runStatusAction(
   tenantSlug: string,
   productId: string,
-  fn: (tenantId: string, productId: string) => Promise<unknown>,
+  fn: (tenantId: string, productId: string, actorId: string) => Promise<unknown>,
 ): Promise<ProductActionState> {
-  const { tenant } = await requireTenantMember(tenantSlug);
+  const { tenant, user } = await requireTenantMember(tenantSlug);
   try {
-    await fn(tenant.id, productId);
+    await fn(tenant.id, productId, user.userId);
   } catch (error) {
     if (error instanceof AppError) return appErrorToState(error);
     throw error;
@@ -454,8 +466,17 @@ async function runStatusAction(
   return { ok: true };
 }
 
-export async function publishProductAction(tenantSlug: string, productId: string): Promise<ProductActionState> {
-  return runStatusAction(tenantSlug, productId, publishProduct);
+/**
+ * Xuất bản từ danh sách/hàng thao tác. ADR-038 mục 7: client phải gửi `{ rightsConfirmed: true }` (ô cam kết bản quyền)
+ * — thiếu → `{ error, fieldErrors: { rightsConfirmed } }`. Đang bị khoá kiểm duyệt → `{ error }` (CONTENT_MODERATION_LOCKED).
+ */
+export async function publishProductAction(
+  tenantSlug: string,
+  productId: string,
+  options?: { rightsConfirmed?: boolean },
+): Promise<ProductActionState> {
+  const rightsConfirmed = options?.rightsConfirmed === true;
+  return runStatusAction(tenantSlug, productId, (tenantId, id, actorId) => publishProduct(tenantId, id, actorId, { rightsConfirmed }));
 }
 
 export async function unpublishProductAction(tenantSlug: string, productId: string): Promise<ProductActionState> {

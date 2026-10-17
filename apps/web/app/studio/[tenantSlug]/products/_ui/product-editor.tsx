@@ -14,7 +14,7 @@ import { IconAlertTriangle, IconCard, IconCheckCircle, IconDoc, IconExternalLink
 import { DeliverySourcesCard, type EditorFile, type EditorLink, type EnsureProductResult } from "./delivery-sources";
 import { CoverImageCard } from "./cover-image-card";
 import { TagInput } from "./tag-input";
-import { PublishCard, type Visibility } from "./publish-card";
+import { PublishCard, type ModerationLock, type Visibility } from "./publish-card";
 import { GHOST_BTN, GREEN_TEXT, PRIMARY_BTN, PRODUCT_TYPE_LABEL, WarningNote } from "./editor-bits";
 
 const RED = "#DC2626";
@@ -42,10 +42,17 @@ const FIELD_LABEL: Record<string, string> = {
   saleStartsAt: "Bắt đầu khuyến mãi",
   saleEndsAt: "Kết thúc khuyến mãi",
   downloadLimit: "Giới hạn lượt tải",
+  rightsConfirmed: "Cam kết bản quyền",
 };
 
-/** Field của form sản phẩm — chỉ các ô này mới bật trạng thái "Có thay đổi chưa lưu". */
-const PRODUCT_FIELDS = new Set(Object.keys(FIELD_LABEL));
+/**
+ * Field của form sản phẩm — chỉ các ô này mới bật trạng thái "Có thay đổi chưa lưu". Ô cam kết bản quyền (ADR-038)
+ * không phải dữ liệu sản phẩm nên không tính.
+ */
+const PRODUCT_FIELDS = new Set(Object.keys(FIELD_LABEL).filter((key) => key !== "rightsConfirmed"));
+
+/** ADR-038 mục 7: thông điệp khi bấm Xuất bản mà chưa tích ô cam kết bản quyền. */
+const RIGHTS_REQUIRED_MESSAGE = "Hãy tích ô cam kết bản quyền trước khi xuất bản.";
 
 export interface EditorProduct {
   id: string;
@@ -67,6 +74,8 @@ export interface EditorProduct {
   downloadLimit: number;
   /** Ảnh bìa Cloudinary đã lưu (giá trị field `coverImageUrl`); chuỗi rỗng = chưa có. */
   coverImageUrl: string;
+  /** ADR-038: khác null = bị quản trị hệ thống lưu trữ do vi phạm — không khôi phục/xuất bản được. */
+  moderationLock?: ModerationLock | null;
 }
 
 export interface EditorPublish {
@@ -165,12 +174,18 @@ export function ProductEditor(props: EditorProps) {
 
   const statusVisibility: Visibility = status === "PUBLISHED" ? "PUBLIC" : "PRIVATE";
   const [visibility, setVisibility] = useState<Visibility>(statusVisibility);
+  // ADR-038 mục 7: ô cam kết bản quyền — phải tích lại MỖI lần xuất bản (bỏ tích khi trạng thái đổi).
+  const [rightsChecked, setRightsChecked] = useState(false);
+  const [rightsError, setRightsError] = useState<string | null>(null);
   // Đồng bộ radio với trạng thái thật mỗi khi server trả trạng thái mới (sau lưu / đổi trạng thái).
   const [syncedStatus, setSyncedStatus] = useState(status);
   if (status !== syncedStatus) {
     setSyncedStatus(status);
     setVisibility(statusVisibility);
+    setRightsChecked(false);
+    setRightsError(null);
   }
+  const moderationLock = product?.moderationLock ?? null;
 
   const [dirty, setDirty] = useState(false);
   const [pendingKey, setPendingKey] = useState<SubmitIntent["key"] | null>(null);
@@ -365,9 +380,14 @@ export function ProductEditor(props: EditorProps) {
   // ARCHIVED: không gửi visibility (chỉ lưu nội dung). PUBLISHED: gửi đúng radio.
   const primaryVisibility: Visibility | null = status === "ARCHIVED" ? null : visibility;
 
-  /** Chưa công khai: bấm nút → đồng bộ radio theo nút rồi gửi. */
+  /** Chưa công khai: bấm nút → đồng bộ radio theo nút rồi gửi. Xuất bản cần tích ô cam kết bản quyền (ADR-038). */
   function submitUnpublished(target: Visibility) {
     setVisibility(target);
+    if (target === "PUBLIC" && !rightsChecked) {
+      setRightsError(RIGHTS_REQUIRED_MESSAGE);
+      document.getElementById("rightsConfirmed")?.focus();
+      return;
+    }
     submitWith({ key: target === "PUBLIC" ? "publish" : "draft", visibility: target });
   }
 
@@ -465,7 +485,7 @@ export function ProductEditor(props: EditorProps) {
 
   const actionButtons = (
     <div className="space-y-2">
-      {unpublished ? (
+      {unpublished && moderationLock ? null : unpublished ? (
         // type="button": Enter trong ô nhập không kích hoạt nút này (submit mặc định = Lưu nháp).
         <button
           type="button"
@@ -908,8 +928,21 @@ export function ProductEditor(props: EditorProps) {
                   actionsRef={actionsRef}
                   busy={busy}
                   publicHref={isEdit ? productPath(tenantSlug, product!.slug) : undefined}
-                  onArchive={isEdit && (status === "DRAFT" || status === "PUBLISHED") ? () => runStatus("archive") : undefined}
-                  onRestore={status === "ARCHIVED" ? () => runStatus("restore") : undefined}
+                  onArchive={isEdit && !moderationLock && (status === "DRAFT" || status === "PUBLISHED") ? () => runStatus("archive") : undefined}
+                  onRestore={status === "ARCHIVED" && !moderationLock ? () => runStatus("restore") : undefined}
+                  moderationLock={moderationLock}
+                  rights={
+                    unpublished && !moderationLock
+                      ? {
+                          checked: rightsChecked,
+                          onChange: (checked) => {
+                            setRightsChecked(checked);
+                            if (checked) setRightsError(null);
+                          },
+                          error: rightsError ?? (rightsChecked ? undefined : fieldErrors.rightsConfirmed),
+                        }
+                      : undefined
+                  }
                 />
             </div>
           </aside>

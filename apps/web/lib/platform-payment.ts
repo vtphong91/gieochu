@@ -2,6 +2,7 @@ import { decryptSecret, encryptSecret, getProvider, maskSecret, type PaymentProv
 import { AppError } from "@gieochu/core";
 import { getEnv } from "@gieochu/config";
 import { getPrismaClient, Prisma } from "@gieochu/db";
+import { audit } from "./audit";
 
 export type PublicProviderConfig = Record<string, string | number | boolean>;
 
@@ -12,6 +13,8 @@ export interface SavePlatformProviderConfigInput {
   publicConfig: PublicProviderConfig;
   /** Secret fields — encrypted before storage. Blank value keeps the existing secret (§"M7" convention). */
   secrets: Record<string, string>;
+  /** ADR-037: admin ghi audit PAYMENT_CONFIG_UPDATED. */
+  actorId?: string | null;
 }
 
 /** The account/secret "identity" per provider — used to detect a change worth re-verifying (see below). */
@@ -64,6 +67,22 @@ export async function savePlatformProviderConfig(input: SavePlatformProviderConf
     update: { isEnabled, publicConfig, encryptedSecrets, lastVerifiedAt },
     create: { provider: input.provider, isEnabled, publicConfig, encryptedSecrets, lastVerifiedAt },
   });
+  // ADR-037: không ghi secret/publicConfig — chỉ cờ thay đổi (PaymentScope PLATFORM, không tenantId).
+  await audit.log({
+    actorId: input.actorId ?? null,
+    scope: "SYSTEM",
+    action: "PAYMENT_CONFIG_UPDATED",
+    targetType: "PlatformPaymentConfig",
+    targetId: input.provider,
+    metadata: {
+      provider: input.provider,
+      created: !existing,
+      isEnabled,
+      requestedEnabled: input.isEnabled,
+      credentialsChanged: JSON.stringify(resolvedSecrets) !== JSON.stringify(existingSecrets),
+      accountChanged: identityChanged,
+    },
+  });
 }
 
 export interface MaskedPlatformProviderConfig {
@@ -104,7 +123,7 @@ export async function getEnabledPlatformProviders(): Promise<PaymentProviderId[]
  * none, see docs/BACKLOG.md M7 entry) and, on success, sets lastVerifiedAt
  * and flips isEnabled back on — the other half of the auto-disable guard above.
  */
-export async function testPlatformProviderConnection(provider: PaymentProviderId): Promise<TestResult> {
+export async function testPlatformProviderConnection(provider: PaymentProviderId, actorId: string | null = null): Promise<TestResult> {
   const env = getEnv();
   const prisma = getPrismaClient();
   const row = await prisma.platformPaymentConfig.findUnique({ where: { provider } });
@@ -125,6 +144,15 @@ export async function testPlatformProviderConnection(provider: PaymentProviderId
     await prisma.platformPaymentConfig.update({
       where: { provider },
       data: { isEnabled: true, lastVerifiedAt: new Date() },
+    });
+    // Kiểm tra kết nối thành công tự BẬT phương thức — là thay đổi cấu hình, ghi audit.
+    await audit.log({
+      actorId,
+      scope: "SYSTEM",
+      action: "PAYMENT_CONFIG_UPDATED",
+      targetType: "PlatformPaymentConfig",
+      targetId: provider,
+      metadata: { provider, isEnabled: true, verified: true, wasEnabled: row.isEnabled },
     });
   }
   return result;

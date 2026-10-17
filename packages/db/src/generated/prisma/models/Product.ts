@@ -70,6 +70,10 @@ export type ProductMinAggregateOutputType = {
   ratingCount: number | null
   soldCount: number | null
   status: $Enums.ProductStatus | null
+  moderationLockedAt: Date | null
+  moderationReason: string | null
+  rightsConfirmedAt: Date | null
+  rightsConfirmedById: string | null
   categoryId: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -94,6 +98,10 @@ export type ProductMaxAggregateOutputType = {
   ratingCount: number | null
   soldCount: number | null
   status: $Enums.ProductStatus | null
+  moderationLockedAt: Date | null
+  moderationReason: string | null
+  rightsConfirmedAt: Date | null
+  rightsConfirmedById: string | null
   categoryId: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -119,6 +127,10 @@ export type ProductCountAggregateOutputType = {
   ratingCount: number
   soldCount: number
   status: number
+  moderationLockedAt: number
+  moderationReason: number
+  rightsConfirmedAt: number
+  rightsConfirmedById: number
   categoryId: number
   createdAt: number
   updatedAt: number
@@ -163,6 +175,10 @@ export type ProductMinAggregateInputType = {
   ratingCount?: true
   soldCount?: true
   status?: true
+  moderationLockedAt?: true
+  moderationReason?: true
+  rightsConfirmedAt?: true
+  rightsConfirmedById?: true
   categoryId?: true
   createdAt?: true
   updatedAt?: true
@@ -187,6 +203,10 @@ export type ProductMaxAggregateInputType = {
   ratingCount?: true
   soldCount?: true
   status?: true
+  moderationLockedAt?: true
+  moderationReason?: true
+  rightsConfirmedAt?: true
+  rightsConfirmedById?: true
   categoryId?: true
   createdAt?: true
   updatedAt?: true
@@ -212,6 +232,10 @@ export type ProductCountAggregateInputType = {
   ratingCount?: true
   soldCount?: true
   status?: true
+  moderationLockedAt?: true
+  moderationReason?: true
+  rightsConfirmedAt?: true
+  rightsConfirmedById?: true
   categoryId?: true
   createdAt?: true
   updatedAt?: true
@@ -324,6 +348,10 @@ export type ProductGroupByOutputType = {
   ratingCount: number
   soldCount: number
   status: $Enums.ProductStatus
+  moderationLockedAt: Date | null
+  moderationReason: string | null
+  rightsConfirmedAt: Date | null
+  rightsConfirmedById: string | null
   categoryId: string | null
   createdAt: Date
   updatedAt: Date
@@ -372,6 +400,10 @@ export type ProductWhereInput = {
   ratingCount?: Prisma.IntFilter<"Product"> | number
   soldCount?: Prisma.IntFilter<"Product"> | number
   status?: Prisma.EnumProductStatusFilter<"Product"> | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.DateTimeNullableFilter<"Product"> | Date | string | null
+  moderationReason?: Prisma.StringNullableFilter<"Product"> | string | null
+  rightsConfirmedAt?: Prisma.DateTimeNullableFilter<"Product"> | Date | string | null
+  rightsConfirmedById?: Prisma.StringNullableFilter<"Product"> | string | null
   categoryId?: Prisma.StringNullableFilter<"Product"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Product"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Product"> | Date | string
@@ -405,6 +437,10 @@ export type ProductOrderByWithRelationInput = {
   ratingCount?: Prisma.SortOrder
   soldCount?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  moderationLockedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  moderationReason?: Prisma.SortOrderInput | Prisma.SortOrder
+  rightsConfirmedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  rightsConfirmedById?: Prisma.SortOrderInput | Prisma.SortOrder
   categoryId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -442,6 +478,10 @@ export type ProductWhereUniqueInput = Prisma.AtLeast<{
   ratingCount?: Prisma.IntFilter<"Product"> | number
   soldCount?: Prisma.IntFilter<"Product"> | number
   status?: Prisma.EnumProductStatusFilter<"Product"> | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.DateTimeNullableFilter<"Product"> | Date | string | null
+  moderationReason?: Prisma.StringNullableFilter<"Product"> | string | null
+  rightsConfirmedAt?: Prisma.DateTimeNullableFilter<"Product"> | Date | string | null
+  rightsConfirmedById?: Prisma.StringNullableFilter<"Product"> | string | null
   categoryId?: Prisma.StringNullableFilter<"Product"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Product"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Product"> | Date | string
@@ -475,6 +515,10 @@ export type ProductOrderByWithAggregationInput = {
   ratingCount?: Prisma.SortOrder
   soldCount?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  moderationLockedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  moderationReason?: Prisma.SortOrderInput | Prisma.SortOrder
+  rightsConfirmedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  rightsConfirmedById?: Prisma.SortOrderInput | Prisma.SortOrder
   categoryId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -508,6 +552,10 @@ export type ProductScalarWhereWithAggregatesInput = {
   ratingCount?: Prisma.IntWithAggregatesFilter<"Product"> | number
   soldCount?: Prisma.IntWithAggregatesFilter<"Product"> | number
   status?: Prisma.EnumProductStatusWithAggregatesFilter<"Product"> | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Product"> | Date | string | null
+  moderationReason?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  rightsConfirmedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Product"> | Date | string | null
+  rightsConfirmedById?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   categoryId?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Product"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Product"> | Date | string
@@ -532,6 +580,10 @@ export type ProductCreateInput = {
   ratingCount?: number
   soldCount?: number
   status?: $Enums.ProductStatus
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
+  rightsConfirmedAt?: Date | string | null
+  rightsConfirmedById?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   tenant: Prisma.TenantCreateNestedOneWithoutProductsInput
@@ -564,6 +616,10 @@ export type ProductUncheckedCreateInput = {
   ratingCount?: number
   soldCount?: number
   status?: $Enums.ProductStatus
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
+  rightsConfirmedAt?: Date | string | null
+  rightsConfirmedById?: string | null
   categoryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -594,6 +650,10 @@ export type ProductUpdateInput = {
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rightsConfirmedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rightsConfirmedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tenant?: Prisma.TenantUpdateOneRequiredWithoutProductsNestedInput
@@ -626,6 +686,10 @@ export type ProductUncheckedUpdateInput = {
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rightsConfirmedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rightsConfirmedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -657,6 +721,10 @@ export type ProductCreateManyInput = {
   ratingCount?: number
   soldCount?: number
   status?: $Enums.ProductStatus
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
+  rightsConfirmedAt?: Date | string | null
+  rightsConfirmedById?: string | null
   categoryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -681,6 +749,10 @@ export type ProductUpdateManyMutationInput = {
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rightsConfirmedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rightsConfirmedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -705,6 +777,10 @@ export type ProductUncheckedUpdateManyInput = {
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rightsConfirmedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rightsConfirmedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -753,6 +829,10 @@ export type ProductCountOrderByAggregateInput = {
   ratingCount?: Prisma.SortOrder
   soldCount?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  moderationLockedAt?: Prisma.SortOrder
+  moderationReason?: Prisma.SortOrder
+  rightsConfirmedAt?: Prisma.SortOrder
+  rightsConfirmedById?: Prisma.SortOrder
   categoryId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -786,6 +866,10 @@ export type ProductMaxOrderByAggregateInput = {
   ratingCount?: Prisma.SortOrder
   soldCount?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  moderationLockedAt?: Prisma.SortOrder
+  moderationReason?: Prisma.SortOrder
+  rightsConfirmedAt?: Prisma.SortOrder
+  rightsConfirmedById?: Prisma.SortOrder
   categoryId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -810,6 +894,10 @@ export type ProductMinOrderByAggregateInput = {
   ratingCount?: Prisma.SortOrder
   soldCount?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  moderationLockedAt?: Prisma.SortOrder
+  moderationReason?: Prisma.SortOrder
+  rightsConfirmedAt?: Prisma.SortOrder
+  rightsConfirmedById?: Prisma.SortOrder
   categoryId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -1040,6 +1128,10 @@ export type ProductCreateWithoutTenantInput = {
   ratingCount?: number
   soldCount?: number
   status?: $Enums.ProductStatus
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
+  rightsConfirmedAt?: Date | string | null
+  rightsConfirmedById?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   category?: Prisma.DocumentCategoryCreateNestedOneWithoutProductsInput
@@ -1070,6 +1162,10 @@ export type ProductUncheckedCreateWithoutTenantInput = {
   ratingCount?: number
   soldCount?: number
   status?: $Enums.ProductStatus
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
+  rightsConfirmedAt?: Date | string | null
+  rightsConfirmedById?: string | null
   categoryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1130,6 +1226,10 @@ export type ProductScalarWhereInput = {
   ratingCount?: Prisma.IntFilter<"Product"> | number
   soldCount?: Prisma.IntFilter<"Product"> | number
   status?: Prisma.EnumProductStatusFilter<"Product"> | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.DateTimeNullableFilter<"Product"> | Date | string | null
+  moderationReason?: Prisma.StringNullableFilter<"Product"> | string | null
+  rightsConfirmedAt?: Prisma.DateTimeNullableFilter<"Product"> | Date | string | null
+  rightsConfirmedById?: Prisma.StringNullableFilter<"Product"> | string | null
   categoryId?: Prisma.StringNullableFilter<"Product"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Product"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Product"> | Date | string
@@ -1154,6 +1254,10 @@ export type ProductCreateWithoutFilesInput = {
   ratingCount?: number
   soldCount?: number
   status?: $Enums.ProductStatus
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
+  rightsConfirmedAt?: Date | string | null
+  rightsConfirmedById?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   tenant: Prisma.TenantCreateNestedOneWithoutProductsInput
@@ -1185,6 +1289,10 @@ export type ProductUncheckedCreateWithoutFilesInput = {
   ratingCount?: number
   soldCount?: number
   status?: $Enums.ProductStatus
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
+  rightsConfirmedAt?: Date | string | null
+  rightsConfirmedById?: string | null
   categoryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1230,6 +1338,10 @@ export type ProductUpdateWithoutFilesInput = {
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rightsConfirmedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rightsConfirmedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tenant?: Prisma.TenantUpdateOneRequiredWithoutProductsNestedInput
@@ -1261,6 +1373,10 @@ export type ProductUncheckedUpdateWithoutFilesInput = {
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rightsConfirmedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rightsConfirmedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1290,6 +1406,10 @@ export type ProductCreateWithoutCategoryInput = {
   ratingCount?: number
   soldCount?: number
   status?: $Enums.ProductStatus
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
+  rightsConfirmedAt?: Date | string | null
+  rightsConfirmedById?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   tenant: Prisma.TenantCreateNestedOneWithoutProductsInput
@@ -1321,6 +1441,10 @@ export type ProductUncheckedCreateWithoutCategoryInput = {
   ratingCount?: number
   soldCount?: number
   status?: $Enums.ProductStatus
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
+  rightsConfirmedAt?: Date | string | null
+  rightsConfirmedById?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   files?: Prisma.ProductFileUncheckedCreateNestedManyWithoutProductInput
@@ -1376,6 +1500,10 @@ export type ProductCreateWithoutOrderItemsInput = {
   ratingCount?: number
   soldCount?: number
   status?: $Enums.ProductStatus
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
+  rightsConfirmedAt?: Date | string | null
+  rightsConfirmedById?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   tenant: Prisma.TenantCreateNestedOneWithoutProductsInput
@@ -1407,6 +1535,10 @@ export type ProductUncheckedCreateWithoutOrderItemsInput = {
   ratingCount?: number
   soldCount?: number
   status?: $Enums.ProductStatus
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
+  rightsConfirmedAt?: Date | string | null
+  rightsConfirmedById?: string | null
   categoryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1452,6 +1584,10 @@ export type ProductUpdateWithoutOrderItemsInput = {
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rightsConfirmedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rightsConfirmedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tenant?: Prisma.TenantUpdateOneRequiredWithoutProductsNestedInput
@@ -1483,6 +1619,10 @@ export type ProductUncheckedUpdateWithoutOrderItemsInput = {
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rightsConfirmedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rightsConfirmedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1512,6 +1652,10 @@ export type ProductCreateWithoutEntitlementsInput = {
   ratingCount?: number
   soldCount?: number
   status?: $Enums.ProductStatus
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
+  rightsConfirmedAt?: Date | string | null
+  rightsConfirmedById?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   tenant: Prisma.TenantCreateNestedOneWithoutProductsInput
@@ -1543,6 +1687,10 @@ export type ProductUncheckedCreateWithoutEntitlementsInput = {
   ratingCount?: number
   soldCount?: number
   status?: $Enums.ProductStatus
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
+  rightsConfirmedAt?: Date | string | null
+  rightsConfirmedById?: string | null
   categoryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1588,6 +1736,10 @@ export type ProductUpdateWithoutEntitlementsInput = {
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rightsConfirmedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rightsConfirmedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tenant?: Prisma.TenantUpdateOneRequiredWithoutProductsNestedInput
@@ -1619,6 +1771,10 @@ export type ProductUncheckedUpdateWithoutEntitlementsInput = {
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rightsConfirmedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rightsConfirmedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1648,6 +1804,10 @@ export type ProductCreateWithoutShareLinksInput = {
   ratingCount?: number
   soldCount?: number
   status?: $Enums.ProductStatus
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
+  rightsConfirmedAt?: Date | string | null
+  rightsConfirmedById?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   tenant: Prisma.TenantCreateNestedOneWithoutProductsInput
@@ -1679,6 +1839,10 @@ export type ProductUncheckedCreateWithoutShareLinksInput = {
   ratingCount?: number
   soldCount?: number
   status?: $Enums.ProductStatus
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
+  rightsConfirmedAt?: Date | string | null
+  rightsConfirmedById?: string | null
   categoryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1724,6 +1888,10 @@ export type ProductUpdateWithoutShareLinksInput = {
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rightsConfirmedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rightsConfirmedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tenant?: Prisma.TenantUpdateOneRequiredWithoutProductsNestedInput
@@ -1755,6 +1923,10 @@ export type ProductUncheckedUpdateWithoutShareLinksInput = {
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rightsConfirmedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rightsConfirmedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1784,6 +1956,10 @@ export type ProductCreateWithoutReviewsInput = {
   ratingCount?: number
   soldCount?: number
   status?: $Enums.ProductStatus
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
+  rightsConfirmedAt?: Date | string | null
+  rightsConfirmedById?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   tenant: Prisma.TenantCreateNestedOneWithoutProductsInput
@@ -1815,6 +1991,10 @@ export type ProductUncheckedCreateWithoutReviewsInput = {
   ratingCount?: number
   soldCount?: number
   status?: $Enums.ProductStatus
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
+  rightsConfirmedAt?: Date | string | null
+  rightsConfirmedById?: string | null
   categoryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1860,6 +2040,10 @@ export type ProductUpdateWithoutReviewsInput = {
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rightsConfirmedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rightsConfirmedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tenant?: Prisma.TenantUpdateOneRequiredWithoutProductsNestedInput
@@ -1891,6 +2075,10 @@ export type ProductUncheckedUpdateWithoutReviewsInput = {
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rightsConfirmedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rightsConfirmedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1920,6 +2108,10 @@ export type ProductCreateWithoutPostsInput = {
   ratingCount?: number
   soldCount?: number
   status?: $Enums.ProductStatus
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
+  rightsConfirmedAt?: Date | string | null
+  rightsConfirmedById?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   tenant: Prisma.TenantCreateNestedOneWithoutProductsInput
@@ -1951,6 +2143,10 @@ export type ProductUncheckedCreateWithoutPostsInput = {
   ratingCount?: number
   soldCount?: number
   status?: $Enums.ProductStatus
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
+  rightsConfirmedAt?: Date | string | null
+  rightsConfirmedById?: string | null
   categoryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1996,6 +2192,10 @@ export type ProductUpdateWithoutPostsInput = {
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rightsConfirmedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rightsConfirmedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tenant?: Prisma.TenantUpdateOneRequiredWithoutProductsNestedInput
@@ -2027,6 +2227,10 @@ export type ProductUncheckedUpdateWithoutPostsInput = {
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rightsConfirmedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rightsConfirmedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2056,6 +2260,10 @@ export type ProductCreateManyTenantInput = {
   ratingCount?: number
   soldCount?: number
   status?: $Enums.ProductStatus
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
+  rightsConfirmedAt?: Date | string | null
+  rightsConfirmedById?: string | null
   categoryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -2080,6 +2288,10 @@ export type ProductUpdateWithoutTenantInput = {
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rightsConfirmedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rightsConfirmedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   category?: Prisma.DocumentCategoryUpdateOneWithoutProductsNestedInput
@@ -2110,6 +2322,10 @@ export type ProductUncheckedUpdateWithoutTenantInput = {
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rightsConfirmedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rightsConfirmedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2140,6 +2356,10 @@ export type ProductUncheckedUpdateManyWithoutTenantInput = {
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rightsConfirmedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rightsConfirmedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2165,6 +2385,10 @@ export type ProductCreateManyCategoryInput = {
   ratingCount?: number
   soldCount?: number
   status?: $Enums.ProductStatus
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
+  rightsConfirmedAt?: Date | string | null
+  rightsConfirmedById?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -2188,6 +2412,10 @@ export type ProductUpdateWithoutCategoryInput = {
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rightsConfirmedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rightsConfirmedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tenant?: Prisma.TenantUpdateOneRequiredWithoutProductsNestedInput
@@ -2219,6 +2447,10 @@ export type ProductUncheckedUpdateWithoutCategoryInput = {
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rightsConfirmedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rightsConfirmedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   files?: Prisma.ProductFileUncheckedUpdateManyWithoutProductNestedInput
@@ -2249,6 +2481,10 @@ export type ProductUncheckedUpdateManyWithoutCategoryInput = {
   ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   soldCount?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rightsConfirmedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rightsConfirmedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -2349,6 +2585,10 @@ export type ProductSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   ratingCount?: boolean
   soldCount?: boolean
   status?: boolean
+  moderationLockedAt?: boolean
+  moderationReason?: boolean
+  rightsConfirmedAt?: boolean
+  rightsConfirmedById?: boolean
   categoryId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -2383,6 +2623,10 @@ export type ProductSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   ratingCount?: boolean
   soldCount?: boolean
   status?: boolean
+  moderationLockedAt?: boolean
+  moderationReason?: boolean
+  rightsConfirmedAt?: boolean
+  rightsConfirmedById?: boolean
   categoryId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -2410,6 +2654,10 @@ export type ProductSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   ratingCount?: boolean
   soldCount?: boolean
   status?: boolean
+  moderationLockedAt?: boolean
+  moderationReason?: boolean
+  rightsConfirmedAt?: boolean
+  rightsConfirmedById?: boolean
   categoryId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -2437,12 +2685,16 @@ export type ProductSelectScalar = {
   ratingCount?: boolean
   soldCount?: boolean
   status?: boolean
+  moderationLockedAt?: boolean
+  moderationReason?: boolean
+  rightsConfirmedAt?: boolean
+  rightsConfirmedById?: boolean
   categoryId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tenantId" | "slug" | "title" | "description" | "type" | "summary" | "coverImageKey" | "coverImageUrl" | "tags" | "priceVnd" | "salePriceVnd" | "saleStartsAt" | "saleEndsAt" | "downloadLimit" | "ratingSum" | "ratingCount" | "soldCount" | "status" | "categoryId" | "createdAt" | "updatedAt", ExtArgs["result"]["product"]>
+export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tenantId" | "slug" | "title" | "description" | "type" | "summary" | "coverImageKey" | "coverImageUrl" | "tags" | "priceVnd" | "salePriceVnd" | "saleStartsAt" | "saleEndsAt" | "downloadLimit" | "ratingSum" | "ratingCount" | "soldCount" | "status" | "moderationLockedAt" | "moderationReason" | "rightsConfirmedAt" | "rightsConfirmedById" | "categoryId" | "createdAt" | "updatedAt", ExtArgs["result"]["product"]>
 export type ProductInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
   category?: boolean | Prisma.Product$categoryArgs<ExtArgs>
@@ -2510,6 +2762,21 @@ export type $ProductPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
      */
     soldCount: number
     status: $Enums.ProductStatus
+    /**
+     * ADR-038 mục 5: khoá kiểm duyệt — admin lưu trữ sản phẩm do vi phạm (qua `system_job`). Khác null ⇒ tenant không
+     * đổi được `status` (không xuất bản lại/khôi phục) cho tới khi admin gỡ khoá. Trigger `products_guard_moderation`
+     * chặn mọi scope ngoài `system_job` đặt/gỡ 2 cột này hoặc đổi `status` khi đang khoá.
+     */
+    moderationLockedAt: Date | null
+    /**
+     * Lý do hiển thị cho tenant = nhãn loại vi phạm (không chứa danh tính người báo cáo).
+     */
+    moderationReason: string | null
+    /**
+     * ADR-038 mục 7: lần gần nhất tenant tích cam kết bản quyền khi xuất bản (lưu vết, không FK).
+     */
+    rightsConfirmedAt: Date | null
+    rightsConfirmedById: string | null
     /**
      * ADR-026: danh mục tài liệu (L1, System Admin quản lý). Nháp được để
      * trống; xuất bản bắt buộc có danh mục đang `isActive` (canPublishProduct).
@@ -2968,6 +3235,10 @@ export interface ProductFieldRefs {
   readonly ratingCount: Prisma.FieldRef<"Product", 'Int'>
   readonly soldCount: Prisma.FieldRef<"Product", 'Int'>
   readonly status: Prisma.FieldRef<"Product", 'ProductStatus'>
+  readonly moderationLockedAt: Prisma.FieldRef<"Product", 'DateTime'>
+  readonly moderationReason: Prisma.FieldRef<"Product", 'String'>
+  readonly rightsConfirmedAt: Prisma.FieldRef<"Product", 'DateTime'>
+  readonly rightsConfirmedById: Prisma.FieldRef<"Product", 'String'>
   readonly categoryId: Prisma.FieldRef<"Product", 'String'>
   readonly createdAt: Prisma.FieldRef<"Product", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Product", 'DateTime'>

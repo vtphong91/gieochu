@@ -107,8 +107,9 @@ pnpm --filter @gieochu/db run setup-app-role
 ```
 
 Script `packages/db/scripts/setup-app-role.mts` sẽ tạo (hoặc cập nhật) role `gieochu_app` với
-`NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`, cấp `SELECT/INSERT/UPDATE/DELETE` trên các bảng hiện có,
-cộng `ALTER DEFAULT PRIVILEGES` để tự cấp quyền cho bảng tạo sau này.
+`NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`, `REVOKE CREATE ON DATABASE` (§4.1), cấp `SELECT/INSERT/UPDATE/DELETE` trên các bảng
+hiện có, cộng `ALTER DEFAULT PRIVILEGES` để tự cấp quyền cho bảng tạo sau này — rồi **thu lại `UPDATE, TRUNCATE` trên `audit_logs`**
+nếu bảng đã có (§4.3) ✅ đọc script 2026-10-16.
 
 **Kiểm tra sau khi chạy:**
 ```sql
@@ -127,17 +128,17 @@ schema Postgres mới ngoài `public`/`pgboss`.
   `REVOKE CREATE ON DATABASE neondb FROM gieochu_app;` ngày 2026-10-15 và kiểm
   `has_database_privilege('gieochu_app', 'neondb', 'CREATE') = false` 🟡 (báo cáo Quốc). Mục đích: role runtime không tự tạo được
   schema mới trong database.
-* **Script chưa khớp** ✅ (đọc `packages/db/scripts/setup-app-role.mts`): script vẫn chạy `GRANT CREATE ON DATABASE "<db>" TO
-  gieochu_app` (comment: để pg-boss tự tạo schema `pgboss` trên database mới). Hệ quả:
-  - Chạy lại `setup-app-role` trên DB dùng chung (ví dụ trường hợp (b) ở trên) sẽ **cấp lại** quyền `CREATE` → phải chạy lại câu
-    `REVOKE` ở trên bằng role owner ngay sau đó, rồi kiểm lại bằng `has_database_privilege`.
-  - Môi trường/branch Neon mới: sau `setup-app-role` cần chạy `REVOKE` thủ công cho tới khi script được sửa (BACKLOG — việc của Hiếu,
-    chưa làm).
+* **Script đã khớp** ✅ (đọc `packages/db/scripts/setup-app-role.mts` 2026-10-16 — thay đổi nằm trong commit `f021ed3`): script nay chạy
+  `REVOKE CREATE ON DATABASE "<db>" FROM gieochu_app` (không còn `GRANT CREATE`). *(Đính chính: bản trước của mục này ghi "script vẫn
+  `GRANT CREATE`" — đã lỗi thời, xem KB-Audit §15.)* Chạy lại script không mở lại quyền `CREATE`.
+  - Comment trong script: trên database **mới**, tạo schema `pgboss` bằng role owner trước (ví dụ khởi động worker một lần với URL
+    owner), rồi chạy lại script để các lệnh GRANT cho schema `pgboss` có hiệu lực ✅ đọc code — Quốc xác nhận là quy trình chính thức
+    (ADR-037 bổ sung); chưa chạy thử trên DB mới ❓.
 * ❓ **Chưa rõ thứ tự với pg-boss trên DB mới:** nếu `REVOKE` trước khi schema `pgboss` tồn tại, `createJobQueue().start()` có thể không
   tự tạo được schema. Từ ADR-036 (2026-10-16, chưa deploy) người khởi động pg-boss đầu tiên trên production **không còn là worker** mà là
   chính web app trên Vercel — lần enqueue đầu (webhook tenant/upload) hoặc lần chạy đầu của cron `/api/cron/daily` (`getStartedQueue()`,
-  `apps/web/lib/jobs.ts`) ✅ đọc code. Chưa ai thử — cần Quốc chốt cách làm (tạo schema `pgboss` bằng role owner trước, hay để script giữ `GRANT` rồi
-  `REVOKE` sau lần khởi động worker đầu tiên).
+  `apps/web/lib/jobs.ts`) ✅ đọc code. **Quy trình chính thức (ADR-037 bổ sung, 2026-10-16):** trên DB mới tạo schema `pgboss` bằng role
+  owner trước, rồi chạy lại `setup-app-role` ✅. Chưa ai chạy thử trên DB mới ❓.
 
 ```sql
 -- Chạy bằng role owner (Neon SQL Editor). Thay neondb bằng tên database thật nếu khác.
@@ -154,6 +155,25 @@ SELECT has_database_privilege('gieochu_app', 'neondb', 'CREATE');  -- kỳ vọn
   khác không dùng hàm này ✅ (`grep gieochu_unaccent` chỉ có ở `apps/web/lib/shop.ts`).
 * Kiểm nhanh (role `gieochu_app` hoặc owner): `SELECT public.gieochu_unaccent(lower('Đề thi Toán học'));` → `de thi toan hoc`.
   Lược đồ: [[03-API-Contracts/Database-Schema-Reference|Database-Schema-Reference]] §7.
+
+### 4.3. `audit_logs` — quyền chỉ-INSERT và trigger (M12a, ADR-037)
+
+* **Kỳ vọng sau restore/rebuild:** `gieochu_app` có đúng `SELECT, INSERT, DELETE` trên `audit_logs` (không UPDATE/TRUNCATE); có 3 trigger
+  `audit_logs_block_update`, `audit_logs_guard_delete`, `audit_logs_block_truncate`. Migration `20261016090000_m12a_audit_logs` tạo bảng +
+  trigger và tự đặt quyền **nếu role `gieochu_app` đã tồn tại** (khối `DO … IF EXISTS`); nếu chạy migrate trước khi có role thì
+  `setup-app-role` chạy sau sẽ cấp quyền chung rồi `REVOKE UPDATE, TRUNCATE` trên `audit_logs` → kết quả như nhau ✅ đọc SQL + script.
+* PITR (§3) khôi phục cả trigger + dữ liệu audit. **Trigger chặn cả role owner** — không có quy trình được duyệt để xoá/sửa dòng audit
+  (kể cả dữ liệu test); chỉ cron purge xoá được dòng > 12 tháng. Cần xoá ngoại lệ → hỏi Quốc, không tự tắt trigger.
+* Kiểm nhanh (role owner, chỉ đọc):
+
+```sql
+SELECT privilege_type FROM information_schema.role_table_grants
+ WHERE grantee = 'gieochu_app' AND table_name = 'audit_logs' ORDER BY 1;   -- kỳ vọng: DELETE, INSERT, SELECT
+SELECT tgname FROM pg_trigger WHERE tgrelid = 'public.audit_logs'::regclass AND NOT tgisinternal ORDER BY 1;  -- kỳ vọng: 3 trigger
+```
+
+  Hai câu trên do Long soạn theo catalog chuẩn Postgres, chưa chạy ❓; Quốc đã kiểm cùng nội dung 2026-10-16 bằng cách riêng 🟡.
+  Nghiệp vụ: [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]] §2.1.
 
 ---
 

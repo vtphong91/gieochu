@@ -11,6 +11,7 @@ import {
 import { productPath } from "@gieochu/core/product-path";
 import { Badge, RowActionButton } from "../../../../admin/_ui/kit";
 import { IconEyeOff, IconLock } from "../../../../admin/_ui/icons";
+import { ModerationLockBadge, ModerationLockNotice } from "../../../../admin/_ui/moderation-lock";
 import { formatReviewDateTime, REVIEW_RATING_WORDS, reviewerInitial, ReviewStars } from "../../../../[tenantSlug]/_ui/review-parts";
 import { hideReviewAction, replyReviewAction, unhideReviewAction, type ReviewModerationState } from "../actions";
 
@@ -39,6 +40,10 @@ export interface StudioReviewCardData {
   status: "VISIBLE" | "HIDDEN";
   hiddenReason: ReviewHiddenReasonValue | null;
   hiddenAt: string | null;
+  /** ADR-038: ISO thời điểm quản trị hệ thống ẩn do vi phạm (khoá kiểm duyệt); null = không bị khoá. */
+  moderationLockedAt: string | null;
+  /** Nhãn loại vi phạm — không có danh tính người báo cáo. */
+  moderationReason: string | null;
   reply: string | null;
   repliedAt: string | null;
   createdAt: string;
@@ -59,7 +64,8 @@ export function StudioReviewCard({ tenantSlug, tenantName, review }: { tenantSlu
   const cardRef = useRef<HTMLElement>(null);
 
   const hidden = review.status === "HIDDEN";
-  const refundLocked = review.hiddenReason === "REFUNDED";
+  const moderationLocked = review.moderationLockedAt !== null;
+  const refundLocked = review.hiddenReason === "REFUNDED" && !moderationLocked;
   const nameId = `${uid}-name`;
   const replyId = `${uid}-reply`;
   const reasonId = `${uid}-reason`;
@@ -129,6 +135,7 @@ export function StudioReviewCard({ tenantSlug, tenantName, review }: { tenantSlu
               ) : (
                 <Badge tone="success">Đang hiển thị</Badge>
               )}
+              {moderationLocked ? <ModerationLockBadge /> : null}
               {review.reply ? <Badge tone="info">Đã trả lời</Badge> : null}
             </h2>
             <p className="mt-0.5 text-sm break-words" style={{ color: INK_SOFT }}>
@@ -167,7 +174,16 @@ export function StudioReviewCard({ tenantSlug, tenantName, review }: { tenantSlu
           </p>
         )}
 
-        {hidden ? (
+        {moderationLocked ? (
+          <ModerationLockNotice
+            className="mt-3"
+            subject="đánh giá"
+            measure="ẩn"
+            blocked="bỏ ẩn"
+            reason={review.moderationReason}
+            lockedAtLabel={review.moderationLockedAt ? formatReviewDateTime(review.moderationLockedAt) : null}
+          />
+        ) : hidden ? (
           <p className="mt-3 flex items-start gap-2 rounded-lg border px-3 py-2 text-sm" style={{ background: "#FFFBEB", borderColor: "#FDE68A", color: "#92400E" }}>
             {refundLocked ? <IconLock className="mt-0.5 h-4 w-4 shrink-0" /> : <IconEyeOff className="mt-0.5 h-4 w-4 shrink-0" />}
             <span>
@@ -318,7 +334,7 @@ export function StudioReviewCard({ tenantSlug, tenantName, review }: { tenantSlu
             >
               Ẩn đánh giá
             </RowActionButton>
-          ) : refundLocked ? (
+          ) : refundLocked || moderationLocked ? (
             <RowActionButton size="touch" type="button" disabled aria-describedby={`${uid}-locked`}>
               <IconLock className="mr-1 h-3.5 w-3.5" /> Không thể khôi phục
             </RowActionButton>
@@ -332,9 +348,9 @@ export function StudioReviewCard({ tenantSlug, tenantName, review }: { tenantSlu
               {isPending ? "Đang khôi phục..." : "Khôi phục"}
             </RowActionButton>
           )}
-          {refundLocked ? (
+          {refundLocked || moderationLocked ? (
             <span id={`${uid}-locked`} className="sr-only">
-              Đánh giá tự ẩn vì hoàn tiền, không khôi phục được.
+              {moderationLocked ? "Đánh giá bị khoá kiểm duyệt, liên hệ bộ phận hỗ trợ nếu cần." : "Đánh giá tự ẩn vì hoàn tiền, không khôi phục được."}
             </span>
           ) : null}
         </div>

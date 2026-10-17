@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { IconInfo, IconLockClosed } from "./icons";
 
 /**
@@ -21,10 +22,35 @@ export function StorefrontNotice({ kind }: { kind: "READ_ONLY" | "LOCKED_NOTICE"
           <IconLockClosed className="mt-0.5 h-5 w-5 shrink-0 sm:mt-0" />
         )}
         {readOnly
-          ? "Trang tạm ngưng bán — chỉ xem, chưa mua được."
+          ? "Gian hàng của bạn đang tạm ngưng hoạt động — khách chỉ thấy thông báo tạm ngưng, không thấy tài liệu."
           : "Trang của bạn đang bị khoá. Liên hệ hỗ trợ để biết thêm chi tiết."}
       </p>
     </div>
+  );
+}
+
+/**
+ * ADR-040: khách vào gian hàng READ_ONLY chỉ thấy khối này (không tài liệu/bài viết/đánh giá). Là nội dung chính
+ * của `<main>` nên mang h1 — tên gian hàng — để trang luôn có đúng 1 h1.
+ */
+export function StorefrontSuspendedNotice({ tenantName }: { tenantName: string }) {
+  return (
+    <section className="container-narrow py-16 text-center sm:py-24">
+      <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 text-amber-800">
+        <IconInfo className="h-7 w-7" />
+      </span>
+      <h1 className="mt-5 text-2xl font-bold text-slate-900">{tenantName}</h1>
+      <p className="mt-3 text-base font-medium text-amber-900">Gian hàng đang tạm ngưng hoạt động.</p>
+      <p className="mt-2 text-sm text-slate-600">
+        Tài liệu của gian hàng tạm thời không hiển thị. Nếu bạn đã mua tài liệu, bạn vẫn tải được trong Thư viện của mình.
+      </p>
+      <Link
+        href="/account/library"
+        className="mt-6 inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-900 transition hover:border-[color:var(--color-primary)] hover:text-[color:var(--color-primary)] motion-reduce:transition-none"
+      >
+        Mở Thư viện của tôi
+      </Link>
+    </section>
   );
 }
 

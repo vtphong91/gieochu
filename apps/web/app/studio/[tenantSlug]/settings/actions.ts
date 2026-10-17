@@ -5,6 +5,7 @@ import { z } from "zod";
 import { isReservedSlug, isValidHexColor, isValidSocialLink, slugify, type SocialLinkKey } from "@gieochu/core";
 import { getPrismaClient } from "@gieochu/db";
 import { requireTenantMember } from "../../../../lib/tenant";
+import { audit } from "../../../../lib/audit";
 
 export interface SettingsActionState {
   error?: string;
@@ -85,7 +86,7 @@ export async function changeSlugAction(
   _prevState: SettingsActionState,
   formData: FormData,
 ): Promise<SettingsActionState> {
-  const { tenant } = await requireTenantMember(tenantSlug);
+  const { tenant, user } = await requireTenantMember(tenantSlug);
 
   const newSlug = slugify(String(formData.get("newSlug") ?? ""));
   if (!newSlug) return { error: "Vui lòng nhập đường dẫn mới." };
@@ -109,6 +110,15 @@ export async function changeSlugAction(
     prisma.tenantSlugHistory.create({ data: { tenantId: tenant.id, oldSlug: tenant.slug } }),
     prisma.tenant.update({ where: { id: tenant.id }, data: { slug: newSlug } }),
   ]);
+  await audit.log({
+    actorId: user.userId,
+    scope: "TENANT",
+    tenantId: tenant.id,
+    action: "TENANT_SLUG_CHANGED",
+    targetType: "Tenant",
+    targetId: tenant.id,
+    metadata: { from: tenant.slug, to: newSlug },
+  });
 
   redirect(`/studio/${newSlug}/settings`);
 }

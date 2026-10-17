@@ -22,7 +22,7 @@ export async function saveManualQrAction(
   _prevState: PlatformPaymentActionState,
   formData: FormData,
 ): Promise<PlatformPaymentActionState> {
-  await requireRole("SYSTEM_ADMIN");
+  const actor = await requireRole("SYSTEM_ADMIN");
   const parsed = manualQrSchema.safeParse({
     bankBin: formData.get("bankBin"),
     accountNo: formData.get("accountNo"),
@@ -31,6 +31,7 @@ export async function saveManualQrAction(
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ." };
 
   await savePlatformProviderConfig({
+    actorId: actor.userId,
     provider: "MANUAL_QR",
     isEnabled: formData.get("isEnabled") === "on",
     publicConfig: parsed.data,
@@ -52,7 +53,7 @@ export async function saveSepayAction(
   _prevState: PlatformPaymentActionState,
   formData: FormData,
 ): Promise<PlatformPaymentActionState> {
-  await requireRole("SYSTEM_ADMIN");
+  const actor = await requireRole("SYSTEM_ADMIN");
   const parsed = sepaySchema.safeParse({
     bankBin: formData.get("bankBin"),
     accountNo: formData.get("accountNo"),
@@ -67,6 +68,7 @@ export async function saveSepayAction(
 
   try {
     await savePlatformProviderConfig({
+      actorId: actor.userId,
       provider: "SEPAY",
       isEnabled: formData.get("isEnabled") === "on",
       publicConfig: { ...publicConfig, authType, paymentPrefix: paymentPrefix.toUpperCase() },
@@ -90,7 +92,7 @@ export async function saveMomoAction(
   _prevState: PlatformPaymentActionState,
   formData: FormData,
 ): Promise<PlatformPaymentActionState> {
-  await requireRole("SYSTEM_ADMIN");
+  const actor = await requireRole("SYSTEM_ADMIN");
   const parsed = momoSchema.safeParse({
     partnerCode: formData.get("partnerCode"),
     accessKey: formData.get("accessKey"),
@@ -102,6 +104,7 @@ export async function saveMomoAction(
 
   try {
     await savePlatformProviderConfig({
+      actorId: actor.userId,
       provider: "MOMO",
       isEnabled: formData.get("isEnabled") === "on",
       publicConfig: parsed.data,
@@ -116,8 +119,8 @@ export async function saveMomoAction(
 }
 
 export async function testMomoConnectionAction(): Promise<PlatformPaymentActionState> {
-  await requireRole("SYSTEM_ADMIN");
-  const result = await testPlatformProviderConnection("MOMO");
+  const actor = await requireRole("SYSTEM_ADMIN");
+  const result = await testPlatformProviderConnection("MOMO", actor.userId);
   revalidatePath("/admin/billing/payment");
   return { testResult: result };
 }

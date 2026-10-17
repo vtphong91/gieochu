@@ -1,19 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getPrismaClient } from "@gieochu/db";
 import { requireRole } from "../../../lib/session";
+import { lockTenant, unlockTenant } from "../../../lib/tenant-lock";
 
 export async function lockTenantAction(tenantId: string): Promise<void> {
-  await requireRole("SYSTEM_ADMIN");
-  const prisma = getPrismaClient();
-  await prisma.tenant.update({ where: { id: tenantId }, data: { status: "LOCKED" } });
+  const actor = await requireRole("SYSTEM_ADMIN");
+  await lockTenant(actor.userId, tenantId);
   revalidatePath("/admin/tenants");
 }
 
 export async function unlockTenantAction(tenantId: string): Promise<void> {
-  await requireRole("SYSTEM_ADMIN");
-  const prisma = getPrismaClient();
-  await prisma.tenant.update({ where: { id: tenantId }, data: { status: "ACTIVE" } });
+  const actor = await requireRole("SYSTEM_ADMIN");
+  await unlockTenant(actor.userId, tenantId);
   revalidatePath("/admin/tenants");
 }

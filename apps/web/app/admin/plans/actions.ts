@@ -5,6 +5,7 @@ import { z } from "zod";
 import { AppError, isValidPlanInput, type PlanFeatureKey } from "@gieochu/core";
 import { getPrismaClient, type Prisma } from "@gieochu/db";
 import { requireRole } from "../../../lib/session";
+import { audit } from "../../../lib/audit";
 
 const FEATURE_KEYS: PlanFeatureKey[] = ["coupons", "advancedAnalytics", "advancedBranding", "seoTools", "automation", "customDomain"];
 
@@ -22,6 +23,9 @@ const planFormSchema = z.object({
   isFree: z.boolean().default(false),
   features: z.record(z.string(), z.boolean()),
 });
+
+/** Trường so sánh để ghi `changedFields` vào audit PLAN_UPDATED (ADR-037). */
+const PLAN_AUDIT_FIELDS = ["code", "name", "priceVnd", "interval", "intervalCount", "maxProducts", "storageMb", "maxFileMb", "imageStorageMb", "isFree"] as const;
 
 export interface PlanActionState {
   error?: string;
@@ -48,7 +52,7 @@ async function assertSingleActiveFreePlan(isFree: boolean, isActive: boolean, ex
 }
 
 export async function createPlanAction(_prevState: PlanActionState, formData: FormData): Promise<PlanActionState> {
-  await requireRole("SYSTEM_ADMIN");
+  const actor = await requireRole("SYSTEM_ADMIN");
 
   const parsed = parsePlanFormData(formData);
   if (!parsed.success) {
@@ -71,14 +75,22 @@ export async function createPlanAction(_prevState: PlanActionState, formData: Fo
     throw error;
   }
 
-  await prisma.plan.create({ data: { ...parsed.data, features: parsed.data.features as Prisma.InputJsonValue } });
+  const created = await prisma.plan.create({ data: { ...parsed.data, features: parsed.data.features as Prisma.InputJsonValue } });
+  await audit.log({
+    actorId: actor.userId,
+    scope: "SYSTEM",
+    action: "PLAN_CREATED",
+    targetType: "Plan",
+    targetId: created.id,
+    metadata: { code: created.code, priceVnd: created.priceVnd, isFree: created.isFree },
+  });
   revalidatePath("/admin/plans");
   revalidatePath("/pricing");
   return {};
 }
 
 export async function updatePlanAction(planId: string, _prevState: PlanActionState, formData: FormData): Promise<PlanActionState> {
-  await requireRole("SYSTEM_ADMIN");
+  const actor = await requireRole("SYSTEM_ADMIN");
 
   const parsed = parsePlanFormData(formData);
   if (!parsed.success) {
@@ -106,6 +118,20 @@ export async function updatePlanAction(planId: string, _prevState: PlanActionSta
   }
 
   await prisma.plan.update({ where: { id: planId }, data: { ...parsed.data, features: parsed.data.features as Prisma.InputJsonValue } });
+  const changedFields: string[] = PLAN_AUDIT_FIELDS.filter((key) => plan[key] !== parsed.data[key]);
+  if (JSON.stringify(plan.features) !== JSON.stringify(parsed.data.features)) changedFields.push("features");
+  await audit.log({
+    actorId: actor.userId,
+    scope: "SYSTEM",
+    action: "PLAN_UPDATED",
+    targetType: "Plan",
+    targetId: planId,
+    metadata: {
+      code: parsed.data.code,
+      changedFields,
+      ...(plan.priceVnd !== parsed.data.priceVnd ? { priceVnd: { from: plan.priceVnd, to: parsed.data.priceVnd } } : {}),
+    },
+  });
   revalidatePath("/admin/plans");
   revalidatePath(`/admin/plans/${planId}`);
   revalidatePath("/pricing");
@@ -113,7 +139,7 @@ export async function updatePlanAction(planId: string, _prevState: PlanActionSta
 }
 
 export async function togglePlanActiveAction(planId: string): Promise<void> {
-  await requireRole("SYSTEM_ADMIN");
+  const actor = await requireRole("SYSTEM_ADMIN");
   const prisma = getPrismaClient();
   const plan = await prisma.plan.findUnique({ where: { id: planId } });
   if (!plan) throw new AppError({ code: "PLAN_NOT_FOUND", message: "Không tìm thấy gói.", httpStatus: 404 });
@@ -123,6 +149,14 @@ export async function togglePlanActiveAction(planId: string): Promise<void> {
   }
 
   await prisma.plan.update({ where: { id: planId }, data: { isActive: !plan.isActive } });
+  await audit.log({
+    actorId: actor.userId,
+    scope: "SYSTEM",
+    action: "PLAN_UPDATED",
+    targetType: "Plan",
+    targetId: planId,
+    metadata: { code: plan.code, changedFields: ["isActive"], isActive: { from: plan.isActive, to: !plan.isActive } },
+  });
   revalidatePath("/admin/plans");
   revalidatePath("/pricing");
 }

@@ -8,6 +8,8 @@ import {
   IconChevronDown,
   IconDatabase,
   IconDoc,
+  IconEye,
+  IconFlag,
   IconGear,
   IconGrid,
   IconLayers,
@@ -78,6 +80,15 @@ const GROUPS: NavGroup[] = [
       { href: "/admin/settings/smtp", label: "Cấu hình Mail", Icon: IconMail },
     ],
   },
+  {
+    id: "monitoring",
+    label: "Giám sát",
+    Icon: IconShield,
+    items: [
+      { href: "/admin/audit", label: "Nhật ký hệ thống", Icon: IconEye },
+      { href: "/admin/reports", label: "Báo cáo vi phạm", Icon: IconFlag },
+    ],
+  },
 ];
 
 const STORAGE_KEY = "admin:nav:expanded";
@@ -132,7 +143,30 @@ function persistExpanded(id: string | null) {
   }
 }
 
-export function AdminSidebarNav() {
+/**
+ * Số đếm cạnh mục menu (ADR-038: báo cáo vi phạm chờ xử lý). Chữ ẩn đọc đủ ý — không chỉ con số; nhóm đang đóng hiện
+ * tổng số của các mục con để không bị bỏ sót.
+ */
+function CountPill({ count, srText }: { count: number; srText: string }) {
+  return (
+    <>
+      <span
+        aria-hidden="true"
+        className="ml-auto inline-flex min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] leading-none font-bold tabular-nums"
+        style={{ background: "#FDBA74", color: "#12213A" }}
+      >
+        {count > 99 ? "99+" : count}
+      </span>
+      <span className="sr-only">, {srText}</span>
+    </>
+  );
+}
+
+const BADGE_TEXT: Record<string, (n: number) => string> = {
+  "/admin/reports": (n) => `${n} báo cáo chờ xử lý`,
+};
+
+export function AdminSidebarNav({ badges = {} }: { badges?: Partial<Record<string, number>> }) {
   const pathname = usePathname();
   const currentActiveHref = activeHref(pathname);
   const activeGroupId = groupContainingActive(currentActiveHref);
@@ -174,6 +208,7 @@ export function AdminSidebarNav() {
       {GROUPS.map((group) => {
         const isOpen = expandedId === group.id;
         const groupActive = group.id === activeGroupId;
+        const groupCount = group.items.reduce((sum, item) => sum + (badges[item.href] ?? 0), 0);
         return (
           <div key={group.id}>
             <button
@@ -185,12 +220,14 @@ export function AdminSidebarNav() {
             >
               <group.Icon className="h-[18px] w-[18px] shrink-0" />
               <span className="flex-1 text-left">{group.label}</span>
+              {!isOpen && groupCount > 0 ? <CountPill count={groupCount} srText={`${groupCount} mục cần xử lý`} /> : null}
               <IconChevronDown className={`h-4 w-4 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
             </button>
             {isOpen ? (
               <div className="mt-0.5 ml-[27px] flex flex-col gap-0.5 border-l pl-3" style={{ borderColor: "rgba(255,255,255,0.15)" }}>
                 {group.items.map(({ href, label, Icon }) => {
                   const active = href === currentActiveHref;
+                  const count = badges[href] ?? 0;
                   return (
                     <Link
                       key={href}
@@ -200,6 +237,7 @@ export function AdminSidebarNav() {
                     >
                       <Icon className="h-4 w-4 shrink-0" />
                       {label}
+                      {count > 0 ? <CountPill count={count} srText={(BADGE_TEXT[href] ?? ((n: number) => `${n} mục mới`))(count)} /> : null}
                     </Link>
                   );
                 })}

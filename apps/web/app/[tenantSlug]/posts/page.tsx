@@ -31,7 +31,8 @@ async function resolveTenant(tenantSlug: string) {
 export async function generateMetadata({ params }: { params: Promise<{ tenantSlug: string }> }): Promise<Metadata> {
   const { tenantSlug } = await params;
   const tenant = await findTenantBySlugForStorefront(tenantSlug);
-  if (!tenant || tenant.status === "LOCKED") return {};
+  // ADR-040: gian hàng không ACTIVE → khách 404; không lộ tiêu đề qua metadata.
+  if (!tenant || tenant.status !== "ACTIVE") return {};
   return { title: `Bài viết của ${tenant.name}` };
 }
 
@@ -53,7 +54,9 @@ export default async function TenantPostsPage({
 
   const currentUser = await getCurrentUser();
   const viewer = currentUser?.userId === tenant.ownerId ? "owner" : "guest";
-  if (resolveStorefrontAccess(tenant.status, viewer) === "NOT_FOUND") notFound();
+  // ADR-040: READ_ONLY → khách 404 (SUSPENDED_NOTICE), chủ vẫn xem; LOCKED → khách 404, chủ xem như trước.
+  const access = resolveStorefrontAccess(tenant.status, viewer);
+  if (access === "NOT_FOUND" || access === "SUSPENDED_NOTICE") notFound();
 
   const { cursor: rawCursor } = await searchParams;
   const cursor = typeof rawCursor === "string" && isValidPostId(rawCursor) ? rawCursor : null;

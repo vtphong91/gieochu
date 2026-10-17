@@ -418,3 +418,14 @@ export function IconShoppingBag({ className }: IconProps) {
     </svg>
   );
 }
+
+/** Lá cờ (nút "Báo cáo vi phạm" phía công khai + menu "Báo cáo vi phạm" System Center — ADR-038). */
+export function IconFlag({ className }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 21V4" />
+      <path d="M5 4.5c2.2-1.2 4.4-1.2 6.6 0s4.4 1.2 6.4 0v9c-2 1.2-4.2 1.2-6.4 0s-4.4-1.2-6.6 0" />
+    </svg>
+  );
+}
+

@@ -49,9 +49,9 @@ export async function replyReviewAction(tenantSlug: string, reviewId: string, re
 /** Ẩn với lý do bắt buộc: SPAM | OFFENSIVE | IRRELEVANT | PERSONAL_INFO | OTHER (REFUNDED chỉ hệ thống đặt). */
 export async function hideReviewAction(tenantSlug: string, reviewId: string, reason: string): Promise<ReviewModerationState> {
   try {
-    const { tenant } = await requireTenantMember(tenantSlug);
+    const { tenant, user } = await requireTenantMember(tenantSlug);
     if (!isId(reviewId)) return { error: "Thao tác không hợp lệ.", code: "VALIDATION_ERROR" };
-    await hideReview(tenant.id, reviewId, reason);
+    await hideReview(tenant.id, reviewId, reason, user.userId);
     revalidate(tenant.slug);
     return { success: true };
   } catch (error) {
@@ -62,9 +62,9 @@ export async function hideReviewAction(tenantSlug: string, reviewId: string, rea
 /** Khôi phục đánh giá đã ẩn (không áp dụng cho đánh giá tự ẩn vì hoàn tiền). */
 export async function unhideReviewAction(tenantSlug: string, reviewId: string): Promise<ReviewModerationState> {
   try {
-    const { tenant } = await requireTenantMember(tenantSlug);
+    const { tenant, user } = await requireTenantMember(tenantSlug);
     if (!isId(reviewId)) return { error: "Thao tác không hợp lệ.", code: "VALIDATION_ERROR" };
-    await unhideReview(tenant.id, reviewId);
+    await unhideReview(tenant.id, reviewId, user.userId);
     revalidate(tenant.slug);
     return { success: true };
   } catch (error) {

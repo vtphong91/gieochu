@@ -478,7 +478,7 @@ async function seedDemo(): Promise<void> {
       throw new Error(`Slug "${def.slug}" đã bị chiếm trong tenant (được đổi thành "${created.slug}") — dừng để tránh lẫn dữ liệu thật.`);
     }
     await addProductExternalLink(tenant.id, created.id, { label: def.linkLabel, url: def.linkUrl });
-    await publishProduct(tenant.id, created.id);
+    await publishProduct(tenant.id, created.id, null, { rightsConfirmed: true });
     productIdByKey.set(def.key, created.id);
   }
   const pid = (key: ProductKey): string => productIdByKey.get(key)!;

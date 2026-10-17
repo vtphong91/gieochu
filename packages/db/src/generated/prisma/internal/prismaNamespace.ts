@@ -438,7 +438,10 @@ export const ModelName = {
   StorefrontMessage: 'StorefrontMessage',
   TenantMediaAsset: 'TenantMediaAsset',
   Review: 'Review',
-  Post: 'Post'
+  Post: 'Post',
+  AuditLog: 'AuditLog',
+  TenantDailyStat: 'TenantDailyStat',
+  AbuseReport: 'AbuseReport'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -454,7 +457,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userProfile" | "refreshToken" | "verificationToken" | "plan" | "role" | "permission" | "rolePermission" | "cmsPage" | "subscription" | "tenant" | "tenantMember" | "tenantSlugHistory" | "product" | "productFile" | "systemSettings" | "systemStorageConfig" | "systemCloudinaryConfig" | "systemSmtpConfig" | "emailSendLog" | "documentCategory" | "systemBranding" | "tenantPaymentConfig" | "platformPaymentConfig" | "subscriptionInvoice" | "platformPaymentTransaction" | "webhookEvent" | "bankBin" | "coupon" | "couponRedemption" | "order" | "orderItem" | "tenantPaymentTransaction" | "tenantCustomer" | "entitlement" | "downloadToken" | "shareLink" | "downloadEvent" | "storefrontMessage" | "tenantMediaAsset" | "review" | "post"
+    modelProps: "user" | "userProfile" | "refreshToken" | "verificationToken" | "plan" | "role" | "permission" | "rolePermission" | "cmsPage" | "subscription" | "tenant" | "tenantMember" | "tenantSlugHistory" | "product" | "productFile" | "systemSettings" | "systemStorageConfig" | "systemCloudinaryConfig" | "systemSmtpConfig" | "emailSendLog" | "documentCategory" | "systemBranding" | "tenantPaymentConfig" | "platformPaymentConfig" | "subscriptionInvoice" | "platformPaymentTransaction" | "webhookEvent" | "bankBin" | "coupon" | "couponRedemption" | "order" | "orderItem" | "tenantPaymentTransaction" | "tenantCustomer" | "entitlement" | "downloadToken" | "shareLink" | "downloadEvent" | "storefrontMessage" | "tenantMediaAsset" | "review" | "post" | "auditLog" | "tenantDailyStat" | "abuseReport"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -3566,6 +3569,228 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    AuditLog: {
+      payload: Prisma.$AuditLogPayload<ExtArgs>
+      fields: Prisma.AuditLogFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AuditLogFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuditLogPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AuditLogFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuditLogPayload>
+        }
+        findFirst: {
+          args: Prisma.AuditLogFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuditLogPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AuditLogFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuditLogPayload>
+        }
+        findMany: {
+          args: Prisma.AuditLogFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuditLogPayload>[]
+        }
+        create: {
+          args: Prisma.AuditLogCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuditLogPayload>
+        }
+        createMany: {
+          args: Prisma.AuditLogCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AuditLogCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuditLogPayload>[]
+        }
+        delete: {
+          args: Prisma.AuditLogDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuditLogPayload>
+        }
+        update: {
+          args: Prisma.AuditLogUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuditLogPayload>
+        }
+        deleteMany: {
+          args: Prisma.AuditLogDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AuditLogUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AuditLogUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuditLogPayload>[]
+        }
+        upsert: {
+          args: Prisma.AuditLogUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuditLogPayload>
+        }
+        aggregate: {
+          args: Prisma.AuditLogAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAuditLog>
+        }
+        groupBy: {
+          args: Prisma.AuditLogGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AuditLogGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AuditLogCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AuditLogCountAggregateOutputType> | number
+        }
+      }
+    }
+    TenantDailyStat: {
+      payload: Prisma.$TenantDailyStatPayload<ExtArgs>
+      fields: Prisma.TenantDailyStatFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.TenantDailyStatFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantDailyStatPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.TenantDailyStatFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantDailyStatPayload>
+        }
+        findFirst: {
+          args: Prisma.TenantDailyStatFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantDailyStatPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.TenantDailyStatFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantDailyStatPayload>
+        }
+        findMany: {
+          args: Prisma.TenantDailyStatFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantDailyStatPayload>[]
+        }
+        create: {
+          args: Prisma.TenantDailyStatCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantDailyStatPayload>
+        }
+        createMany: {
+          args: Prisma.TenantDailyStatCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.TenantDailyStatCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantDailyStatPayload>[]
+        }
+        delete: {
+          args: Prisma.TenantDailyStatDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantDailyStatPayload>
+        }
+        update: {
+          args: Prisma.TenantDailyStatUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantDailyStatPayload>
+        }
+        deleteMany: {
+          args: Prisma.TenantDailyStatDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.TenantDailyStatUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.TenantDailyStatUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantDailyStatPayload>[]
+        }
+        upsert: {
+          args: Prisma.TenantDailyStatUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantDailyStatPayload>
+        }
+        aggregate: {
+          args: Prisma.TenantDailyStatAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateTenantDailyStat>
+        }
+        groupBy: {
+          args: Prisma.TenantDailyStatGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.TenantDailyStatGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.TenantDailyStatCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.TenantDailyStatCountAggregateOutputType> | number
+        }
+      }
+    }
+    AbuseReport: {
+      payload: Prisma.$AbuseReportPayload<ExtArgs>
+      fields: Prisma.AbuseReportFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AbuseReportFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AbuseReportPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AbuseReportFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AbuseReportPayload>
+        }
+        findFirst: {
+          args: Prisma.AbuseReportFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AbuseReportPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AbuseReportFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AbuseReportPayload>
+        }
+        findMany: {
+          args: Prisma.AbuseReportFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AbuseReportPayload>[]
+        }
+        create: {
+          args: Prisma.AbuseReportCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AbuseReportPayload>
+        }
+        createMany: {
+          args: Prisma.AbuseReportCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AbuseReportCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AbuseReportPayload>[]
+        }
+        delete: {
+          args: Prisma.AbuseReportDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AbuseReportPayload>
+        }
+        update: {
+          args: Prisma.AbuseReportUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AbuseReportPayload>
+        }
+        deleteMany: {
+          args: Prisma.AbuseReportDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AbuseReportUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AbuseReportUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AbuseReportPayload>[]
+        }
+        upsert: {
+          args: Prisma.AbuseReportUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AbuseReportPayload>
+        }
+        aggregate: {
+          args: Prisma.AbuseReportAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAbuseReport>
+        }
+        groupBy: {
+          args: Prisma.AbuseReportGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AbuseReportGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AbuseReportCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AbuseReportCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -3811,6 +4036,10 @@ export const ProductScalarFieldEnum = {
   ratingCount: 'ratingCount',
   soldCount: 'soldCount',
   status: 'status',
+  moderationLockedAt: 'moderationLockedAt',
+  moderationReason: 'moderationReason',
+  rightsConfirmedAt: 'rightsConfirmedAt',
+  rightsConfirmedById: 'rightsConfirmedById',
   categoryId: 'categoryId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -4142,7 +4371,12 @@ export const EntitlementScalarFieldEnum = {
   downloadsUsed: 'downloadsUsed',
   downloadLimit: 'downloadLimit',
   revokedAt: 'revokedAt',
-  createdAt: 'createdAt'
+  createdAt: 'createdAt',
+  remedyStatus: 'remedyStatus',
+  remedyRequestedAt: 'remedyRequestedAt',
+  remedyChosenAt: 'remedyChosenAt',
+  remedyResolvedAt: 'remedyResolvedAt',
+  remedyReportId: 'remedyReportId'
 } as const
 
 export type EntitlementScalarFieldEnum = (typeof EntitlementScalarFieldEnum)[keyof typeof EntitlementScalarFieldEnum]
@@ -4239,6 +4473,8 @@ export const ReviewScalarFieldEnum = {
   hiddenAt: 'hiddenAt',
   reply: 'reply',
   repliedAt: 'repliedAt',
+  moderationLockedAt: 'moderationLockedAt',
+  moderationReason: 'moderationReason',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -4256,12 +4492,68 @@ export const PostScalarFieldEnum = {
   status: 'status',
   hiddenReason: 'hiddenReason',
   isPinned: 'isPinned',
+  moderationLockedAt: 'moderationLockedAt',
+  moderationReason: 'moderationReason',
   publishedAt: 'publishedAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
 export type PostScalarFieldEnum = (typeof PostScalarFieldEnum)[keyof typeof PostScalarFieldEnum]
+
+
+export const AuditLogScalarFieldEnum = {
+  id: 'id',
+  actorId: 'actorId',
+  scope: 'scope',
+  tenantId: 'tenantId',
+  action: 'action',
+  targetType: 'targetType',
+  targetId: 'targetId',
+  metadata: 'metadata',
+  ip: 'ip',
+  userAgent: 'userAgent',
+  createdAt: 'createdAt'
+} as const
+
+export type AuditLogScalarFieldEnum = (typeof AuditLogScalarFieldEnum)[keyof typeof AuditLogScalarFieldEnum]
+
+
+export const TenantDailyStatScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  date: 'date',
+  ordersPaid: 'ordersPaid',
+  gmvVnd: 'gmvVnd',
+  newCustomers: 'newCustomers',
+  downloads: 'downloads',
+  updatedAt: 'updatedAt'
+} as const
+
+export type TenantDailyStatScalarFieldEnum = (typeof TenantDailyStatScalarFieldEnum)[keyof typeof TenantDailyStatScalarFieldEnum]
+
+
+export const AbuseReportScalarFieldEnum = {
+  id: 'id',
+  targetType: 'targetType',
+  targetId: 'targetId',
+  tenantId: 'tenantId',
+  type: 'type',
+  description: 'description',
+  evidenceUrls: 'evidenceUrls',
+  reporterUserId: 'reporterUserId',
+  reporterEmail: 'reporterEmail',
+  ip: 'ip',
+  status: 'status',
+  decision: 'decision',
+  resolutionNote: 'resolutionNote',
+  resolvedById: 'resolvedById',
+  resolvedAt: 'resolvedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AbuseReportScalarFieldEnum = (typeof AbuseReportScalarFieldEnum)[keyof typeof AbuseReportScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -4648,6 +4940,20 @@ export type ListEnumPaymentMatchStatusFieldRefInput<$PrismaModel> = FieldRefInpu
 
 
 /**
+ * Reference to a field of type 'EntitlementRemedyStatus'
+ */
+export type EnumEntitlementRemedyStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'EntitlementRemedyStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'EntitlementRemedyStatus[]'
+ */
+export type ListEnumEntitlementRemedyStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'EntitlementRemedyStatus[]'>
+    
+
+
+/**
  * Reference to a field of type 'StorefrontMessageStatus'
  */
 export type EnumStorefrontMessageStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'StorefrontMessageStatus'>
@@ -4714,6 +5020,90 @@ export type EnumPostStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$Prism
  * Reference to a field of type 'PostStatus[]'
  */
 export type ListEnumPostStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PostStatus[]'>
+    
+
+
+/**
+ * Reference to a field of type 'AuditScope'
+ */
+export type EnumAuditScopeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AuditScope'>
+    
+
+
+/**
+ * Reference to a field of type 'AuditScope[]'
+ */
+export type ListEnumAuditScopeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AuditScope[]'>
+    
+
+
+/**
+ * Reference to a field of type 'BigInt'
+ */
+export type BigIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'BigInt'>
+    
+
+
+/**
+ * Reference to a field of type 'BigInt[]'
+ */
+export type ListBigIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'BigInt[]'>
+    
+
+
+/**
+ * Reference to a field of type 'AbuseTargetType'
+ */
+export type EnumAbuseTargetTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AbuseTargetType'>
+    
+
+
+/**
+ * Reference to a field of type 'AbuseTargetType[]'
+ */
+export type ListEnumAbuseTargetTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AbuseTargetType[]'>
+    
+
+
+/**
+ * Reference to a field of type 'AbuseReportType'
+ */
+export type EnumAbuseReportTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AbuseReportType'>
+    
+
+
+/**
+ * Reference to a field of type 'AbuseReportType[]'
+ */
+export type ListEnumAbuseReportTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AbuseReportType[]'>
+    
+
+
+/**
+ * Reference to a field of type 'AbuseReportStatus'
+ */
+export type EnumAbuseReportStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AbuseReportStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'AbuseReportStatus[]'
+ */
+export type ListEnumAbuseReportStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AbuseReportStatus[]'>
+    
+
+
+/**
+ * Reference to a field of type 'AbuseReportDecision'
+ */
+export type EnumAbuseReportDecisionFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AbuseReportDecision'>
+    
+
+
+/**
+ * Reference to a field of type 'AbuseReportDecision[]'
+ */
+export type ListEnumAbuseReportDecisionFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AbuseReportDecision[]'>
     
 
 
@@ -4923,6 +5313,9 @@ export type GlobalOmitConfig = {
   tenantMediaAsset?: Prisma.TenantMediaAssetOmit
   review?: Prisma.ReviewOmit
   post?: Prisma.PostOmit
+  auditLog?: Prisma.AuditLogOmit
+  tenantDailyStat?: Prisma.TenantDailyStatOmit
+  abuseReport?: Prisma.AbuseReportOmit
 }
 
 /* Types for Logging */

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { brandColors } from "@gieochu/config/theme";
 import { getEnv } from "@gieochu/config";
-import { calculateOrderPricing, isReservedProductSlug, productPath as buildProductPath, productUrl } from "@gieochu/core";
+import { calculateOrderPricing, isReservedProductSlug, productPath as buildProductPath, productUrl, resolveStorefrontAccess } from "@gieochu/core";
 import { findTenantBySlugForStorefront, getPublishedProductBySlug } from "../../../lib/storefront";
 import { getProductCoverUrl } from "../../../lib/product-cover";
 import { getProductRatingSummary, getProductReviews, getReviewEligibility, PRODUCT_REVIEWS_PAGE_SIZE, PRODUCT_REVIEWS_PAGE_SIZE_MAX } from "../../../lib/review";
@@ -15,6 +15,7 @@ import { IconInfo } from "../_ui/icons";
 import { ProductDetailView } from "../_ui/product-detail";
 import { PRODUCT_REVIEWS_ANCHOR, ProductReviewsSection } from "../_ui/product-reviews";
 import { ReviewComposer } from "../_ui/review-composer";
+import { ReportAbuseButton } from "../_ui/report-abuse";
 import { BuyButton } from "./buy-button";
 
 // ADR-030: URL chuẩn `/{tenantSlug}/{productSlug}` (URL cũ `/{tenantSlug}/products/{productSlug}` → 301 ở
@@ -53,7 +54,8 @@ export async function generateMetadata({
   const { tenantSlug, productSlug } = await params;
   if (isReservedProductSlug(productSlug)) return {};
   const tenant = await findTenantBySlugForStorefront(tenantSlug);
-  if (!tenant) return {};
+  // ADR-040: trang tài liệu của gian hàng không ACTIVE trả 404 cho khách → không lộ tiêu đề/mô tả qua metadata.
+  if (!tenant || tenant.status !== "ACTIVE") return {};
   const product = await getPublishedProductBySlug(tenant.id, productSlug);
   if (!product) return {};
   return {
@@ -74,13 +76,17 @@ export default async function ProductDetailPage({
   if (isReservedProductSlug(productSlug)) notFound();
   const paging = parseReviewPaging(await searchParams);
   const tenant = await findTenantBySlugForStorefront(tenantSlug);
-  if (!tenant || tenant.status === "LOCKED") notFound();
-
-  const product = await getPublishedProductBySlug(tenant.id, productSlug);
-  if (!product) notFound();
+  if (!tenant) notFound();
 
   const currentUser = await getCurrentUser();
   const isOwner = currentUser?.userId === tenant.ownerId;
+  // ADR-040: chỉ gian hàng ACTIVE hiển thị tài liệu. READ_ONLY → khách 404 (chủ vẫn xem); LOCKED → 404 cho mọi
+  // người như trước (chủ thấy thông báo khoá ở trang gian hàng, không ở đây). Kiểm trước khi truy vấn sản phẩm.
+  const access = resolveStorefrontAccess(tenant.status, isOwner ? "owner" : "guest");
+  if (access !== "ACTIVE" && access !== "READ_ONLY") notFound();
+
+  const product = await getPublishedProductBySlug(tenant.id, productSlug);
+  if (!product) notFound();
 
   const pricing = calculateOrderPricing(
     [
@@ -135,12 +141,8 @@ export default async function ProductDetailPage({
       <IconInfo className="mt-0.5 h-4 w-4 shrink-0" />
       Đây là sản phẩm của bạn.
     </p>
-  ) : tenant.status !== "ACTIVE" ? (
-    <p className="flex items-start gap-2 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
-      <IconInfo className="mt-0.5 h-4 w-4 shrink-0" />
-      Trang tạm ngưng bán — chưa thể mua lúc này.
-    </p>
   ) : (
+    // ADR-040: tới đây khách chỉ có thể đang xem gian hàng ACTIVE (không ACTIVE đã 404 ở trên).
     <BuyButton tenantSlug={tenant.slug} productId={product.id} productSlug={product.slug} loggedIn={Boolean(currentUser)} />
   );
 
@@ -173,6 +175,12 @@ export default async function ProductDetailPage({
             rating: { average: ratingSummary.average, count: ratingSummary.count },
           }}
           purchase={purchase}
+          report={
+            // ADR-038: ai cũng báo cáo được (khách vãng lai nhập email trong hộp thoại); chủ trang không tự báo cáo.
+            isOwner ? undefined : (
+              <ReportAbuseButton targetType="PRODUCT" targetId={product.id} targetLabel={`Tài liệu “${product.title}”`} isSignedIn={Boolean(currentUser)} />
+            )
+          }
           reviews={
             <ProductReviewsSection
               tenantName={tenant.name}
@@ -181,6 +189,21 @@ export default async function ProductDetailPage({
               composer={composer}
               loadMore={loadMore}
               resetHref={paging.after ? `${productPath}#${PRODUCT_REVIEWS_ANCHOR}` : null}
+              renderReport={
+                isOwner
+                  ? undefined
+                  : (review) => (
+                      <ReportAbuseButton
+                        targetType="REVIEW"
+                        targetId={review.id}
+                        targetLabel={`Đánh giá của ${review.displayName} cho tài liệu “${product.title}”`}
+                        isSignedIn={Boolean(currentUser)}
+                        label="Báo cáo"
+                        srContext={` đánh giá của ${review.displayName}`}
+                        className="text-xs"
+                      />
+                    )
+              }
             />
           }
         />

@@ -18,6 +18,10 @@ import type * as Prisma from "../internal/prismaNamespace"
  * `downloadLimit` is a snapshot of `product.downloadLimit` at purchase
  * time (§5.3 snapshot convention) — a later change to the product's limit
  * never retroactively changes what an existing buyer already has.
+ * 
+ * ADR-039 — quyền lợi người mua khi tài liệu bị admin lưu trữ do vi phạm (`remedy*`). Chỉ scope `system_job` đặt/đổi
+ * (trigger `entitlements_guard_remedy`), ngoại lệ duy nhất: tenant hoàn tiền chuyển REFUND_REQUESTED → REFUNDED.
+ * `remedyReportId` trỏ `abuse_reports.id` (L1) — không FK, chỉ để truy vết.
  */
 export type EntitlementModel = runtime.Types.Result.DefaultSelection<Prisma.$EntitlementPayload>
 
@@ -49,6 +53,11 @@ export type EntitlementMinAggregateOutputType = {
   downloadLimit: number | null
   revokedAt: Date | null
   createdAt: Date | null
+  remedyStatus: $Enums.EntitlementRemedyStatus | null
+  remedyRequestedAt: Date | null
+  remedyChosenAt: Date | null
+  remedyResolvedAt: Date | null
+  remedyReportId: string | null
 }
 
 export type EntitlementMaxAggregateOutputType = {
@@ -61,6 +70,11 @@ export type EntitlementMaxAggregateOutputType = {
   downloadLimit: number | null
   revokedAt: Date | null
   createdAt: Date | null
+  remedyStatus: $Enums.EntitlementRemedyStatus | null
+  remedyRequestedAt: Date | null
+  remedyChosenAt: Date | null
+  remedyResolvedAt: Date | null
+  remedyReportId: string | null
 }
 
 export type EntitlementCountAggregateOutputType = {
@@ -73,6 +87,11 @@ export type EntitlementCountAggregateOutputType = {
   downloadLimit: number
   revokedAt: number
   createdAt: number
+  remedyStatus: number
+  remedyRequestedAt: number
+  remedyChosenAt: number
+  remedyResolvedAt: number
+  remedyReportId: number
   _all: number
 }
 
@@ -97,6 +116,11 @@ export type EntitlementMinAggregateInputType = {
   downloadLimit?: true
   revokedAt?: true
   createdAt?: true
+  remedyStatus?: true
+  remedyRequestedAt?: true
+  remedyChosenAt?: true
+  remedyResolvedAt?: true
+  remedyReportId?: true
 }
 
 export type EntitlementMaxAggregateInputType = {
@@ -109,6 +133,11 @@ export type EntitlementMaxAggregateInputType = {
   downloadLimit?: true
   revokedAt?: true
   createdAt?: true
+  remedyStatus?: true
+  remedyRequestedAt?: true
+  remedyChosenAt?: true
+  remedyResolvedAt?: true
+  remedyReportId?: true
 }
 
 export type EntitlementCountAggregateInputType = {
@@ -121,6 +150,11 @@ export type EntitlementCountAggregateInputType = {
   downloadLimit?: true
   revokedAt?: true
   createdAt?: true
+  remedyStatus?: true
+  remedyRequestedAt?: true
+  remedyChosenAt?: true
+  remedyResolvedAt?: true
+  remedyReportId?: true
   _all?: true
 }
 
@@ -220,6 +254,11 @@ export type EntitlementGroupByOutputType = {
   downloadLimit: number
   revokedAt: Date | null
   createdAt: Date
+  remedyStatus: $Enums.EntitlementRemedyStatus
+  remedyRequestedAt: Date | null
+  remedyChosenAt: Date | null
+  remedyResolvedAt: Date | null
+  remedyReportId: string | null
   _count: EntitlementCountAggregateOutputType | null
   _avg: EntitlementAvgAggregateOutputType | null
   _sum: EntitlementSumAggregateOutputType | null
@@ -255,6 +294,11 @@ export type EntitlementWhereInput = {
   downloadLimit?: Prisma.IntFilter<"Entitlement"> | number
   revokedAt?: Prisma.DateTimeNullableFilter<"Entitlement"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Entitlement"> | Date | string
+  remedyStatus?: Prisma.EnumEntitlementRemedyStatusFilter<"Entitlement"> | $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Prisma.DateTimeNullableFilter<"Entitlement"> | Date | string | null
+  remedyChosenAt?: Prisma.DateTimeNullableFilter<"Entitlement"> | Date | string | null
+  remedyResolvedAt?: Prisma.DateTimeNullableFilter<"Entitlement"> | Date | string | null
+  remedyReportId?: Prisma.StringNullableFilter<"Entitlement"> | string | null
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   tenant?: Prisma.XOR<Prisma.TenantScalarRelationFilter, Prisma.TenantWhereInput>
   product?: Prisma.XOR<Prisma.ProductScalarRelationFilter, Prisma.ProductWhereInput>
@@ -273,6 +317,11 @@ export type EntitlementOrderByWithRelationInput = {
   downloadLimit?: Prisma.SortOrder
   revokedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  remedyStatus?: Prisma.SortOrder
+  remedyRequestedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  remedyChosenAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  remedyResolvedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  remedyReportId?: Prisma.SortOrderInput | Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
   tenant?: Prisma.TenantOrderByWithRelationInput
   product?: Prisma.ProductOrderByWithRelationInput
@@ -294,6 +343,11 @@ export type EntitlementWhereUniqueInput = Prisma.AtLeast<{
   downloadLimit?: Prisma.IntFilter<"Entitlement"> | number
   revokedAt?: Prisma.DateTimeNullableFilter<"Entitlement"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Entitlement"> | Date | string
+  remedyStatus?: Prisma.EnumEntitlementRemedyStatusFilter<"Entitlement"> | $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Prisma.DateTimeNullableFilter<"Entitlement"> | Date | string | null
+  remedyChosenAt?: Prisma.DateTimeNullableFilter<"Entitlement"> | Date | string | null
+  remedyResolvedAt?: Prisma.DateTimeNullableFilter<"Entitlement"> | Date | string | null
+  remedyReportId?: Prisma.StringNullableFilter<"Entitlement"> | string | null
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   tenant?: Prisma.XOR<Prisma.TenantScalarRelationFilter, Prisma.TenantWhereInput>
   product?: Prisma.XOR<Prisma.ProductScalarRelationFilter, Prisma.ProductWhereInput>
@@ -312,6 +366,11 @@ export type EntitlementOrderByWithAggregationInput = {
   downloadLimit?: Prisma.SortOrder
   revokedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  remedyStatus?: Prisma.SortOrder
+  remedyRequestedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  remedyChosenAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  remedyResolvedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  remedyReportId?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.EntitlementCountOrderByAggregateInput
   _avg?: Prisma.EntitlementAvgOrderByAggregateInput
   _max?: Prisma.EntitlementMaxOrderByAggregateInput
@@ -332,6 +391,11 @@ export type EntitlementScalarWhereWithAggregatesInput = {
   downloadLimit?: Prisma.IntWithAggregatesFilter<"Entitlement"> | number
   revokedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Entitlement"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Entitlement"> | Date | string
+  remedyStatus?: Prisma.EnumEntitlementRemedyStatusWithAggregatesFilter<"Entitlement"> | $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Entitlement"> | Date | string | null
+  remedyChosenAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Entitlement"> | Date | string | null
+  remedyResolvedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Entitlement"> | Date | string | null
+  remedyReportId?: Prisma.StringNullableWithAggregatesFilter<"Entitlement"> | string | null
 }
 
 export type EntitlementCreateInput = {
@@ -340,6 +404,11 @@ export type EntitlementCreateInput = {
   downloadLimit: number
   revokedAt?: Date | string | null
   createdAt?: Date | string
+  remedyStatus?: $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Date | string | null
+  remedyChosenAt?: Date | string | null
+  remedyResolvedAt?: Date | string | null
+  remedyReportId?: string | null
   user: Prisma.UserCreateNestedOneWithoutEntitlementsInput
   tenant: Prisma.TenantCreateNestedOneWithoutEntitlementsInput
   product: Prisma.ProductCreateNestedOneWithoutEntitlementsInput
@@ -358,6 +427,11 @@ export type EntitlementUncheckedCreateInput = {
   downloadLimit: number
   revokedAt?: Date | string | null
   createdAt?: Date | string
+  remedyStatus?: $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Date | string | null
+  remedyChosenAt?: Date | string | null
+  remedyResolvedAt?: Date | string | null
+  remedyReportId?: string | null
   downloadTokens?: Prisma.DownloadTokenUncheckedCreateNestedManyWithoutEntitlementInput
   downloadEvents?: Prisma.DownloadEventUncheckedCreateNestedManyWithoutEntitlementInput
 }
@@ -368,6 +442,11 @@ export type EntitlementUpdateInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  remedyStatus?: Prisma.EnumEntitlementRemedyStatusFieldUpdateOperationsInput | $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyChosenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyResolvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyReportId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   user?: Prisma.UserUpdateOneRequiredWithoutEntitlementsNestedInput
   tenant?: Prisma.TenantUpdateOneRequiredWithoutEntitlementsNestedInput
   product?: Prisma.ProductUpdateOneRequiredWithoutEntitlementsNestedInput
@@ -386,6 +465,11 @@ export type EntitlementUncheckedUpdateInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  remedyStatus?: Prisma.EnumEntitlementRemedyStatusFieldUpdateOperationsInput | $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyChosenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyResolvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyReportId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   downloadTokens?: Prisma.DownloadTokenUncheckedUpdateManyWithoutEntitlementNestedInput
   downloadEvents?: Prisma.DownloadEventUncheckedUpdateManyWithoutEntitlementNestedInput
 }
@@ -400,6 +484,11 @@ export type EntitlementCreateManyInput = {
   downloadLimit: number
   revokedAt?: Date | string | null
   createdAt?: Date | string
+  remedyStatus?: $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Date | string | null
+  remedyChosenAt?: Date | string | null
+  remedyResolvedAt?: Date | string | null
+  remedyReportId?: string | null
 }
 
 export type EntitlementUpdateManyMutationInput = {
@@ -408,6 +497,11 @@ export type EntitlementUpdateManyMutationInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  remedyStatus?: Prisma.EnumEntitlementRemedyStatusFieldUpdateOperationsInput | $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyChosenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyResolvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyReportId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type EntitlementUncheckedUpdateManyInput = {
@@ -420,6 +514,11 @@ export type EntitlementUncheckedUpdateManyInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  remedyStatus?: Prisma.EnumEntitlementRemedyStatusFieldUpdateOperationsInput | $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyChosenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyResolvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyReportId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type EntitlementListRelationFilter = {
@@ -447,6 +546,11 @@ export type EntitlementCountOrderByAggregateInput = {
   downloadLimit?: Prisma.SortOrder
   revokedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  remedyStatus?: Prisma.SortOrder
+  remedyRequestedAt?: Prisma.SortOrder
+  remedyChosenAt?: Prisma.SortOrder
+  remedyResolvedAt?: Prisma.SortOrder
+  remedyReportId?: Prisma.SortOrder
 }
 
 export type EntitlementAvgOrderByAggregateInput = {
@@ -464,6 +568,11 @@ export type EntitlementMaxOrderByAggregateInput = {
   downloadLimit?: Prisma.SortOrder
   revokedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  remedyStatus?: Prisma.SortOrder
+  remedyRequestedAt?: Prisma.SortOrder
+  remedyChosenAt?: Prisma.SortOrder
+  remedyResolvedAt?: Prisma.SortOrder
+  remedyReportId?: Prisma.SortOrder
 }
 
 export type EntitlementMinOrderByAggregateInput = {
@@ -476,6 +585,11 @@ export type EntitlementMinOrderByAggregateInput = {
   downloadLimit?: Prisma.SortOrder
   revokedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  remedyStatus?: Prisma.SortOrder
+  remedyRequestedAt?: Prisma.SortOrder
+  remedyChosenAt?: Prisma.SortOrder
+  remedyResolvedAt?: Prisma.SortOrder
+  remedyReportId?: Prisma.SortOrder
 }
 
 export type EntitlementSumOrderByAggregateInput = {
@@ -646,6 +760,10 @@ export type EntitlementUncheckedUpdateOneWithoutOrderItemNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.EntitlementUpdateToOneWithWhereWithoutOrderItemInput, Prisma.EntitlementUpdateWithoutOrderItemInput>, Prisma.EntitlementUncheckedUpdateWithoutOrderItemInput>
 }
 
+export type EnumEntitlementRemedyStatusFieldUpdateOperationsInput = {
+  set?: $Enums.EntitlementRemedyStatus
+}
+
 export type EntitlementCreateNestedOneWithoutDownloadTokensInput = {
   create?: Prisma.XOR<Prisma.EntitlementCreateWithoutDownloadTokensInput, Prisma.EntitlementUncheckedCreateWithoutDownloadTokensInput>
   connectOrCreate?: Prisma.EntitlementCreateOrConnectWithoutDownloadTokensInput
@@ -682,6 +800,11 @@ export type EntitlementCreateWithoutUserInput = {
   downloadLimit: number
   revokedAt?: Date | string | null
   createdAt?: Date | string
+  remedyStatus?: $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Date | string | null
+  remedyChosenAt?: Date | string | null
+  remedyResolvedAt?: Date | string | null
+  remedyReportId?: string | null
   tenant: Prisma.TenantCreateNestedOneWithoutEntitlementsInput
   product: Prisma.ProductCreateNestedOneWithoutEntitlementsInput
   orderItem: Prisma.OrderItemCreateNestedOneWithoutEntitlementInput
@@ -698,6 +821,11 @@ export type EntitlementUncheckedCreateWithoutUserInput = {
   downloadLimit: number
   revokedAt?: Date | string | null
   createdAt?: Date | string
+  remedyStatus?: $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Date | string | null
+  remedyChosenAt?: Date | string | null
+  remedyResolvedAt?: Date | string | null
+  remedyReportId?: string | null
   downloadTokens?: Prisma.DownloadTokenUncheckedCreateNestedManyWithoutEntitlementInput
   downloadEvents?: Prisma.DownloadEventUncheckedCreateNestedManyWithoutEntitlementInput
 }
@@ -741,6 +869,11 @@ export type EntitlementScalarWhereInput = {
   downloadLimit?: Prisma.IntFilter<"Entitlement"> | number
   revokedAt?: Prisma.DateTimeNullableFilter<"Entitlement"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Entitlement"> | Date | string
+  remedyStatus?: Prisma.EnumEntitlementRemedyStatusFilter<"Entitlement"> | $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Prisma.DateTimeNullableFilter<"Entitlement"> | Date | string | null
+  remedyChosenAt?: Prisma.DateTimeNullableFilter<"Entitlement"> | Date | string | null
+  remedyResolvedAt?: Prisma.DateTimeNullableFilter<"Entitlement"> | Date | string | null
+  remedyReportId?: Prisma.StringNullableFilter<"Entitlement"> | string | null
 }
 
 export type EntitlementCreateWithoutTenantInput = {
@@ -749,6 +882,11 @@ export type EntitlementCreateWithoutTenantInput = {
   downloadLimit: number
   revokedAt?: Date | string | null
   createdAt?: Date | string
+  remedyStatus?: $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Date | string | null
+  remedyChosenAt?: Date | string | null
+  remedyResolvedAt?: Date | string | null
+  remedyReportId?: string | null
   user: Prisma.UserCreateNestedOneWithoutEntitlementsInput
   product: Prisma.ProductCreateNestedOneWithoutEntitlementsInput
   orderItem: Prisma.OrderItemCreateNestedOneWithoutEntitlementInput
@@ -765,6 +903,11 @@ export type EntitlementUncheckedCreateWithoutTenantInput = {
   downloadLimit: number
   revokedAt?: Date | string | null
   createdAt?: Date | string
+  remedyStatus?: $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Date | string | null
+  remedyChosenAt?: Date | string | null
+  remedyResolvedAt?: Date | string | null
+  remedyReportId?: string | null
   downloadTokens?: Prisma.DownloadTokenUncheckedCreateNestedManyWithoutEntitlementInput
   downloadEvents?: Prisma.DownloadEventUncheckedCreateNestedManyWithoutEntitlementInput
 }
@@ -801,6 +944,11 @@ export type EntitlementCreateWithoutProductInput = {
   downloadLimit: number
   revokedAt?: Date | string | null
   createdAt?: Date | string
+  remedyStatus?: $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Date | string | null
+  remedyChosenAt?: Date | string | null
+  remedyResolvedAt?: Date | string | null
+  remedyReportId?: string | null
   user: Prisma.UserCreateNestedOneWithoutEntitlementsInput
   tenant: Prisma.TenantCreateNestedOneWithoutEntitlementsInput
   orderItem: Prisma.OrderItemCreateNestedOneWithoutEntitlementInput
@@ -817,6 +965,11 @@ export type EntitlementUncheckedCreateWithoutProductInput = {
   downloadLimit: number
   revokedAt?: Date | string | null
   createdAt?: Date | string
+  remedyStatus?: $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Date | string | null
+  remedyChosenAt?: Date | string | null
+  remedyResolvedAt?: Date | string | null
+  remedyReportId?: string | null
   downloadTokens?: Prisma.DownloadTokenUncheckedCreateNestedManyWithoutEntitlementInput
   downloadEvents?: Prisma.DownloadEventUncheckedCreateNestedManyWithoutEntitlementInput
 }
@@ -853,6 +1006,11 @@ export type EntitlementCreateWithoutOrderItemInput = {
   downloadLimit: number
   revokedAt?: Date | string | null
   createdAt?: Date | string
+  remedyStatus?: $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Date | string | null
+  remedyChosenAt?: Date | string | null
+  remedyResolvedAt?: Date | string | null
+  remedyReportId?: string | null
   user: Prisma.UserCreateNestedOneWithoutEntitlementsInput
   tenant: Prisma.TenantCreateNestedOneWithoutEntitlementsInput
   product: Prisma.ProductCreateNestedOneWithoutEntitlementsInput
@@ -869,6 +1027,11 @@ export type EntitlementUncheckedCreateWithoutOrderItemInput = {
   downloadLimit: number
   revokedAt?: Date | string | null
   createdAt?: Date | string
+  remedyStatus?: $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Date | string | null
+  remedyChosenAt?: Date | string | null
+  remedyResolvedAt?: Date | string | null
+  remedyReportId?: string | null
   downloadTokens?: Prisma.DownloadTokenUncheckedCreateNestedManyWithoutEntitlementInput
   downloadEvents?: Prisma.DownloadEventUncheckedCreateNestedManyWithoutEntitlementInput
 }
@@ -895,6 +1058,11 @@ export type EntitlementUpdateWithoutOrderItemInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  remedyStatus?: Prisma.EnumEntitlementRemedyStatusFieldUpdateOperationsInput | $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyChosenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyResolvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyReportId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   user?: Prisma.UserUpdateOneRequiredWithoutEntitlementsNestedInput
   tenant?: Prisma.TenantUpdateOneRequiredWithoutEntitlementsNestedInput
   product?: Prisma.ProductUpdateOneRequiredWithoutEntitlementsNestedInput
@@ -911,6 +1079,11 @@ export type EntitlementUncheckedUpdateWithoutOrderItemInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  remedyStatus?: Prisma.EnumEntitlementRemedyStatusFieldUpdateOperationsInput | $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyChosenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyResolvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyReportId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   downloadTokens?: Prisma.DownloadTokenUncheckedUpdateManyWithoutEntitlementNestedInput
   downloadEvents?: Prisma.DownloadEventUncheckedUpdateManyWithoutEntitlementNestedInput
 }
@@ -921,6 +1094,11 @@ export type EntitlementCreateWithoutDownloadTokensInput = {
   downloadLimit: number
   revokedAt?: Date | string | null
   createdAt?: Date | string
+  remedyStatus?: $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Date | string | null
+  remedyChosenAt?: Date | string | null
+  remedyResolvedAt?: Date | string | null
+  remedyReportId?: string | null
   user: Prisma.UserCreateNestedOneWithoutEntitlementsInput
   tenant: Prisma.TenantCreateNestedOneWithoutEntitlementsInput
   product: Prisma.ProductCreateNestedOneWithoutEntitlementsInput
@@ -938,6 +1116,11 @@ export type EntitlementUncheckedCreateWithoutDownloadTokensInput = {
   downloadLimit: number
   revokedAt?: Date | string | null
   createdAt?: Date | string
+  remedyStatus?: $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Date | string | null
+  remedyChosenAt?: Date | string | null
+  remedyResolvedAt?: Date | string | null
+  remedyReportId?: string | null
   downloadEvents?: Prisma.DownloadEventUncheckedCreateNestedManyWithoutEntitlementInput
 }
 
@@ -963,6 +1146,11 @@ export type EntitlementUpdateWithoutDownloadTokensInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  remedyStatus?: Prisma.EnumEntitlementRemedyStatusFieldUpdateOperationsInput | $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyChosenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyResolvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyReportId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   user?: Prisma.UserUpdateOneRequiredWithoutEntitlementsNestedInput
   tenant?: Prisma.TenantUpdateOneRequiredWithoutEntitlementsNestedInput
   product?: Prisma.ProductUpdateOneRequiredWithoutEntitlementsNestedInput
@@ -980,6 +1168,11 @@ export type EntitlementUncheckedUpdateWithoutDownloadTokensInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  remedyStatus?: Prisma.EnumEntitlementRemedyStatusFieldUpdateOperationsInput | $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyChosenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyResolvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyReportId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   downloadEvents?: Prisma.DownloadEventUncheckedUpdateManyWithoutEntitlementNestedInput
 }
 
@@ -989,6 +1182,11 @@ export type EntitlementCreateWithoutDownloadEventsInput = {
   downloadLimit: number
   revokedAt?: Date | string | null
   createdAt?: Date | string
+  remedyStatus?: $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Date | string | null
+  remedyChosenAt?: Date | string | null
+  remedyResolvedAt?: Date | string | null
+  remedyReportId?: string | null
   user: Prisma.UserCreateNestedOneWithoutEntitlementsInput
   tenant: Prisma.TenantCreateNestedOneWithoutEntitlementsInput
   product: Prisma.ProductCreateNestedOneWithoutEntitlementsInput
@@ -1006,6 +1204,11 @@ export type EntitlementUncheckedCreateWithoutDownloadEventsInput = {
   downloadLimit: number
   revokedAt?: Date | string | null
   createdAt?: Date | string
+  remedyStatus?: $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Date | string | null
+  remedyChosenAt?: Date | string | null
+  remedyResolvedAt?: Date | string | null
+  remedyReportId?: string | null
   downloadTokens?: Prisma.DownloadTokenUncheckedCreateNestedManyWithoutEntitlementInput
 }
 
@@ -1031,6 +1234,11 @@ export type EntitlementUpdateWithoutDownloadEventsInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  remedyStatus?: Prisma.EnumEntitlementRemedyStatusFieldUpdateOperationsInput | $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyChosenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyResolvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyReportId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   user?: Prisma.UserUpdateOneRequiredWithoutEntitlementsNestedInput
   tenant?: Prisma.TenantUpdateOneRequiredWithoutEntitlementsNestedInput
   product?: Prisma.ProductUpdateOneRequiredWithoutEntitlementsNestedInput
@@ -1048,6 +1256,11 @@ export type EntitlementUncheckedUpdateWithoutDownloadEventsInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  remedyStatus?: Prisma.EnumEntitlementRemedyStatusFieldUpdateOperationsInput | $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyChosenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyResolvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyReportId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   downloadTokens?: Prisma.DownloadTokenUncheckedUpdateManyWithoutEntitlementNestedInput
 }
 
@@ -1060,6 +1273,11 @@ export type EntitlementCreateManyUserInput = {
   downloadLimit: number
   revokedAt?: Date | string | null
   createdAt?: Date | string
+  remedyStatus?: $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Date | string | null
+  remedyChosenAt?: Date | string | null
+  remedyResolvedAt?: Date | string | null
+  remedyReportId?: string | null
 }
 
 export type EntitlementUpdateWithoutUserInput = {
@@ -1068,6 +1286,11 @@ export type EntitlementUpdateWithoutUserInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  remedyStatus?: Prisma.EnumEntitlementRemedyStatusFieldUpdateOperationsInput | $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyChosenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyResolvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyReportId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   tenant?: Prisma.TenantUpdateOneRequiredWithoutEntitlementsNestedInput
   product?: Prisma.ProductUpdateOneRequiredWithoutEntitlementsNestedInput
   orderItem?: Prisma.OrderItemUpdateOneRequiredWithoutEntitlementNestedInput
@@ -1084,6 +1307,11 @@ export type EntitlementUncheckedUpdateWithoutUserInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  remedyStatus?: Prisma.EnumEntitlementRemedyStatusFieldUpdateOperationsInput | $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyChosenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyResolvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyReportId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   downloadTokens?: Prisma.DownloadTokenUncheckedUpdateManyWithoutEntitlementNestedInput
   downloadEvents?: Prisma.DownloadEventUncheckedUpdateManyWithoutEntitlementNestedInput
 }
@@ -1097,6 +1325,11 @@ export type EntitlementUncheckedUpdateManyWithoutUserInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  remedyStatus?: Prisma.EnumEntitlementRemedyStatusFieldUpdateOperationsInput | $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyChosenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyResolvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyReportId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type EntitlementCreateManyTenantInput = {
@@ -1108,6 +1341,11 @@ export type EntitlementCreateManyTenantInput = {
   downloadLimit: number
   revokedAt?: Date | string | null
   createdAt?: Date | string
+  remedyStatus?: $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Date | string | null
+  remedyChosenAt?: Date | string | null
+  remedyResolvedAt?: Date | string | null
+  remedyReportId?: string | null
 }
 
 export type EntitlementUpdateWithoutTenantInput = {
@@ -1116,6 +1354,11 @@ export type EntitlementUpdateWithoutTenantInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  remedyStatus?: Prisma.EnumEntitlementRemedyStatusFieldUpdateOperationsInput | $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyChosenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyResolvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyReportId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   user?: Prisma.UserUpdateOneRequiredWithoutEntitlementsNestedInput
   product?: Prisma.ProductUpdateOneRequiredWithoutEntitlementsNestedInput
   orderItem?: Prisma.OrderItemUpdateOneRequiredWithoutEntitlementNestedInput
@@ -1132,6 +1375,11 @@ export type EntitlementUncheckedUpdateWithoutTenantInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  remedyStatus?: Prisma.EnumEntitlementRemedyStatusFieldUpdateOperationsInput | $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyChosenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyResolvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyReportId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   downloadTokens?: Prisma.DownloadTokenUncheckedUpdateManyWithoutEntitlementNestedInput
   downloadEvents?: Prisma.DownloadEventUncheckedUpdateManyWithoutEntitlementNestedInput
 }
@@ -1145,6 +1393,11 @@ export type EntitlementUncheckedUpdateManyWithoutTenantInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  remedyStatus?: Prisma.EnumEntitlementRemedyStatusFieldUpdateOperationsInput | $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyChosenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyResolvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyReportId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type EntitlementCreateManyProductInput = {
@@ -1156,6 +1409,11 @@ export type EntitlementCreateManyProductInput = {
   downloadLimit: number
   revokedAt?: Date | string | null
   createdAt?: Date | string
+  remedyStatus?: $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Date | string | null
+  remedyChosenAt?: Date | string | null
+  remedyResolvedAt?: Date | string | null
+  remedyReportId?: string | null
 }
 
 export type EntitlementUpdateWithoutProductInput = {
@@ -1164,6 +1422,11 @@ export type EntitlementUpdateWithoutProductInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  remedyStatus?: Prisma.EnumEntitlementRemedyStatusFieldUpdateOperationsInput | $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyChosenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyResolvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyReportId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   user?: Prisma.UserUpdateOneRequiredWithoutEntitlementsNestedInput
   tenant?: Prisma.TenantUpdateOneRequiredWithoutEntitlementsNestedInput
   orderItem?: Prisma.OrderItemUpdateOneRequiredWithoutEntitlementNestedInput
@@ -1180,6 +1443,11 @@ export type EntitlementUncheckedUpdateWithoutProductInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  remedyStatus?: Prisma.EnumEntitlementRemedyStatusFieldUpdateOperationsInput | $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyChosenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyResolvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyReportId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   downloadTokens?: Prisma.DownloadTokenUncheckedUpdateManyWithoutEntitlementNestedInput
   downloadEvents?: Prisma.DownloadEventUncheckedUpdateManyWithoutEntitlementNestedInput
 }
@@ -1193,6 +1461,11 @@ export type EntitlementUncheckedUpdateManyWithoutProductInput = {
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   revokedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  remedyStatus?: Prisma.EnumEntitlementRemedyStatusFieldUpdateOperationsInput | $Enums.EntitlementRemedyStatus
+  remedyRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyChosenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyResolvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  remedyReportId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 
@@ -1245,6 +1518,11 @@ export type EntitlementSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   downloadLimit?: boolean
   revokedAt?: boolean
   createdAt?: boolean
+  remedyStatus?: boolean
+  remedyRequestedAt?: boolean
+  remedyChosenAt?: boolean
+  remedyResolvedAt?: boolean
+  remedyReportId?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
@@ -1264,6 +1542,11 @@ export type EntitlementSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   downloadLimit?: boolean
   revokedAt?: boolean
   createdAt?: boolean
+  remedyStatus?: boolean
+  remedyRequestedAt?: boolean
+  remedyChosenAt?: boolean
+  remedyResolvedAt?: boolean
+  remedyReportId?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
@@ -1280,6 +1563,11 @@ export type EntitlementSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   downloadLimit?: boolean
   revokedAt?: boolean
   createdAt?: boolean
+  remedyStatus?: boolean
+  remedyRequestedAt?: boolean
+  remedyChosenAt?: boolean
+  remedyResolvedAt?: boolean
+  remedyReportId?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
@@ -1296,9 +1584,14 @@ export type EntitlementSelectScalar = {
   downloadLimit?: boolean
   revokedAt?: boolean
   createdAt?: boolean
+  remedyStatus?: boolean
+  remedyRequestedAt?: boolean
+  remedyChosenAt?: boolean
+  remedyResolvedAt?: boolean
+  remedyReportId?: boolean
 }
 
-export type EntitlementOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "tenantId" | "productId" | "orderItemId" | "downloadsUsed" | "downloadLimit" | "revokedAt" | "createdAt", ExtArgs["result"]["entitlement"]>
+export type EntitlementOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "tenantId" | "productId" | "orderItemId" | "downloadsUsed" | "downloadLimit" | "revokedAt" | "createdAt" | "remedyStatus" | "remedyRequestedAt" | "remedyChosenAt" | "remedyResolvedAt" | "remedyReportId", ExtArgs["result"]["entitlement"]>
 export type EntitlementInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
@@ -1341,6 +1634,20 @@ export type $EntitlementPayload<ExtArgs extends runtime.Types.Extensions.Interna
     downloadLimit: number
     revokedAt: Date | null
     createdAt: Date
+    remedyStatus: $Enums.EntitlementRemedyStatus
+    /**
+     * Thời điểm hệ thống mở quyền chọn (admin lưu trữ tài liệu do vi phạm).
+     */
+    remedyRequestedAt: Date | null
+    /**
+     * Thời điểm khách chọn (tải lần cuối / yêu cầu hoàn tiền) — mốc tính hạn 7 ngày của yêu cầu hoàn tiền.
+     */
+    remedyChosenAt: Date | null
+    /**
+     * Thời điểm tenant bấm "Hoàn tiền" cho yêu cầu hoàn tiền (REFUND_REQUESTED → REFUNDED); null ở mọi trạng thái khác.
+     */
+    remedyResolvedAt: Date | null
+    remedyReportId: string | null
   }, ExtArgs["result"]["entitlement"]>
   composites: {}
 }
@@ -1779,6 +2086,11 @@ export interface EntitlementFieldRefs {
   readonly downloadLimit: Prisma.FieldRef<"Entitlement", 'Int'>
   readonly revokedAt: Prisma.FieldRef<"Entitlement", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"Entitlement", 'DateTime'>
+  readonly remedyStatus: Prisma.FieldRef<"Entitlement", 'EntitlementRemedyStatus'>
+  readonly remedyRequestedAt: Prisma.FieldRef<"Entitlement", 'DateTime'>
+  readonly remedyChosenAt: Prisma.FieldRef<"Entitlement", 'DateTime'>
+  readonly remedyResolvedAt: Prisma.FieldRef<"Entitlement", 'DateTime'>
+  readonly remedyReportId: Prisma.FieldRef<"Entitlement", 'String'>
 }
     
 

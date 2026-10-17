@@ -17,7 +17,7 @@ BACKLOG) → M12 → hoàn thiện M2.
 | M0 | Nền móng dự án | ✅ Xong (bản đầu) | monorepo root, `packages/config`, `packages/core`, `packages/db` (schema tối thiểu), `docker/`, `apps/web` (shell) | 4 / 0 |
 | M1 | Xác thực và định danh | ✅ Xong | `packages/auth`, `packages/email`, `packages/jobs`, `apps/web/app/(auth)`, `apps/web/app/account`, `apps/web/lib` | 16 / 8 |
 | M4 | Tenant Workspace và Storefront | ✅ Xong | `apps/web/app/[tenantSlug]`, `apps/web/app/studio`, `packages/db/src/rls.ts` | 6 / 5 |
-| M2 | System Admin (cơ bản) | ✅ Xong (cơ bản — Platform Payment UI + audit log viewer chờ M7/M12) | `apps/web/app/admin`, `packages/core/src/admin` | 4 / 4 |
+| M2 | System Admin (cơ bản) | ✅ Xong (cơ bản — Platform Payment UI xong ở M3; audit log viewer `/admin/audit` xong ở M12a — ADR-037; báo cáo vi phạm `/admin/reports` xong code ở M12c — ADR-038) | `apps/web/app/admin`, `packages/core/src/admin` | 4 / 4 |
 | M7 | Cấu hình Tenant Payment | ✅ Xong | `packages/payments` | 10 / 4 |
 | M3 | Billing, Subscription & Entitlements (v2 — Hybrid Monetization) | ✅ Xong | `apps/web/lib/subscription-billing.ts`, `subscription-sweep.ts`, `platform-payment.ts`, `packages/core/src/billing` | 11 / 7 |
 | M5 | Sản phẩm và File tài liệu | 🟡 Code xong (CRUD + upload/presign/file.scan) — chờ verify với R2 thật | `packages/storage`, `apps/web/lib/{product,product-upload,file-scan}.ts` | 6 / 3 (+1 chờ storage thật) |
@@ -26,8 +26,8 @@ BACKLOG) → M12 → hoàn thiện M2.
 | M9 | Thư viện, Tải xuống, Share link | ✅ Xong | `apps/web/lib/{download,share-link,library,entitlement}.ts`, `packages/core/src/download` | 7 / 5 |
 | M10 | Social Feed và Đánh giá (tách theo ADR-029) | 🟡 **GĐ1 hoàn tất code** (nợ test): **M10a Đánh giá: xong code** (verify thủ công) · **M10b Bài viết tối giản: xong code** (verify thủ công) · M10c (bình luận/thả tim/theo dõi): chuyển `docs/BACKLOG.md` | M10a: `apps/web/lib/review.ts`, `packages/core/src/review`, `apps/web/app/studio/[tenantSlug]/reviews`; M10b: `apps/web/lib/post.ts`, `packages/core/src/content/post.ts`, `apps/web/app/studio/[tenantSlug]/posts`, `apps/web/app/[tenantSlug]/posts` | 4 / 3 (ngân sách gốc — chưa dùng, ADR-029 chọn chưa thêm test) |
 | M11 | Email và Background Jobs | 🟡 Email gửi đồng bộ (`sendEmailNow`); **job nền theo ADR-036: xong code, chưa commit/deploy** — `after()` drain hàng đợi trong route + Vercel Cron hằng ngày `GET /api/cron/daily`, `worker.ts` chỉ còn cho local | `packages/jobs`, `packages/email`, `apps/web/lib/{jobs,job-handlers,job-runner}.ts`, `apps/web/app/api/cron/daily`, `apps/web/worker.ts` | 0 / 0 (tính trong module khác) |
-| M12 | Audit Log, Thống kê, Báo cáo vi phạm | ⬜ Chưa làm | audit + stats + reports | 0 / 2 |
-| | **Tổng** | | | Trần gốc mục 9: **91 / 50** · trần hiện **94 / 53** (ADR-026) · thực **93 / 52** (`pnpm test:count` 2026-10-15). Cộng cột theo module ra 92 / 51 — cột là ngân sách gốc từng module, không phải số thực |
+| M12 | Audit Log, Thống kê, Báo cáo vi phạm (chia 3 đợt theo ADR-037) | 🟡 **Xong code cả 3 đợt — chờ commit/deploy** (M12a Audit log, M12b Thống kê, M12c Báo cáo vi phạm + quyền lợi người mua ADR-038/039; 4 migration đã áp DB 2026-10-16 — M12c/ADR-039 phải áp **trước** khi deploy code) | M12a: `packages/core/src/audit`, `apps/web/lib/{audit,audit-query}.ts`, `apps/web/app/admin/audit`, `apps/web/app/studio/[tenantSlug]/activity`; M12b: `apps/web/lib/{tenant-stats,admin-stats}.ts`, `apps/web/app/admin/_ui/sales-stats.tsx`, `apps/web/app/admin/page.tsx`; M12c: `packages/core/src/report`, `packages/core/src/download/entitlement-remedy.ts`, `apps/web/lib/{abuse-report,entitlement-remedy,moderation,tenant-lock,origin-guard}.ts`, `apps/web/app/api/reports`, `apps/web/app/admin/reports`, `apps/web/app/account/library` | 2 / 2 (M12a `audit.test.ts`, M12b `stats.test.ts`) |
+| | **Tổng** | | | Trần gốc mục 9: **91 / 50** · trần hiện **94 / 55** (ADR-026 + ADR-037 mục 6) · thực **93 / 53** (`pnpm test:count` 2026-10-16). Cộng cột theo module ra 92 / 51 — cột là ngân sách gốc từng module, không phải số thực |
 
 ## M0 — Việc đã làm (bản đầu, xem docs/modules/M0.md để có sơ đồ)
 
@@ -87,7 +87,7 @@ hoạt động đúng trên server thật.
 - `TEST_DATABASE_URL` riêng cho integration test chưa có (ADR-009) — đang dùng chung DB dev, tự dọn dữ liệu.
 - Avatar upload (nhắc ở mục M1 "đổi avatar") chưa làm — phụ thuộc `packages/storage` (M5).
 - Audit log cho các sự kiện M1 (`AUTH_LOGIN`, `AUTH_REFRESH_REUSE`, ...) chưa ghi — bảng `audit_logs` thuộc
-  M12, sẽ nối lại khi làm M12.
+  M12, sẽ nối lại khi làm M12. *(Đã nối ở M12a, 2026-10-16 — ADR-037.)*
 
 ## M4 — Việc đã làm (xem docs/modules/M4.md để có sơ đồ và danh sách test đầy đủ)
 
@@ -121,7 +121,8 @@ hàm); `docker compose up` cho MinIO/Mailpit vẫn chưa test trong phiên này.
   4/4 unit test.
 - Trang `/admin` (dashboard), `/admin/users`, `/admin/tenants`, `/admin/plans`, `/admin/cms`,
   `/admin/settings`; trang công khai `/pricing`, `/p/[slug]`. **Chưa làm**: Platform Payment config, audit log
-  viewer, báo cáo vi phạm — chờ M7/M12 theo đúng thứ tự mục 10 ("hoàn thiện M2" ở cuối).
+  viewer, báo cáo vi phạm — chờ M7/M12 theo đúng thứ tự mục 10 ("hoàn thiện M2" ở cuối). *(Cập nhật 2026-10-16: audit log viewer
+  `/admin/audit` xong ở M12a — ADR-037; báo cáo vi phạm xong code ở M12c — ADR-038, 2026-10-16.)*
 - **Bug tự bắt được khi smoke-test thật** (không phải qua unit/integration test): `/admin` trả 500 vì dùng
   nhầm guard ném lỗi (`requireRole`, đúng cho API/Action) trong Server Component thay vì guard chuyển hướng.
   Sửa bằng `requireAdminAccess()`/`requireTenantMemberPage()` mới trong `lib/page-guards.ts`, đồng thời vá
@@ -660,6 +661,126 @@ thường trực (ADR-031 mục 4); kiểm chỉ đọc hàng đợi thấy job 
 **Số test:** `pnpm test:count` = **93/94 unit, 52/53 integration** — không đổi. Nợ test + việc còn lại: `docs/BACKLOG.md` mục "Phát sinh
 trong đợt ADR-036". KB: `02-System-Specs/Background-Jobs-Specs.md`, `02-System-Specs/Order-State-Machine.md` §3.1/§3.4,
 `03-API-Contracts/Endpoint-Directory.md` §17, `04-Operations-Runbooks/Deploy-Vercel-Runbook.md` §3.4/§6.
+
+## M12a — Audit log (ADR-037) — xong code, chưa commit/deploy — 2026-10-16
+
+**Đã xong code, chưa commit, chưa deploy. Migration đã áp lên DB dùng chung 2026-10-16.** Quyết định: ADR-037 (M12 chia 3 đợt
+deploy riêng: M12a Audit log → M12b Thống kê → M12c Báo cáo vi phạm).
+
+- **DB — migration `20261016090000_m12a_audit_logs`** (expand, chỉ thêm): enum `AuditScope` (`SYSTEM`/`TENANT`/`CUSTOMER`), bảng L1
+  `audit_logs` (không khoá ngoại tới users/tenants, không RLS), 3 index `(createdAt)`, `(tenantId, createdAt)`, `(actorId, createdAt)`.
+  Chỉ INSERT: role `gieochu_app` có SELECT/INSERT/DELETE (không UPDATE/TRUNCATE); 3 trigger chặn UPDATE, TRUNCATE, và DELETE trừ khi
+  phiên đặt `gieochu.audit_purge = 'on'` **và** dòng cũ hơn 12 tháng. `setup-app-role.mts` REVOKE UPDATE/TRUNCATE trên `audit_logs`
+  sau lệnh cấp quyền mặc định. Đã kiểm bằng role `gieochu_app` trong transaction rollback: UPDATE/TRUNCATE bị từ chối quyền, DELETE
+  (kể cả đặt cờ purge, dòng mới) bị trigger chặn mã 42501.
+- **`packages/core/src/audit/audit.ts`** (subpath `@gieochu/core/audit`, cũng export ở `@gieochu/core`): 27 action (`AUDIT_ACTIONS`,
+  21 theo đặc tả + 6 bổ sung), scope, nhãn tiếng Việt, `sanitizeAuditMetadata` (bỏ khoá secret/token/password/hash..., giới hạn
+  4096 byte), `maskEmail`, `extractAuditIp`/`normalizeAuditUserAgent`.
+- **`apps/web/lib/audit.ts`**: `audit.log` ghi **sau** khi nghiệp vụ commit, ngoài transaction, lỗi chỉ `logger` không ném (bảng chưa
+  có → bỏ qua); `audit.purgeExpired` xoá dòng > 12 tháng. **`apps/web/lib/audit-query.ts`**: `listAuditLogs` (admin) và
+  `listTenantAuditLogs` (chỉ OWNER, luôn lọc `tenantId`, che actor ngoài tenant + IP/User-Agent).
+- **Nối audit vào nghiệp vụ:** đăng nhập/đăng nhập lỗi/dùng lại refresh, khoá/mở khoá user và tenant, tạo tenant, đổi slug, tạo/sửa
+  gói, thanh toán gói, cấu hình thanh toán (platform + tenant), xuất bản/lưu trữ tài liệu, xác nhận tay/hoàn tiền đơn, cấp thêm/thu hồi
+  quyền tải, tạo/thu hồi share link, ẩn/khôi phục đánh giá, `COUPON_OVERUSED`, cấu hình hệ thống. Các hàm lib thêm tham số `actorId`
+  tuỳ chọn; `unlockUser(actor, id)` đổi chữ ký bắt buộc. **Chưa nối:** `REPORT_RESOLVED` (M12c), `ADMIN_VIEWED_TENANT` (chưa có trang
+  chi tiết tenant), `REVIEW_HIDDEN_REFUNDED` (vẫn `logger`). Đăng nhập với email không tồn tại **không** ghi audit.
+- **Cron `/api/cron/daily`:** thêm bước `audit.purge` (trước `queue.drain`).
+- **Trang:** `/admin/audit` (sidebar nhóm "Giám sát" → "Nhật ký hệ thống") và `/studio/{slug}/activity` ("Hoạt động"), giao diện
+  dùng chung `admin/_ui/audit-log.tsx` + `link-pagination.tsx` + `audit-log-skeleton.tsx`; `DataTable` thêm `caption` và
+  `th scope="col"`.
+- **Test:** trần integration 53 → 55 (`scripts/count-tests.mjs`, ADR-037 mục 6). Thêm `tests/integration/audit.test.ts` — đã chạy
+  pass 2026-10-16 trên DB thật, dọn user tạm, để lại 5 dòng audit giả không xoá được (đúng ADR-037).
+
+**Số test:** `pnpm test:count` = **93/94 unit, 53/55 integration**. Việc còn lại: `docs/BACKLOG.md` mục "Phát sinh trong đợt M12a
+(ADR-037)". KB: `02-System-Specs/Audit-Log-Specs.md`, `03-API-Contracts/Database-Schema-Reference.md`,
+`03-API-Contracts/Endpoint-Directory.md` §17–§18, `04-Operations-Runbooks/UI-Design-System.md` §15,
+`04-Operations-Runbooks/Deploy-Vercel-Runbook.md`.
+
+## M12b — Thống kê (ADR-037) — xong code, chưa commit/deploy — 2026-10-16
+
+**Đã xong code, chưa commit, chưa deploy. Migration đã áp lên DB dùng chung 2026-10-16** (`gieochu_app` có SELECT/INSERT/UPDATE, không
+RLS, bảng trống — backfill lần đầu khi cron chạy sau deploy). Quyết định: ADR-037 mục 5–6 + đoạn "ADR-037 — M12b chốt định nghĩa số liệu".
+
+- **DB — migration `20261016120000_m12b_tenant_daily_stats`** (expand, chỉ thêm): bảng L1 `tenant_daily_stats` (model `TenantDailyStat`):
+  `tenantId`, `date` (DATE, ngày giờ VN), `ordersPaid`, `gmvVnd` (BIGINT), `newCustomers`, `downloads`, `updatedAt`; unique
+  `(tenantId, date)`, index `(date)`, FK tenant `ON DELETE CASCADE`; không RLS; chỉ số đếm/tổng tiền, không dữ liệu cá nhân.
+- **`apps/web/lib/tenant-stats.ts`**: `aggregateTenantDailyStats({ fromDate, toDate, tenantIds? })` và `runStatsAggregation()` (bước cron —
+  hôm qua + hôm nay giờ VN; bảng trống → backfill từ ngày có dữ liệu sớm nhất, tối đa 400 ngày; mỗi cửa sổ 31 ngày một transaction
+  `withSystemJob` có advisory lock; ngày không hoạt động không tạo dòng, dòng cũ hết hoạt động về 0). Định nghĩa: GMV gộp theo `paidAt`
+  (tính cả đơn sau này REFUNDED), khách mới theo `tenant_customers.firstOrderAt` (bảng không có `createdAt` — Quốc duyệt), lượt tải theo
+  `download_events.createdAt`.
+- **`apps/web/lib/admin-stats.ts`**: `getAdminStatsOverview({ days: 30 })` — chỉ đọc `tenant_daily_stats` + tên/slug tenant (§7.9); cửa
+  sổ kết thúc hôm qua giờ VN, kèm kỳ trước, chuỗi theo ngày, top 5 gian hàng GMV > 0, `lastAggregatedAt`; bảng chưa có → `unavailable`.
+- **Cron `/api/cron/daily`:** thêm bước `stats.aggregate` sau `audit.purge`, trước `queue.drain` (`results.statsAggregate`).
+- **Dashboard `/admin`:** section "Hoạt động bán tài liệu (30 ngày)" (`admin/_ui/sales-stats.tsx`, Suspense riêng): 4 KPI + % so kỳ
+  trước, biểu đồ cột HTML + bảng trong `<details>`, chọn chỉ số `?chi-so=gmv|don`, top 5 gian hàng, trạng thái chưa sẵn sàng/rỗng.
+- **Test:** thêm `tests/integration/stats.test.ts` (test M12 thứ 2 trong trần 55 của ADR-037 mục 6) — đã chạy pass 2026-10-16 trên DB
+  thật, dọn sạch dữ liệu tạm.
+
+**Số test:** `pnpm test:count` = **93/94 unit, 54/55 integration**. Việc còn lại: `docs/BACKLOG.md` mục "Phát sinh trong đợt M12b
+(ADR-037)"; sau deploy bấm Run cron để backfill (`04-Operations-Runbooks/Deploy-Vercel-Runbook.md` §6.2 bước 6). KB:
+`02-System-Specs/Tenant-Stats-Specs.md`, `03-API-Contracts/Database-Schema-Reference.md`, `03-API-Contracts/Endpoint-Directory.md`
+§17/§19, `04-Operations-Runbooks/UI-Design-System.md` §16, `04-Operations-Runbooks/Deploy-Vercel-Runbook.md` §6/§9.7.
+
+## M12c — Báo cáo vi phạm (ADR-038) + Quyền lợi người mua (ADR-039) — xong code, chưa commit/deploy — 2026-10-16
+
+**Đã xong code, chưa commit, chưa deploy. 2 migration đã áp lên DB dùng chung 2026-10-16** — Quốc kiểm bằng `gieochu_app` trong transaction
+rollback: tenant đặt khoá kiểm duyệt/remedy → `42501`; tenant cấp thêm lượt khi có remedy → `42501`; `system_job` được; CHECK hình dạng chặn;
+checksum migration ADR-039 khớp file. ⚠️ **Thứ tự deploy: migration TRƯỚC code** — code đọc cột mới của `products`/`reviews`/`posts`/
+`entitlements`, lên trước sẽ 500 (P2022). Quyết định: ADR-038, ADR-039 + "Bổ sung ADR-039".
+
+- **DB — `20261016150000_m12c_abuse_reports`** (expand): bảng L1 `abuse_reports` + 4 enum + CHECK; cột `moderationLockedAt`/
+  `moderationReason` trên `products`/`reviews`/`posts` (CHECK: khoá ⇒ ẩn/lưu trữ) + trigger `<bảng>_guard_moderation` (chỉ `system_job`
+  đặt/gỡ khoá, khi khoá không đổi trạng thái); `products.rightsConfirmedAt`/`rightsConfirmedById`.
+- **DB — `20261016180000_adr039_entitlement_remedy`** (expand): enum `EntitlementRemedyStatus`; cột `remedyStatus`, `remedyRequestedAt`,
+  `remedyChosenAt`, `remedyResolvedAt`, `remedyReportId` trên `entitlements`; CHECK hình dạng + `REFUNDED` ⇒ đã thu hồi; trigger
+  `entitlements_guard_remedy` (ngoại lệ: INSERT `PENDING_CHOICE` cho sản phẩm đang bị khoá; `REFUND_REQUESTED → REFUNDED` trong
+  `markOrderRefunded`; không đổi `downloadLimit` khi có remedy).
+- **Gửi báo cáo:** route mới `POST /api/reports` (Origin, honeypot, 5/giờ/IP, chặn trùng; 201/400/403/404/409/429/503) — Quốc thử trên dev:
+  201, 409 trùng, 403 thiếu Origin, đã dọn dữ liệu thử. Nút "Báo cáo vi phạm" ở trang tài liệu, từng đánh giá, trang bài viết.
+- **Admin `/admin/reports`** (+ chi tiết): `resolveReportAction` (ẩn nội dung / lưu trữ tài liệu / khoá gian hàng / bác bỏ, tuỳ chọn áp cùng
+  quyết định cho báo cáo OPEN khác cùng đối tượng), `unlockModerationAction`; badge số báo cáo OPEN ở sidebar. Email `abuse_report_resolved`
+  (người báo cáo), `content_moderated` (chủ gian hàng) trong `after()`. Audit `REPORT_SUBMITTED`, `REPORT_RESOLVED`,
+  `CONTENT_MODERATION_LOCKED/UNLOCKED`, `REMEDY_FINAL_DOWNLOAD_CHOSEN`, `REMEDY_REFUND_REQUESTED`. Cron thêm bước `abuse_report.ip_purge`.
+- **Cam kết bản quyền:** bắt buộc tích mỗi lần xuất bản (`rightsConfirmed`, 400 `RIGHTS_CONFIRMATION_REQUIRED`); nội dung bị khoá → Studio
+  409 `CONTENT_MODERATION_LOCKED`, UI hiện nhãn "Bị khoá kiểm duyệt".
+- **Quyền lợi người mua (ADR-039):** lưu trữ tài liệu do vi phạm → entitlement `PENDING_CHOICE` (kể cả đơn 0đ), tải bị chặn
+  (`REMEDY_CHOICE_REQUIRED`); A "tải lần cuối" = `downloadLimit = downloadsUsed + số tệp khả dụng` (đủ mọi tệp, tối thiểu 1); B "yêu cầu hoàn
+  tiền" (chỉ đơn > 0đ) chặn tải vĩnh viễn (`DOWNLOAD_BLOCKED_REFUND`), tenant xử lý trong 7 ngày bằng nút Hoàn tiền sẵn có → `REFUNDED` +
+  `remedyResolvedAt`. Đơn thanh toán muộn → `PENDING_CHOICE`. Tenant không cấp thêm lượt khi có remedy. Studio: lọc
+  `?remedy=REFUND_REQUESTED`, badge sidebar/đơn; admin chỉ thấy số đếm quá hạn theo tenant. Thư viện khách: 2 lựa chọn + hộp thoại xác nhận +
+  cảnh báo trước khi tải lần cuối. Email `entitlement_remedy_customer`, `entitlement_remedy_tenant`, `remedy_refund_requested`.
+- **Sửa lỗi cũ quan trọng (RLS):** `sendOrderPaidEmailsInner` và `resolveUniqueOrderCode` đọc `orders` bằng client không scope → RLS trả 0
+  dòng → email `order_paid`/`new_sale` **chưa từng gửi**, kiểm trùng mã đơn chưa từng chạy. Nay đọc dưới `withSystemJob`; email đơn chỉ gửi
+  khi lần gọi thật sự fulfil đơn. **Sau deploy, email đơn hàng bắt đầu gửi thật lần đầu.**
+- **Chặn thanh toán:** `initiateOrderCheckout`/`applyCouponToOrder` → 409 `PRODUCT_UNAVAILABLE` khi sản phẩm không `PUBLISHED` hoặc tenant
+  không `ACTIVE` (đổi hành vi với tenant `READ_ONLY` — "Bổ sung ADR-039 lần 2" (g); chủ dự án đã chốt chặn qua ADR-040 mục 4).
+- **Test:** không thêm (ADR-038 mục 8, ADR-039 mục 6) — nợ ở BACKLOG.
+
+**Số test:** `pnpm test:count` = **93/94 unit, 54/55 integration** (Long chạy 2026-10-17, chỉ đếm). Việc còn lại: `docs/BACKLOG.md` mục
+"Phát sinh trong đợt M12c (ADR-038) + ADR-039"; deploy theo `04-Operations-Runbooks/Deploy-Vercel-Runbook.md` §9.8. KB:
+`02-System-Specs/Abuse-Reports-Specs.md`, `02-System-Specs/Order-State-Machine.md` §3.7–§3.8, `02-System-Specs/File-Storage-And-Downloads-Specs.md`
+§8, `03-API-Contracts/Database-Schema-Reference.md`, `03-API-Contracts/Endpoint-Directory.md` §17/§20, `04-Operations-Runbooks/UI-Design-System.md`
+§17, bản trích `01-Architecture-Decisions/ADR-024` (≙ ADR-038), `ADR-025` (≙ ADR-039).
+
+## Chỉ gian hàng ACTIVE hiển thị tài liệu (ADR-040) — xong code, chưa commit/deploy — 2026-10-17
+
+Chủ dự án chốt: gian hàng chỉ hiển thị tài liệu khi `ACTIVE`. Không migration, không thêm test.
+
+- `resolveStorefrontAccess` (`packages/core/src/tenant/access-policy.ts`): `READ_ONLY` + khách → `SUSPENDED_NOTICE`; `READ_ONLY` + chủ →
+  `READ_ONLY`; `LOCKED` giữ nguyên. Unit test access-policy cập nhật kỳ vọng (không đổi số test).
+- `/[tenantSlug]`: khách của gian hàng `READ_ONLY` chỉ thấy trang "Gian hàng đang tạm ngưng hoạt động" (`StorefrontSuspendedNotice`, khung
+  hệ thống, nút "Mở Thư viện của tôi") — trả về trước mọi loader; metadata tenant không `ACTIVE` → `noindex`. Chủ thấy storefront +
+  `StorefrontNotice` với lời mới.
+- Trang tài liệu `/{slug}/{productSlug}`, `/{slug}/posts`, `/{slug}/posts/{postId}`: khách 404 khi tenant không `ACTIVE`; metadata `{}`.
+- `POST /api/reports`: đối tượng của tenant không `ACTIVE` → 404 `REPORT_TARGET_NOT_FOUND`. Share link (mở + tải) → 410
+  `SHARE_LINK_TENANT_LOCKED`. Gửi/sửa đánh giá → 409 `TENANT_NOT_ACTIVE`.
+- Thanh toán đơn `PENDING` khi tenant không `ACTIVE`: chặn (`PRODUCT_UNAVAILABLE`, chốt ADR-039 (g)). Thư viện/tải của khách đã mua giữ
+  nguyên. `/cua-hang`, trang chủ vốn chỉ lấy tenant `ACTIVE`.
+- Còn lại: chủ xác định bằng `ownerId` (chưa xét thành viên khác) — `docs/BACKLOG.md`.
+
+**Số test:** `pnpm test:count` = **93/94 unit, 54/55 integration** (Long chạy 2026-10-17, chỉ đếm). KB:
+`02-System-Specs/Storefront-CMS-Specs.md` §1.2, bản trích `01-Architecture-Decisions/ADR-026` (≙ ADR-040), `00-Index/KB-Audit-2026-09-26.md` §19.
 
 ## Câu hỏi còn mở (đã chọn phương án an toàn, xem ADR tương ứng)
 

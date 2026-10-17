@@ -34,7 +34,7 @@ flowchart TB
         DB["db<br/>Prisma + tenant guard"]
         STO["storage<br/>S3 presign"]
         MAIL["email<br/>templates + sender"]
-        JOBS["jobs<br/>pg-boss workers"]
+        JOBS["jobs<br/>pg-boss queue<br/>(after() + Vercel Cron, ADR-036)"]
     end
 
     subgraph Infra["Hạ tầng"]
@@ -60,8 +60,8 @@ flowchart TB
 gate hồ sơ/tenant/admin qua `lib/page-guards.ts`), `STF` (storefront công khai `/[tenantSlug]`), `STU`
 (`/studio`, `/studio/[tenantSlug]`, settings + settings/payments + billing + products/CRUD + upload file
 thật/ảnh bìa — **code xong, chờ verify với R2 thật** — + coupons/CRUD), `ADM` (`/admin`:
-users/tenants/plans/cms/settings(+settings/storage — ADR-017)/billing/payment/billing/invoices — cơ bản,
-audit log viewer chờ M12), `MKT` (`/`, `/pricing`, `/p/[slug]`), `AUTH` (đầy đủ: mật khẩu, JWT, RBAC), `PAY`
+users/tenants/plans/cms/settings(+settings/storage — ADR-017)/billing/payment/billing/invoices — cơ bản;
+audit log viewer `/admin/audit` có từ M12a — ADR-037; báo cáo vi phạm `/admin/reports` có từ M12c — ADR-038), `MKT` (`/`, `/pricing`, `/p/[slug]`), `AUTH` (đầy đủ: mật khẩu, JWT, RBAC), `PAY`
 (`packages/payments` — đầy đủ MANUAL_QR/SEPAY/MOMO, dùng chung Platform/Tenant qua `PaymentScope`), `CORE`
 (errors, logger, crypto: encryptSecret/decryptSecret/maskSecret + generateOpaqueToken/hashOpaqueToken —
 chuyển từ auth, ADR-020 —, dùng chung được với storage, ADR-017 —, slug/branding/access-policy/membership,
@@ -78,13 +78,19 @@ SubscriptionInvoice/PlatformPaymentTransaction/SystemStorageConfig là L1, khôn
 Coupon/CouponRedemption/Order/OrderItem/TenantPaymentTransaction/TenantCustomer/Entitlement là L2/L3, có RLS
 — `orders`/`order_items` có thêm chiều "khách hàng" trong policy, không chỉ chiều tenant, xem ADR-019 và
 `docs/modules/M8.md`), `STO` (`packages/storage` — đầy đủ: `createS3Client`/`testS3Connection`/`presign.ts`/
-`scan.ts`; ClamAV thật vẫn chưa tích hợp, ADR-018), `MAIL`, `JOBS` (nay có `JobQueue.schedule()` cho cron —
-`subscription.sweep` chạy hằng giờ, `order.sweep` chạy mỗi 5 phút, `file.scan`/`payment.process` xử lý theo
-job — tất cả trong `apps/web/worker.ts`) đã có. M9 thêm `ShareLink`/`DownloadEvent` (L2, RLS) và
+`scan.ts`; ClamAV thật vẫn chưa tích hợp, ADR-018), `MAIL`, `JOBS` (ADR-036: trên Vercel không có worker thường trực —
+`file.scan`/`payment.process` vẫn `send` vào pg-boss rồi được xử lý bằng `after()` ngay sau response; Vercel Cron gọi
+`GET /api/cron/daily` mỗi ngày 03:00 giờ VN chạy `subscription.sweep`, `order.sweep` trực tiếp, bảo trì + dọn hàng đợi và —
+từ M12a, ADR-037 — xoá `audit_logs` > 12 tháng (bước `audit.purge`), rồi — từ M12b, ADR-037 — tổng hợp `tenant_daily_stats` hôm qua + hôm nay giờ VN
+(bước `stats.aggregate`, bảng trống → backfill ≤ 400 ngày), rồi — từ M12c, ADR-038 — xoá IP của `abuse_reports` > 12 tháng (bước
+`abuse_report.ip_purge`, giữ báo cáo) trước khi dọn hàng đợi; `apps/web/worker.ts` chỉ còn cho chạy local, không deploy) đã có. M9 thêm `ShareLink`/`DownloadEvent` (L2, RLS) và
 `DownloadToken` (L1, không RLS — cùng lý do `RefreshToken`/`VerificationToken`, xem ADR-020); cùng lúc M9
 sửa 2 policy RLS có sẵn từ M4/M5 (`products`, `product_files`) thêm nhánh "customer" mà bản gốc bỏ sót
 (ADR-020).
-Bảng L2 còn lại chưa xây: `posts/comments/reviews` (M10) — xem `docs/PLAN.md`.
+M12c (ADR-038) thêm `abuse_reports` (L1, không RLS — chỉ System Admin đọc; tenant không bao giờ thấy người báo cáo) và cột khoá kiểm
+duyệt `moderationLockedAt`/`moderationReason` trên `products`/`reviews`/`posts` (trigger `*_guard_moderation`: chỉ scope `system_job` đặt/gỡ);
+ADR-039 thêm cột `remedy*` trên `entitlements` (trigger `entitlements_guard_remedy`) cho quyền lợi người mua khi tài liệu bị lưu trữ do vi phạm.
+Bảng L2 còn lại chưa xây: `comments` (M10c) — `posts`/`reviews` đã có từ M10a/M10b — xem `docs/PLAN.md`.
 
 ## Ranh giới dữ liệu theo layer
 
@@ -94,7 +100,7 @@ flowchart LR
         U["users, user_profiles<br/>refresh_tokens"]
         P["plans, subscriptions<br/>subscription_invoices"]
         PP["platform_payment_configs<br/>platform_payment_transactions"]
-        C["cms_pages, audit_logs"]
+        C["cms_pages, audit_logs<br/>abuse_reports"]
         S["tenant_daily_stats"]
     end
     subgraph L2["L2 Tenant — scope TENANT, có tenant_id + RLS"]
@@ -121,7 +127,8 @@ flowchart LR
 Nguyên tắc (không đổi trong suốt dự án):
 
 - System admin **không có route nào** đọc `orders`, `order_items`, `tenant_customers` của tenant. Dashboard
-  System chỉ đọc `tenant_daily_stats` và bảng của L1.
+  System chỉ đọc `tenant_daily_stats` và bảng của L1. Khi xử lý báo cáo vi phạm (M12c), admin xem **nội dung** đối tượng bị báo cáo
+  (sản phẩm/đánh giá/bài viết — đánh giá không kèm danh tính khách) và chỉ **số đếm** yêu cầu hoàn tiền quá hạn theo tenant (ADR-039).
 - Tenant chỉ thấy `tenant_customers` của chính mình.
 - Customer có **một tài khoản toàn cục**, thư viện gom tài liệu đã mua từ mọi tenant.
 
@@ -195,10 +202,13 @@ component nhạy cảm tự xác thực và phân quyền lại — không tin p
 │       │                           # coupon (M6), order/payment-process (M8 — markOrderPaid duy nhất,
 │       │                           # xem docs/modules/M8.md), download/share-link/library/entitlement (M9,
 │       │                           # xem docs/modules/M9.md), pricing (giá gói /pricing, M2 — khác
-│       │                           # packages/core/src/pricing của M6), rate-limit, jobs, jwt-context, duration
+│       │                           # packages/core/src/pricing của M6), rate-limit, jobs, jwt-context, duration,
+│       │                           # job-handlers/job-runner (ADR-036), audit/audit-query (M12a, ADR-037),
+│       │                           # abuse-report/moderation/tenant-lock/origin-guard (M12c, ADR-038),
+│       │                           # entitlement-remedy (ADR-039)
 │       ├── proxy.ts                # x-request-id + CSP nonce theo từng request (ADR-016)
-│       ├── worker.ts               # pg-boss worker: email.send (M11) + subscription.sweep cron (M3) +
-│       │                           # file.scan (M5) + payment.process + order.sweep cron mỗi 5 phút (M8)
+│       ├── worker.ts               # pg-boss worker CHỈ cho local/server riêng, không deploy (ADR-036):
+│       │                           # subscription.sweep hằng giờ + order.sweep 5 phút + file.scan + payment.process
 │       ├── tests/integration/      # Vitest — auth (8), tenant (5), admin (4), tenant-payment (4),
 │       │                           # subscription-billing (5), product (2), product-upload (1 — 1 test M5
 │       │                           # còn lại chờ storage thật), coupon (1), order (9 — M8), download (5 — M9)
@@ -234,7 +244,7 @@ component nhạy cảm tự xác thực và phân quyền lại — không tin p
 │   ├── email/       # EmailSender (SMTP/Resend) + template kích hoạt/reset mật khẩu/subscription-billing (M3)/
 │   │                # product-file-rejected (M5)/order-paid+new-sale (M8)
 │   ├── jobs/        # pg-boss queue wrapper — send() (M1) + schedule() cron (M3) + FILE_SCAN queue (M5) +
-│   │                # PAYMENT_PROCESS/ORDER_SWEEP queue (M8)
+│   │                # PAYMENT_PROCESS/ORDER_SWEEP queue (M8) + fetch/complete/fail/supervise (ADR-036)
 │   └── config/      # env.ts (zod), brand.ts, eslint-preset.mjs
 ├── docker/
 │   └── docker-compose.yml         # minio (+createbuckets), mailpit, postgres (profile local-db)

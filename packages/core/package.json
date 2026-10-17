@@ -18,7 +18,10 @@
     "./post": "./src/content/post.ts",
     "./product-path": "./src/product/path.ts",
     "./product-type": "./src/product/type-label.ts",
-    "./system-settings": "./src/settings/system-settings.ts"
+    "./system-settings": "./src/settings/system-settings.ts",
+    "./audit": "./src/audit/audit.ts",
+    "./abuse-report": "./src/report/abuse-report.ts",
+    "./entitlement-remedy": "./src/download/entitlement-remedy.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

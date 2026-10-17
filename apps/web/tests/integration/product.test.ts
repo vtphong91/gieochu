@@ -56,7 +56,7 @@ describe("M5 product publish eligibility and archiving", () => {
       tx.product.update({ where: { id: product.id }, data: { priceVnd: 50_000, coverImageKey: "tenants/x/cover.png" } }),
     );
 
-    await expect(publishProduct(tenant.id, product.id)).rejects.toMatchObject({ code: "PRODUCT_NOT_PUBLISHABLE" });
+    await expect(publishProduct(tenant.id, product.id, null, { rightsConfirmed: true })).rejects.toMatchObject({ code: "PRODUCT_NOT_PUBLISHABLE" });
 
     const stillDraft = await withTenant(tenant.id, (tx) => tx.product.findUniqueOrThrow({ where: { id: product.id } }));
     expect(stillDraft.status).toBe("DRAFT");
@@ -107,7 +107,7 @@ describe("M5 product publish eligibility and archiving", () => {
     );
 
     // No category, no file, no link: both blockers are reported together.
-    const noCategory = await publishProduct(tenant.id, product.id).catch((e: unknown) => e);
+    const noCategory = await publishProduct(tenant.id, product.id, null, { rightsConfirmed: true }).catch((e: unknown) => e);
     expect(noCategory).toMatchObject({ code: "PRODUCT_NOT_PUBLISHABLE" });
     expect((noCategory as { reasons: { code: string }[] }).reasons.map((r) => r.code).sort()).toEqual([
       "CATEGORY_REQUIRED",
@@ -121,12 +121,12 @@ describe("M5 product publish eligibility and archiving", () => {
     ).rejects.toMatchObject({ code: "INVALID_EXTERNAL_URL" });
 
     await updateProduct(tenant.id, product.id, { categoryId: activeCategory.id });
-    await expect(publishProduct(tenant.id, product.id)).rejects.toMatchObject({ code: "PRODUCT_NOT_PUBLISHABLE" });
+    await expect(publishProduct(tenant.id, product.id, null, { rightsConfirmed: true })).rejects.toMatchObject({ code: "PRODUCT_NOT_PUBLISHABLE" });
 
     // A valid external link alone is an acceptable delivery source (owner decision, ADR-026).
     const link = await addProductExternalLink(tenant.id, product.id, { label: "Bộ đề (Drive)", url: "https://drive.google.com/file/d/abc/view" });
     expect(link).toMatchObject({ sourceKind: "EXTERNAL_URL", objectKey: null, scanStatus: null, sizeBytes: 0 });
-    const published = await publishProduct(tenant.id, product.id);
+    const published = await publishProduct(tenant.id, product.id, null, { rightsConfirmed: true });
     expect(published.status).toBe("PUBLISHED");
     expect(published.categoryId).toBe(activeCategory.id);
 
@@ -167,7 +167,7 @@ describe("M5 product publish eligibility and archiving", () => {
 
     // Create-page "Công khai" without a delivery source: publish is refused, the draft is kept, and the
     // Cloudinary cover counts as the cover image (only the delivery source is missing).
-    const refused = await publishProduct(tenant.id, product.id).catch((e: unknown) => e);
+    const refused = await publishProduct(tenant.id, product.id, null, { rightsConfirmed: true }).catch((e: unknown) => e);
     expect((refused as { reasons: { code: string }[] }).reasons.map((r) => r.code)).toEqual(["NO_DELIVERY_SOURCE"]);
 
     // Preview reads the draft through withTenant; another tenant (RLS) or an unknown id gets 404.
@@ -178,7 +178,7 @@ describe("M5 product publish eligibility and archiving", () => {
     await expect(getProductPreviewData(otherTenant.id, product.id)).rejects.toMatchObject({ code: "PRODUCT_NOT_FOUND" });
 
     await addProductExternalLink(tenant.id, product.id, { label: "Giáo án (Drive)", url: "https://drive.google.com/file/d/xyz/view" });
-    expect((await publishProduct(tenant.id, product.id)).status).toBe("PUBLISHED");
+    expect((await publishProduct(tenant.id, product.id, null, { rightsConfirmed: true })).status).toBe("PUBLISHED");
 
     // "Riêng tư" on a published product: saved and unpublished in the same update, even while clearing the category.
     const privateSaved = await updateProduct(tenant.id, product.id, { summary: "", categoryId: null }, { unpublish: true });

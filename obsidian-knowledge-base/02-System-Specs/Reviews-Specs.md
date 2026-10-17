@@ -7,7 +7,7 @@ tags:
   - security
   - status/living
 date: 2026-09-28
-updated: 2026-09-28
+updated: 2026-10-17
 author: Long (tài liệu)
 ---
 
@@ -20,12 +20,15 @@ author: Long (tài liệu)
 > Mức xác minh: ✅ đã đọc code/migration ngày 2026-09-28 · 🟡 theo báo cáo/brief, chưa tự kiểm · ❓ cần môi trường thật.
 > **Trạng thái chung:** code xong, **chưa có test** (chủ dự án chọn chưa thêm test — nợ trong `docs/BACKLOG.md`); verify
 > thủ công theo báo cáo 🟡. Mọi hành vi runtime (RLS/trigger trên Neon thật, email thật) là ❓ cho tới khi có test.
+> **Cập nhật ADR-040 (đọc code 2026-10-17):** đánh giá chỉ công khai khi gian hàng `ACTIVE`, khách gửi/sửa đánh giá ở gian hàng không
+> `ACTIVE` → 409 `TENANT_NOT_ACTIVE` (dòng "Tenant không `ACTIVE`" §2). Bản trích
+> [[01-Architecture-Decisions/ADR-026-Only-Active-Tenant-Shows-Documents|ADR-026 (KB)]].
 
 ## 1. Phạm Vi
 
 M10 giai đoạn 1 chia 3 phần: **M10a Đánh giá** (trang này, đã xong code), **M10b Bài viết tối giản** (xong code 2026-09-28 —
 [[02-System-Specs/Posts-Specs|Posts-Specs]]), **M10c**
-bình luận/thả tim/theo dõi (BACKLOG). Nút "Báo cáo vi phạm" đợi M12; SEO `AggregateRating` để GĐ3.
+bình luận/thả tim/theo dõi (BACKLOG). Nút "Báo cáo vi phạm" trên từng đánh giá có từ M12c (ADR-038, §2.3); SEO `AggregateRating` để GĐ3.
 
 | Vùng | Đường dẫn | Ai dùng |
 | :-- | :-- | :-- |
@@ -54,7 +57,7 @@ trong `lib/review.ts`.
 | Sửa / xoá | Khách sửa **không giới hạn thời hạn** (ADR-029 bổ sung b) và tự xoá (xoá thật, xác nhận `window.confirm`). | `upsertMyReview`, `deleteMyReview` |
 | Rate limit | Ghi (tạo/sửa) ≤ **5 lần / 10 phút / user** — in-memory (`apps/web/lib/rate-limit.ts`, chỉ đúng khi 1 instance) → `RATE_LIMITED` (429). Xoá không bị giới hạn. | `checkRateLimit("review-write:<userId>")` |
 | Tự đăng | Đánh giá mới là `VISIBLE` ngay (không duyệt trước). | RLS `customer_insert` ép trạng thái sạch |
-| Tenant READ_ONLY | Vẫn nhận và kiểm duyệt đánh giá của khách đã mua (ADR-029 bổ sung c): `upsertMyReview` không kiểm `tenant.status`; Studio vẫn mở. Storefront `LOCKED` vốn 404 với khách. | đọc code |
+| Tenant không `ACTIVE` (`READ_ONLY`/`LOCKED`) | **Từ ADR-040:** khách **không** gửi/sửa được — `upsertMyReview` (sau rate limit + kiểm đủ điều kiện mua, trong `withCustomer`) đọc `tenants.status` → khác `ACTIVE` ném 409 `TENANT_NOT_ACTIVE` ("Gian hàng đang tạm ngưng hoạt động."; server action trả `code` này). Hiển thị: khách không thấy đánh giá (storefront `READ_ONLY` chỉ hiện trang tạm ngưng, trang tài liệu 404 — [[02-System-Specs/Storefront-CMS-Specs\|Storefront-CMS-Specs]] §1.2). Khách xoá đánh giá (`deleteMyReview`) và tenant ẩn/khôi phục/trả lời trong Studio: không thêm kiểm `tenant.status` ở đợt này. Thay thế ADR-029 bổ sung (c) ("`READ_ONLY` vẫn nhận đánh giá") theo "Bổ sung ADR-040" (Quốc, 2026-10-17). | ✅ đọc code `lib/review.ts` |
 
 ### 2.1. Trạng thái & ẩn ✅
 
@@ -67,8 +70,26 @@ trong `lib/review.ts`.
 - **Người viết** vẫn thấy đánh giá của mình khi bị ẩn, kèm nhãn "Đánh giá của bạn đã bị ẩn — <nhãn lý do tiếng Việt>"
   (`REVIEW_HIDDEN_REASON_LABELS`, không hiện mã) (ADR-029 bổ sung e). Khách khác không thấy; **không công khai số đánh giá
   bị ẩn**.
-- Nhật ký: chưa có `audit_logs` (M12) → ghi log có cấu trúc `REVIEW_HIDDEN`, `REVIEW_RESTORED`, `REVIEW_HIDDEN_REFUNDED`,
-  `REVIEW_RESTORED_AFTER_REPURCHASE` (pino) ✅.
+- Nhật ký (cập nhật M12a, ADR-037 — 2026-10-16) ✅ đọc code: `hideReview`/`unhideReview` ghi `audit_logs` `REVIEW_HIDDEN` /
+  `REVIEW_RESTORED` (scope `TENANT`, tham số `actorId` tuỳ chọn, metadata `{ productId, reason }`); hiện lại khi mua lại ghi
+  `REVIEW_RESTORED` scope `CUSTOMER` (metadata `reason: "REPURCHASE"`) kèm log pino `REVIEW_RESTORED_AFTER_REPURCHASE`. **Tự ẩn khi hoàn
+  tiền vẫn chỉ log pino `REVIEW_HIDDEN_REFUNDED`**, chưa vào `audit_logs`. Xem [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]].
+
+### 2.3. Báo cáo vi phạm & khoá kiểm duyệt (M12c, ADR-038 — 2026-10-17) ✅
+
+Đối chiếu code working tree (chưa commit/deploy). Nghiệp vụ chung: [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]].
+- Mỗi đánh giá `VISIBLE` trên trang tài liệu có nút **"Báo cáo vi phạm"** (`ReportAbuseButton`, `targetType = "REVIEW"`); ai cũng gửi được.
+- Admin quyết định `HIDE_CONTENT` → `status = HIDDEN` + `moderationLockedAt`/`moderationReason` (nhãn loại vi phạm). Đã ẩn sẵn (do tenant/
+  hoàn tiền) thì giữ `hiddenReason` cũ; chưa ẩn → `hiddenReason = OTHER`. Sau commit tính lại điểm sản phẩm.
+- Khi đang khoá: tenant **không** ẩn lại/khôi phục — `hideReview`/`unhideReview` → 409 `CONTENT_MODERATION_LOCKED`; trigger
+  `reviews_guard_moderation` chặn đổi `status`/`hiddenReason`/`hiddenAt` ngoài `system_job`. Studio hiện nhãn "Bị khoá kiểm duyệt"
+  (`ModerationLockBadge`/`ModerationLockNotice`), chỉ kèm nhãn loại vi phạm — không bao giờ có danh tính người báo cáo.
+- Đánh giá đang khoá **không** tự hiện lại khi khách mua lại (`restoreRefunded` đòi `moderationLockedAt = null`) và bị **bỏ qua** khi tự ẩn
+  do hoàn tiền/thu hồi (`hideReviewsForRevokedItems` lọc `moderationLockedAt: null` — nếu không, trigger làm hỏng cả transaction hoàn tiền).
+- Admin gỡ khoá → đánh giá **giữ `HIDDEN`**, tenant tự bỏ ẩn được.
+- Khách **xoá được** đánh giá của mình kể cả khi đang bị khoá (policy `customer_delete`) — cho phép theo "Bổ sung ADR-039 lần 2" (f);
+  báo cáo giữ nguyên ✅.
+- Admin xem đánh giá bị báo cáo: chỉ sao + nội dung + tên tài liệu (không userId/tên hiển thị/đơn — §7.9).
 
 ### 2.2. Trả lời của tenant ✅
 
@@ -176,7 +197,8 @@ Bảng L2 `reviews` — chi tiết cột/CHECK/index/policy ở
 | Email `review_new` gửi thật | ❓ |
 | Rate limit chỉ đúng khi chạy 1 instance | ✅ (đọc code) |
 | Cache điểm lệch nếu `recomputeProductRatings` lỗi — chưa có job đối soát | ✅ (đọc code; BACKLOG) |
-| Audit log ẩn/khôi phục (M12), nút Báo cáo vi phạm (M12), `AggregateRating` (GĐ3) | ✅ (chưa có) |
+| Audit log ẩn/khôi phục: có từ M12a (trừ `REVIEW_HIDDEN_REFUNDED`); nút Báo cáo vi phạm có từ M12c (chưa commit/deploy); `AggregateRating` (GĐ3) chưa có | ✅ (đọc code 2026-10-17) |
+| Trigger `reviews_guard_moderation` chặn tenant trên DB thật | 🟡 (Quốc kiểm bằng `gieochu_app`, rollback, 2026-10-16) · chưa có test ❓ |
 
 ## 10. Liên Kết
 

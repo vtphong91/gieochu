@@ -5,6 +5,7 @@ import { z } from "zod";
 import { logger } from "@gieochu/core";
 import { getPrismaClient } from "@gieochu/db";
 import { requireRole } from "../../../lib/session";
+import { audit } from "../../../lib/audit";
 
 /**
  * Form `/admin/settings` — chỉ còn email hỗ trợ (ADR-032). Tên nền tảng lấy từ Nhận diện thương hiệu
@@ -38,6 +39,14 @@ export async function updateSupportEmailAction(
     create: { id: "default", ...data },
   });
   logger.info({ actorId: actor.userId }, "system_settings: cập nhật email hỗ trợ (/admin/settings)");
+  await audit.log({
+    actorId: actor.userId,
+    scope: "SYSTEM",
+    action: "SYSTEM_SETTINGS_UPDATED",
+    targetType: "SystemSettings",
+    targetId: "default",
+    metadata: { form: "supportEmail", changedKeys: ["supportEmail"] },
+  });
 
   revalidatePath("/admin/settings");
   return { success: true };

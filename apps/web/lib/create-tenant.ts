@@ -1,6 +1,7 @@
 import { AppError, conflict, generateOrderCodePrefix, isReservedSlug, slugify } from "@gieochu/core";
 import { getPrismaClient } from "@gieochu/db";
 import type { CurrentUser } from "./session";
+import { audit } from "./audit";
 
 export interface CreateTenantInput {
   name: string;
@@ -106,6 +107,16 @@ export async function createTenantForUser(user: CurrentUser, input: CreateTenant
       },
     });
     return created;
+  });
+
+  await audit.log({
+    actorId: user.userId,
+    scope: "TENANT",
+    tenantId: tenant.id,
+    action: "TENANT_CREATED",
+    targetType: "Tenant",
+    targetId: tenant.id,
+    metadata: { slug: tenant.slug, planId: plan.id },
   });
 
   return { id: tenant.id, slug: tenant.slug };

@@ -28,6 +28,10 @@ function formatVnDate(date: Date): string {
   return date.toLocaleDateString("vi-VN", { timeZone: DISPLAY_TIME_ZONE, day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+function formatVnDateTime(date: Date): string {
+  return new Intl.DateTimeFormat("vi-VN", { timeZone: DISPLAY_TIME_ZONE, dateStyle: "short", timeStyle: "short" }).format(date);
+}
+
 function hostOf(url: string): string {
   try {
     return new URL(url).hostname;
@@ -77,7 +81,7 @@ export default async function EditProductPage({
         header={
           <AdminPageHeader
             title={product.title}
-            subtitle={`${STATUS_SUBTITLE[product.status] ?? PRODUCT_STATUS_LABEL[product.status] ?? product.status} · cập nhật ${formatVnDate(product.updatedAt)}`}
+            subtitle={`${STATUS_SUBTITLE[product.status] ?? PRODUCT_STATUS_LABEL[product.status] ?? product.status}${product.moderationLockedAt ? " · Bị khoá kiểm duyệt" : ""} · cập nhật ${formatVnDate(product.updatedAt)}`}
             action={
               <GhostLinkButton href={`/studio/${tenantSlug}/products`}>
                 <IconChevronLeft className="h-4 w-4" /> Danh sách sản phẩm
@@ -103,6 +107,10 @@ export default async function EditProductPage({
           saleEndsAt: toDatetimeLocal(product.saleEndsAt),
           downloadLimit: product.downloadLimit,
           coverImageUrl: product.coverImageUrl ?? "",
+          // ADR-038: chỉ nhãn loại vi phạm + thời điểm — không có danh tính người báo cáo.
+          moderationLock: product.moderationLockedAt
+            ? { reason: product.moderationReason, lockedAtLabel: formatVnDateTime(product.moderationLockedAt) }
+            : null,
         }}
         currentCategory={data.category}
         files={data.files.map((f) => ({

@@ -31,7 +31,7 @@ hoá đơn điện tử, đa tiền tệ, partition/backup/giám sát vận hàn
   cần thêm `neon-proxy` (hoặc driver adapter khác cho local) vào docker-compose — xem ADR-004. Hiện tại
   khuyến nghị dùng Neon branch miễn phí.
 - **Partition `audit_logs` theo tháng** (mục 5.3): mục 10 DoD chỉ yêu cầu "hoặc ghi ADR nếu để sau" — sẽ quyết
-  định cụ thể khi làm M12.
+  định cụ thể khi làm M12. *(2026-10-16: ADR-037 mục 4 chốt **để sau** — theo dõi ở mục "Phát sinh trong đợt M12a".)*
 - **`downloadLimit = 0` = không giới hạn**: đặc tả mục M5 gợi ý ghi ADR khi cài đặt sản phẩm — chưa quyết định
   vì M5 chưa bắt đầu.
 
@@ -41,8 +41,9 @@ hoá đơn điện tử, đa tiền tệ, partition/backup/giám sát vận hàn
   tạo Neon branch (qua Neon API/Console), tách riêng để an toàn hơn và cho phép chạy song song.
 - **Avatar upload**: mục M1 "đổi avatar (upload qua M5 storage helper)" — chưa làm vì `packages/storage`
   (presigned upload) thuộc M5. `/account/security` hiện chỉ có đổi mật khẩu + đăng xuất mọi thiết bị.
-- **Audit log cho sự kiện M1**: `AUTH_LOGIN`, `AUTH_LOGIN_FAILED`, `AUTH_REFRESH_REUSE`, v.v. cần ghi qua
-  `audit.log()` một khi bảng `audit_logs` (M12) tồn tại — nối lại khi làm M12, không lùi lại sửa M1.
+- ~~**Audit log cho sự kiện M1**~~: `AUTH_LOGIN`, `AUTH_LOGIN_FAILED`, `AUTH_REFRESH_REUSE`, v.v. cần ghi qua
+  `audit.log()` một khi bảng `audit_logs` (M12) tồn tại — nối lại khi làm M12, không lùi lại sửa M1. *(Đã nối ở M12a,
+  2026-10-16 — ADR-037; đăng nhập với email không tồn tại cố ý không ghi.)*
 - **Rate limit in-memory**: `apps/web/lib/rate-limit.ts` chỉ hoạt động đúng khi chạy 1 instance duy nhất
   (Next dev/start process). Nếu scale ra nhiều instance, cần chuyển sang bảng `rate_limits` trên Postgres
   (đã có gợi ý ở mục 6 của đặc tả).
@@ -71,9 +72,12 @@ hoá đơn điện tử, đa tiền tệ, partition/backup/giám sát vận hàn
 
 - **Platform Payment config + Audit log viewer + Báo cáo vi phạm**: nằm trong đặc tả M2 gốc nhưng cố ý hoãn
   vì cần `packages/payments` (M7) và bảng `audit_logs`/`abuse_reports` (M12) — đúng theo "hoàn thiện M2" ở
-  cuối chuỗi mục 10. Quay lại sau khi M7 và M12 xong.
-- **Doanh thu subscription + GMV trên dashboard admin**: hiện hiển thị ghi chú "cần M3/M12" — nối số liệu
-  thật (`subscription_invoices` PAID, `tenant_daily_stats`) khi 2 module đó xong.
+  cuối chuỗi mục 10. Quay lại sau khi M7 và M12 xong. *(2026-10-16: Audit log viewer `/admin/audit` xong ở M12a — ADR-037;
+  Báo cáo vi phạm chờ M12c.)* *(2026-10-16: Báo cáo vi phạm `/admin/reports` xong code ở M12c — ADR-038.)* — **Đóng 2026-10-17** (Quốc
+  xác nhận).
+- ~~**Doanh thu subscription + GMV trên dashboard admin**: hiện hiển thị ghi chú "cần M3/M12" — nối số liệu
+  thật (`subscription_invoices` PAID, `tenant_daily_stats`) khi 2 module đó xong. *(2026-10-16: GMV nối ở M12b — section "Hoạt động
+  bán tài liệu (30 ngày)" đọc `tenant_daily_stats`, ADR-037; `/admin` đã có khối "Doanh thu gói dịch vụ" + MRR.)*~~ — **Đóng 2026-10-16** (Quốc xác nhận).
 - **Live-preview block CMS**: form hiện chỉ có textarea JSON thô (validate qua `isValidCmsBlocks` khi lưu),
   chưa có form có cấu trúc/preview trực quan cho từng loại block (hero/features/faq/...). Cân nhắc nâng cấp
   UI khi có thời gian, không ảnh hưởng đúng đắn dữ liệu.
@@ -125,8 +129,9 @@ hoá đơn điện tử, đa tiền tệ, partition/backup/giám sát vận hàn
   `plan.features` đúng nguyên tắc entitlement — nhưng chưa gọi ở coupon/analytics/branding/SEO/automation/
   customDomain vì mỗi cái cần quyết định riêng "Free có được dùng hay không" trước khi gate (đặc tả gốc M6
   còn để ngỏ "Coupon: Có thể giới hạn / chưa mở" cho Free). Chưa làm, cần hỏi lại trước khi gate lần đầu.
-- **MRR/GMV đầy đủ trên `/admin` vẫn chờ M12**: M3 v2 chỉ thêm tách đếm subscription Free/Paid
-  (`subscriptionsByPlanType`), chưa tính doanh thu — đúng phạm vi đã thống nhất với người dùng.
+- ~~**MRR/GMV đầy đủ trên `/admin` vẫn chờ M12**: M3 v2 chỉ thêm tách đếm subscription Free/Paid
+  (`subscriptionsByPlanType`), chưa tính doanh thu — đúng phạm vi đã thống nhất với người dùng. *(2026-10-16: phần GMV xong ở M12b —
+  ADR-037.)*~~ — **Đóng 2026-10-16** (Quốc xác nhận: MRR + GMV đã có trên `/admin`).
 - **`SystemSettings.trialDays` không còn được đọc ở đâu**: `create-tenant.ts` không còn dùng trial nữa —
   cột vẫn còn trong schema (không xoá vội, không phải trọng tâm đợt này), `/admin/settings` UI vẫn có thể
   còn cho sửa giá trị này dù không có tác dụng — cần dọn khi có thời gian.
@@ -213,8 +218,9 @@ lộ ra 2 lỗi cả 2 đều tồn tại từ trước, không riêng module n�
   không tin tổng tiền từ client.
 - **Trang Studio coupon chưa có nút xoá**: chỉ có tạo/sửa/bật-tắt (`isEnabled`) — đặc tả không yêu cầu xoá
   tường minh, tắt coupon coi như đủ cho MVP; cân nhắc thêm nếu người dùng cần dọn hẳn mã cũ.
-- **`COUPON_OVERUSED` chưa ghi audit log thật**: xem ghi chú ngay phía trên — sẽ nối vào bảng `audit_logs`
-  khi M12 xây xong, hiện chỉ có `logger.warn` (pino, không truy vấn lại được từ UI admin).
+- ~~**`COUPON_OVERUSED` chưa ghi audit log thật**~~: xem ghi chú ngay phía trên — sẽ nối vào bảng `audit_logs`
+  khi M12 xây xong, hiện chỉ có `logger.warn` (pino, không truy vấn lại được từ UI admin). *(Đã nối ở M12a, 2026-10-16 —
+  `auditMarkOrderPaid` ghi sau commit, actor hệ thống.)*
 
 ## Phát sinh trong lúc dựng M8
 
@@ -257,9 +263,10 @@ lộ ra 2 lỗi cả 2 đều tồn tại từ trước, không riêng module n�
 - **`DEFAULT_DOWNLOAD_LIMIT` (env, M5) không được dùng lại ở M9**: `Entitlement.downloadLimit` là snapshot
   của `Product.downloadLimit` lúc mua (đặt trong M8's `markOrderPaid`), không đọc lại biến env này — đúng
   thiết kế, chỉ ghi chú để không nhầm là bỏ sót.
-- **`grantExtraDownloads`/`revokeEntitlement` chưa ghi audit**: đặc tả ghi "(audit)" cạnh 2 hành động này —
+- ~~**`grantExtraDownloads`/`revokeEntitlement` chưa ghi audit**~~: đặc tả ghi "(audit)" cạnh 2 hành động này —
   cùng lý do mọi hành động "audit" khác trong dự án tới giờ (M6's `COUPON_OVERUSED`, M8's manual confirm):
-  chưa có bảng `audit_logs` (M12). Sẽ nối khi M12 xây xong.
+  chưa có bảng `audit_logs` (M12). Sẽ nối khi M12 xây xong. *(Đã nối ở M12a, 2026-10-16 — `ENTITLEMENT_EXTRA_GRANTED`,
+  `ENTITLEMENT_REVOKED`.)*
 - **4 route/action mới của M9 chưa có rate limit theo IP** (chỉ có rate limit theo user/token, không theo
   IP) và **chưa kiểm tra header `Origin`** (mục 7.7) — cùng khoảng trống có sẵn từ M5/M8, áp dụng luôn cho
   route mới của M9; chờ đợt rà soát chung.
@@ -310,7 +317,8 @@ lộ ra 2 lỗi cả 2 đều tồn tại từ trước, không riêng module n�
 - ~~**Trang chi tiết sản phẩm chưa hiện `StorefrontNotice` READ_ONLY**~~ — bỏ theo ADR-025: trang chi tiết sản phẩm
   là trang hệ thống, không mang banner storefront. Hành vi READ_ONLY giữ như logic M8 hiện có: tenant không `ACTIVE`
   → ẩn `BuyButton`, khối mua hiện "Trang tạm ngưng bán — chưa thể mua lúc này."; tenant `LOCKED` → 404; server vẫn
-  chặn tạo đơn bằng `assertTenantCanWrite`.
+  chặn tạo đơn bằng `assertTenantCanWrite`. *(2026-10-17, ADR-040: khách của tenant không `ACTIVE` nhận 404 ở trang chi tiết sản phẩm;
+  dòng "Trang tạm ngưng bán" đã bỏ.)*
 - *(Ưu tiên thấp)* **Gộp `next/font` của `(auth)`/`admin`/`studio`** (`app/(auth)/layout.tsx`, `app/admin/layout.tsx`,
   `app/studio/[tenantSlug]/layout.tsx`) về `app/_ui/system-fonts.ts` khi có task chạm tới. App shell, không thuộc
   ADR-025 — hiện giữ nguyên.
@@ -384,7 +392,8 @@ lộ ra 2 lỗi cả 2 đều tồn tại từ trước, không riêng module n�
 
 **Phạm vi đã tách ra khỏi M10a (ADR-029 mục 1)**
 - **M10c — bình luận, thả tim, theo dõi tenant**: ngoài phạm vi M10 giai đoạn 1.
-- **Nút "Báo cáo vi phạm"** cho đánh giá (và bài viết M10b): đợi M12 (Báo cáo vi phạm).
+- ~~**Nút "Báo cáo vi phạm"** cho đánh giá (và bài viết M10b): đợi M12 (Báo cáo vi phạm).~~ *(xong code ở M12c — ADR-038.)* — **Đóng
+  2026-10-17** (Quốc xác nhận).
 - **SEO `AggregateRating`** (structured data điểm đánh giá trên trang chi tiết tài liệu): giai đoạn 3.
 
 **Nợ test (chủ dự án chọn chưa thêm test ở ADR-029)**
@@ -399,7 +408,8 @@ lộ ra 2 lỗi cả 2 đều tồn tại từ trước, không riêng module n�
 - **Job đối soát cache điểm** `products.ratingSum/ratingCount` (`withSystemJob`, SUM/COUNT lại toàn bộ định kỳ): hiện
   `recomputeProductRatings` lỗi chỉ log, cache chỉ tự sửa ở lần ghi đánh giá tiếp theo của sản phẩm đó.
 - **Audit log ẩn/khôi phục đánh giá** vào `audit_logs` (M12) — hiện chỉ log pino `REVIEW_HIDDEN`/`REVIEW_RESTORED`/
-  `REVIEW_HIDDEN_REFUNDED`/`REVIEW_RESTORED_AFTER_REPURCHASE`.
+  `REVIEW_HIDDEN_REFUNDED`/`REVIEW_RESTORED_AFTER_REPURCHASE`. *(M12a, 2026-10-16: đã ghi `REVIEW_HIDDEN`, `REVIEW_RESTORED`
+  — kể cả hiện lại khi mua lại, scope `CUSTOMER`. **Còn lại:** `REVIEW_HIDDEN_REFUNDED` vẫn chỉ `logger`.)*
 - ~~**Seed dữ liệu demo**~~ (đơn FULFILLED + entitlement + đánh giá nhiều mức sao, có/không trả lời, đánh giá ẩn) để kiểm giao
   diện trang chi tiết tài liệu, section "Đánh giá" storefront, Thư viện và Studio → Đánh giá. *(Đã có 2026-09-28: script chỉ
   cho dev `apps/web/scripts/demo-reviews.ts` — `ALLOW_DEMO_SEED=1 pnpm --filter @gieochu/db run demo:seed|demo:clean`, xem KB
@@ -443,7 +453,8 @@ lộ ra 2 lỗi cả 2 đều tồn tại từ trước, không riêng module n�
 - **`prisma migrate dev` và partial unique index `posts_tenantId_pinned_key`**: index chỉ có trong SQL migration, Prisma schema
   không biểu diễn được → đọc kỹ migration sinh ra, không để mất index.
 - **Dữ liệu demo bài viết** cho DB dev (script hiện chỉ tạo sản phẩm/đơn/đánh giá).
-- **Luồng đặt/gỡ `HIDDEN` cho bài viết** (Báo cáo vi phạm, M12) — hiện chưa có đường nào đặt `HIDDEN`.
+- ~~**Luồng đặt/gỡ `HIDDEN` cho bài viết** (Báo cáo vi phạm, M12) — hiện chưa có đường nào đặt `HIDDEN`.~~ *(M12c — admin `HIDE_CONTENT`
+  đặt `HIDDEN` + khoá kiểm duyệt, gỡ khoá đưa bài về `DRAFT`.)* — **Đóng 2026-10-17** (Quốc xác nhận).
 
 ## Phát sinh trong đợt ADR-030 (URL tài liệu rút gọn + bỏ card xuất bản dính)
 
@@ -544,7 +555,9 @@ test cần chủ dự án duyệt nâng trần):
 ## Phát sinh trong đợt Cửa hàng GĐ2 (ADR-035 — trang công khai `/cua-hang`, `/cua-hang/tai-lieu`)
 
 **Bảo mật / hạ tầng DB**
-- **`setup-app-role.mts` thêm `REVOKE CREATE ON DATABASE … FROM gieochu_app`** cho môi trường mới (việc của Hiếu, chưa làm). Chủ dự án
+- ~~**`setup-app-role.mts` thêm `REVOKE CREATE ON DATABASE … FROM gieochu_app`**~~ cho môi trường mới (việc của Hiếu, chưa làm).
+  *(2026-10-16, Long đối chiếu: script đã `REVOKE CREATE` — có trong commit `f021ed3`; comment script chọn "tạo schema `pgboss` bằng role
+  owner trước rồi chạy lại script" — Quốc xác nhận là quy trình chính thức (ADR-037 bổ sung); chưa chạy thử trên DB mới.)* Chủ dự án
   đã chạy `REVOKE` trên DB dùng chung 2026-10-15 (`has_database_privilege(..., 'CREATE') = false`), nhưng script hiện vẫn `GRANT CREATE
   ON DATABASE` (để pg-boss tự tạo schema `pgboss`) — chạy lại script sẽ cấp lại quyền. Cần chốt thứ tự với pg-boss trên DB mới (tạo
   schema `pgboss` bằng role owner trước, hay REVOKE sau lần khởi động worker đầu). KB `04-Operations-Runbooks/Disaster-Recovery-Runbook.md` §4.1.
@@ -612,3 +625,101 @@ nhiều trang; nhánh SEO từ CMS đã xuất bản (`seoTitle`/`seoDescription
 **Tài liệu gốc lệch**
 - `docs/ARCHITECTURE.md` (sơ đồ "pg-boss workers", `order.sweep` 5 phút "tất cả trong `apps/web/worker.ts`", cây thư mục `worker.ts`
   có `email.send`) và `CLAUDE.md` ("runtime chỉ 8 biến") chưa cập nhật theo ADR-036 — chờ Quốc.
+
+## Phát sinh trong đợt M12a (ADR-037 — Audit log)
+
+**Chưa nối / chờ module khác**
+- **`ADMIN_VIEWED_TENANT`** (ADR-037 mục 7) chưa ghi — chưa có trang chi tiết tenant trong System Center. Ghi khi xây trang đó.
+- ~~**`REPORT_RESOLVED`** chờ M12c (Báo cáo vi phạm).~~ *(đã ghi ở M12c — ADR-038.)* — **Đóng 2026-10-17** (Quốc xác nhận).
+  **`REVIEW_HIDDEN_REFUNDED`** (ẩn đánh giá tự động khi hoàn tiền) vẫn chỉ `logger`.
+- **Ô lý do khi khoá user**: đặc tả §"M2" ghi "USER_LOCKED + lý do" — form khoá chưa có ô lý do, `metadata` hiện chưa có `reason`.
+- **Audit cấu hình SMTP / storage / Cloudinary / thương hiệu** ở System Center chưa ghi (chỉ có `SYSTEM_SETTINGS_UPDATED` cho form
+  "Cấu hình chung" và email hỗ trợ).
+
+**Hiệu năng / dữ liệu**
+- **Purge chia lô**: `audit.purgeExpired` xoá mọi dòng > 12 tháng trong một lệnh DELETE/transaction — khi bảng lớn nên chia lô để không
+  vượt thời gian route cron.
+- **Partition `audit_logs` theo tháng** (ADR-037 mục 4: để sau) — làm khi bảng lớn.
+- **Phân trang offset** (`skip`/`take` + `count`) ở `/admin/audit` và `/studio/{slug}/activity` sẽ chậm khi bảng lớn — cân nhắc phân trang
+  theo con trỏ `(createdAt, id)`.
+
+**Giao diện**
+- ~~Mục "Hoạt động" hiện với mọi thành viên~~ — đã sửa 2026-10-16: chỉ hiện với OWNER (ADR-037 bổ sung).
+- **Ô lọc action ở Studio → Hoạt động** liệt kê cả action cấp hệ thống (đăng nhập, gói, cấu hình hệ thống...) không bao giờ có dòng trong
+  tenant — cần danh sách action theo scope.
+- **Nút kit `PrimaryButton`/`GhostLinkButton`** cao dưới 44px trên mobile (chuẩn target chạm) — dùng chung nhiều trang, sửa riêng một đợt.
+
+**Bảo mật / vận hành — giới hạn đã chấp nhận**
+- **`audit_logs` không có RLS** (bảng L1): quyền đọc của owner chỉ dựa vào loader `listTenantAuditLogs` (kiểm OWNER + luôn lọc
+  `tenantId`). Mọi đường đọc mới phải đi qua loader này.
+- **Mọi integration test chạy sau M12a để lại dòng audit không xoá được** (trigger chỉ cho xoá dòng > 12 tháng) — tồn tới 12 tháng trên
+  DB dùng chung (ADR-034). Lượt chạy `audit.test.ts` 2026-10-16 để lại 5 dòng giả (`AUTH_LOGIN`, `AUTH_LOGIN_FAILED`,
+  `SYSTEM_SETTINGS_UPDATED`, `USER_LOCKED`, `USER_UNLOCKED`); các test khác gọi hàm nghiệp vụ có audit cũng để lại dòng.
+
+## Phát sinh trong đợt M12b (ADR-037 — Thống kê hằng ngày)
+
+**Hiệu năng / dữ liệu**
+- **Index `orders("paidAt")`**: job `stats.aggregate` và backfill lọc `orders` theo `paidAt` — chưa có index; thêm (migration expand)
+  khi dữ liệu lớn.
+- **Ngân sách thời gian cron khi backfill dài**: route `/api/cron/daily` có `maxDuration = 60` giây, bước `stats.aggregate` chưa có ngân
+  sách riêng. Backfill nhiều cửa sổ 31 ngày có thể vượt thời gian; cửa sổ đã commit được giữ nhưng vì bảng đã có dòng nên lần chạy sau
+  chỉ tính hôm qua + hôm nay — ngày cũ chưa ghi không tự bù.
+- **Lối chạy tay `aggregateTenantDailyStats({ fromDate, toDate })`** (script/ops) để bù khoảng ngày khi backfill bị cắt giữa chừng — chưa có.
+
+**Giao diện**
+- **Chỉnh lời trạng thái dashboard thống kê**: `unavailable` (bảng chưa migrate) đang hứa "sẽ hiện sau 03:00" dù cron cũng bỏ qua khi
+  bảng chưa có; trạng thái rỗng sau deploy, trước lần backfill đầu, hiện "Chưa có hoạt động bán tài liệu" dù nguồn có dữ liệu. Tạm thời
+  giảm thiểu bằng bấm Run cron sau deploy (Deploy-Vercel-Runbook §6.2 bước 6).
+
+**Test**
+- **Unit test hàm ngày `vnDateString` / `addDays`** (`apps/web/lib/tenant-stats.ts`) chưa có — trần unit 94 chưa nâng (cần hỏi chủ dự án).
+- **`stats.test.ts` có thể lệch nếu cron chạy trùng ngày D** đúng lúc test chạy (test đọc tổng toàn nền tảng qua chênh lệch trước/sau)
+  — khả năng thấp.
+
+## Phát sinh trong đợt M12c (ADR-038 — Báo cáo vi phạm) + ADR-039 (quyền lợi người mua)
+
+**Test (ADR-038 mục 8 / ADR-039 mục 6: không thêm test trong đợt — trần 94/55 đã đủ; thêm cần hỏi chủ dự án)**
+- **Trigger thật trên DB:** `products/reviews/posts_guard_moderation` và `entitlements_guard_remedy` (tenant không đặt/gỡ khoá, không đổi
+  trạng thái khi khoá, không đổi `remedy*`/`downloadLimit` khi có remedy; ngoại lệ INSERT `PENDING_CHOICE` và `REFUND_REQUESTED → REFUNDED`).
+  Hiện chỉ có lượt kiểm tay của Quốc bằng `gieochu_app` (rollback) 2026-10-16.
+- **`POST /api/reports`:** giới hạn 5/giờ/IP, chặn trùng, honeypot, gửi đồng thời (advisory lock), 404 đối tượng không công khai.
+- **Xử lý báo cáo đồng thời** (2 admin cùng lúc → người sau 409, transaction rollback) và tuỳ chọn áp cùng quyết định cho báo cáo cùng
+  đối tượng.
+- **Xuất bản thiếu cam kết bản quyền** → `RIGHTS_CONFIRMATION_REQUIRED`; nội dung bị khoá → `CONTENT_MODERATION_LOCKED`.
+- **Bước cron `abuse_report.ip_purge`** (xoá IP > 12 tháng).
+- **Luồng remedy end-to-end:** lưu trữ → `PENDING_CHOICE` → chặn tải (cả token đã cấp trước) → tải lần cuối (đủ số tệp) / yêu cầu hoàn tiền
+  → `markOrderRefunded` → `REFUNDED`; đơn 0đ không hoàn tiền; đơn thanh toán muộn → `PENDING_CHOICE`.
+- **Email đơn hàng `order_paid`/`new_sale`:** lỗi đọc `orders` không scope (RLS trả 0 dòng → email chưa từng gửi, kiểm trùng mã đơn chưa từng
+  chạy) đã lọt qua toàn bộ test hiện có — cần test khẳng định email đơn được dựng/gửi sau `markOrderPaid` dưới role `gieochu_app`.
+
+**Nghiệp vụ / vận hành**
+- **Email quyền lợi người mua theo lô qua job:** `notifyPurchaseRemedyOpened` gửi tuần tự trong `after()` — sản phẩm nhiều người mua có thể
+  vượt thời gian request; chuyển sang job pg-boss theo lô (ADR-039 bổ sung).
+- **Nút theo dõi tranh chấp hoàn tiền** chi tiết (ADR-039 mục 6) — hiện admin chỉ có số đếm quá hạn + quyền khoá tenant.
+- ~~**Đơn của tenant `READ_ONLY` không thanh toán tiếp được** — `assertOrderProductsPurchasable` đòi tenant `ACTIVE` nên đơn `PENDING` bị
+  409 `PRODUCT_UNAVAILABLE`; chờ xác nhận giữ hay chỉ chặn `LOCKED`.~~ — **Đóng 2026-10-17**: chủ dự án chốt **chặn** (ADR-040 mục 4,
+  chốt "Bổ sung ADR-039 lần 2" (g)).
+- ~~**Lượt "tải lần cuối" tính chung theo entitlement** — UI ghi "mỗi tệp đúng 1 lần".~~ — **Đóng 2026-10-17**: giữ lượt chung ("Bổ sung
+  ADR-039 lần 2" (d)), Phong sửa chữ UI thành "N lượt cho N tệp, mỗi lượt tải một tệp".
+- ~~**`deletePost` không kiểm khoá kiểm duyệt** — tenant xoá được bài đang bị khoá.~~ — **Đóng 2026-10-17**: cho phép xoá bài/đánh giá
+  đang khoá, báo cáo giữ nguyên ("Bổ sung ADR-039 lần 2" (f)).
+
+**Giao diện**
+- **System Center chưa có menu mobile.**
+- **Studio chưa có nav mobile.**
+- **`VALIDATION_ERROR` chưa trả `field`** — hộp thoại báo cáo phải đoán trường lỗi theo nội dung thông điệp; đề nghị API trả
+  `{ error: { code, message, field, requestId } }`.
+- **Email hỗ trợ trong khối "Bị khoá kiểm duyệt" ở Studio** (`ModerationLockNotice`) — hiện chỉ ghi "liên hệ bộ phận hỗ trợ", chưa hiện
+  `SystemSettings.supportEmail`.
+
+## Phát sinh trong đợt ADR-040 (chỉ gian hàng ACTIVE hiển thị tài liệu)
+
+- **Thành viên gian hàng chưa được xem như chủ** — ADR-040 mục 2 ghi "chủ/thành viên gian hàng vẫn xem storefront kèm thông báo"; code
+  (`app/[tenantSlug]/page.tsx`, `[productSlug]/page.tsx`, `posts/**`) chỉ coi `tenant.ownerId === userId` là chủ — thành viên khác của tenant
+  `READ_ONLY` nhận trang tạm ngưng/404 như khách.
+- **Coupon preview chưa kiểm trạng thái tenant** — `POST /api/[tenantSlug]/coupons/preview` (`previewCouponPrice`, `apps/web/lib/coupon.ts`)
+  chỉ lọc sản phẩm `PUBLISHED`, vẫn tính giá cho sản phẩm của gian hàng không `ACTIVE` nếu biết `productId` ("Bổ sung ADR-040").
+- **Đổi tên integration test `READ_ONLY` cũ** — `subscription-billing.test.ts` "a READ_ONLY tenant … a customer can still list its
+  already-published products" vẫn đúng ở tầng lib nhưng tên mô tả hành vi người dùng đã đổi theo ADR-040; đổi tên/ý, **giữ nguyên số test**.
+- **Thống nhất cách chủ tenant `LOCKED` xem trang tài liệu/bài viết** — trang tài liệu trả 404 cả với chủ, còn `/posts` và
+  `/posts/[postId]` cho chủ xem.

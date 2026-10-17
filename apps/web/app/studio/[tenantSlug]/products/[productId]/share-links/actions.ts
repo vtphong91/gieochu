@@ -20,7 +20,7 @@ export async function createShareLinkAction(
   _prevState: ShareLinkActionState,
   formData: FormData,
 ): Promise<ShareLinkActionState> {
-  const { tenant } = await requireTenantMember(tenantSlug);
+  const { tenant, user } = await requireTenantMember(tenantSlug);
 
   const label = String(formData.get("label") ?? "").trim();
   if (!label) return { error: "Vui lòng nhập nhãn cho link." };
@@ -37,7 +37,7 @@ export async function createShareLinkAction(
       maxUses: maxUsesRaw ? Number(maxUsesRaw) : null,
       password: password || null,
       fileIds,
-    });
+    }, user.userId);
     revalidatePath(`/studio/${tenantSlug}/products/${productId}/share-links`);
     return { createdToken: token, error: undefined };
   } catch (error) {
@@ -47,7 +47,7 @@ export async function createShareLinkAction(
 }
 
 export async function revokeShareLinkAction(tenantSlug: string, productId: string, shareLinkId: string): Promise<void> {
-  const { tenant } = await requireTenantMember(tenantSlug);
-  await revokeShareLink(tenant.id, shareLinkId);
+  const { tenant, user } = await requireTenantMember(tenantSlug);
+  await revokeShareLink(tenant.id, shareLinkId, user.userId);
   revalidatePath(`/studio/${tenantSlug}/products/${productId}/share-links`);
 }

@@ -39,6 +39,8 @@ export type PostMinAggregateOutputType = {
   status: $Enums.PostStatus | null
   hiddenReason: string | null
   isPinned: boolean | null
+  moderationLockedAt: Date | null
+  moderationReason: string | null
   publishedAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -54,6 +56,8 @@ export type PostMaxAggregateOutputType = {
   status: $Enums.PostStatus | null
   hiddenReason: string | null
   isPinned: boolean | null
+  moderationLockedAt: Date | null
+  moderationReason: string | null
   publishedAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -69,6 +73,8 @@ export type PostCountAggregateOutputType = {
   status: number
   hiddenReason: number
   isPinned: number
+  moderationLockedAt: number
+  moderationReason: number
   publishedAt: number
   createdAt: number
   updatedAt: number
@@ -86,6 +92,8 @@ export type PostMinAggregateInputType = {
   status?: true
   hiddenReason?: true
   isPinned?: true
+  moderationLockedAt?: true
+  moderationReason?: true
   publishedAt?: true
   createdAt?: true
   updatedAt?: true
@@ -101,6 +109,8 @@ export type PostMaxAggregateInputType = {
   status?: true
   hiddenReason?: true
   isPinned?: true
+  moderationLockedAt?: true
+  moderationReason?: true
   publishedAt?: true
   createdAt?: true
   updatedAt?: true
@@ -116,6 +126,8 @@ export type PostCountAggregateInputType = {
   status?: true
   hiddenReason?: true
   isPinned?: true
+  moderationLockedAt?: true
+  moderationReason?: true
   publishedAt?: true
   createdAt?: true
   updatedAt?: true
@@ -204,6 +216,8 @@ export type PostGroupByOutputType = {
   status: $Enums.PostStatus
   hiddenReason: string | null
   isPinned: boolean
+  moderationLockedAt: Date | null
+  moderationReason: string | null
   publishedAt: Date | null
   createdAt: Date
   updatedAt: Date
@@ -240,6 +254,8 @@ export type PostWhereInput = {
   status?: Prisma.EnumPostStatusFilter<"Post"> | $Enums.PostStatus
   hiddenReason?: Prisma.StringNullableFilter<"Post"> | string | null
   isPinned?: Prisma.BoolFilter<"Post"> | boolean
+  moderationLockedAt?: Prisma.DateTimeNullableFilter<"Post"> | Date | string | null
+  moderationReason?: Prisma.StringNullableFilter<"Post"> | string | null
   publishedAt?: Prisma.DateTimeNullableFilter<"Post"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Post"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Post"> | Date | string
@@ -257,6 +273,8 @@ export type PostOrderByWithRelationInput = {
   status?: Prisma.SortOrder
   hiddenReason?: Prisma.SortOrderInput | Prisma.SortOrder
   isPinned?: Prisma.SortOrder
+  moderationLockedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  moderationReason?: Prisma.SortOrderInput | Prisma.SortOrder
   publishedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -277,6 +295,8 @@ export type PostWhereUniqueInput = Prisma.AtLeast<{
   status?: Prisma.EnumPostStatusFilter<"Post"> | $Enums.PostStatus
   hiddenReason?: Prisma.StringNullableFilter<"Post"> | string | null
   isPinned?: Prisma.BoolFilter<"Post"> | boolean
+  moderationLockedAt?: Prisma.DateTimeNullableFilter<"Post"> | Date | string | null
+  moderationReason?: Prisma.StringNullableFilter<"Post"> | string | null
   publishedAt?: Prisma.DateTimeNullableFilter<"Post"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Post"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Post"> | Date | string
@@ -294,6 +314,8 @@ export type PostOrderByWithAggregationInput = {
   status?: Prisma.SortOrder
   hiddenReason?: Prisma.SortOrderInput | Prisma.SortOrder
   isPinned?: Prisma.SortOrder
+  moderationLockedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  moderationReason?: Prisma.SortOrderInput | Prisma.SortOrder
   publishedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -315,6 +337,8 @@ export type PostScalarWhereWithAggregatesInput = {
   status?: Prisma.EnumPostStatusWithAggregatesFilter<"Post"> | $Enums.PostStatus
   hiddenReason?: Prisma.StringNullableWithAggregatesFilter<"Post"> | string | null
   isPinned?: Prisma.BoolWithAggregatesFilter<"Post"> | boolean
+  moderationLockedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Post"> | Date | string | null
+  moderationReason?: Prisma.StringNullableWithAggregatesFilter<"Post"> | string | null
   publishedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Post"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Post"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Post"> | Date | string
@@ -328,6 +352,8 @@ export type PostCreateInput = {
   status?: $Enums.PostStatus
   hiddenReason?: string | null
   isPinned?: boolean
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
   publishedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -345,6 +371,8 @@ export type PostUncheckedCreateInput = {
   status?: $Enums.PostStatus
   hiddenReason?: string | null
   isPinned?: boolean
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
   publishedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -358,6 +386,8 @@ export type PostUpdateInput = {
   status?: Prisma.EnumPostStatusFieldUpdateOperationsInput | $Enums.PostStatus
   hiddenReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPinned?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -375,6 +405,8 @@ export type PostUncheckedUpdateInput = {
   status?: Prisma.EnumPostStatusFieldUpdateOperationsInput | $Enums.PostStatus
   hiddenReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPinned?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -390,6 +422,8 @@ export type PostCreateManyInput = {
   status?: $Enums.PostStatus
   hiddenReason?: string | null
   isPinned?: boolean
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
   publishedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -403,6 +437,8 @@ export type PostUpdateManyMutationInput = {
   status?: Prisma.EnumPostStatusFieldUpdateOperationsInput | $Enums.PostStatus
   hiddenReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPinned?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -418,6 +454,8 @@ export type PostUncheckedUpdateManyInput = {
   status?: Prisma.EnumPostStatusFieldUpdateOperationsInput | $Enums.PostStatus
   hiddenReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPinned?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -443,6 +481,8 @@ export type PostCountOrderByAggregateInput = {
   status?: Prisma.SortOrder
   hiddenReason?: Prisma.SortOrder
   isPinned?: Prisma.SortOrder
+  moderationLockedAt?: Prisma.SortOrder
+  moderationReason?: Prisma.SortOrder
   publishedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -458,6 +498,8 @@ export type PostMaxOrderByAggregateInput = {
   status?: Prisma.SortOrder
   hiddenReason?: Prisma.SortOrder
   isPinned?: Prisma.SortOrder
+  moderationLockedAt?: Prisma.SortOrder
+  moderationReason?: Prisma.SortOrder
   publishedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -473,6 +515,8 @@ export type PostMinOrderByAggregateInput = {
   status?: Prisma.SortOrder
   hiddenReason?: Prisma.SortOrder
   isPinned?: Prisma.SortOrder
+  moderationLockedAt?: Prisma.SortOrder
+  moderationReason?: Prisma.SortOrder
   publishedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -574,6 +618,8 @@ export type PostCreateWithoutTenantInput = {
   status?: $Enums.PostStatus
   hiddenReason?: string | null
   isPinned?: boolean
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
   publishedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -589,6 +635,8 @@ export type PostUncheckedCreateWithoutTenantInput = {
   status?: $Enums.PostStatus
   hiddenReason?: string | null
   isPinned?: boolean
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
   publishedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -633,6 +681,8 @@ export type PostScalarWhereInput = {
   status?: Prisma.EnumPostStatusFilter<"Post"> | $Enums.PostStatus
   hiddenReason?: Prisma.StringNullableFilter<"Post"> | string | null
   isPinned?: Prisma.BoolFilter<"Post"> | boolean
+  moderationLockedAt?: Prisma.DateTimeNullableFilter<"Post"> | Date | string | null
+  moderationReason?: Prisma.StringNullableFilter<"Post"> | string | null
   publishedAt?: Prisma.DateTimeNullableFilter<"Post"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Post"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Post"> | Date | string
@@ -646,6 +696,8 @@ export type PostCreateWithoutProductInput = {
   status?: $Enums.PostStatus
   hiddenReason?: string | null
   isPinned?: boolean
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
   publishedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -661,6 +713,8 @@ export type PostUncheckedCreateWithoutProductInput = {
   status?: $Enums.PostStatus
   hiddenReason?: string | null
   isPinned?: boolean
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
   publishedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -701,6 +755,8 @@ export type PostCreateManyTenantInput = {
   status?: $Enums.PostStatus
   hiddenReason?: string | null
   isPinned?: boolean
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
   publishedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -714,6 +770,8 @@ export type PostUpdateWithoutTenantInput = {
   status?: Prisma.EnumPostStatusFieldUpdateOperationsInput | $Enums.PostStatus
   hiddenReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPinned?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -729,6 +787,8 @@ export type PostUncheckedUpdateWithoutTenantInput = {
   status?: Prisma.EnumPostStatusFieldUpdateOperationsInput | $Enums.PostStatus
   hiddenReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPinned?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -743,6 +803,8 @@ export type PostUncheckedUpdateManyWithoutTenantInput = {
   status?: Prisma.EnumPostStatusFieldUpdateOperationsInput | $Enums.PostStatus
   hiddenReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPinned?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -757,6 +819,8 @@ export type PostCreateManyProductInput = {
   status?: $Enums.PostStatus
   hiddenReason?: string | null
   isPinned?: boolean
+  moderationLockedAt?: Date | string | null
+  moderationReason?: string | null
   publishedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -770,6 +834,8 @@ export type PostUpdateWithoutProductInput = {
   status?: Prisma.EnumPostStatusFieldUpdateOperationsInput | $Enums.PostStatus
   hiddenReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPinned?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -785,6 +851,8 @@ export type PostUncheckedUpdateWithoutProductInput = {
   status?: Prisma.EnumPostStatusFieldUpdateOperationsInput | $Enums.PostStatus
   hiddenReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPinned?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -799,6 +867,8 @@ export type PostUncheckedUpdateManyWithoutProductInput = {
   status?: Prisma.EnumPostStatusFieldUpdateOperationsInput | $Enums.PostStatus
   hiddenReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPinned?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  moderationLockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  moderationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -816,6 +886,8 @@ export type PostSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   status?: boolean
   hiddenReason?: boolean
   isPinned?: boolean
+  moderationLockedAt?: boolean
+  moderationReason?: boolean
   publishedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -833,6 +905,8 @@ export type PostSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   status?: boolean
   hiddenReason?: boolean
   isPinned?: boolean
+  moderationLockedAt?: boolean
+  moderationReason?: boolean
   publishedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -850,6 +924,8 @@ export type PostSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   status?: boolean
   hiddenReason?: boolean
   isPinned?: boolean
+  moderationLockedAt?: boolean
+  moderationReason?: boolean
   publishedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -867,12 +943,14 @@ export type PostSelectScalar = {
   status?: boolean
   hiddenReason?: boolean
   isPinned?: boolean
+  moderationLockedAt?: boolean
+  moderationReason?: boolean
   publishedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type PostOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tenantId" | "title" | "body" | "excerpt" | "productId" | "status" | "hiddenReason" | "isPinned" | "publishedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["post"]>
+export type PostOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tenantId" | "title" | "body" | "excerpt" | "productId" | "status" | "hiddenReason" | "isPinned" | "moderationLockedAt" | "moderationReason" | "publishedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["post"]>
 export type PostInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
   product?: boolean | Prisma.Post$productArgs<ExtArgs>
@@ -911,6 +989,12 @@ export type $PostPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
      */
     hiddenReason: string | null
     isPinned: boolean
+    /**
+     * ADR-038 mục 5: khoá kiểm duyệt (admin ẩn do vi phạm, qua `system_job`; luôn đi cùng `status = HIDDEN`). Trigger
+     * `posts_guard_moderation` chặn scope khác đặt/gỡ hoặc đổi `status` khi đang khoá.
+     */
+    moderationLockedAt: Date | null
+    moderationReason: string | null
     /**
      * Lần xuất bản đầu tiên (giữ nguyên khi gỡ về DRAFT rồi đăng lại). Bắt buộc khi PUBLISHED (CHECK).
      */
@@ -1351,6 +1435,8 @@ export interface PostFieldRefs {
   readonly status: Prisma.FieldRef<"Post", 'PostStatus'>
   readonly hiddenReason: Prisma.FieldRef<"Post", 'String'>
   readonly isPinned: Prisma.FieldRef<"Post", 'Boolean'>
+  readonly moderationLockedAt: Prisma.FieldRef<"Post", 'DateTime'>
+  readonly moderationReason: Prisma.FieldRef<"Post", 'String'>
   readonly publishedAt: Prisma.FieldRef<"Post", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"Post", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Post", 'DateTime'>

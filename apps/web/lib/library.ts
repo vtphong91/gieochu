@@ -1,4 +1,4 @@
-import { effectiveOrderStatus, normalizeExternalDocumentUrl } from "@gieochu/core";
+import { effectiveOrderStatus, normalizeExternalDocumentUrl, type EntitlementRemedyStatusValue } from "@gieochu/core";
 import { withCustomer, type ReviewStatus } from "@gieochu/db";
 import { getMyReviewsByProduct } from "./review";
 
@@ -27,6 +27,25 @@ export interface LibraryEntitlement {
   canReview: boolean;
   /** Đánh giá hiện có của khách cho sản phẩm (theo sản phẩm, không theo từng lần mua); null = chưa đánh giá. */
   review: { id: string; rating: number; status: ReviewStatus } | null;
+  /**
+   * ADR-039 — tài liệu bị gỡ do vi phạm. NONE = bình thường. PENDING_CHOICE = tải bị chặn, hiện 2 lựa chọn (chỉ lựa chọn
+   * tải lần cuối khi `refundAvailable = false`). FINAL_DOWNLOAD = còn đúng lượt theo `downloadLimit` — hiện cảnh báo
+   * trước khi tải. REFUND_REQUESTED/REFUNDED = chặn tải vĩnh viễn. Khi `revoked = true` thì trạng thái thu hồi ưu tiên.
+   */
+  remedyStatus: EntitlementRemedyStatusValue;
+  /** Đơn > 0đ → được chọn "yêu cầu hoàn tiền". Server kiểm lại (không tin giá trị này). */
+  refundAvailable: boolean;
+  /** Thời điểm khách chọn (null khi chưa chọn / không bị ảnh hưởng). */
+  remedyChosenAt: Date | null;
+  /** Thời điểm tenant xác nhận đã hoàn tiền (chỉ có khi REFUNDED). */
+  remedyResolvedAt: Date | null;
+  /**
+   * Số lượt "tải lần cuối" sẽ được cấp nếu khách chọn lựa chọn A = số tệp khả dụng hiện tại (tối thiểu 1) — cùng cách
+   * tính với `chooseFinalDownload`. Chỉ để hiển thị.
+   */
+  finalDownloadFileCount: number;
+  /** Mã đơn gốc (hiện cạnh yêu cầu hoàn tiền). */
+  orderCode: string;
 }
 
 export interface LibraryTenantGroup {
@@ -43,6 +62,7 @@ export async function listLibraryEntitlements(userId: string): Promise<LibraryTe
       where: { userId },
       include: {
         tenant: { select: { id: true, name: true, slug: true } },
+        orderItem: { select: { order: { select: { code: true, totalVnd: true } } } },
         product: {
           select: {
             id: true,
@@ -77,6 +97,9 @@ export async function listLibraryEntitlements(userId: string): Promise<LibraryTe
       group = { tenantId: entitlement.tenantId, tenantName: entitlement.tenant.name, tenantSlug: entitlement.tenant.slug, entitlements: [] };
       groups.set(entitlement.tenantId, group);
     }
+    const files = entitlement.product.files
+      .filter((f) => f.sourceKind === "FILE" || (f.externalUrl != null && normalizeExternalDocumentUrl(f.externalUrl) !== null))
+      .map((f) => ({ id: f.id, kind: f.sourceKind, fileName: f.fileName, sizeBytes: f.sizeBytes }));
     group.entitlements.push({
       entitlementId: entitlement.id,
       productId: entitlement.productId,
@@ -85,11 +108,15 @@ export async function listLibraryEntitlements(userId: string): Promise<LibraryTe
       downloadsUsed: entitlement.downloadsUsed,
       downloadLimit: entitlement.downloadLimit,
       revoked: entitlement.revokedAt != null,
-      files: entitlement.product.files
-        .filter((f) => f.sourceKind === "FILE" || (f.externalUrl != null && normalizeExternalDocumentUrl(f.externalUrl) !== null))
-        .map((f) => ({ id: f.id, kind: f.sourceKind, fileName: f.fileName, sizeBytes: f.sizeBytes })),
+      files,
       canReview: entitlement.revokedAt == null,
       review: reviews.get(entitlement.productId) ?? null,
+      remedyStatus: entitlement.remedyStatus,
+      refundAvailable: entitlement.orderItem.order.totalVnd > 0,
+      remedyChosenAt: entitlement.remedyChosenAt,
+      remedyResolvedAt: entitlement.remedyResolvedAt,
+      finalDownloadFileCount: Math.max(1, files.length),
+      orderCode: entitlement.orderItem.order.code,
     });
   }
   return [...groups.values()];

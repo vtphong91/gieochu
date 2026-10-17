@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ReactElement } from "react";
+import { Suspense, type ReactElement } from "react";
 import { getEffectiveBrand } from "../../lib/branding";
 import { brandColors } from "@gieochu/config/theme";
 import { requireAdminAccess } from "../../lib/page-guards";
@@ -10,6 +10,8 @@ import {
   getRecentPlatformPayments,
   getRecentTenants,
 } from "../../lib/admin-dashboard";
+import { getAdminStatsOverview } from "../../lib/admin-stats";
+import { SalesStatsSection, SalesStatsSkeleton, parseSalesChartMetric, type SalesChartMetric } from "./_ui/sales-stats";
 
 const BLUE = brandColors.primary;
 const GREEN = brandColors.secondary;
@@ -126,8 +128,15 @@ function StatCard({
   );
 }
 
-export default async function AdminDashboardPage() {
+/** M12b — khối bán tài liệu tự lấy số liệu trong Suspense riêng để phần còn lại của dashboard không phải chờ. */
+async function SalesStats({ metric }: { metric: SalesChartMetric }) {
+  const overview = await getAdminStatsOverview({ days: 30 });
+  return <SalesStatsSection overview={overview} metric={metric} />;
+}
+
+export default async function AdminDashboardPage({ searchParams }: { searchParams: Promise<{ "chi-so"?: string | string[] }> }) {
   await requireAdminAccess("/admin");
+  const metric = parseSalesChartMetric((await searchParams)["chi-so"]);
   const brand = await getEffectiveBrand();
 
   const [summary, monthlyRevenue, recentPayments, recentTenants, planDistribution] = await Promise.all([
@@ -264,6 +273,11 @@ export default async function AdminDashboardPage() {
           </Link>
         </section>
       </div>
+
+      {/* M12b — hoạt động bán tài liệu toàn nền tảng (tenant_daily_stats, ADR-037) */}
+      <Suspense fallback={<SalesStatsSkeleton />}>
+        <SalesStats metric={metric} />
+      </Suspense>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Quick actions */}

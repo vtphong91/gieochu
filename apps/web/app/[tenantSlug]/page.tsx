@@ -19,7 +19,7 @@ import { ContactSection } from "./_ui/contact";
 import { bodyFont, headingFont } from "./_ui/fonts";
 import { StorefrontHero } from "./_ui/hero";
 import { socialEntries } from "./_ui/icons";
-import { StorefrontDemoBanner, StorefrontNotice } from "./_ui/notice";
+import { StorefrontDemoBanner, StorefrontNotice, StorefrontSuspendedNotice } from "./_ui/notice";
 import { SECTION_ANCHORS } from "./_ui/primitives";
 import { ProductsSection } from "./_ui/products";
 import { ServicesSection } from "./_ui/services";
@@ -46,6 +46,8 @@ export async function generateMetadata({
   const { tenantSlug } = await params;
   const tenant = await resolveTenant(tenantSlug);
   if (!tenant) return {};
+  // ADR-040: gian hàng không ACTIVE (READ_ONLY → khách chỉ thấy trang "tạm ngưng"; LOCKED → 404) không được lập chỉ mục.
+  if (tenant.status !== "ACTIVE") return { title: tenant.name, robots: { index: false, follow: false } };
   return { title: tenant.name, description: tenant.bio ?? undefined };
 }
 
@@ -60,6 +62,9 @@ export default async function StorefrontPage({ params }: { params: Promise<{ ten
   const decision = resolveStorefrontAccess(tenant.status, viewer);
 
   if (decision === "NOT_FOUND") notFound();
+  // ADR-040: khách của gian hàng READ_ONLY chỉ thấy thông báo tạm ngưng — trả về TRƯỚC mọi loader
+  // sản phẩm/bài viết/đánh giá (không truy vấn, không chỉ ẩn ở UI).
+  if (decision === "SUSPENDED_NOTICE") return <SuspendedStorefront tenantName={tenant.name} />;
 
   // ADR-023: chỉ section đang bật, đúng thứ tự tenant sắp; khách không thấy đánh giá demo.
   const { sections, isDemo } = resolveStorefrontSections(tenant, { isOwner });
@@ -160,6 +165,28 @@ export default async function StorefrontPage({ params }: { params: Promise<{ ten
         {/* Luôn có đúng 1 h1: tắt section hero → h1 ẩn trực quan mang tên trang. */}
         {hasHero ? null : <h1 className="sr-only">{tenant.name}</h1>}
         {sections.map(renderSection)}
+      </main>
+
+      <SiteFooter />
+    </div>
+  );
+}
+
+/** ADR-040: trang "tạm ngưng" cho khách — khung hệ thống (header/footer), không theme/nội dung tenant. */
+function SuspendedStorefront({ tenantName }: { tenantName: string }) {
+  return (
+    <div className={`${systemFontVars} min-h-dvh overflow-x-clip bg-white font-[family-name:var(--font-body)]`}>
+      <a
+        href="#noi-dung"
+        className="sr-only z-30 rounded-full bg-white px-5 py-3 font-semibold text-[color:var(--color-primary)] shadow-lg focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+      >
+        Bỏ qua tới nội dung chính
+      </a>
+
+      <SiteHeader />
+
+      <main id="noi-dung" tabIndex={-1} className="outline-none">
+        <StorefrontSuspendedNotice tenantName={tenantName} />
       </main>
 
       <SiteFooter />

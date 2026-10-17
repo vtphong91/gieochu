@@ -16,11 +16,11 @@ export async function confirmOrderManuallyAction(
   _prevState: OrderActionState,
   formData: FormData,
 ): Promise<OrderActionState> {
-  const { tenant } = await requireTenantMember(tenantSlug);
+  const { tenant, user } = await requireTenantMember(tenantSlug);
   const note = String(formData.get("note") ?? "");
 
   try {
-    await confirmOrderManually(tenant.id, orderId, note);
+    await confirmOrderManually(tenant.id, orderId, note, user.userId);
   } catch (error) {
     if (error instanceof AppError) return { error: error.message };
     throw error;
@@ -45,9 +45,9 @@ export async function cancelOrderAction(tenantSlug: string, orderId: string): Pr
 }
 
 export async function markOrderRefundedAction(tenantSlug: string, orderId: string): Promise<OrderActionState> {
-  const { tenant } = await requireTenantMember(tenantSlug);
+  const { tenant, user } = await requireTenantMember(tenantSlug);
   try {
-    await markOrderRefunded(tenant.id, orderId);
+    await markOrderRefunded(tenant.id, orderId, user.userId);
   } catch (error) {
     if (error instanceof AppError) return { error: error.message };
     throw error;
@@ -65,12 +65,12 @@ export async function grantExtraDownloadsAction(
   _prevState: OrderActionState,
   formData: FormData,
 ): Promise<OrderActionState> {
-  const { tenant } = await requireTenantMember(tenantSlug);
+  const { tenant, user } = await requireTenantMember(tenantSlug);
   const extra = Number(formData.get("extra") ?? 0);
   if (!Number.isInteger(extra) || extra <= 0) return { error: "Số lượt cấp thêm phải là số nguyên dương." };
 
   try {
-    await grantExtraDownloads(tenant.id, entitlementId, extra);
+    await grantExtraDownloads(tenant.id, entitlementId, extra, user.userId);
   } catch (error) {
     if (error instanceof AppError) return { error: error.message };
     throw error;
@@ -81,9 +81,9 @@ export async function grantExtraDownloadsAction(
 
 /** §"M9": "... hoặc thu hồi entitlement của một khách". */
 export async function revokeEntitlementAction(tenantSlug: string, orderId: string, entitlementId: string): Promise<OrderActionState> {
-  const { tenant } = await requireTenantMember(tenantSlug);
+  const { tenant, user } = await requireTenantMember(tenantSlug);
   try {
-    await revokeEntitlement(tenant.id, entitlementId);
+    await revokeEntitlement(tenant.id, entitlementId, user.userId);
   } catch (error) {
     if (error instanceof AppError) return { error: error.message };
     throw error;

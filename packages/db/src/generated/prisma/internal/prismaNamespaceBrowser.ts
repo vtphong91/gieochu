@@ -92,7 +92,10 @@ export const ModelName = {
   StorefrontMessage: 'StorefrontMessage',
   TenantMediaAsset: 'TenantMediaAsset',
   Review: 'Review',
-  Post: 'Post'
+  Post: 'Post',
+  AuditLog: 'AuditLog',
+  TenantDailyStat: 'TenantDailyStat',
+  AbuseReport: 'AbuseReport'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -317,6 +320,10 @@ export const ProductScalarFieldEnum = {
   ratingCount: 'ratingCount',
   soldCount: 'soldCount',
   status: 'status',
+  moderationLockedAt: 'moderationLockedAt',
+  moderationReason: 'moderationReason',
+  rightsConfirmedAt: 'rightsConfirmedAt',
+  rightsConfirmedById: 'rightsConfirmedById',
   categoryId: 'categoryId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -648,7 +655,12 @@ export const EntitlementScalarFieldEnum = {
   downloadsUsed: 'downloadsUsed',
   downloadLimit: 'downloadLimit',
   revokedAt: 'revokedAt',
-  createdAt: 'createdAt'
+  createdAt: 'createdAt',
+  remedyStatus: 'remedyStatus',
+  remedyRequestedAt: 'remedyRequestedAt',
+  remedyChosenAt: 'remedyChosenAt',
+  remedyResolvedAt: 'remedyResolvedAt',
+  remedyReportId: 'remedyReportId'
 } as const
 
 export type EntitlementScalarFieldEnum = (typeof EntitlementScalarFieldEnum)[keyof typeof EntitlementScalarFieldEnum]
@@ -745,6 +757,8 @@ export const ReviewScalarFieldEnum = {
   hiddenAt: 'hiddenAt',
   reply: 'reply',
   repliedAt: 'repliedAt',
+  moderationLockedAt: 'moderationLockedAt',
+  moderationReason: 'moderationReason',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -762,12 +776,68 @@ export const PostScalarFieldEnum = {
   status: 'status',
   hiddenReason: 'hiddenReason',
   isPinned: 'isPinned',
+  moderationLockedAt: 'moderationLockedAt',
+  moderationReason: 'moderationReason',
   publishedAt: 'publishedAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
 export type PostScalarFieldEnum = (typeof PostScalarFieldEnum)[keyof typeof PostScalarFieldEnum]
+
+
+export const AuditLogScalarFieldEnum = {
+  id: 'id',
+  actorId: 'actorId',
+  scope: 'scope',
+  tenantId: 'tenantId',
+  action: 'action',
+  targetType: 'targetType',
+  targetId: 'targetId',
+  metadata: 'metadata',
+  ip: 'ip',
+  userAgent: 'userAgent',
+  createdAt: 'createdAt'
+} as const
+
+export type AuditLogScalarFieldEnum = (typeof AuditLogScalarFieldEnum)[keyof typeof AuditLogScalarFieldEnum]
+
+
+export const TenantDailyStatScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  date: 'date',
+  ordersPaid: 'ordersPaid',
+  gmvVnd: 'gmvVnd',
+  newCustomers: 'newCustomers',
+  downloads: 'downloads',
+  updatedAt: 'updatedAt'
+} as const
+
+export type TenantDailyStatScalarFieldEnum = (typeof TenantDailyStatScalarFieldEnum)[keyof typeof TenantDailyStatScalarFieldEnum]
+
+
+export const AbuseReportScalarFieldEnum = {
+  id: 'id',
+  targetType: 'targetType',
+  targetId: 'targetId',
+  tenantId: 'tenantId',
+  type: 'type',
+  description: 'description',
+  evidenceUrls: 'evidenceUrls',
+  reporterUserId: 'reporterUserId',
+  reporterEmail: 'reporterEmail',
+  ip: 'ip',
+  status: 'status',
+  decision: 'decision',
+  resolutionNote: 'resolutionNote',
+  resolvedById: 'resolvedById',
+  resolvedAt: 'resolvedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AbuseReportScalarFieldEnum = (typeof AbuseReportScalarFieldEnum)[keyof typeof AbuseReportScalarFieldEnum]
 
 
 export const SortOrder = {

@@ -13,9 +13,9 @@ export interface ConfirmInvoiceActionState {
 // is used here, and apps/web's Next.js eslint config (unlike packages/*'s baseConfig) has no
 // argsIgnorePattern for `_`-prefixed args, so they're just omitted (TS allows a shorter param list).
 export async function confirmManualInvoiceAction(invoiceId: string): Promise<ConfirmInvoiceActionState> {
-  await requireRole("SYSTEM_ADMIN");
+  const actor = await requireRole("SYSTEM_ADMIN");
   try {
-    await confirmManualInvoicePayment(invoiceId);
+    await confirmManualInvoicePayment(invoiceId, actor.userId);
   } catch (error) {
     if (error instanceof AppError) return { error: error.message };
     throw error;

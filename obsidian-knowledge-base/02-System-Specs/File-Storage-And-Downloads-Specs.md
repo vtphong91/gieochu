@@ -6,7 +6,7 @@ tags:
   - security
   - status/living
 date: 2026-09-26
-updated: 2026-10-16
+updated: 2026-10-17
 author: System Architect
 ---
 
@@ -142,6 +142,7 @@ sequenceDiagram
   tại thời điểm mua vào `Entitlement.downloadLimit`, một thay đổi sau đó trên `Product` không ảnh hưởng khách
   đã mua.
 - **Rate limit chống dò:** 20 lượt/10 phút mỗi user cho `/api/downloads`.
+- **Tài liệu bị gỡ do vi phạm (ADR-039)** — entitlement có `remedyStatus ≠ NONE` bị chặn/giới hạn tải, xem §8.
 
 ---
 
@@ -165,6 +166,13 @@ người nhận đăng nhập:
 - **Route công khai:** `GET /s/[token]` (trang nhập mật khẩu nếu cần), `POST /api/share-links/{token}/download`.
 - **Chỉ file (ADR-026)** ✅: share link là kênh ẩn danh nên chỉ nhận dòng `sourceKind = FILE` — link tài liệu ngoài
   không bao giờ đi qua share link.
+- **Gian hàng phải `ACTIVE` (ADR-040)** ✅ đọc code `apps/web/lib/share-link.ts` 2026-10-17: tenant không `ACTIVE` (`READ_ONLY` hoặc
+  `LOCKED`) → **410 `SHARE_LINK_TENANT_LOCKED`** ("Link không còn hiệu lực.") ở **cả** bước mở link (`resolveShareLink`) **và** bước tải
+  (`consumeShareLinkDownload`, kiểm sau `isShareLinkUsable`, trước mật khẩu/tăng `usedCount`). Trước ADR-040 chỉ chặn `LOCKED` và chỉ ở
+  bước mở link. Dữ liệu link không đổi — tenant về `ACTIVE` thì link (còn hạn/lượt) dùng lại được. Bản trích
+  [[01-Architecture-Decisions/ADR-026-Only-Active-Tenant-Shows-Documents|ADR-026 (KB)]].
+- **Thư viện khách đã mua** (`DownloadToken`, §4) **không** bị chặn theo trạng thái tenant (ADR-040 mục 4) 🟡 (theo brief; đợt này không
+  đổi code tải của khách).
 
 **3 lỗ hổng RLS thật đã phát hiện và sửa qua chính integration test (ADR-020)** — không phải qua review:
 `products`/`product_files` (RLS từ M4/M5) từng thiếu nhánh "customer đã mua" (khách mua rồi vẫn không đọc được
@@ -320,7 +328,32 @@ limit); ảnh `f_auto` qua CSP `img-src` trên trình duyệt; tenant gói FREE 
 
 ---
 
-## 8. Tài Liệu Tham Chiếu & Liên Kết
+## 8. Chặn Tải Khi Tài Liệu Bị Gỡ Do Vi Phạm (ADR-039) ✅
+
+Đối chiếu `apps/web/lib/download.ts`, `apps/web/lib/entitlement-remedy.ts`, `apps/web/lib/library.ts` (working tree 2026-10-17, chưa
+commit/deploy). Nghiệp vụ đầy đủ: [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]] §6.
+
+| `entitlements.remedyStatus` | Bước 1 `POST /api/downloads` | Bước 2 `GET /api/downloads/{token}` |
+| :-- | :-- | :-- |
+| `NONE` | Như cũ | Như cũ |
+| `PENDING_CHOICE` | 403 `REMEDY_CHOICE_REQUIRED` | UPDATE không khớp → 403 `REMEDY_CHOICE_REQUIRED` |
+| `FINAL_DOWNLOAD` | Theo `downloadLimit` (= `downloadsUsed` lúc chọn + số tệp khả dụng) | Theo `downloadLimit` |
+| `REFUND_REQUESTED` / `REFUNDED` | 403 `DOWNLOAD_BLOCKED_REFUND` | UPDATE không khớp → 403 `DOWNLOAD_BLOCKED_REFUND` |
+
+- Bước 1 kiểm thu hồi **trước** remedy — entitlement đã thu hồi (gồm `REFUNDED`, luôn kèm thu hồi) vẫn báo mã `ENTITLEMENT_REVOKED` cũ.
+- Bước 2: câu `UPDATE "entitlements" SET "downloadsUsed" = "downloadsUsed" + 1` thêm điều kiện `"remedyStatus" IN ('NONE',
+  'FINAL_DOWNLOAD')` → token cấp **trước** khi admin lưu trữ tài liệu (hoặc trước khi khách chọn hoàn tiền) không còn tải được; khi UPDATE
+  trả 0 dòng, đọc lại trạng thái để trả đúng mã remedy thay vì `DOWNLOAD_LIMIT_REACHED`. Token đã bị claim, lượt không bị trừ.
+- **"Tải lần cuối" = đủ mọi tệp** (Quốc chốt 🟡, code ✅): `downloadLimit = downloadsUsed + max(1, số tệp khả dụng)` — mỗi tệp/link khả
+  dụng 1 lượt. Lượt tính **chung theo entitlement**, không theo từng tệp — chốt ở "Bổ sung ADR-039 lần 2" (d): khách tải lại 1 tệp sẽ bớt
+  lượt cho tệp khác. Chữ UI: "Bạn có N lượt tải cuối cho N tệp — mỗi lượt tải một tệp, hãy tải mỗi tệp một lần." (`remedy-notice.tsx`); Studio: "(số lượt bằng số tệp — mỗi lượt tải một tệp)" (`remedy-parts.tsx`) ✅ đọc code 2026-10-17.
+- Tenant **không** "Cấp thêm lượt" được khi `remedyStatus ≠ NONE` (409 `REMEDY_DOWNLOAD_LIMIT_LOCKED` + trigger `entitlements_guard_remedy`).
+- Share link (§5) không đổi — khoá kiểm duyệt luôn kèm sản phẩm `ARCHIVED`; hành vi share link với sản phẩm `ARCHIVED` giữ như trước (Long
+  chưa đối chiếu lại nhánh này trong đợt M12c ❓).
+
+---
+
+## 9. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[Architecture-Overview]] — Tổng quan kiến trúc hệ thống ([Architecture-Overview.md](./Architecture-Overview.md))
 * [[Order-State-Machine]] — `Entitlement` được tạo khi đơn `FULFILLED` ([Order-State-Machine.md](./Order-State-Machine.md))
@@ -330,6 +363,7 @@ limit); ảnh `f_auto` qua CSP `img-src` trên trình duyệt; tenant gói FREE 
   `packages/core/src/download/*.ts`
 * [[02-System-Specs/Product-Editor-And-Publishing-Specs|Product-Editor-And-Publishing-Specs]] — ADR-026/027 ([Product-Editor-And-Publishing-Specs.md](./Product-Editor-And-Publishing-Specs.md))
 * [[01-Architecture-Decisions/ADR-014-System-Cloudinary-Image-Quota|ADR-014 (≙ ADR-028)]] — ảnh Cloudinary hệ thống + hạn mức ([ADR-014-System-Cloudinary-Image-Quota.md](../01-Architecture-Decisions/ADR-014-System-Cloudinary-Image-Quota.md))
+* [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]] — ADR-038/039, quyền lợi người mua ([Abuse-Reports-Specs.md](./Abuse-Reports-Specs.md))
 * [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §11 — contract action ảnh ([Endpoint-Directory.md](../03-API-Contracts/Endpoint-Directory.md))
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

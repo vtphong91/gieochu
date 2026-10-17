@@ -6,7 +6,7 @@ tags:
   - security
   - status/living
 date: 2026-09-26
-updated: 2026-10-15
+updated: 2026-10-17
 author: System Architect
 ---
 
@@ -23,7 +23,8 @@ hệ thống) nhưng có một ranh giới bảo mật **không được phá v�
 nguồn khu vực `/admin`):
 
 > **System Admin không có route nào đọc chi tiết `orders`/`order_items`/`tenant_customers` của một tenant cụ
-> thể.** Dashboard/thống kê phía Admin chỉ đọc `tenant_daily_stats` (bảng tổng hợp, chưa xây — M12) và các
+> thể.** Dashboard/thống kê phía Admin chỉ đọc `tenant_daily_stats` (bảng tổng hợp M12b — section "Hoạt động bán tài liệu (30 ngày)" trên `/admin`,
+> [[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]]; xong code 2026-10-16, chưa commit/deploy) và các
 > bảng L1 (`User`, `Plan`, `Subscription`, `SubscriptionInvoice`, `PlatformPaymentTransaction`...).
 
 Nói cách khác, System Admin không phải người xem đơn hàng của tenant — ở Gieo Chữ, dữ
@@ -48,6 +49,7 @@ flowchart TB
     end
     subgraph G3["Nội dung"]
         C1["/admin/cms — Trang CMS"]
+        C3["/admin/cms/shop — Trang Cửa hàng (ADR-035)"]
         C2["/admin/categories — Danh mục tài liệu"]
     end
     subgraph G4["Tài chính"]
@@ -61,6 +63,10 @@ flowchart TB
         S3["/admin/settings/storage — Lưu trữ file (R2)"]
         S4["/admin/settings/cloudinary — Cloudinary Upload (ảnh CMS)"]
         S5["/admin/settings/smtp — Cấu hình Mail"]
+    end
+    subgraph G6["Giám sát"]
+        M1["/admin/audit — Nhật ký hệ thống (M12a, ADR-037)"]
+        M2["/admin/reports — Báo cáo vi phạm (M12c, ADR-038) — badge số báo cáo OPEN"]
     end
 ```
 
@@ -91,6 +97,9 @@ stateDiagram-v2
 - **Ràng buộc bất biến:** không admin nào — kể cả admin khác — có thể khoá tài khoản có `isSuperAdmin = true`.
   Đây là "một admin duy nhất nobody có thể khoá" (comment gốc trong schema, mục §"M2").
 - Khoá/mở khoá không xoá dữ liệu, chỉ đổi `UserStatus` — tài khoản `LOCKED` bị chặn đăng nhập ở API login.
+- **Audit (M12a, ADR-037) ✅ đọc code 2026-10-16:** `lockUser` ghi `USER_LOCKED` (metadata `previousStatus`, `revokedSessions`; **chưa có
+  lý do khoá** — form chưa có ô lý do, BACKLOG); `unlockUser(actor, targetUserId)` — **chữ ký đổi**, `actor` bắt buộc — ghi
+  `USER_UNLOCKED`. Xem [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]].
 
 ### 3.3. Chống brute-force mật khẩu (khác cơ chế "phiên đăng nhập")
 
@@ -125,7 +134,7 @@ không có bảng `SessionRecord` liệt kê từng thiết bị:
 | Khu vực | Chức năng chính | Lib/route chính |
 | :--- | :--- | :--- |
 | `/admin/plans` | CRUD gói dịch vụ, `isFree`/`features` JSON | `createPlanAction`/`updatePlanAction`, `packages/core/src/admin/plan-validation.ts` |
-| `/admin/tenants` | `lockTenantAction`/`unlockTenantAction` (`TenantStatus.LOCKED` ↔ `ACTIVE`) — **không** đọc order/customer của tenant | `apps/web/app/admin/tenants/actions.ts` |
+| `/admin/tenants` | `lockTenantAction`/`unlockTenantAction` (`TenantStatus.LOCKED` ↔ `ACTIVE`, qua `lib/tenant-lock.ts` từ M12a/M12c) — **không** đọc order/customer của tenant. Từ ADR-039: badge "N hoàn tiền quá hạn" = **chỉ số đếm** yêu cầu hoàn tiền quá 7 ngày (`countOverdueRefundRequestsByTenant`), không id đơn/khách | `apps/web/app/admin/tenants/actions.ts`, `apps/web/lib/entitlement-remedy.ts` |
 | `/admin/cms` | CRUD trang CMS marketing, `blocksDraft` (nháp) tách khỏi `blocks` (live). Trang chủ (`slug=home`) dùng schema riêng `homeSectionsSchema`; từ ADR-033 bốn section `stats`/`search`/`coaches`/`documents` lấy dữ liệu thật, CMS chỉ lưu nhãn/`limit`/id ghim (ô chọn ghim `PinPicker`) | `packages/core/src/admin/cms-blocks.ts`, `packages/core/src/admin/home-sections.ts`, `apps/web/lib/home.ts` — xem [[01-Architecture-Decisions/ADR-019-Home-Page-Real-Data-Sold-Count|ADR-019 (≙ ADR-033)]] |
 | `/admin/categories` | Danh mục tài liệu (metadata sản phẩm, không phải dữ liệu riêng tư của tenant) | `apps/web/app/admin/categories/*` |
 | `/admin/billing/payment` | Cấu hình `PlatformPaymentConfig` (Manual QR/SePay/MoMo) | xem [[Payment-And-Billing]] |
@@ -136,6 +145,8 @@ không có bảng `SessionRecord` liệt kê từng thiết bị:
 | `/admin/settings/storage` | `SystemStorageConfig` (R2 credential mã hoá) | xem [[File-Storage-And-Downloads-Specs]] |
 | `/admin/settings/smtp` | Cấu hình gửi mail (SMTP) — nguồn production; env email chỉ là fallback dev (ADR-032). Thiếu cả hai → `EMAIL_NOT_CONFIGURED` | `packages/email`, `apps/web/lib/email-dispatch.ts` |
 | `/admin/roles` | Trang **chỉ đọc**, giải thích 3 lớp tài khoản (System/Tenant/Customer) | xem [[Tenant-RBAC-And-Permissions]] |
+| `/admin/reports` | (M12c, ADR-038) Báo cáo vi phạm: danh sách lọc trạng thái (mặc định OPEN)/loại/đối tượng, chi tiết + xử lý (ẩn nội dung, lưu trữ tài liệu, khoá gian hàng, bác bỏ), gỡ khoá kiểm duyệt. Xem nội dung đối tượng, **không** xem đơn/khách (§7.9); email người báo cáo chỉ admin thấy | `apps/web/lib/abuse-report.ts`, `app/admin/reports/actions.ts` — xem [[02-System-Specs/Abuse-Reports-Specs\|Abuse-Reports-Specs]] |
+| `/admin/audit` | (M12a, ADR-037) Nhật ký hệ thống: lọc người thực hiện, hành động, gian hàng, khoảng ngày; dòng của khách chỉ hiện email đã che, không IP/User-Agent (§7.9) | `apps/web/lib/audit-query.ts` (`listAuditLogs`) — xem [[02-System-Specs/Audit-Log-Specs\|Audit-Log-Specs]] |
 
 `getSystemRoleCounts()`/`getTenantOwnerCount()` (`apps/web/lib/admin-roles.ts`) là ví dụ đúng chuẩn: đếm số
 lượng theo vai trò (aggregate), không bao giờ trả về danh sách đơn hàng/khách hàng chi tiết của một tenant.

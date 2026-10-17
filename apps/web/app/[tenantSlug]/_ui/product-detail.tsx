@@ -78,6 +78,7 @@ export function ProductDetailView({
   product,
   purchase,
   reviews,
+  report,
 }: {
   tenantName: string;
   tenantHref: string;
@@ -86,6 +87,8 @@ export function ProductDetailView({
   purchase: ReactNode;
   /** ADR-029: khối "Đánh giá" (`ProductReviewsSection`) — nằm dưới mô tả, cột trái. */
   reviews?: ReactNode;
+  /** ADR-038: nút "Báo cáo vi phạm" kín đáo ở chân khối mua — trang công khai truyền, trang Xem trước bỏ trống. */
+  report?: ReactNode;
 }) {
   const onSale = product.effectivePriceVnd < product.priceVnd;
   const isFree = product.effectivePriceVnd === 0;
@@ -203,6 +206,12 @@ export function ProductDetailView({
                     </li>
                   ))}
                 </ul>
+              </div>
+            ) : null}
+
+            {report ? (
+              <div className="mt-4 flex justify-end border-t pt-2" style={{ borderColor: LINE }}>
+                {report}
               </div>
             ) : null}
           </div>

@@ -26,7 +26,9 @@ type StatusAction = {
 
 /**
  * Cột "Thao tác" của 1 dòng sản phẩm: menu "⋯" (mục đầu là "Sửa") (RowMenu dùng chung với System Center).
- * Không có "Xuất bản" (cần kiểm điều kiện — làm trong editor) và không có "Xoá" (chưa có action).
+ * Không có "Xuất bản" (cần kiểm điều kiện + ô cam kết bản quyền ADR-038 — làm trong editor) và không có "Xoá".
+ * ADR-038: sản phẩm bị khoá kiểm duyệt không có mục đổi trạng thái (Khôi phục / Chuyển Riêng tư / Lưu trữ) — server
+ * vẫn chặn (409 CONTENT_MODERATION_LOCKED, thông điệp hiện dưới menu nếu xảy ra).
  */
 export function ProductRowActions({
   tenantSlug,
@@ -34,12 +36,14 @@ export function ProductRowActions({
   productSlug,
   title,
   status,
+  moderationLocked = false,
 }: {
   tenantSlug: string;
   productId: string;
   productSlug: string;
   title: string;
   status: string;
+  moderationLocked?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -50,7 +54,7 @@ export function ProductRowActions({
   const s = status as ProductStatus;
 
   const statusActions: StatusAction[] = [];
-  if (s === "PUBLISHED") {
+  if (!moderationLocked && s === "PUBLISHED") {
     statusActions.push({
       key: "unpublish",
       label: "Chuyển Riêng tư",
@@ -60,7 +64,7 @@ export function ProductRowActions({
       icon: <IconEyeOff />,
     });
   }
-  if (s === "ARCHIVED") {
+  if (s === "ARCHIVED" && !moderationLocked) {
     statusActions.push({
       key: "restore",
       label: "Khôi phục về Riêng tư",
@@ -69,7 +73,7 @@ export function ProductRowActions({
       icon: <IconEyeOff />,
     });
   }
-  if (s === "DRAFT" || s === "PUBLISHED") {
+  if (!moderationLocked && (s === "DRAFT" || s === "PUBLISHED")) {
     statusActions.push({
       key: "archive",
       label: "Lưu trữ",

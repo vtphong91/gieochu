@@ -18,6 +18,7 @@ import { getPrismaClient, withPublic, withTenant, type PostStatus, type ProductS
 import { getPublicProductsByIds, type PublicProduct } from "./storefront";
 import { getSystemCloudinaryCloudName } from "./system-cloudinary";
 import { assertTenantCanWrite } from "./tenant-write-guard";
+import { assertNotModerationLocked } from "./moderation";
 
 /**
  * ADR-029 mục 5–6 (M10b) — bài viết tối giản của tenant (`posts`, bảng L2, RLS tách theo lệnh — migration
@@ -103,12 +104,16 @@ interface OwnedPost {
   status: PostStatus;
   productId: string | null;
   publishedAt: Date | null;
+  moderationLockedAt: Date | null;
 }
 
 async function requireOwnedPost(tenantId: string, postId: string): Promise<OwnedPost> {
   if (!isValidPostId(postId)) throw postNotFound();
   const post = await withTenant(tenantId, (tx) =>
-    tx.post.findFirst({ where: { id: postId, tenantId }, select: { id: true, status: true, productId: true, publishedAt: true } }),
+    tx.post.findFirst({
+      where: { id: postId, tenantId },
+      select: { id: true, status: true, productId: true, publishedAt: true, moderationLockedAt: true },
+    }),
   );
   if (!post) throw postNotFound();
   return post;
@@ -209,6 +214,8 @@ export interface UpdatePostInput {
 export async function updatePost(tenantId: string, postId: string, input: UpdatePostInput): Promise<{ id: string; status: PostStatus }> {
   await requireWritableTenant(tenantId);
   const existing = await requireOwnedPost(tenantId, postId);
+  // ADR-038: khoá kiểm duyệt luôn đi cùng HIDDEN (CHECK posts_moderation_shape) — kiểm riêng để trả đúng thông điệp.
+  assertNotModerationLocked(existing);
   if (existing.status === "HIDDEN") throw hiddenLocked();
 
   const title = input.title === undefined ? undefined : prepareTitle(input.title);
@@ -252,6 +259,7 @@ export async function deletePost(tenantId: string, postId: string): Promise<void
 export async function setPostPinned(tenantId: string, postId: string, pinned: boolean): Promise<void> {
   await requireWritableTenant(tenantId);
   const existing = await requireOwnedPost(tenantId, postId);
+  assertNotModerationLocked(existing);
   if (existing.status === "HIDDEN") throw hiddenLocked();
 
   try {
@@ -279,6 +287,10 @@ export interface TenantPostListItem {
   hiddenReason: string | null;
   isPinned: boolean;
   publishedAt: Date | null;
+  /** ADR-038: khác null = admin ẩn do vi phạm — tenant không đổi trạng thái được (UI hiện nhãn "Bị khoá kiểm duyệt"). */
+  moderationLockedAt: Date | null;
+  /** Nhãn loại vi phạm (không chứa danh tính người báo cáo). */
+  moderationReason: string | null;
   createdAt: Date;
   updatedAt: Date;
   /** Ảnh Cloudinary (cloud hệ thống) đầu tiên trong nội dung, tối ưu rộng 320; null nếu không có. */
@@ -305,6 +317,8 @@ export async function listTenantPosts(
         hiddenReason: true,
         isPinned: true,
         publishedAt: true,
+        moderationLockedAt: true,
+        moderationReason: true,
         createdAt: true,
         updatedAt: true,
         body: true,
@@ -358,6 +372,9 @@ export interface PostEditorData {
     hiddenReason: string | null;
     isPinned: boolean;
     publishedAt: Date | null;
+    /** ADR-038: khoá kiểm duyệt (xem TenantPostListItem). */
+    moderationLockedAt: Date | null;
+    moderationReason: string | null;
     createdAt: Date;
     updatedAt: Date;
   };
@@ -382,6 +399,8 @@ export async function getPostForEditor(tenantId: string, postId: string): Promis
           hiddenReason: true,
           isPinned: true,
           publishedAt: true,
+          moderationLockedAt: true,
+          moderationReason: true,
           createdAt: true,
           updatedAt: true,
           product: { select: { id: true, title: true, status: true } },

@@ -4,6 +4,7 @@ import { brandColors } from "@gieochu/config/theme";
 import { getPrismaClient } from "@gieochu/db";
 import { requireAdminAccess } from "../../lib/page-guards";
 import { getEffectiveBrand, getEffectiveLogos } from "../../lib/branding";
+import { countOpenAbuseReports } from "../../lib/abuse-report";
 import { BrandMark } from "../_ui/brand-mark";
 import { AdminSidebarNav } from "./_ui/sidebar-nav";
 
@@ -16,7 +17,8 @@ const inter = Inter({ subsets: ["latin", "vietnamese"], weight: ["400", "500", "
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await requireAdminAccess("/admin");
-  const [brand, logos] = await Promise.all([getEffectiveBrand(), getEffectiveLogos()]);
+  // ADR-038: số báo cáo vi phạm chờ xử lý → badge menu "Báo cáo vi phạm" (bảng chưa có → 0).
+  const [brand, logos, openReports] = await Promise.all([getEffectiveBrand(), getEffectiveLogos(), countOpenAbuseReports()]);
   const admin = await getPrismaClient().user.findUnique({ where: { id: user.userId }, select: { email: true } });
 
   return (
@@ -33,7 +35,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </div>
           )}
         </div>
-        <AdminSidebarNav />
+        <AdminSidebarNav badges={{ "/admin/reports": openReports }} />
         <div className="border-t border-white/10 px-4 py-4">
           <Link href="/" className="text-xs font-medium text-white/60 hover:text-white">
             ← Về trang chủ

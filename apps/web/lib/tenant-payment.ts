@@ -2,6 +2,7 @@ import { decryptSecret, encryptSecret, getProvider, maskSecret, type PaymentProv
 import { AppError } from "@gieochu/core";
 import { getEnv } from "@gieochu/config";
 import { getPrismaClient, withTenant, Prisma } from "@gieochu/db";
+import { audit } from "./audit";
 
 export type PublicProviderConfig = Record<string, string | number | boolean>;
 
@@ -12,6 +13,8 @@ export interface SaveProviderConfigInput {
   publicConfig: PublicProviderConfig;
   /** Secret fields (API key, HMAC secret, MoMo secretKey...) — encrypted before storage. */
   secrets: Record<string, string>;
+  /** ADR-037: user ghi audit PAYMENT_CONFIG_UPDATED. */
+  actorId?: string | null;
 }
 
 /**
@@ -57,6 +60,21 @@ export async function saveTenantProviderConfig(tenantId: string, input: SaveProv
       },
     }),
   );
+  // ADR-037 / §"M7": KHÔNG ghi secret (kể cả bản che) hay publicConfig (số tài khoản) — chỉ cờ thay đổi.
+  await audit.log({
+    actorId: input.actorId ?? null,
+    scope: "TENANT",
+    tenantId,
+    action: "PAYMENT_CONFIG_UPDATED",
+    targetType: "TenantPaymentConfig",
+    targetId: input.provider,
+    metadata: {
+      provider: input.provider,
+      created: !existing,
+      isEnabled: input.isEnabled,
+      credentialsChanged: JSON.stringify(resolvedSecrets) !== JSON.stringify(existingSecrets),
+    },
+  });
 }
 
 export interface MaskedProviderConfig {

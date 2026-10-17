@@ -6,7 +6,7 @@ tags:
   - security
   - status/living
 date: 2026-09-27
-updated: 2026-09-28
+updated: 2026-10-17
 author: Long (tài liệu)
 ---
 
@@ -116,7 +116,25 @@ Nguồn: `packages/core/src/product/external-document-url.ts`, `apps/web/lib/pro
 - `publishProduct()`: gọi trên sản phẩm đã `PUBLISHED` là no-op; không đủ điều kiện → `ProductNotPublishableError`
   (`AppError` `PRODUCT_NOT_PUBLISHABLE` 400, mang `reasons`); đủ → kiểm thêm `assertPlanLimit("products")` rồi đặt `PUBLISHED`.
 - ⚠️ `publishProduct()` **không chặn trạng thái `ARCHIVED`** ở server — UI đã ẩn đường này (BACKLOG).
-- `unpublishProduct()` vô điều kiện (như M5 cũ).
+- `unpublishProduct()` vô điều kiện (như M5 cũ) — trừ khi đang khoá kiểm duyệt (§5.1).
+
+### 5.1. Cam kết bản quyền & khoá kiểm duyệt (M12c, ADR-038 — 2026-10-17) ✅ code · ❓ trình duyệt
+
+Đối chiếu code working tree (chưa commit/deploy). Nghiệp vụ chung: [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]] §5.
+- Chữ ký mới: `publishProduct(tenantId, productId, actorId, { rightsConfirmed })`. Thứ tự kiểm: đã `PUBLISHED` → no-op (không cần tích) ·
+  đang khoá kiểm duyệt → 409 `CONTENT_MODERATION_LOCKED` · điều kiện xuất bản (§5) → `PRODUCT_NOT_PUBLISHABLE` · `rightsConfirmed !== true` →
+  400 `RIGHTS_CONFIRMATION_REQUIRED` · hạn mức gói → đặt `PUBLISHED` + `rightsConfirmedAt = now`, `rightsConfirmedById = actorId` · audit
+  `PRODUCT_PUBLISHED` (metadata `rightsConfirmed: true`).
+- Bắt buộc tích ô cam kết (nhãn hiện tại trong `publish-card.tsx`: **"Tôi sở hữu hoặc có quyền phân phối tài liệu này"**) ở **mỗi lần** chuyển sang `PUBLISHED` (DRAFT/ARCHIVED → PUBLISHED);
+  sản phẩm đang công khai không phải tích lại. Ô nằm trong card xuất bản của editor (FormData `rightsConfirmed`); lỗi map vào
+  `fieldErrors.rightsConfirmed` và focus về ô. Danh sách sản phẩm không có nút "Xuất bản".
+- `EditorProductData.product` thêm `moderationLockedAt`, `moderationReason`, `rightsConfirmedAt`.
+- **Khoá kiểm duyệt** (admin lưu trữ do vi phạm): `publishProduct`/`unpublishProduct`/`restoreProduct` → 409 `CONTENT_MODERATION_LOCKED`;
+  trigger `products_guard_moderation` chặn đổi `status` ngoài `system_job`. Editor/danh sách hiện nhãn "Bị khoá kiểm duyệt" + khối giải
+  thích, ẩn các nút đổi trạng thái (Khôi phục / Chuyển Riêng tư / Lưu trữ). Sau khi admin gỡ khoá, sản phẩm giữ `ARCHIVED` — tenant tự
+  khôi phục và phải tích cam kết khi xuất bản lại.
+- `archiveProduct(tenantId, productId, actorId)` (tenant tự lưu trữ) **không** mở quyền chọn cho người mua — chỉ quyết định `ARCHIVE_PRODUCT`
+  của admin mới mở (ADR-039).
 
 ---
 
@@ -314,6 +332,7 @@ sequenceDiagram
 * [[01-Architecture-Decisions/ADR-013-Product-Summary-Cover-Preview-Visibility|ADR-013 (≙ ADR-027)]] ([ADR-013-Product-Summary-Cover-Preview-Visibility.md](../01-Architecture-Decisions/ADR-013-Product-Summary-Cover-Preview-Visibility.md))
 * [[01-Architecture-Decisions/ADR-014-System-Cloudinary-Image-Quota|ADR-014 (≙ ADR-028)]] ([ADR-014-System-Cloudinary-Image-Quota.md](../01-Architecture-Decisions/ADR-014-System-Cloudinary-Image-Quota.md))
 * [[03-API-Contracts/Database-Schema-Reference|Database-Schema-Reference]] ([Database-Schema-Reference.md](../03-API-Contracts/Database-Schema-Reference.md))
+* [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]] — cam kết bản quyền, khoá kiểm duyệt (ADR-038) ([Abuse-Reports-Specs.md](./Abuse-Reports-Specs.md))
 * [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §6, §7, §10, §11 ([Endpoint-Directory.md](../03-API-Contracts/Endpoint-Directory.md))
 * [[02-System-Specs/File-Storage-And-Downloads-Specs|File-Storage-And-Downloads-Specs]] ([File-Storage-And-Downloads-Specs.md](./File-Storage-And-Downloads-Specs.md))
 * [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §9 ([UI-Design-System.md](../04-Operations-Runbooks/UI-Design-System.md))

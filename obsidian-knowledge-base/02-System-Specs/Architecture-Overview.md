@@ -4,7 +4,7 @@ tags:
   - architecture
   - status/living
 date: 2026-09-26
-updated: 2026-09-28
+updated: 2026-10-16
 author: System Architect
 ---
 
@@ -32,7 +32,8 @@ flowchart TB
         PP["platform_payment_configs<br/>platform_payment_transactions"]
         RBAC["roles, permissions, role_permissions (ADR-022)"]
         C["cms_pages"]
-        S["tenant_daily_stats (M12)"]
+        A["audit_logs (M12a, ADR-037 — tenantId tuỳ chọn, chỉ-INSERT)"]
+        S["tenant_daily_stats (M12b, ADR-037 — tenantId + FK Cascade, không RLS)"]
     end
 
     subgraph L2["L2 — Tenant (có tenantId, RLS bắt buộc)"]
@@ -194,7 +195,8 @@ không phân quyền. Mọi Server Component/Server Action/Route Handler nhạy 
 3. **Hai hệ thống thanh toán (Platform vs Tenant) không bao giờ chung bảng, secret hay route** — mọi hàm thanh
    toán nhận `PaymentScope` (`{kind:'PLATFORM'}` hoặc `{kind:'TENANT', tenantId}`) — xem [[Payment-And-Billing]].
 4. **System Admin không có route nào đọc `orders`/`order_items`/`tenant_customers` của tenant** — chỉ đọc
-   `tenant_daily_stats` (M12, chưa xây) và bảng L1 — xem [[User-Management-System-Center-Specs]].
+   `tenant_daily_stats` (M12b — [[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]]) và bảng L1 — xem [[User-Management-System-Center-Specs]]. Nhật ký `audit_logs` (L1, M12a) có
+   `tenantId` nhưng không RLS; dòng hành động của khách chỉ hiện email đã che với admin — xem [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]].
 5. **Tiền tệ VND: số nguyên (`Int`), không dùng `float`**; thời gian lưu UTC, hiển thị `Asia/Ho_Chi_Minh`.
 6. **ID: cuid2** (`@default(cuid(2))`) cho mọi `@id` — không dùng UUID (ADR-001).
 

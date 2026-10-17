@@ -351,19 +351,23 @@ export function Notice({ tone = "info", icon, children }: { tone?: "info" | "war
 export function DataTable({
   head,
   headClassName,
+  caption,
   children,
 }: {
   head: string[];
   headClassName?: (string | undefined)[];
+  /** Tên bảng cho trình đọc màn hình (`<caption>` ẩn) — nên có khi trang có nhiều bảng hoặc bảng dài. */
+  caption?: string;
   children: ReactNode;
 }) {
   return (
     <div className="rounded-2xl border bg-white" style={{ borderColor: GRAY_LINE }}>
       <table className="w-full text-left text-sm">
+        {caption ? <caption className="sr-only">{caption}</caption> : null}
         <thead>
           <tr className="border-b" style={{ borderColor: GRAY_LINE, color: INK_SOFT }}>
             {head.map((h, i) => (
-              <th key={`${i}-${h}`} className={`px-4 py-3 font-medium ${headClassName?.[i] ?? ""}`}>
+              <th key={`${i}-${h}`} scope="col" className={`px-4 py-3 font-medium ${headClassName?.[i] ?? ""}`}>
                 {h}
               </th>
             ))}

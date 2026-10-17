@@ -26,18 +26,21 @@ import { renderNewSaleEmail, renderOrderPaidEmail } from "@gieochu/email";
 import { assertTenantCanWrite } from "./tenant-write-guard";
 import { toCouponSnapshot } from "./coupon";
 import { sendEmailNow } from "./email-dispatch";
+import { notifyPurchaseRemedyForOrder } from "./entitlement-remedy";
 import { getEffectiveBrand } from "./branding";
 import { getSystemSettings } from "./system-settings";
 import { hideReviewsForRevokedItems, recomputeProductRatings } from "./review";
 import { recomputeProductSoldCounts } from "./product-sold-count";
+import { audit } from "./audit";
 
 const ORDER_CODE_RETRIES = 10;
 
 async function resolveUniqueOrderCode(prefix: string): Promise<string> {
-  const prisma = getPrismaClient();
   for (let attempt = 0; attempt < ORDER_CODE_RETRIES; attempt += 1) {
     const code = generateOrderCode(prefix);
-    const existing = await prisma.order.findUnique({ where: { code } });
+    // `orders.code` unique TOÀN HỆ THỐNG → kiểm dưới system_job (client trần không scope bị RLS trả 0 dòng — kiểm trùng
+    // trước đây luôn "không trùng"). Chỉ đọc id.
+    const existing = await withSystemJob((tx) => tx.order.findUnique({ where: { code }, select: { id: true } }));
     if (!existing) return code;
   }
   throw internalError("Không tạo được mã đơn hàng, vui lòng thử lại.");
@@ -72,13 +75,41 @@ export interface MarkOrderPaidResult {
   fulfilled: boolean;
   /** Sản phẩm của đơn vừa chuyển FULFILLED (rỗng khi no-op) — cần tính lại `soldCount` sau commit. */
   productIds: string[];
+  /**
+   * Mã giảm giá hết lượt ngay lúc thanh toán (đơn vẫn PAID, §"M8"). Caller ghi audit `COUPON_OVERUSED` SAU commit
+   * qua `auditMarkOrderPaid` (ADR-037: audit không ghi trong transaction nghiệp vụ).
+   */
+  couponOverused: { couponId: string; couponCode: string } | null;
+}
+
+/**
+ * ADR-037: audit phát sinh từ `markOrderPaid` — gọi SAU khi transaction của caller commit. Hiện chỉ có
+ * COUPON_OVERUSED (để owner biết, §"M8"). actor = null (hệ thống). Chỉ id + mã coupon, không thông tin khách.
+ */
+export async function auditMarkOrderPaid(
+  tenantId: string,
+  orderId: string,
+  result: MarkOrderPaidResult,
+  source: MarkOrderPaidSource,
+): Promise<void> {
+  if (!result.couponOverused) return;
+  await audit.log({
+    actorId: null,
+    scope: "SYSTEM",
+    tenantId,
+    action: "COUPON_OVERUSED",
+    targetType: "Order",
+    targetId: orderId,
+    metadata: { couponId: result.couponOverused.couponId, couponCode: result.couponOverused.couponCode, source },
+  });
 }
 
 export async function markOrderPaid(tx: Tx, orderId: string, source: MarkOrderPaidSource): Promise<MarkOrderPaidResult> {
   const order = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
   if (order.status === "PAID" || order.status === "FULFILLED") {
-    return { fulfilled: false, productIds: [] };
+    return { fulfilled: false, productIds: [], couponOverused: null };
   }
+  let couponOverused: MarkOrderPaidResult["couponOverused"] = null;
 
   const now = new Date();
   const paidStatus = transitionOrderStatus(order.status as OrderStatus, "MARK_PAID");
@@ -99,6 +130,7 @@ export async function markOrderPaid(tx: Tx, orderId: string, source: MarkOrderPa
         });
       } else {
         logger.warn({ orderId, couponCode: order.couponCode, source }, "coupon usage limit reached at payment time — order still marked PAID");
+        couponOverused = { couponId: coupon.id, couponCode: coupon.code };
       }
     }
   }
@@ -125,6 +157,23 @@ export async function markOrderPaid(tx: Tx, orderId: string, source: MarkOrderPa
   const items = await tx.orderItem.findMany({ where: { orderId } });
   for (const item of items) {
     const product = await tx.product.findUniqueOrThrow({ where: { id: item.productId } });
+    // ADR-039 bổ sung: đơn trả tiền muộn cho tài liệu đã bị admin lưu trữ do vi phạm → entitlement sinh thẳng ở
+    // PENDING_CHOICE (trigger entitlements_guard_remedy cho phép đúng trường hợp này dưới scope tenant). Email 2 lựa chọn
+    // gửi sau commit trong sendOrderPaidEmails.
+    const remedy = product.moderationLockedAt
+      ? {
+          remedyStatus: "PENDING_CHOICE" as const,
+          remedyRequestedAt: now,
+          remedyReportId:
+            (
+              await tx.abuseReport.findFirst({
+                where: { targetType: "PRODUCT", targetId: product.id, status: "RESOLVED", decision: "ARCHIVE_PRODUCT" },
+                orderBy: [{ resolvedAt: "desc" }, { id: "desc" }],
+                select: { id: true },
+              })
+            )?.id ?? null,
+        }
+      : {};
     await tx.entitlement.upsert({
       where: { orderItemId: item.id },
       create: {
@@ -134,6 +183,7 @@ export async function markOrderPaid(tx: Tx, orderId: string, source: MarkOrderPa
         orderItemId: item.id,
         downloadsUsed: 0,
         downloadLimit: product.downloadLimit,
+        ...remedy,
       },
       update: {},
     });
@@ -142,18 +192,41 @@ export async function markOrderPaid(tx: Tx, orderId: string, source: MarkOrderPa
   const fulfilledStatus = transitionOrderStatus(paidStatus, "FULFILL");
   await tx.order.update({ where: { id: orderId }, data: { status: fulfilledStatus } });
 
-  return { fulfilled: true, productIds: [...new Set(items.map((item) => item.productId))] };
+  return { fulfilled: true, productIds: [...new Set(items.map((item) => item.productId))], couponOverused };
 }
 
-/** Sends the buyer + owner emails (SMTP đồng bộ, không hàng đợi) — called by the caller *after* the markOrderPaid transaction commits, never from inside it (giữ transaction ngắn, không chờ SMTP bên trong). */
+/**
+ * Sends the buyer + owner emails (SMTP đồng bộ, không hàng đợi) — called by the caller *after* the markOrderPaid
+ * transaction commits, never from inside it (giữ transaction ngắn, không chờ SMTP bên trong).
+ * ADR-039 bổ sung: nếu đơn sinh entitlement PENDING_CHOICE (tài liệu đang bị khoá kiểm duyệt) → thêm email 2 lựa chọn
+ * cho khách (tự bắt lỗi, chạy cả khi phần email đơn hàng dừng sớm).
+ */
 async function sendOrderPaidEmails(orderId: string): Promise<void> {
-  const prisma = getPrismaClient();
+  try {
+    await sendOrderPaidEmailsInner(orderId);
+  } finally {
+    await notifyPurchaseRemedyForOrder(orderId);
+  }
+}
+
+async function sendOrderPaidEmailsInner(orderId: string): Promise<void> {
   const env = getEnv();
   const brand = await getEffectiveBrand();
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
-    include: { customer: true, tenant: { include: { owner: true } }, items: true },
-  });
+  // `orders` là L2 (RLS FORCE) — đọc dưới `withSystemJob` (client trần không scope thấy 0 dòng → email đơn hàng từng
+  // không bao giờ gửi). Chỉ chọn trường cần cho email.
+  const order = await withSystemJob((tx) =>
+    tx.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        code: true,
+        totalVnd: true,
+        customer: { select: { email: true } },
+        tenant: { select: { slug: true, owner: { select: { email: true } } } },
+        items: { select: { titleSnapshot: true } },
+      },
+    }),
+  );
   if (!order) return;
 
   const downloadsUrl = `${env.APP_URL}/account/library`;
@@ -261,11 +334,34 @@ export async function createOrder(customerId: string, tenantSlug: string, produc
 
   if (order.totalVnd === 0) {
     const paid = await withTenant(tenant.id, (tx) => markOrderPaid(tx, order.id, "ZERO_AMOUNT"));
+    await auditMarkOrderPaid(tenant.id, order.id, paid, "ZERO_AMOUNT");
     await recomputeProductSoldCounts(paid.productIds);
-    await sendOrderPaidEmails(order.id);
+    // Chỉ khi lần gọi này thật sự chuyển đơn sang PAID/FULFILLED — không gửi lặp.
+    if (paid.fulfilled) await sendOrderPaidEmails(order.id);
   }
 
   return order;
+}
+
+/**
+ * ADR-039 bổ sung: đơn PENDING tạo trước khi tài liệu bị gỡ/lưu trữ (hoặc gian hàng bị khoá/tạm ngưng) không được đi
+ * tiếp tới thanh toán / áp mã. Webhook và xác nhận tay cho giao dịch ĐÃ trả tiền không qua đây (fulfil → PENDING_CHOICE
+ * nếu tài liệu bị khoá kiểm duyệt).
+ */
+async function assertOrderProductsPurchasable(tenantId: string, orderId: string): Promise<void> {
+  const unavailable = () =>
+    new AppError({
+      code: "PRODUCT_UNAVAILABLE",
+      message: "Tài liệu trong đơn hàng hiện không còn được bán nên không thể tiếp tục thanh toán.",
+      httpStatus: 409,
+    });
+  // tenants là L1 (không RLS).
+  const tenant = await getPrismaClient().tenant.findUnique({ where: { id: tenantId }, select: { status: true } });
+  if (!tenant || tenant.status !== "ACTIVE") throw unavailable();
+  const blocked = await withTenant(tenantId, (tx) =>
+    tx.orderItem.count({ where: { orderId, product: { status: { not: "PUBLISHED" } } } }),
+  );
+  if (blocked > 0) throw unavailable();
 }
 
 function couponErrorMessage(code: string): string {
@@ -288,6 +384,7 @@ export async function applyCouponToOrder(tenantId: string, orderId: string, cust
   if (!isEffectivelyPending(order)) {
     throw new AppError({ code: "ORDER_NOT_PENDING", message: "Đơn hàng không còn ở trạng thái chờ thanh toán.", httpStatus: 409 });
   }
+  await assertOrderProductsPurchasable(tenantId, orderId);
 
   const items = await withTenant(tenantId, (tx) => tx.orderItem.findMany({ where: { orderId } }));
   const products = await withTenant(tenantId, (tx) =>
@@ -338,8 +435,9 @@ export async function applyCouponToOrder(tenantId: string, orderId: string, cust
 
   if (updated.totalVnd === 0) {
     const paid = await withTenant(tenantId, (tx) => markOrderPaid(tx, orderId, "ZERO_AMOUNT"));
+    await auditMarkOrderPaid(tenantId, orderId, paid, "ZERO_AMOUNT");
     await recomputeProductSoldCounts(paid.productIds);
-    await sendOrderPaidEmails(orderId);
+    if (paid.fulfilled) await sendOrderPaidEmails(orderId);
   }
 
   return updated;
@@ -370,6 +468,7 @@ export async function initiateOrderCheckout(tenantId: string, orderId: string, c
   if (!isEffectivelyPending(order)) {
     throw new AppError({ code: "ORDER_NOT_PENDING", message: "Đơn hàng không còn ở trạng thái chờ thanh toán.", httpStatus: 409 });
   }
+  await assertOrderProductsPurchasable(tenantId, orderId);
 
   const [configRow, tenant] = await Promise.all([
     withTenant(tenantId, (tx) => tx.tenantPaymentConfig.findUnique({ where: { tenantId_provider: { tenantId, provider } } })),
@@ -407,7 +506,7 @@ export async function getOrderForCustomer(customerId: string, orderCode: string)
 }
 
 /** §"M8": "Xác nhận thanh toán thủ công (chỉ đơn PENDING hoặc EXPIRED trong vòng 24 giờ; bắt buộc nhập ghi chú)". */
-export async function confirmOrderManually(tenantId: string, orderId: string, note: string): Promise<void> {
+export async function confirmOrderManually(tenantId: string, orderId: string, note: string, actorId: string | null = null): Promise<void> {
   if (!note.trim()) {
     throw new AppError({ code: "NOTE_REQUIRED", message: "Vui lòng nhập ghi chú xác nhận.", httpStatus: 400 });
   }
@@ -422,8 +521,19 @@ export async function confirmOrderManually(tenantId: string, orderId: string, no
     await tx.order.update({ where: { id: orderId }, data: { confirmNote: note.trim() } });
     return markOrderPaid(tx, orderId, "MANUAL_CONFIRM");
   });
+  // ADR-037 / §7.9: chỉ id + trạng thái — KHÔNG ghi ghi chú xác nhận (văn bản tự do, có thể chứa thông tin khách).
+  await audit.log({
+    actorId,
+    scope: "TENANT",
+    tenantId,
+    action: "ORDER_MANUALLY_CONFIRMED",
+    targetType: "Order",
+    targetId: orderId,
+    metadata: { previousStatus: effectiveOrderStatus(order.status, order.expiresAt, new Date()), fulfilled: paid.fulfilled },
+  });
+  await auditMarkOrderPaid(tenantId, orderId, paid, "MANUAL_CONFIRM");
   await recomputeProductSoldCounts(paid.productIds);
-  await sendOrderPaidEmails(orderId);
+  if (paid.fulfilled) await sendOrderPaidEmails(orderId);
 }
 
 /** Only valid from PENDING (§`transitionOrderStatus`) — throws AppError otherwise. */
@@ -440,20 +550,36 @@ export async function cancelOrder(tenantId: string, orderId: string): Promise<vo
  * ADR-029 mục 2: đánh giá gắn với các dòng đơn này tự ẩn (HIDDEN, lý do REFUNDED) trong cùng transaction, điểm
  * sản phẩm tính lại sau khi commit. ADR-033: `soldCount` của sản phẩm trong đơn cũng tính lại sau commit.
  */
-export async function markOrderRefunded(tenantId: string, orderId: string): Promise<void> {
+export async function markOrderRefunded(tenantId: string, orderId: string, actorId: string | null = null): Promise<void> {
   const order = await withTenant(tenantId, (tx) => tx.order.findUnique({ where: { id: orderId } }));
   if (!order) throw notFound("Không tìm thấy đơn hàng.");
   const nextStatus = transitionOrderStatus(order.status as OrderStatus, "REFUND");
 
-  const { reviewProductIds, orderProductIds } = await withTenant(tenantId, async (tx) => {
+  const { reviewProductIds, orderProductIds, revokedItemCount } = await withTenant(tenantId, async (tx) => {
     await tx.order.update({ where: { id: orderId }, data: { status: nextStatus } });
     const items = await tx.orderItem.findMany({ where: { orderId }, select: { id: true, productId: true } });
     const itemIds = items.map((i) => i.id);
     await tx.entitlement.updateMany({ where: { orderItemId: { in: itemIds } }, data: { revokedAt: new Date() } });
+    // ADR-039: yêu cầu hoàn tiền của khách (tài liệu bị gỡ do vi phạm) → đã hoàn. Sau lệnh thu hồi ở trên (trigger
+    // entitlements_guard_remedy chỉ cho chuyển này khi entitlement đã thu hồi).
+    await tx.entitlement.updateMany({
+      where: { orderItemId: { in: itemIds }, remedyStatus: "REFUND_REQUESTED" },
+      data: { remedyStatus: "REFUNDED", remedyResolvedAt: new Date() },
+    });
     return {
       reviewProductIds: await hideReviewsForRevokedItems(tx, tenantId, itemIds),
       orderProductIds: items.map((i) => i.productId),
+      revokedItemCount: itemIds.length,
     };
+  });
+  await audit.log({
+    actorId,
+    scope: "TENANT",
+    tenantId,
+    action: "ORDER_REFUNDED",
+    targetType: "Order",
+    targetId: orderId,
+    metadata: { revokedEntitlements: revokedItemCount, hiddenReviewProducts: reviewProductIds.length },
   });
   await recomputeProductRatings(reviewProductIds);
   await recomputeProductSoldCounts(orderProductIds);
@@ -461,6 +587,13 @@ export async function markOrderRefunded(tenantId: string, orderId: string): Prom
 
 export interface OrderListFilters {
   status?: OrderStatus;
+  /** ADR-039: chỉ đơn có yêu cầu hoàn tiền đang chờ (`?remedy=REFUND_REQUESTED`). Kết hợp được với `status`. */
+  remedy?: "REFUND_REQUESTED";
+}
+
+/** Đọc `?remedy=` của trang đơn Studio — chỉ nhận đúng "REFUND_REQUESTED". */
+export function parseOrderRemedyFilter(value: string | undefined): OrderListFilters["remedy"] {
+  return value === "REFUND_REQUESTED" ? "REFUND_REQUESTED" : undefined;
 }
 
 /** ADR-036: filters and labels by effective status — PENDING excludes overdue orders, EXPIRED includes them. */
@@ -474,12 +607,23 @@ export async function listOrders(tenantId: string, filters: OrderListFilters = {
   const now = new Date();
   const orders = await withTenant(tenantId, (tx) =>
     tx.order.findMany({
-      where: { tenantId, ...(filters.status ? effectiveStatusWhere(filters.status, now) : {}) },
-      include: { customer: { select: { email: true } }, items: true },
+      where: {
+        tenantId,
+        ...(filters.status ? effectiveStatusWhere(filters.status, now) : {}),
+        ...(filters.remedy ? { items: { some: { entitlement: { is: { remedyStatus: filters.remedy } } } } } : {}),
+      },
+      include: {
+        customer: { select: { email: true } },
+        // ADR-039: trạng thái quyền lợi người mua của từng dòng (null = dòng chưa có entitlement, vd đơn chưa thanh toán).
+        items: { include: { entitlement: { select: { remedyStatus: true, remedyChosenAt: true } } } },
+      },
       orderBy: { createdAt: "desc" },
     }),
   );
-  return orders.map((order) => withEffectiveStatus(order, now));
+  return orders.map((order) => ({
+    ...withEffectiveStatus(order, now),
+    refundRequested: order.items.some((item) => item.entitlement?.remedyStatus === "REFUND_REQUESTED"),
+  }));
 }
 
 export async function getOrderDetail(tenantId: string, orderId: string) {

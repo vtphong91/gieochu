@@ -9,6 +9,7 @@ import { getRequestId, handleApiError, parseJsonBody } from "../../../../lib/api
 import { checkRateLimit } from "../../../../lib/rate-limit";
 import { getClientIp } from "../../../../lib/request-meta";
 import { resolveLandingPath } from "../../../../lib/landing-path";
+import { audit, auditMetaFromRequest } from "../../../../lib/audit";
 
 const loginSchema = z.object({
   email: z.string().email("Email không hợp lệ."),
@@ -45,13 +46,28 @@ export async function POST(request: Request) {
 
     const prisma = getPrismaClient();
     const user = await prisma.user.findUnique({ where: { email } });
+    // ADR-037: email không tồn tại KHÔNG ghi audit (bảng chỉ-INSERT giữ 12 tháng — tránh bị spam dòng bằng email
+    // ngẫu nhiên; không lưu email người lạ). Mọi lần thất bại của tài khoản có thật đều ghi AUTH_LOGIN_FAILED.
     if (!user) throw INVALID_CREDENTIALS;
+    const requestMeta = auditMetaFromRequest(request);
+    const auditLoginFailed = (reason: string, extra: Record<string, unknown> = {}) =>
+      audit.log({
+        actorId: user.id,
+        scope: "SYSTEM",
+        action: "AUTH_LOGIN_FAILED",
+        targetType: "User",
+        targetId: user.id,
+        metadata: { reason, ...extra },
+        ...requestMeta,
+      });
 
     if (user.status === "LOCKED") {
+      await auditLoginFailed("ACCOUNT_LOCKED");
       throw new AppError({ code: "ACCOUNT_LOCKED", message: "Tài khoản đã bị khoá.", httpStatus: 403 });
     }
 
     if (user.passwordResetRequired) {
+      await auditLoginFailed("PASSWORD_RESET_REQUIRED");
       throw PASSWORD_RESET_REQUIRED;
     }
 
@@ -63,10 +79,12 @@ export async function POST(request: Request) {
         where: { id: user.id },
         data: { failedLoginAttempts, passwordResetRequired: lockedOut },
       });
+      await auditLoginFailed("WRONG_PASSWORD", { failedAttempts: failedLoginAttempts, lockedOut });
       throw lockedOut ? PASSWORD_RESET_REQUIRED : INVALID_CREDENTIALS;
     }
 
     if (user.status === "PENDING") {
+      await auditLoginFailed("EMAIL_NOT_VERIFIED");
       throw new AppError({
         code: "EMAIL_NOT_VERIFIED",
         message: "Tài khoản chưa được kích hoạt. Vui lòng kiểm tra email hoặc gửi lại liên kết kích hoạt.",
@@ -95,6 +113,8 @@ export async function POST(request: Request) {
       prisma.userProfile.findUnique({ where: { userId: user.id } }),
       prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: now, failedLoginAttempts: 0 } }),
     ]);
+
+    await audit.log({ actorId: user.id, scope: "SYSTEM", action: "AUTH_LOGIN", targetType: "User", targetId: user.id, ...requestMeta });
 
     const profileCompleted = isProfileComplete(profile);
     const accessToken = await signAccessToken(

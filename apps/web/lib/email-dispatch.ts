@@ -11,8 +11,18 @@ import { getDecryptedSystemSmtpConfig } from "./system-smtp";
  * vẫn diễn ra bình thường. `storefront_message` (ADR-023): báo chủ tenant có
  * lời nhắn từ khách của họ — cùng lý do, không để lộ dấu vết liên hệ lên log.
  * `review_new` (ADR-029): báo chủ tenant có đánh giá mới từ khách của họ — cùng lý do.
+ * `entitlement_remedy_customer` (ADR-039): báo từng khách đã mua tài liệu bị gỡ — log sẽ thành danh sách khách của
+ * tenant. `remedy_refund_requested` (ADR-039): báo chủ tenant 1 khách yêu cầu hoàn tiền (kèm mã đơn) — cùng lý do.
+ * (Email tổng hợp cho chủ tenant `entitlement_remedy_tenant` vẫn ghi log: tiêu đề không chứa dữ liệu khách.)
  */
-const TENANT_CUSTOMER_FACING_TYPES = new Set(["order_paid", "new_sale", "storefront_message", "review_new"]);
+const TENANT_CUSTOMER_FACING_TYPES = new Set([
+  "order_paid",
+  "new_sale",
+  "storefront_message",
+  "review_new",
+  "entitlement_remedy_customer",
+  "remedy_refund_requested",
+]);
 
 export const EMAIL_NOT_CONFIGURED = "EMAIL_NOT_CONFIGURED";
 

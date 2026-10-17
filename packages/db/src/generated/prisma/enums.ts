@@ -180,6 +180,17 @@ export const PaymentMatchStatus = {
 export type PaymentMatchStatus = (typeof PaymentMatchStatus)[keyof typeof PaymentMatchStatus]
 
 
+export const EntitlementRemedyStatus = {
+  NONE: 'NONE',
+  PENDING_CHOICE: 'PENDING_CHOICE',
+  FINAL_DOWNLOAD: 'FINAL_DOWNLOAD',
+  REFUND_REQUESTED: 'REFUND_REQUESTED',
+  REFUNDED: 'REFUNDED'
+} as const
+
+export type EntitlementRemedyStatus = (typeof EntitlementRemedyStatus)[keyof typeof EntitlementRemedyStatus]
+
+
 export const StorefrontMessageStatus = {
   NEW: 'NEW',
   READ: 'READ',
@@ -226,3 +237,50 @@ export const PostStatus = {
 } as const
 
 export type PostStatus = (typeof PostStatus)[keyof typeof PostStatus]
+
+
+export const AuditScope = {
+  SYSTEM: 'SYSTEM',
+  TENANT: 'TENANT',
+  CUSTOMER: 'CUSTOMER'
+} as const
+
+export type AuditScope = (typeof AuditScope)[keyof typeof AuditScope]
+
+
+export const AbuseTargetType = {
+  PRODUCT: 'PRODUCT',
+  REVIEW: 'REVIEW',
+  POST: 'POST'
+} as const
+
+export type AbuseTargetType = (typeof AbuseTargetType)[keyof typeof AbuseTargetType]
+
+
+export const AbuseReportType = {
+  COPYRIGHT: 'COPYRIGHT',
+  INAPPROPRIATE: 'INAPPROPRIATE',
+  SCAM: 'SCAM',
+  OTHER: 'OTHER'
+} as const
+
+export type AbuseReportType = (typeof AbuseReportType)[keyof typeof AbuseReportType]
+
+
+export const AbuseReportStatus = {
+  OPEN: 'OPEN',
+  RESOLVED: 'RESOLVED',
+  REJECTED: 'REJECTED'
+} as const
+
+export type AbuseReportStatus = (typeof AbuseReportStatus)[keyof typeof AbuseReportStatus]
+
+
+export const AbuseReportDecision = {
+  HIDE_CONTENT: 'HIDE_CONTENT',
+  ARCHIVE_PRODUCT: 'ARCHIVE_PRODUCT',
+  LOCK_TENANT: 'LOCK_TENANT',
+  REJECT: 'REJECT'
+} as const
+
+export type AbuseReportDecision = (typeof AbuseReportDecision)[keyof typeof AbuseReportDecision]

@@ -86,8 +86,11 @@ function RatingSummary({ summary }: { summary: ProductRatingSummary }) {
   );
 }
 
-/** Một đánh giá công khai: sao (có chữ), tên, nhãn "Đã mua", giờ VN, nội dung text thuần giữ xuống dòng, trả lời. */
-export function PublicReviewItem({ review, tenantName }: { review: PublicReview; tenantName: string }) {
+/**
+ * Một đánh giá công khai: sao (có chữ), tên, nhãn "Đã mua", giờ VN, nội dung text thuần giữ xuống dòng, trả lời.
+ * `report` (ADR-038): nút "Báo cáo" kín đáo ở chân đánh giá — chỉ trang công khai truyền.
+ */
+export function PublicReviewItem({ review, tenantName, report }: { review: PublicReview; tenantName: string; report?: ReactNode }) {
   const nameId = `review-${review.id}-name`;
   return (
     <article aria-labelledby={nameId} className="py-5">
@@ -139,6 +142,8 @@ export function PublicReviewItem({ review, tenantName }: { review: PublicReview;
           </p>
         </div>
       ) : null}
+
+      {report ? <div className="mt-1 flex justify-end sm:pl-[52px]">{report}</div> : null}
     </article>
   );
 }
@@ -151,6 +156,7 @@ export function ProductReviewsSection({
   loadMore,
   resetHref,
   footer,
+  renderReport,
   className = "",
 }: {
   tenantName: string;
@@ -163,6 +169,8 @@ export function ProductReviewsSection({
   /** Đang xem trang đánh giá cũ hơn → link quay về mới nhất. */
   resetHref?: string | null;
   footer?: ReactNode;
+  /** ADR-038: dựng nút "Báo cáo" cho từng đánh giá (trang công khai); bỏ trống = không có nút (trang Xem trước). */
+  renderReport?: (review: PublicReview) => ReactNode;
   className?: string;
 }) {
   const headingId = `${PRODUCT_REVIEWS_ANCHOR}-tieu-de`;
@@ -202,7 +210,7 @@ export function ProductReviewsSection({
           <ol aria-label="Danh sách đánh giá" className="divide-y rounded-2xl border bg-white px-5 sm:px-6" style={{ borderColor: LINE }}>
             {items.map((review) => (
               <li key={review.id} style={{ borderColor: LINE }}>
-                <PublicReviewItem review={review} tenantName={tenantName} />
+                <PublicReviewItem review={review} tenantName={tenantName} report={renderReport?.(review)} />
               </li>
             ))}
           </ol>

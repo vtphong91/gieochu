@@ -5,7 +5,7 @@ tags:
   - schema
   - status/living
 date: 2026-06-20
-updated: 2026-10-15
+updated: 2026-10-17
 author: System Architect
 ---
 
@@ -13,7 +13,7 @@ author: System Architect
 
 > [!NOTE] Nguồn sinh tài liệu
 > Danh mục §2–§3 được đối chiếu trực tiếp với `packages/db/prisma/schema.prisma` ngày 2026-09-26:
-> **42 model + 24 enum** (`grep -c "^model " / "^enum "`, đếm lại 2026-09-28 ✅ sau migration M10b/ADR-029 — +`Post`, +`PostStatus` (và giá trị enum `TenantMediaUsage.POST`); trước đó M10a +`Review`, +`ReviewStatus`, +`ReviewHiddenReason`; trước đó ADR-028 +`TenantMediaAsset`, +`TenantMediaUsage`; trước đó ADR-026/027 +`ProductFileSource`; trước đó +`StorefrontMessage`, +`StorefrontMessageStatus` ở Storefront CMS), mỗi model đều được phân loại theo layer L1/L2/L3
+> **45 model + 30 enum** (`grep -c "^model " / "^enum "`, đếm lại 2026-10-17 ✅ sau migration M12c/ADR-038 — +`AbuseReport`, +`AbuseTargetType`, +`AbuseReportType`, +`AbuseReportStatus`, +`AbuseReportDecision` — và ADR-039 — +`EntitlementRemedyStatus`; trước đó M12b/ADR-037 — +`TenantDailyStat` (không thêm enum); trước đó M12a — +`AuditLog`, +`AuditScope`; trước đó 2026-09-28 sau M10b/ADR-029 — +`Post`, +`PostStatus` (và giá trị enum `TenantMediaUsage.POST`); trước đó M10a +`Review`, +`ReviewStatus`, +`ReviewHiddenReason`; trước đó ADR-028 +`TenantMediaAsset`, +`TenantMediaUsage`; trước đó ADR-026/027 +`ProductFileSource`; trước đó +`StorefrontMessage`, +`StorefrontMessageStatus` ở Storefront CMS), mỗi model đều được phân loại theo layer L1/L2/L3
 > (không sót). Danh sách bảng thật sự có RLS được đối chiếu với `packages/db/prisma/migrations/*_rls_*/migration.sql`
 > (`ALTER TABLE ... ENABLE ROW LEVEL SECURITY`) — không suy đoán từ comment trong schema. Chi tiết field/kiểu/
 > constraint: mở thẳng [schema.prisma](../../packages/db/prisma/schema.prisma), file này chỉ là bản đồ.
@@ -26,10 +26,11 @@ author: System Architect
   Neon mặc định. Role owner có `BYPASSRLS` nên nếu app lỡ dùng role đó, mọi chính sách RLS ở §4 sẽ **vô hiệu**
   hoàn toàn (xem ADR-010, `docs/DECISIONS.md`) — đây là lý do tồn tại của role `gieochu_app`.
   - **Quyền `CREATE` trên database của `gieochu_app` đã bị thu hồi trên DB dùng chung** (chủ dự án chạy `REVOKE CREATE ON DATABASE
-    neondb FROM gieochu_app` 2026-10-15, kiểm `has_database_privilege(..., 'CREATE') = false`) 🟡 (báo cáo Quốc). Lưu ý ✅: script
-    `setup-app-role.mts` hiện vẫn `GRANT CREATE ON DATABASE` (để pg-boss tự tạo schema `pgboss` trên DB mới) — chạy lại script sẽ cấp lại
-    quyền này. Chi tiết + việc còn mở: [[04-Operations-Runbooks/Disaster-Recovery-Runbook|Disaster-Recovery-Runbook]] §4.
+    neondb FROM gieochu_app` 2026-10-15, kiểm `has_database_privilege(..., 'CREATE') = false`) 🟡 (báo cáo Quốc). Script
+    `setup-app-role.mts` nay cũng `REVOKE CREATE ON DATABASE` ✅ (đọc 2026-10-16 — đính chính bản trước ghi "vẫn `GRANT CREATE`"). Chi tiết + việc còn mở: [[04-Operations-Runbooks/Disaster-Recovery-Runbook|Disaster-Recovery-Runbook]] §4.
   - Extension/hàm ngoài Prisma: `unaccent` + `public.gieochu_unaccent(text)` (ADR-035, §7).
+  - Quyền riêng: `audit_logs` — `gieochu_app` chỉ có `SELECT, INSERT, DELETE` (không UPDATE/TRUNCATE) + 3 trigger chỉ-INSERT (ADR-037, §7).
+  - `tenant_daily_stats` (M12b) — quyền mặc định bảng L1 (`SELECT, INSERT, UPDATE, DELETE`, migration cấp lại tường minh), không RLS (ADR-037, §7).
 - **ORM:** Prisma 7, `provider = "prisma-client"` (client tự sinh, không dùng `prisma-client-js` cũ), output
   `packages/db/src/generated/prisma`.
 - **ID strategy:** **cuid2** cho mọi `@id` (`@default(cuid(2))`) — ADR-001, `docs/DECISIONS.md`. Không dùng
@@ -68,6 +69,7 @@ erDiagram
     Tenant ||--o{ StorefrontMessage : "receives (contact form)"
     Tenant ||--o{ Review : "receives (M10a)"
     Tenant ||--o{ Post : "publishes (M10b)"
+    Tenant ||--o{ TenantDailyStat : "aggregated daily (M12b, Cascade)"
 
     Subscription ||--o{ SubscriptionInvoice : bills
     Plan ||--o{ Subscription : "priced by"
@@ -97,7 +99,7 @@ erDiagram
 
 ---
 
-## 3. Danh Mục 42 Model Theo Layer
+## 3. Danh Mục 45 Model Theo Layer
 
 ### 3.1. L1 — System (không `tenantId`, không RLS, truy cập qua `getPrismaClient()` thẳng)
 
@@ -118,7 +120,7 @@ erDiagram
 | `SystemStorageConfig` | Cấu hình object storage duy nhất của platform (R2 prod); `encryptedSecrets` mã hoá **AES-256-GCM** bằng `STORAGE_ENCRYPTION_KEY` | — | — |
 | `SystemCloudinaryConfig` | Tài khoản Cloudinary cho ảnh CMS (khác `SystemStorageConfig` — đó là R2 cho file tài liệu/ảnh bìa sản phẩm); cùng mã hoá bằng `STORAGE_ENCRYPTION_KEY` | — | — |
 | `SystemSmtpConfig` | Cấu hình gửi email hệ thống (SMTP/Gmail App Password); `encryptedSecrets` mã hoá bằng `STORAGE_ENCRYPTION_KEY` | — | — |
-| `EmailSendLog` | Log email **cấp platform** (kích hoạt, reset mật khẩu, billing gửi cho tenant owner) — cố ý loại trừ các loại email hướng tới khách của tenant (`TENANT_CUSTOMER_FACING_TYPES` trong `apps/web/lib/email-dispatch.ts`: `order_paid`, `new_sale`, `storefront_message`, `review_new` (ADR-029) — ✅ đọc code 2026-09-28), để giữ ranh giới CLAUDE.md §7.9 | — | — |
+| `EmailSendLog` | Log email **cấp platform** (kích hoạt, reset mật khẩu, billing gửi cho tenant owner) — cố ý loại trừ các loại email hướng tới khách của tenant (`TENANT_CUSTOMER_FACING_TYPES` trong `apps/web/lib/email-dispatch.ts`: `order_paid`, `new_sale`, `storefront_message`, `review_new` (ADR-029), `entitlement_remedy_customer`, `remedy_refund_requested` (ADR-039) — ✅ đọc code 2026-10-17), để giữ ranh giới CLAUDE.md §7.9 | — | — |
 | `DocumentCategory` | Danh mục tài liệu **cấp platform** do System Admin tạo trước (`/admin/categories`), không phải danh mục riêng từng tenant. Từ ADR-026 là đích FK của `Product.categoryId` (bảng L1 không RLS; `products` vẫn RLS như cũ) — Studio chỉ liệt kê danh mục `isActive` ✅ | Product (ADR-026) | — |
 | `SystemBranding` | Nhận diện thương hiệu nền tảng (khác `Tenant.branding` — đó là branding riêng từng tenant); field null = dùng mặc định từ `@gieochu/config/brand` | — | — |
 | `PlatformPaymentConfig` | Cấu hình cổng thanh toán **phí nền tảng** (Tenant → Gieo Chữ), 1 dòng/provider; `encryptedSecrets` mã hoá bằng `PAYMENT_ENCRYPTION_KEY` | — | `PaymentProviderId` |
@@ -127,6 +129,9 @@ erDiagram
 | `WebhookEvent` | Idempotency guard cho webhook (unique `scope+provider+providerEventId`), ghi qua `withSystemJob` | — | `WebhookScope` |
 | `BankBin` | Danh sách BIN ngân hàng (NAPAS/VietQR) cho form chọn ngân hàng khi cấu hình `MANUAL_QR`/`SEPAY` | — | — |
 | `DownloadToken` | Token tải file một-lần, TTL 60s — **L1 tuyệt đối, không RLS**: ranh giới bảo mật là "chỉ ai vừa yêu cầu mới giữ token thô" (giống RefreshToken/VerificationToken), không phải filter theo tenant/user row | Entitlement, ProductFile, User | — |
+| `AuditLog` | (ADR-037, M12a — `@@map("audit_logs")`) Nhật ký hành động: `actorId?`, `scope`, `tenantId?`, `action` (**chuỗi**, danh sách hợp lệ ở hằng `AUDIT_ACTIONS` — không enum DB), `targetType?`, `targetId?`, `metadata Json @default("{}")` (đã lọc khoá nhạy cảm), `ip?`, `userAgent?`, `createdAt`. Có `tenantId` nhưng **không RLS** (cùng kiểu `Subscription`); **không khoá ngoại** tới users/tenants. Index `(createdAt)`, `(tenantId, createdAt)`, `(actorId, createdAt)`. **Chỉ INSERT** (quyền + trigger, §7), giữ 12 tháng. Đọc qua `apps/web/lib/audit-query.ts` (owner chỉ thấy dòng `tenantId` của mình — quyền gác ở loader) ✅ | — (không FK) | `AuditScope` |
+| `TenantDailyStat` | (ADR-037, M12b — `@@map("tenant_daily_stats")`) Số liệu tổng hợp theo tenant + **ngày giờ VN** (`date DATE`): `ordersPaid Int`, `gmvVnd BigInt` (GMV gộp — tổng `orders.totalVnd` của đơn có `paidAt` trong ngày, kể cả đơn sau này hoàn tiền), `newCustomers Int`, `downloads Int` (đều `@default(0)`), `updatedAt @updatedAt`. Unique `(tenantId, date)`, index `(date)`. Có `tenantId` + **khoá ngoại tới `tenants` `ON DELETE CASCADE`** (bảng tính lại được — khác `audit_logs`) nhưng **không RLS** (L1 theo đặc tả §5/§7.9). Chỉ chứa số đếm/tổng tiền — không email, tên, mã đơn. Ghi bởi job `stats.aggregate` (`withSystemJob`); admin đọc bằng `getPrismaClient()` qua `apps/web/lib/admin-stats.ts` ✅ | Tenant | — |
+| `AbuseReport` | (ADR-038, M12c — `@@map("abuse_reports")`) Báo cáo vi phạm: `targetType` + `targetId` (không FK — đối tượng có thể bị xoá) + `tenantId` (FK `tenants` `ON DELETE CASCADE`), `type`, `description` (1–2000, CHECK), `evidenceUrls String[] @default([])` (≤5, CHECK), `reporterUserId?` (FK `users` `SET NULL`), `reporterEmail` (3–320, CHECK), `ip?` (xoá sau 12 tháng bởi cron), `status` (mặc định `OPEN`), `decision?`, `resolutionNote?` (nội bộ), `resolvedById?` (FK `users` `SET NULL`), `resolvedAt?`, `createdAt`, `updatedAt`. CHECK `abuse_reports_decision_shape`. 6 index (`status+createdAt`, `targetType+targetId`, `tenantId+createdAt`, `ip+createdAt`, `reporterUserId`, `resolvedById`). Có `tenantId` nhưng **không RLS** (L1, cùng mẫu `audit_logs`); **tenant không có đường đọc nào** — chỉ `apps/web/lib/abuse-report.ts` (System Admin) ✅ | Tenant, User (reporter, resolver) | `AbuseTargetType`, `AbuseReportType`, `AbuseReportStatus`, `AbuseReportDecision` |
 
 ### 3.2. L2 — Tenant (có `tenantId`, RLS bật thật trên bảng, qua `withTenant`/`withPublic`)
 
@@ -138,7 +143,7 @@ erDiagram
 | :-- | :-- | :-- | :-- | :-- |
 | `Tenant` | Gian hàng của 1 giáo viên/coach (`ownerId` unique — 1 user = 1 tenant ở MVP); là **root** của L2 nên chính bảng này không cần RLS (định danh bằng `id` của chính nó). Từ ADR-023 có thêm 2 cột Json `storefrontSections` (bản live) / `storefrontSectionsDraft` (nháp) — `null` = chưa xuất bản → nội dung demo sinh trong code; validate bằng `storefrontSectionsSchema` (`@gieochu/core`) | Không (là root) | User (owner), TenantMember, Product, Subscription, TenantPaymentConfig, Coupon, Order, TenantCustomer, ShareLink, DownloadEvent, StorefrontMessage, TenantMediaAsset | `TenantStatus` |
 | `TenantMember` | Thành viên tenant (`role` OWNER/STAFF) — MVP chỉ tạo dòng OWNER, schema đã sẵn cho STAFF | ✅ `rls_m4` | Tenant, User | `TenantMemberRole` |
-| `Product` | Tài liệu số rao bán (`type`: TEMPLATE/SLIDE/EBOOK/EXAM/OTHER, `priceVnd`, `salePriceVnd`, `downloadLimit`, 0 = không giới hạn — ADR-015). ADR-026: `categoryId String?` FK → `DocumentCategory` `ON DELETE SET NULL`, index `products_categoryId_idx` (nháp được trống, xuất bản bắt buộc). ADR-027: `summary String?` (mô tả ngắn văn bản thuần ≤300 ký tự — giới hạn ở tầng ứng dụng `normalizeProductSummary`, DB là `TEXT`), `coverImageUrl String?` (ảnh bìa Cloudinary, chỉ `https://res.cloudinary.com/...` — kiểm ở app bằng `isCloudinaryImageUrl`); `coverImageKey` (R2 cũ) chỉ còn là fallback hiển thị ✅. ADR-029 (M10a): `ratingSum Int @default(0)`, `ratingCount Int @default(0)` — cache điểm đánh giá bằng số nguyên (chỉ review `VISIBLE`), CHECK `products_rating_cache_nonnegative`; chỉ ghi dưới `system_job` ✅. ADR-033: **`soldCount Int @default(0)`** — cache số lượt mua (dòng đơn FULFILLED, trừ entitlement đã thu hồi), CHECK `products_sold_count_nonnegative` (chỉ trong SQL), tính lại toàn phần bằng `recomputeProductSoldCounts` dưới `system_job`; trang public chỉ đọc cột này, không đọc `orders` ✅ | ✅ `rls_m5`, `rls_m9_products_customer`, **`rls_adr029_split_write_policies`** (`20260927130000` — policy tách theo lệnh, xem §7) | Tenant, DocumentCategory, ProductFile, OrderItem, Entitlement, ShareLink | `ProductType`, `ProductStatus` |
+| `Product` | Tài liệu số rao bán (`type`: TEMPLATE/SLIDE/EBOOK/EXAM/OTHER, `priceVnd`, `salePriceVnd`, `downloadLimit`, 0 = không giới hạn — ADR-015). ADR-026: `categoryId String?` FK → `DocumentCategory` `ON DELETE SET NULL`, index `products_categoryId_idx` (nháp được trống, xuất bản bắt buộc). ADR-027: `summary String?` (mô tả ngắn văn bản thuần ≤300 ký tự — giới hạn ở tầng ứng dụng `normalizeProductSummary`, DB là `TEXT`), `coverImageUrl String?` (ảnh bìa Cloudinary, chỉ `https://res.cloudinary.com/...` — kiểm ở app bằng `isCloudinaryImageUrl`); `coverImageKey` (R2 cũ) chỉ còn là fallback hiển thị ✅. ADR-029 (M10a): `ratingSum Int @default(0)`, `ratingCount Int @default(0)` — cache điểm đánh giá bằng số nguyên (chỉ review `VISIBLE`), CHECK `products_rating_cache_nonnegative`; chỉ ghi dưới `system_job` ✅. ADR-033: **`soldCount Int @default(0)`** — cache số lượt mua (dòng đơn FULFILLED, trừ entitlement đã thu hồi), CHECK `products_sold_count_nonnegative` (chỉ trong SQL), tính lại toàn phần bằng `recomputeProductSoldCounts` dưới `system_job`; trang public chỉ đọc cột này, không đọc `orders` ✅. ADR-038 (M12c): `moderationLockedAt?`, `moderationReason?` (khoá kiểm duyệt — CHECK `products_moderation_shape`: khoá ⇒ `ARCHIVED`; trigger `products_guard_moderation`), `rightsConfirmedAt?`, `rightsConfirmedById?` (cam kết bản quyền lần xuất bản gần nhất, không FK) ✅ | ✅ `rls_m5`, `rls_m9_products_customer`, **`rls_adr029_split_write_policies`** (`20260927130000` — policy tách theo lệnh, xem §7) | Tenant, DocumentCategory, ProductFile, OrderItem, Entitlement, ShareLink | `ProductType`, `ProductStatus` |
 | `ProductFile` | Nguồn giao hàng của sản phẩm: file thật trong bucket **private** (`sourceKind = FILE`) **hoặc** link tài liệu ngoài (`sourceKind = EXTERNAL_URL`, ADR-026 — nhãn lưu ở `fileName`, URL ở `externalUrl`). `tenantId` denormalize từ `Product` để RLS scope không cần join; `removedAt` chỉ soft-hide, không xoá object đã có người mua. Từ ADR-026 `objectKey` (vẫn `@unique`), `mimeType`, `scanStatus` thành **nullable**; hình dạng dòng ép bằng CHECK `product_files_source_shape` (xem §7) ✅ | ✅ `rls_m5`, `rls_m9_product_files_customer`, `rls_adr026_product_files` (`20260926120100`), `rls_adr029_split_write_policies` (`20260927130000`) | Product, DownloadToken, DownloadEvent | `ProductFileSource`, `ProductFileScanStatus` |
 | `TenantPaymentConfig` | Cổng thanh toán **online** tenant tự cấu hình (1 dòng/provider); `encryptedSecrets` mã hoá **AES-256-GCM** bằng `PAYMENT_ENCRYPTION_KEY`, UI chỉ hiện `••••abcd` | ✅ `rls_m7` | Tenant | `PaymentProviderId` |
 | `Coupon` | Mã giảm giá của tenant; `productIds` là JSON array (null/rỗng = áp mọi sản phẩm) | ✅ `rls_m6`, `rls_adr029_split_write_policies` | Tenant, CouponRedemption | `CouponType` |
@@ -151,9 +156,9 @@ erDiagram
 | `DownloadEvent` | Nhật ký mọi lượt tải (qua `Entitlement` hoặc `ShareLink`, đúng 1 trong 2 khác null) — chỉ owner đọc, không có view khách hàng | ✅ `rls_m9` | Tenant, ProductFile, Entitlement?, ShareLink?, User? | — |
 | `StorefrontMessage` | Tin nhắn form liên hệ trên storefront `/[tenantSlug]` (ADR-023): `name`, `email`, `message`, `status`, `ipHash?` (HMAC, không lưu IP thô); FK `tenantId` `ON DELETE CASCADE`; index `(tenantId, createdAt)`, `(ipHash, createdAt)`. **Policy tách theo lệnh**: public chỉ INSERT, tenant SELECT/UPDATE/DELETE đúng `tenantId`, không nhánh admin/system_job | ✅ `rls_storefront_messages` (`20260926090100`) | Tenant | `StorefrontMessageStatus` |
 | `TenantMediaAsset` | (ADR-028) Sổ ghi nhận ảnh tenant đã upload lên Cloudinary **hệ thống** để tính hạn mức `Plan.imageStorageMb`: `publicId` (`@unique`, server sinh — nằm trong chữ ký), `bytes Int`, `format?`, `width?`, `height?`, `usage` (`TenantMediaUsage`), `verifiedAt?` (`null` = mới giữ chỗ lúc ký, `bytes` là mức tạm 5MB; có giá trị = đã đọc số thật qua Cloudinary Admin API), `createdAt`. FK `tenantId` `ON DELETE CASCADE`; index `(tenantId, createdAt)`. `bytes` **không bao giờ** lấy từ client. Policy `tenant_isolation` (1 policy, không `WITH CHECK` riêng): đúng `app.tenant_id` **hoặc** `app.scope = 'system_job'` (dành cho job dọn asset — chưa có); **không** nhánh public/customer ✅ | ✅ `rls_adr028_media_assets` (`20260927110100`) | Tenant | `TenantMediaUsage` |
-| `Entitlement` | Quyền tải của khách đã mua (`downloadsUsed`/`downloadLimit` snapshot từ `Product` tại thời điểm mua) — vừa có `tenantId` (RLS bật, owner xem) vừa lọc theo `userId` (khách xem quyền của chính mình) — từ ADR-029 nhánh customer **chỉ đọc** | ✅ `rls_m9`, `rls_adr029_split_write_policies` | User, Tenant, Product, OrderItem, DownloadToken, DownloadEvent | — |
-| `Post` | (ADR-029, M10b) Bài viết tối giản của tenant: `title String?` (≤200), `body` (HTML đã `sanitizeRichTextHtml`, 1–100 000 ký tự, ≤6 ảnh kiểm ở app), `excerpt` (văn bản thuần ≤300 tự sinh, mặc định `""`), `productId?` (FK `products` `ON DELETE SET NULL`, phải cùng tenant — trigger), `status` (`PostStatus`, mặc định `DRAFT`), `hiddenReason?` (chỉ khi `HIDDEN`), `isPinned Boolean @default(false)`, `publishedAt?` (lần đăng đầu), `createdAt`, `updatedAt`. Không có `authorId`. FK `tenantId` `ON DELETE CASCADE`; index `(tenantId, status, publishedAt DESC)`, `productId`; **partial unique index `posts_tenantId_pinned_key` (`WHERE "isPinned"`) chỉ có trong SQL**. 6 CHECK + 2 trigger (xem §7). **Policy tách theo lệnh**, không nhánh customer/admin ✅ | ✅ `rls_m10b_posts` (`20260928090100`) | Tenant, Product | `PostStatus` |
-| `Review` | (ADR-029, M10a) Đánh giá sản phẩm của khách đã mua: `productId`, `userId`, `orderItemId` (dòng đơn chứng minh quyền — FK `order_items`), `rating Int` (1–5), `body String?` (văn bản thuần ≤2000), `displayName` (snapshot "Minh N.", 1–80 ký tự), `status` (`ReviewStatus`, mặc định `VISIBLE`), `hiddenReason?`/`hiddenAt?`, `reply?`/`repliedAt?` (1 trả lời/đánh giá). `@@unique([productId, userId])` = 1 đánh giá/khách/sản phẩm; index `(tenantId, createdAt)`, `(productId, status, createdAt)`, `userId`, `orderItemId`; mọi FK `ON DELETE CASCADE`. 7 CHECK (6 trên `reviews` + 1 trên `products`) + trigger `reviews_guard_columns` (xem §7). **Policy tách theo lệnh**, không nhánh admin ✅ | ✅ `rls_m10a_reviews` (`20260927150100`) | Tenant, Product, User, OrderItem | `ReviewStatus`, `ReviewHiddenReason` |
+| `Entitlement` | Quyền tải của khách đã mua (`downloadsUsed`/`downloadLimit` snapshot từ `Product` tại thời điểm mua) — vừa có `tenantId` (RLS bật, owner xem) vừa lọc theo `userId` (khách xem quyền của chính mình) — từ ADR-029 nhánh customer **chỉ đọc**. ADR-039: `remedyStatus` (mặc định `NONE`), `remedyRequestedAt?`, `remedyChosenAt?`, `remedyResolvedAt?`, `remedyReportId?` (trỏ `abuse_reports.id`, không FK), index `(tenantId, remedyStatus)`, CHECK `entitlements_remedy_shape` + `entitlements_remedy_refunded_revoked`, trigger `entitlements_guard_remedy` (§7) ✅ | ✅ `rls_m9`, `rls_adr029_split_write_policies` | User, Tenant, Product, OrderItem, DownloadToken, DownloadEvent | `EntitlementRemedyStatus` |
+| `Post` | (ADR-029, M10b) Bài viết tối giản của tenant: `title String?` (≤200), `body` (HTML đã `sanitizeRichTextHtml`, 1–100 000 ký tự, ≤6 ảnh kiểm ở app), `excerpt` (văn bản thuần ≤300 tự sinh, mặc định `""`), `productId?` (FK `products` `ON DELETE SET NULL`, phải cùng tenant — trigger), `status` (`PostStatus`, mặc định `DRAFT`), `hiddenReason?` (chỉ khi `HIDDEN`), `isPinned Boolean @default(false)`, `publishedAt?` (lần đăng đầu), `createdAt`, `updatedAt`. Không có `authorId`. FK `tenantId` `ON DELETE CASCADE`; index `(tenantId, status, publishedAt DESC)`, `productId`; **partial unique index `posts_tenantId_pinned_key` (`WHERE "isPinned"`) chỉ có trong SQL**. 6 CHECK + 2 trigger (xem §7). **Policy tách theo lệnh**, không nhánh customer/admin ✅. ADR-038 (M12c): `moderationLockedAt?`, `moderationReason?` + CHECK `posts_moderation_shape` (khoá ⇒ `HIDDEN`) + trigger `posts_guard_moderation` ✅ | ✅ `rls_m10b_posts` (`20260928090100`) | Tenant, Product | `PostStatus` |
+| `Review` | (ADR-029, M10a) Đánh giá sản phẩm của khách đã mua: `productId`, `userId`, `orderItemId` (dòng đơn chứng minh quyền — FK `order_items`), `rating Int` (1–5), `body String?` (văn bản thuần ≤2000), `displayName` (snapshot "Minh N.", 1–80 ký tự), `status` (`ReviewStatus`, mặc định `VISIBLE`), `hiddenReason?`/`hiddenAt?`, `reply?`/`repliedAt?` (1 trả lời/đánh giá). `@@unique([productId, userId])` = 1 đánh giá/khách/sản phẩm; index `(tenantId, createdAt)`, `(productId, status, createdAt)`, `userId`, `orderItemId`; mọi FK `ON DELETE CASCADE`. 7 CHECK (6 trên `reviews` + 1 trên `products`) + trigger `reviews_guard_columns` (xem §7). **Policy tách theo lệnh**, không nhánh admin ✅. ADR-038 (M12c): `moderationLockedAt?`, `moderationReason?` + CHECK `reviews_moderation_shape` (khoá ⇒ `HIDDEN`) + trigger `reviews_guard_moderation` ✅ | ✅ `rls_m10a_reviews` (`20260927150100`) | Tenant, Product, User, OrderItem | `ReviewStatus`, `ReviewHiddenReason` |
 
 ### 3.3. L3 — Customer (không có bảng riêng; là góc nhìn/scope trên các bảng L2 ở trên)
 
@@ -164,7 +169,7 @@ Gieo Chữ không có bảng nào gắn nhãn "L3" tách riêng — L3 là **gó
 
 ---
 
-## 4. Enum (24)
+## 4. Enum (30)
 
 | Enum | Giá trị |
 | :-- | :-- |
@@ -192,6 +197,12 @@ Gieo Chữ không có bảng nào gắn nhãn "L3" tách riêng — L3 là **gó
 | `ReviewStatus` | `VISIBLE` · `HIDDEN` (ADR-029) |
 | `ReviewHiddenReason` | `SPAM` · `OFFENSIVE` · `IRRELEVANT` · `PERSONAL_INFO` · `REFUNDED` (chỉ hệ thống đặt khi hoàn tiền/thu hồi) · `OTHER` (ADR-029) |
 | `PostStatus` | `DRAFT` · `PUBLISHED` · `HIDDEN` (chỉ `system_job` đặt/gỡ — ADR-029 M10b) |
+| `AuditScope` | `SYSTEM` · `TENANT` · `CUSTOMER` (ADR-037 M12a — ai thực hiện: cấp nền tảng / thành viên tenant / khách) |
+| `AbuseTargetType` | `PRODUCT` · `REVIEW` · `POST` (ADR-038 M12c — bình luận chưa có) |
+| `AbuseReportType` | `COPYRIGHT` · `INAPPROPRIATE` · `SCAM` · `OTHER` (ADR-038) |
+| `AbuseReportStatus` | `OPEN` · `RESOLVED` · `REJECTED` (ADR-038) |
+| `AbuseReportDecision` | `HIDE_CONTENT` · `ARCHIVE_PRODUCT` · `LOCK_TENANT` · `REJECT` (ADR-038) |
+| `EntitlementRemedyStatus` | `NONE` · `PENDING_CHOICE` · `FINAL_DOWNLOAD` · `REFUND_REQUESTED` · `REFUNDED` (ADR-039 — quyền lợi người mua khi tài liệu bị lưu trữ do vi phạm) |
 
 ---
 
@@ -341,6 +352,70 @@ cả hai. Không secret nào trả plaintext về client (UI chỉ hiện `•�
   - Đã áp lên DB dùng chung 2026-10-15; kiểm `gieochu_unaccent(lower('Đề thi Toán học'))` = `de thi toan hoc`; extension `unaccent` 1.1,
     schema `public` 🟡 (báo cáo Quốc). Dùng ở `searchShopProducts` (`apps/web/lib/shop.ts`) ✅. File migration chưa commit ✅ `git status`.
   - Nghiệp vụ: [[02-System-Specs/Shop-Marketplace-Specs|Shop-Marketplace-Specs]] §6.2, §9.
+- **Migration M12a — Audit log (ADR-037)** ✅ đọc SQL (2026-10-16):
+  - `20261016090000_m12a_audit_logs` — loại **expand** (chỉ thêm, không đổi bảng cũ): `CREATE TYPE "AuditScope"`, `CREATE TABLE
+    "audit_logs"` (không FK), 3 index. Code ghi audit tự bỏ qua khi bảng chưa có (`isAuditTableMissing`: P2021/42P01) nên thứ tự
+    deploy code ↔ migration không làm hỏng nghiệp vụ.
+  - **3 hàm + 3 trigger** (ngoài Prisma, chỉ có trong SQL): `audit_logs_block_update` (BEFORE UPDATE FOR EACH ROW — luôn RAISE),
+    `audit_logs_guard_delete` (BEFORE DELETE FOR EACH ROW — cho qua chỉ khi `current_setting('gieochu.audit_purge', true) = 'on'` **và**
+    `OLD."createdAt" < (now() AT TIME ZONE 'UTC') - interval '12 months'`), `audit_logs_block_truncate` (BEFORE TRUNCATE FOR EACH
+    STATEMENT). Mọi RAISE dùng `ERRCODE 42501`. Trigger áp cho cả role owner (trừ khi owner tắt trigger).
+  - **Quyền:** khối `DO` (bọc `IF EXISTS` role) `REVOKE ALL ON "audit_logs" FROM gieochu_app` rồi `GRANT SELECT, INSERT, DELETE` + `GRANT
+    EXECUTE` 3 hàm trigger. `packages/db/scripts/setup-app-role.mts` ✅: sau `ALTER DEFAULT PRIVILEGES ... GRANT SELECT, INSERT, UPDATE,
+    DELETE` thì `REVOKE UPDATE, TRUNCATE ON "audit_logs"` nếu bảng đã có — chạy lại script không mở lại UPDATE.
+  - Cờ phiên `gieochu.audit_purge` chỉ đặt bằng `SET LOCAL` trong transaction purge (`audit.purgeExpired`), không rò sang kết nối pool khác.
+  - Đã áp lên DB dùng chung 2026-10-16; kiểm bằng role `gieochu_app` trong transaction rollback: UPDATE/TRUNCATE → permission denied;
+    DELETE và DELETE có cờ purge với dòng mới → trigger `42501`; quyền `DELETE, INSERT, SELECT`; đủ 3 trigger 🟡 (báo cáo Quốc). File
+    migration chưa commit ✅ `git status`.
+  - Partition theo tháng: **để sau** (ADR-037 mục 4, BACKLOG).
+  - Nghiệp vụ: [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]].
+- **Migration M12b — Thống kê hằng ngày (ADR-037)** ✅ đọc SQL (2026-10-16):
+  - `20261016120000_m12b_tenant_daily_stats` — loại **expand**: `CREATE TABLE "tenant_daily_stats"` (`id TEXT`, `tenantId`, `date DATE`,
+    3 cột `INTEGER` + `gmvVnd BIGINT` đều `DEFAULT 0`, `updatedAt TIMESTAMP(3)`), index `tenant_daily_stats_date_idx`, unique
+    `tenant_daily_stats_tenantId_date_key`, FK `tenantId → tenants(id) ON DELETE CASCADE ON UPDATE CASCADE`. Không bật RLS, không trigger.
+  - **Quyền:** khối `DO` (bọc `IF EXISTS` role) `GRANT SELECT, INSERT, UPDATE, DELETE ON "tenant_daily_stats" TO gieochu_app` (idempotent,
+    trùng quyền mặc định của `setup-app-role.mts`; DELETE giữ như bảng L1 khác để dọn dữ liệu test/ops).
+  - Code chịu được thứ tự deploy: bảng chưa có (P2021/42P01, `isStatsTableMissing`) → cron trả `{ skipped: true }`, dashboard trả
+    `{ status: "unavailable" }`.
+  - Đã áp lên DB dùng chung 2026-10-16; `gieochu_app` có SELECT/INSERT/UPDATE, không RLS, bảng trống (backfill lần đầu khi cron chạy sau
+    deploy) 🟡 (báo cáo Quốc — Quốc không nêu DELETE; migration có cấp DELETE ✅ đọc SQL). File migration chưa commit ✅ `git status`.
+  - Index `orders("paidAt")` chưa có — truy vấn tổng hợp quét theo `paidAt`; thêm khi dữ liệu lớn (BACKLOG).
+  - Nghiệp vụ: [[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]].
+- **Migration M12c — Báo cáo vi phạm (ADR-038)** ✅ đọc SQL (2026-10-17):
+  - `20261016150000_m12c_abuse_reports` — loại **expand**: 4 enum, bảng `abuse_reports` + 6 index + 3 FK; cột nullable
+    `moderationLockedAt`/`moderationReason` trên `products`/`reviews`/`posts`, `rightsConfirmedAt`/`rightsConfirmedById` trên `products`.
+  - CHECK: `abuse_reports_description_length` (1–2000), `abuse_reports_evidence_count` (≤5), `abuse_reports_reporter_email_length`
+    (3–320), `abuse_reports_decision_shape`; `products_moderation_shape` (khoá ⇒ `ARCHIVED`), `reviews_moderation_shape`,
+    `posts_moderation_shape` (khoá ⇒ `HIDDEN`).
+  - **3 trigger `<bảng>_guard_moderation`** (BEFORE INSERT OR UPDATE FOR EACH ROW, `ERRCODE 42501`): ngoài `app.scope = 'system_job'` không tạo
+    dòng có khoá, không đặt/gỡ khoá, khi đang khoá không đổi `status` (`reviews` thêm `hiddenReason`/`hiddenAt`). Role owner không đặt
+    `app.scope` → cũng bị áp. **Không có nhánh DELETE** — xoá dòng đang khoá không bị trigger chặn. Mẫu "trigger giới hạn cột theo scope".
+  - **Quyền:** khối `DO` (bọc `IF EXISTS` role) `GRANT SELECT, INSERT, UPDATE, DELETE ON "abuse_reports"` + `GRANT EXECUTE` 3 hàm trigger.
+  - ⚠️ **Thứ tự deploy: migration TRƯỚC code** — code M12c đọc cột mới của `products`/`reviews`/`posts` (Prisma chọn đủ cột) → code lên
+    trước sẽ lỗi P2022 (500) mọi truy vấn sản phẩm/đánh giá/bài viết. Code cũ chạy trên schema mới không sao.
+  - Đã áp lên DB dùng chung 2026-10-16 🟡 (báo cáo Quốc). File chưa commit ✅ `git status`.
+  - Nghiệp vụ: [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]].
+- **Migration ADR-039 — Quyền lợi người mua** ✅ đọc SQL (2026-10-17):
+  - `20261016180000_adr039_entitlement_remedy` — loại **expand**: enum `EntitlementRemedyStatus`; 5 cột trên `entitlements` (`remedyStatus`
+    NOT NULL DEFAULT `'NONE'` — PG ≥ 11 chỉ sửa metadata, không rewrite bảng; `remedyRequestedAt`, `remedyChosenAt`, `remedyResolvedAt`,
+    `remedyReportId` nullable); index `entitlements_tenantId_remedyStatus_idx`.
+  - CHECK `entitlements_remedy_shape` (`NONE` ⇔ không mốc/không báo cáo; `PENDING_CHOICE` ⇔ có `remedyRequestedAt`, chưa chọn;
+    `FINAL_DOWNLOAD`/`REFUND_REQUESTED` ⇔ có `remedyRequestedAt` + `remedyChosenAt`, chưa `remedyResolvedAt`; `REFUNDED` ⇔ đủ 3 mốc) và
+    `entitlements_remedy_refunded_revoked` (`REFUNDED` ⇒ `revokedAt` NOT NULL).
+  - **Trigger `entitlements_guard_remedy`** (BEFORE INSERT OR UPDATE, `42501`), ngoài `system_job`: INSERT chỉ dòng `NONE` sạch, **ngoại lệ**
+    `PENDING_CHOICE` chưa chọn khi `products.moderationLockedAt` khác null và `remedyReportId` (nếu có) là báo cáo `PRODUCT` về đúng sản phẩm
+    (fulfil đơn thanh toán muộn); UPDATE không đổi `remedyRequestedAt`/`remedyChosenAt`/`remedyReportId`; không đổi `remedyStatus`/
+    `remedyResolvedAt` trừ đúng chuyển `REFUND_REQUESTED → REFUNDED` kèm `revokedAt` + `remedyResolvedAt` (`markOrderRefunded`); không đổi
+    `downloadLimit` khi `remedyStatus ≠ NONE`. RLS `entitlements` giữ nguyên (customer vẫn chỉ SELECT — lựa chọn của khách UPDATE dưới
+    `system_job` sau khi server kiểm sở hữu).
+  - **Quyền:** `GRANT EXECUTE` hàm trigger cho `gieochu_app` (bọc `IF EXISTS`).
+  - ⚠️ **Thứ tự deploy: migration TRƯỚC code** (code mới đọc `remedyStatus` → code lên trước lỗi P2022 ở thư viện/tải/đơn Studio).
+  - Đã áp lên DB dùng chung 2026-10-16; Quốc kiểm bằng `gieochu_app` (rollback): tenant đặt khoá/remedy → `42501`; tenant cấp thêm lượt khi
+    có remedy → `42501`; `system_job` được; CHECK shape chặn; checksum migration khớp file 🟡 (báo cáo Quốc). File chưa commit ✅ `git status`.
+- **Sửa lỗi RLS khi đọc `orders` (2026-10-16)** ✅ đọc `git diff`: `sendOrderPaidEmailsInner` và `resolveUniqueOrderCode`
+  (`apps/web/lib/order.ts`) từng đọc `orders` (RLS `FORCE`) bằng `getPrismaClient()` không scope → 0 dòng → email `order_paid`/`new_sale`
+  chưa từng gửi, kiểm trùng mã đơn chưa từng chạy. Nay dưới `withSystemJob`. Bài học: **mọi đọc bảng L2 ngoài phạm vi request (sau commit,
+  job) phải đi qua `withSystemJob`** — xem [[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.7.
 - **Không có tầng Store Factory / In-Memory Store nào** trong Gieo Chữ (khác các dự án khác từng dùng mẫu
   Dual-Store) — route/Server Action gọi thẳng `getPrismaClient()` (L1) hoặc `withTenant`/`withCustomer`/
   `withPublic`/`withSystemJob` (L2), không có interface trung gian để hoán đổi backend.
@@ -359,9 +434,12 @@ cả hai. Không secret nào trả plaintext về client (UI chỉ hiện `•�
   `storefront_messages`), ADR-026 (`Product.categoryId`, `ProductFile.sourceKind/externalUrl`), ADR-027
   (`Product.summary`, `Product.coverImageUrl`), ADR-028 (`Plan.imageStorageMb`, `tenant_media_assets`), ADR-029 (siết RLS 7 bảng, `reviews`,
   `products.ratingSum/ratingCount`, `posts`, `TenantMediaUsage.POST`), ADR-033 (`products.soldCount`), ADR-035 (`CmsPage` slug `shop`,
-  extension `unaccent` + hàm `gieochu_unaccent`)
+  extension `unaccent` + hàm `gieochu_unaccent`), ADR-037 (`audit_logs`, `AuditScope`, trigger chỉ-INSERT; `tenant_daily_stats` M12b), ADR-038 (`abuse_reports`, khoá kiểm duyệt, cam kết bản quyền), ADR-039 (`entitlements.remedy*`)
 * [[02-System-Specs/Product-Editor-And-Publishing-Specs|Product-Editor-And-Publishing-Specs]] ([Product-Editor-And-Publishing-Specs.md](../02-System-Specs/Product-Editor-And-Publishing-Specs.md)) — nghiệp vụ dùng các cột trên
 * [[02-System-Specs/Reviews-Specs|Reviews-Specs]] ([Reviews-Specs.md](../02-System-Specs/Reviews-Specs.md)) — nghiệp vụ `reviews` (M10a)
 * [[02-System-Specs/Posts-Specs|Posts-Specs]] ([Posts-Specs.md](../02-System-Specs/Posts-Specs.md)) — nghiệp vụ `posts` (M10b)
+* [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]] ([Audit-Log-Specs.md](../02-System-Specs/Audit-Log-Specs.md)) — nghiệp vụ `audit_logs` (M12a)
+* [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]] ([Abuse-Reports-Specs.md](../02-System-Specs/Abuse-Reports-Specs.md)) — nghiệp vụ `abuse_reports`, khoá kiểm duyệt, `entitlements.remedy*` (M12c, ADR-038/039)
+* [[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]] ([Tenant-Stats-Specs.md](../02-System-Specs/Tenant-Stats-Specs.md)) — nghiệp vụ `tenant_daily_stats` (M12b)
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

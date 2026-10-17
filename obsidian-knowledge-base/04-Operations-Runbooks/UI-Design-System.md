@@ -5,7 +5,7 @@ tags:
   - design-system
   - status/living
 date: 2026-05-24
-updated: 2026-10-15
+updated: 2026-10-17
 author: System Architect
 ---
 
@@ -254,7 +254,7 @@ module that depends on useState into a Server Component module".
 | `PrimaryLinkButton`, `GhostLinkButton` | Nút dạng `<Link>` — dùng cho pattern "bấm để hiện form" qua query param (`?new=1`) thay vì client state |
 | `RowActionButton` | Nút hành động nhỏ trong dòng bảng, 4 tone: `primary` / `success` / `danger` / `neutral`; prop `size`: `sm` (mặc định, dòng bảng desktop) · **`touch`** (ADR-029 — thẻ/danh sách dùng cả trên mobile: `min-h-11` = 44px dưới `lg`, gọn như `sm` từ `lg`) ✅ |
 | `FormBanner` | Banner thông báo kết quả form (`ok` → xanh, lỗi → đỏ), `role="status"`/`role="alert"` |
-| `DataTable`, `Tr`, `Td` | Bảng dữ liệu chuẩn — cố tình không set `overflow-x-auto` (tránh browser tự suy ra `overflow-y: auto`, cắt mất `RowMenu` dùng `position: absolute` ở các hàng cuối) |
+| `DataTable`, `Tr`, `Td` | Bảng dữ liệu chuẩn (từ M12a: prop `caption?` → `<caption class="sr-only">`, `<th scope="col">` — §15.5) — cố tình không set `overflow-x-auto` (tránh browser tự suy ra `overflow-y: auto`, cắt mất `RowMenu` dùng `position: absolute` ở các hàng cuối) |
 | `EmptyState` | Trạng thái rỗng: icon + tiêu đề + mô tả + hành động gợi ý |
 
 **Quy tắc bắt buộc khi thêm trang quản trị mới** (System Center hoặc Studio): tái dùng các component trên
@@ -329,12 +329,22 @@ Storefront `/[tenantSlug]` là trang public **duy nhất** mang giao diện tena
 1. Skip-link "Bỏ qua tới nội dung chính" → `#noi-dung`.
 2. `SiteHeader` (hệ thống, §1.1).
 3. Banner trạng thái, **ngay dưới header hệ thống**, không sticky, nền full-bleed + `container-page`:
-   `StorefrontNotice` khi `resolveStorefrontAccess` trả `READ_ONLY` ("Trang tạm ngưng bán — chỉ xem, chưa mua được.")
-   hoặc `LOCKED_NOTICE` ("Trang của bạn đang bị khoá…"); `StorefrontDemoBanner` "Nội dung mẫu" khi `isDemo && isOwner`.
+   `StorefrontNotice` (chỉ **chủ** tenant thấy) khi `resolveStorefrontAccess` trả `READ_ONLY` (ADR-040: "Gian hàng của bạn đang tạm
+   ngưng hoạt động — khách chỉ thấy thông báo tạm ngưng, không thấy tài liệu."; nền amber + `IconInfo`) hoặc `LOCKED_NOTICE` ("Trang của
+   bạn đang bị khoá…"; nền đỏ + `IconLockClosed`); `StorefrontDemoBanner` "Nội dung mẫu" khi `isDemo && isOwner`.
    Cả hai ở `_ui/notice.tsx`, có icon + chữ (không truyền đạt chỉ bằng màu).
 4. `<main id="noi-dung" class="sf-root …">` — **chỉ ở đây** mới có theme `--sf-*` (style inline từ
    `buildStorefrontStyle`) + biến font Montserrat/Inter. Không có section hero → thêm `<h1 class="sr-only">` tên tenant.
 5. `SiteFooter` (hệ thống).
+
+**Trang "tạm ngưng" cho khách (ADR-040)** ✅ đọc code 2026-10-17: khi `resolveStorefrontAccess` trả `SUSPENDED_NOTICE` (khách của
+tenant `READ_ONLY`), `page.tsx` trả `SuspendedStorefront` **trước** mọi loader — khung **hệ thống** (`systemFontVars`, nền trắng,
+skip-link → `SiteHeader` → `<main id="noi-dung">` → `SiteFooter`), **không** `.sf-root`/theme tenant, không section CMS.
+Nội dung `<main>` là `StorefrontSuspendedNotice` (`_ui/notice.tsx`): `section.container-narrow` căn giữa (`py-16 sm:py-24`), vòng icon
+`IconInfo` nền `amber-50`, **h1 = tên gian hàng** (trang có đúng 1 h1), dòng "Gian hàng đang tạm ngưng hoạt động." (`amber-900`), dòng
+phụ "Tài liệu của gian hàng tạm thời không hiển thị. Nếu bạn đã mua tài liệu, bạn vẫn tải được trong Thư viện của mình." và nút viền
+"Mở Thư viện của tôi" → `/account/library` (`min-h-11`, `rounded-full`, `motion-reduce:transition-none`). Metadata: `title` = tên gian
+hàng + `robots: noindex, nofollow`. Kiểm tra a11y/responsive trên trình duyệt thật ❓.
 
 **Không có** header/footer/menu anchor riêng của tenant. Các component đã **xoá** khỏi code (grep không còn tham
 chiếu ✅): `StorefrontHeader`, `MobileMenu`, `StorefrontFooter`, `TenantAvatar`. Không dựng lại chúng — muốn thêm
@@ -396,10 +406,10 @@ Heading Montserrat + body Inter qua `[tenantSlug]/_ui/fonts.ts`, biến font g�
 - **Chi tiết sản phẩm:** breadcrumb `<nav aria-label="Đường dẫn">` chỉ một mục **"← {tenant.name}"** trỏ `/{slug}`
   (vùng bấm `min-h-11`) ✅. Bố cục 2 cột §4.6, khối mua `lg:sticky lg:top-[112px]` ✅. Tái dùng `PRODUCT_TYPE_LABEL`,
   `ProductTypeIcon`, `IconInfo` từ `[tenantSlug]/_ui/icons.tsx` (icon/nhãn, không phải theme) ✅.
-- **Khối mua theo trạng thái** (logic M8 giữ nguyên, ✅ đọc code): tenant `LOCKED` → `notFound()`; người xem là chủ
-  tenant → "Đây là sản phẩm của bạn."; tenant khác `ACTIVE` (tức `READ_ONLY`) → ẩn `BuyButton`, hiện "Trang tạm ngưng
-  bán — chưa thể mua lúc này."; còn lại → `BuyButton`. Phía server `createOrder` vẫn chặn bằng `assertTenantCanWrite`.
-  Trang này **không** hiện banner `StorefrontNotice` — thông báo nằm trong khối mua.
+- **Khối mua theo trạng thái** (✅ đọc code 2026-10-17, ADR-040): khách của tenant không `ACTIVE` đã nhận 404 trước khi render
+  (`LOCKED` → 404 với cả chủ); người xem là chủ tenant → "Đây là sản phẩm của bạn."; còn lại → `BuyButton`. Dòng "Trang tạm ngưng
+  bán — chưa thể mua lúc này." **đã bỏ** (khách không còn tới được trang này khi tenant `READ_ONLY`). Phía server `createOrder` vẫn
+  chặn bằng `assertTenantCanWrite`. Trang này **không** hiện banner `StorefrontNotice`.
 - **Checkout** (`[tenantSlug]/checkout/[orderCode]/page.tsx`): `main.container-narrow`; breadcrumb
   `<nav aria-label="Đường dẫn">` **"← {order.tenant.name}"** về `/{order.tenant.slug}` (dữ liệu có sẵn từ
   `getOrderForCustomer`, không thêm truy vấn); toàn bộ màu theo `brandColors` (ink/inkSoft/line/primary/accent/
@@ -1033,7 +1043,244 @@ Trang chủ (`_home-sections.tsx`) dùng `DocumentCard` (mặc định `default`
 
 ---
 
-## 15. Tài Liệu Tham Chiếu & Liên Kết
+## 15. Trang Nhật Ký — `/admin/audit` và Studio → Hoạt động (M12a — ADR-037) ✅
+
+Quyết định: [[01-Architecture-Decisions/ADR-023-M12-Audit-Log-Append-Only|ADR-023 (≙ ADR-037)]]; nghiệp vụ + quyền che dữ liệu:
+[[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]]. Thiết kế theo brief của Quốc (Phong làm), Long đọc code 2026-10-16 (working tree,
+chưa commit). Kiểm a11y/responsive trên trình duyệt: chưa có báo cáo kiểm tay riêng ❓.
+
+### 15.1. File và vai trò
+
+| File | Vai trò |
+| :-- | :-- |
+| `admin/_ui/audit-log.tsx` | Mảnh trình bày dùng chung 2 trang — **Server Component thuần** (không hook, không JS phía client). Export `AuditFilterForm`, `AuditLogResults` |
+| `admin/_ui/link-pagination.tsx` | `LinkPagination` — phân trang bằng link GET (Server Component) |
+| `admin/_ui/audit-log-skeleton.tsx` | `AuditLogSkeleton({ label, fields })` — khung chờ, file riêng để `loading.tsx` không kéo loader |
+| `admin/audit/{page,loading}.tsx`, `studio/[tenantSlug]/activity/{page,loading}.tsx` | Hai trang; wrapper `<div className="px-5 py-8 lg:px-8">` (app shell đã có `<main>`), tiêu đề bằng `AdminPageHeader` |
+
+Giao diện chỉ hiển thị — **không tự quyết quyền**; dữ liệu đã được loader che/lọc (§5 Audit-Log-Specs).
+
+### 15.2. `AuditFilterForm({ basePath, filters, scope: "admin" | "studio" })`
+
+* `<form method="get" role="search">` có tiêu đề "Bộ lọc" (`aria-labelledby`); gửi form luôn về trang 1 (không có ô `page`).
+* Admin: "Người thực hiện" (email/ID), "Hành động", "Gian hàng" (slug/ID), "Từ ngày", "Đến ngày", "Số dòng mỗi trang" — lưới
+  `sm:grid-cols-2 xl:grid-cols-3`. Studio bỏ 2 ô người thực hiện + gian hàng — `xl:grid-cols-4`.
+* Ô ngày `type="date"`, `max`/`min` ràng buộc lẫn nhau; ghi chú "Ngày tính theo giờ Việt Nam" + số điều kiện lọc đang áp dụng.
+* Nút "Xoá lọc" (link về `basePath`) và "Lọc" (chính); `min-h-11` dưới `lg`, `min-h-10` từ `lg`; hai nút chia đôi chiều ngang trên mobile.
+* ⚠️ Ô "Hành động" liệt kê **toàn bộ** `AUDIT_ACTIONS`, kể cả action cấp hệ thống không bao giờ có ở Studio (BACKLOG).
+
+### 15.3. `AuditLogResults({ result, basePath, scope, caption, emptyDescription })` — đủ trạng thái
+
+| Trạng thái | Hiển thị |
+| :-- | :-- |
+| `status: "unavailable"` (bảng chưa migrate) | `Notice tone="warning"` "Nhật ký chưa sẵn sàng" |
+| Có dòng | Danh sách (§15.4) + `LinkPagination` giữ bộ lọc |
+| Bộ lọc actor/tenant không khớp | `Notice` warning nêu lại giá trị đã nhập |
+| Trang vượt số trang | `EmptyState` "Trang này không còn nhật ký" + link "Về trang đầu" |
+| Rỗng theo bộ lọc | `EmptyState` "Không có nhật ký khớp bộ lọc" + "Xoá lọc" |
+| Rỗng hoàn toàn | `EmptyState` "Chưa có nhật ký nào" + `emptyDescription` của trang |
+
+Đầu vùng kết quả: tiêu đề "Kết quả" + tổng "N mục (khớp bộ lọc)".
+
+### 15.4. Danh sách — bảng từ `xl`, thẻ dưới `xl`
+
+* **Từ `xl`:** `DataTable` với `caption` ẩn; cột Thời gian · Hành động · Người thực hiện · (Gian hàng — chỉ admin) · Đối tượng · Chi tiết.
+* **Dưới `xl`:** `<ol aria-label={caption}>` mỗi dòng nhật ký là một thẻ, nhãn trường hiện rõ (`<dl>`), không cuộn ngang ở 360px.
+* Hai bản dựng ẩn bằng `hidden` (display:none) nên trình đọc màn hình chỉ gặp một bản.
+* **Hành động:** nhãn tiếng Việt + `Badge` phạm vi (`SYSTEM` info, `TENANT` success, `CUSTOMER` warning, kèm chữ ẩn "Phạm vi:"). Action
+  cần chú ý (`AUTH_LOGIN_FAILED`, `AUTH_REFRESH_REUSE`, `COUPON_OVERUSED`, `USER_LOCKED`, `TENANT_LOCKED`) thêm icon cảnh báo + chữ ẩn
+  "Cần chú ý:" — không chỉ dựa vào màu.
+* **Người thực hiện:** vòng icon theo loại (`IconBolt` tác vụ tự động, `IconShield` quản trị, `IconStore` thành viên, `IconUsers`
+  người dùng/khách, `IconXCircle` tài khoản đã xoá) + nhãn + họ tên (nếu có) + chữ loại.
+* **Thời gian:** `<time dateTime>` ngày/giờ tách dòng, định dạng `vi-VN` theo `DISPLAY_TIME_ZONE`, `tabular-nums`.
+* **Chi tiết:** `<details>`/`<summary>` (không JS) — metadata dạng key–value (`<dl>` lồng tối đa theo độ sâu, cặp `{from,to}` hiện
+  "cũ → mới") + thông tin kỹ thuật (mã đầy đủ, IP, thiết bị).
+* Chuỗi dài không dấu cách (email, id, User-Agent) dùng `[overflow-wrap:anywhere]` để xuống dòng.
+
+### 15.5. Kit — thay đổi dùng chung
+
+* **`DataTable`** (`admin/_ui/kit.tsx`) thêm prop tuỳ chọn **`caption?: string`** → `<caption className="sr-only">`; mọi `<th>` nay có
+  **`scope="col"`**. Nên truyền `caption` khi trang có nhiều bảng hoặc bảng dài.
+* **`LinkPagination({ basePath, query, page, pageSize, total, label = "Phân trang" })`** — khác `Pagination` (client, `router.push`):
+  mỗi trang là một URL thật (chia sẻ/bookmark được, Back/Forward đúng). `query` là các tham số cần giữ, giá trị rỗng bị bỏ khỏi URL.
+  Trang hiện tại `aria-current="page"` + nền đặc; đầu/cuối, Trước/Sau là `<span>` mờ. Dưới `sm` chỉ "Trước · Trang x/y · Sau"; số trang
+  hiện từ `sm` (cửa sổ 1, …, p−1, p, p+1, …, cuối). Target 44px dưới `lg`, 36px từ `lg`. Dùng cho trang danh sách quản trị có bộ lọc
+  dạng form GET.
+* **`AuditLogSkeleton`:** cùng khung với trang thật (tiêu đề, form lọc theo số ô `fields`, danh sách), `aria-busy`, `role="status"` ẩn
+  chứa `label`, `animate-pulse motion-reduce:animate-none`. Admin `fields={6}`.
+
+### 15.6. Menu
+
+* System Center: nhóm mới **"Giám sát"** (icon `IconShield`) ở cuối sidebar → "Nhật ký hệ thống" (`/admin/audit`, `IconEye`).
+* Studio: mục **"Hoạt động"** (`/studio/{slug}/activity`, key icon `activity` → `IconEye`) giữa "Gói dịch vụ" và "Cài đặt" — **chỉ thêm
+  vào NAV khi `role === "OWNER"`** (`studio/[tenantSlug]/layout.tsx`, ADR-037 bổ sung) ✅ đọc code.
+
+### 15.7. Việc còn mở (BACKLOG, liên quan UI)
+
+* Ô lọc hành động ở Studio cần danh sách theo scope.
+* Nút kit `PrimaryButton`/`GhostLinkButton` cao dưới 44px trên mobile (dùng chung nhiều trang).
+* ⚠️ Hex hard-code trong `audit-log.tsx`/`link-pagination.tsx` chưa có token: `#6B7280` (chữ phụ), `#E5E7EB` (viền), `#B45309` (icon cảnh
+  báo), `#F3F4F6`/`#4B5563` (vòng icon tài khoản đã xoá) ✅ đọc code.
+
+---
+
+## 16. Dashboard `/admin` — Section "Hoạt Động Bán Tài Liệu (30 Ngày)" (M12b — ADR-037) ✅
+
+Quyết định: [[01-Architecture-Decisions/ADR-023-M12-Audit-Log-Append-Only|ADR-023 (≙ ADR-037)]]; định nghĩa số liệu + contract loader:
+[[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]], [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §19. Thiết kế theo
+brief của Quốc (Phong làm), Long đọc code 2026-10-16 (working tree, chưa commit). Kiểm a11y/responsive trên trình duyệt: chưa có báo cáo
+kiểm tay riêng ❓.
+
+### 16.1. File và vị trí
+
+| File | Vai trò |
+| :-- | :-- |
+| `admin/_ui/sales-stats.tsx` | Chỉ trình bày, **Server Component** (không hook): `SalesStatsSection({ overview, metric })`, `SalesStatsSkeleton()`, `parseSalesChartMetric(raw)`, kiểu `SalesChartMetric = "gmv" \| "don"`, `AdminStatsOverviewView`. Nhận kết quả `getAdminStatsOverview()` qua prop — **không tự truy vấn** |
+| `admin/page.tsx` | Component async `SalesStats` gọi `getAdminStatsOverview({ days: 30 })`, bọc `<Suspense fallback={<SalesStatsSkeleton />}>` riêng — phần còn lại dashboard không phải chờ. Đặt sau khối thanh toán gói gần đây, trước "Thao tác nhanh" |
+
+Section có `id="hoat-dong-ban-tai-lieu"` + `scroll-mt-20`, `aria-labelledby` trỏ tiêu đề `h2`.
+
+### 16.2. Đầu section
+
+* `h2` "Hoạt động bán tài liệu (30 ngày)" (font heading).
+* Ghi chú: "Số liệu tổng hợp hằng ngày lúc 03:00, tính đến hết hôm qua — cập nhật lần cuối {`lastAggregatedAt` theo `DISPLAY_TIME_ZONE`}.
+  GMV là tổng tiền khách trả (gộp, chưa trừ hoàn tiền)." — thay "mỗi giờ" của đặc tả gốc (ADR-037 mục 5).
+
+### 16.3. Thẻ KPI (4 thẻ)
+
+* Lưới `grid-cols-1 sm:grid-cols-2 xl:grid-cols-4`: **GMV** (giá trị rút gọn "12,5 triệu đ"/"1,2 tỷ đ" + dòng phụ số đầy đủ "1.234.567 đ"),
+  **Đơn đã thanh toán**, **Khách mới**, **Lượt tải**.
+* Dòng thay đổi so với 30 ngày trước, tính bằng **BigInt** (cả GMV), 1 chữ số thập phân:
+  - kỳ trước = 0 → "— chưa có số liệu kỳ trước" (màu chữ phụ);
+  - 0% → "Không đổi so với 30 ngày trước";
+  - tăng/giảm → mũi tên + chữ "Tăng"/"Giảm" {x}% — màu **`text-green-700`** / **`text-red-700`** (Tailwind, không phải token); không chỉ
+    dựa vào màu vì có chữ + icon.
+* Định dạng tiền không qua float: phần nguyên + 1 chữ số thập phân tính bằng BigInt rồi mới đổi number.
+
+### 16.4. Biểu đồ cột theo ngày
+
+* Thẻ `xl:col-span-2`; tiêu đề "GMV theo ngày" / "Đơn đã thanh toán theo ngày" + đơn vị + "mỗi cột là 1 ngày (giờ Việt Nam)".
+* **Chọn chỉ số bằng link GET** `?chi-so=gmv|don` (không cần JS): `<nav aria-label="Chọn chỉ số biểu đồ">` 2 link "GMV"/"Đơn",
+  `aria-current` ở mục đang chọn, `scroll={false}` + neo `#hoat-dong-ban-tai-lieu`; giá trị lạ → `gmv`. Target `min-h-11` dưới `lg`.
+* Biểu đồ **HTML thuần** (không thư viện chart, không SVG): khối `role="img"` có `aria-label` tóm tắt (khoảng ngày, giá trị cao nhất + ngày);
+  cột/trục bên trong `aria-hidden`. Cao `h-48`; trục Y 3 mốc (max, max/2, 0); lưới ngang nét đứt; cột màu `brandColors.primary`, ngày bằng 0
+  là vạch xám 2px; `title` mỗi cột = ngày + giá trị đầy đủ; nhãn trục X thưa — neo ngày cuối, lùi mỗi 7 ngày (không chồng chữ ở 360px).
+  Dòng "Cao nhất: … ngày …" dưới biểu đồ.
+* Cả 30 ngày = 0 cho chỉ số đang chọn → khung nét đứt "Không có doanh thu/đơn đã thanh toán nào trong 30 ngày."
+* **Bảng số liệu thay thế** trong `<details>` "Xem bảng số liệu theo ngày": `<table>` có `caption` ẩn, `th scope="col"`/`scope="row"`, 5 cột
+  (Ngày, GMV, Đơn, Khách mới, Lượt tải), mới → cũ, khung `max-h-96 overflow-auto` (cuộn ngang trong khung, trang không cuộn ngang).
+
+### 16.5. Top 5 gian hàng theo GMV
+
+* Thẻ cạnh biểu đồ (dưới `xl` xếp dưới): danh sách `<ol>` hạng 1–5, mỗi dòng tên gian hàng (link `/{slug}` mở tab mới, có chữ ẩn "Hạng n" và
+  "(mở gian hàng ở tab mới)"), `/{slug}`, GMV rút gọn + số đơn. **Chỉ tên + số tổng hợp** (§7.9).
+* Không có tenant GMV > 0 → "Chưa có gian hàng nào phát sinh doanh thu trong 30 ngày."
+
+### 16.6. Trạng thái
+
+| Trạng thái | Hiển thị |
+| :-- | :-- |
+| Đang tải | `SalesStatsSkeleton` — cùng khung với khối thật, `aria-busy`, `role="status"` ẩn "Đang tải thống kê bán tài liệu…", `animate-pulse motion-reduce:animate-none` |
+| `status: "unavailable"` (bảng chưa migrate) | `Notice tone="warning"` "Thống kê chưa sẵn sàng" — "Số liệu sẽ hiện sau lần tổng hợp hằng ngày kế tiếp (03:00)" |
+| Rỗng — **cả 2 kỳ (60 ngày) đều 0 và không có top tenant** | `EmptyState` "Chưa có hoạt động bán tài liệu" |
+| Có số liệu | 4 KPI + biểu đồ/bảng + top 5 |
+
+### 16.7. Việc còn mở (liên quan UI)
+
+* ⚠️ Hex hard-code trong `sales-stats.tsx` chưa có token: `#E5E7EB` (viền, cột rỗng), `#6B7280` (chữ phụ), `#D1D5DB` (đường đáy biểu đồ);
+  màu xu hướng dùng class Tailwind `text-green-700`/`text-red-700` ✅ đọc code.
+
+---
+
+## 17. Báo Cáo Vi Phạm, Khoá Kiểm Duyệt & Quyền Lợi Người Mua (M12c — ADR-038, ADR-039) ✅
+
+Quyết định thiết kế của Phong, nhận qua brief Quốc 2026-10-17; Long đối chiếu file trong working tree (**chưa commit/deploy**). Nghiệp vụ:
+[[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]]. Kiểm thật trên trình duyệt (a11y, responsive 360px, trình đọc màn hình) ❓ —
+Long chưa chạy; brief không kèm kết quả kiểm của Phong.
+
+### 17.1. File và vai trò
+
+| File | Vai trò |
+| :-- | :-- |
+| `app/[tenantSlug]/_ui/report-abuse.tsx` | `ReportAbuseButton` + hộp thoại gửi báo cáo (trang hệ thống ADR-025 — màu/font hệ thống) |
+| `app/admin/_ui/moderation-lock.tsx` | `ModerationLockBadge`, `ModerationLockNotice` — dùng ở Studio (danh sách, editor, thẻ đánh giá) và chi tiết báo cáo |
+| `app/admin/reports/_ui/report-list.tsx` | `ReportFilterForm`, `ReportResults` — trang `/admin/reports` |
+| `app/admin/reports/_ui/report-detail.tsx` | `ReportDetailView` — trang chi tiết |
+| `app/admin/reports/_ui/report-actions.tsx` | `ResolveReportForm`, `UnlockModerationButton` (client) |
+| `app/account/library/_ui/confirm-dialog.tsx` | `ConfirmDialog` + hằng `LIBRARY_BTN`, `LIBRARY_FOCUS`, `LIBRARY_ERROR_RED` |
+| `app/account/library/_ui/remedy-notice.tsx` | `RemedyNotice` (client) — khối quyền lợi người mua |
+| `app/account/library/_ui/library-entitlement-card.tsx` | `LibraryEntitlementCard` (server) — 1 mục Thư viện |
+| `app/account/library/{loading,error}.tsx` | Trạng thái tải / lỗi của Thư viện |
+| `app/studio/[tenantSlug]/orders/_ui/remedy-parts.tsx` | `RefundRequestBadge`, `OrderItemRemedy`, `isRefundOverdue`, `refundDueAt`, `formatRemedyDateTime` |
+| `app/admin/_ui/icons.tsx` | Thêm `IconFlag` (menu + nút báo cáo) |
+
+### 17.2. Nút & hộp thoại "Báo cáo vi phạm" (public)
+
+- Vị trí: trang tài liệu (cạnh thông tin tài liệu + dưới từng đánh giá) và trang bài viết. Nút dạng link chữ nhỏ có icon cờ, vùng bấm
+  `min-h-11` (44px) trên mobile, `lg:min-h-9`; có `srContext` cho trình đọc màn hình khi nhiều nút trên một trang.
+- Hộp thoại dùng `<dialog>` gốc mở bằng `showModal()` (top layer, nền sau `inert`): `aria-modal`, `aria-labelledby/-describedby`, bẫy Tab,
+  Esc / nút Đóng / bấm nền để đóng (đang gửi thì không đóng), trả focus về nút mở.
+- Trường: nhóm radio loại vi phạm dạng thẻ (kèm gợi ý ngắn), mô tả (bắt buộc), tối đa 5 link bằng chứng (thêm/xoá từng ô), email (chỉ hiện
+  khi chưa đăng nhập), ô honeypot `website` ẩn khỏi người dùng/trình đọc màn hình.
+- Lỗi API map theo mã sang thông điệp tiếng Việt; lỗi theo trường hiện ngay dưới ô (vì `VALIDATION_ERROR` chỉ trả thông điệp, UI **đoán
+  trường theo nội dung thông điệp** — BACKLOG đề nghị API trả `field`). Thành công → khung cảm ơn, focus chuyển tới thông điệp.
+- Màu: đỏ lỗi `#B91C1C` (6.5:1 trên trắng), xanh thành công `#15803D` (5.0:1). Không dùng `localStorage`.
+
+### 17.3. Khoá kiểm duyệt trong Studio
+
+- `ModerationLockBadge`: `Badge tone="danger"` + icon khoá + chữ "Bị khoá kiểm duyệt" (không chỉ dựa vào màu).
+- `ModerationLockNotice({ subject, measure, blocked, reason, lockedAtLabel })`: khối nền `#FEF2F2`, viền `#FCA5A5`, chữ `#B91C1C` — nêu lý do
+  (nhãn loại vi phạm), biện pháp, việc tenant không làm được và hướng liên hệ hỗ trợ. **Chưa** hiện email hỗ trợ cụ thể (BACKLOG). Không bao
+  giờ có danh tính người báo cáo.
+- Danh sách sản phẩm/bài viết, editor, thẻ đánh giá: hiện nhãn + ẩn các nút đổi trạng thái khi bị khoá (server vẫn chặn).
+- Card xuất bản của editor sản phẩm: ô tích bắt buộc **"Tôi sở hữu hoặc có quyền phân phối tài liệu này"** (`id="rightsConfirmed"`, vùng bấm
+  `min-h-11`, viền đỏ khi lỗi, `aria-invalid` + `aria-describedby` tới gợi ý/lỗi); bấm Xuất bản khi chưa tích → lỗi cục bộ + focus về ô.
+
+### 17.4. System Center — `/admin/reports`
+
+- Theo mẫu trang nhật ký §15: form lọc GET (trạng thái — mặc định "Chờ xử lý", loại vi phạm, đối tượng, cỡ trang 10/20/50/100) · bảng từ `xl`,
+  danh sách thẻ dưới `xl` (không cuộn ngang ở 360px) · phân trang link GET giữ bộ lọc (`LinkPagination`). Server Component thuần.
+- Đủ trạng thái: chưa sẵn sàng (bảng chưa có) · danh sách · trang vượt số trang · rỗng theo lọc · không còn báo cáo chờ.
+- Chi tiết: cột chính (nội dung báo cáo → nội dung bị báo cáo; đánh giá chỉ sao + nội dung + tên tài liệu) + cột phải từ `xl` (xử lý → gian
+  hàng kèm số yêu cầu hoàn tiền quá hạn); dưới `xl` xếp dọc.
+- `ResolveReportForm`: quyết định là nhóm radio dạng thẻ (≥44px, mô tả hậu quả dưới nhãn), ô "áp cùng quyết định cho N báo cáo khác",
+  ghi chú nội bộ; "Khoá gian hàng" phải xác nhận trước khi gửi; submit thủ công (`startTransition`) để form không reset khi server trả lỗi.
+- Sidebar nhóm "Giám sát" thêm "Báo cáo vi phạm" (`IconFlag`) + badge số báo cáo `OPEN` (`AdminSidebarNav badges`, nhãn đọc màn hình
+  "N báo cáo chờ xử lý"). `/admin/tenants` hiện `Badge tone="danger"` "N hoàn tiền quá hạn" (chỉ số đếm).
+
+### 17.5. Thư viện khách — quyền lợi người mua
+
+- `LibraryEntitlementCard` hiện `RemedyNotice` phía trên danh sách tệp khi `remedyStatus ≠ NONE` và chưa thu hồi (thu hồi ưu tiên, trừ
+  `REFUNDED` — nhãn "Đã hoàn tiền" rõ hơn). Nút tải bị khoá theo `remedyDownloadBlock`.
+- `RemedyNotice` theo pattern §7.1 (tint + viền trái 4px, chữ luôn `ink`, câu mở đầu `<strong>`): `PENDING_CHOICE` → 2 lựa chọn ("Tải lần cuối" — "N lượt tải cuối cho N tệp — mỗi lượt tải một tệp"; "Yêu cầu hoàn tiền" — chỉ khi đơn > 0đ), mỗi lựa chọn mở `ConfirmDialog` xác nhận; trạng thái đã
+  chọn hiện ngày chọn / ngày hoàn tiền. Sau Server Action, component giữ instance (key theo entitlement) và chuyển focus tới khối trạng thái
+  mới.
+- `FINAL_DOWNLOAD`: nút tải mở hộp thoại cảnh báo trước khi tải (tài liệu bị gỡ, chỉ dùng cá nhân, không phát tán, đây là lần cuối)
+  (`download-button.tsx`).
+- `ConfirmDialog`: cùng pattern `<dialog>` của §17.2; điều khiển bằng prop `open`; nút `LIBRARY_BTN` bo tròn `min-h-11`.
+- Lượt tải lần cuối tính chung theo entitlement ("Bổ sung ADR-039 lần 2" (d)) — chữ UI đổi từ "mỗi tệp đúng 1 lần" thành "Bạn có N lượt tải cuối cho N tệp — mỗi lượt tải một tệp, hãy tải mỗi tệp một lần." (`remedy-notice.tsx`); Studio: "(số lượt bằng số tệp — mỗi lượt tải một tệp)" (`remedy-parts.tsx`) ✅ đọc code 2026-10-17. Xem
+  [[02-System-Specs/File-Storage-And-Downloads-Specs|File-Storage-And-Downloads-Specs]] §8.
+
+### 17.6. Studio — Đơn hàng
+
+- Chip lọc trạng thái + chip "Yêu cầu hoàn tiền" (`?remedy=REFUND_REQUESTED`, kèm số đếm; chữ đỏ "N quá hạn" khi có): `min-h-11` (`lg:min-h-9`),
+  chip đang chọn nền primary + chữ trắng (~10:1), chip thường nền trắng + chữ `#4B5563` (~7:1) — **sửa tương phản** chip lọc đơn cũ; có
+  `aria-current="page"`.
+- Bảng đơn: email khách gộp dưới mã đơn trên mobile (`md:hidden`), cột riêng từ `md`; `RefundRequestBadge` "Khách yêu cầu hoàn tiền" (vàng) /
+  "… · quá hạn" (đỏ — chữ nói rõ, không chỉ màu).
+- Chi tiết đơn: `OrderItemRemedy` theo từng dòng (trạng thái, ngày chọn, hạn xử lý = `remedyChosenAt` + 7 ngày, quá hạn tô đỏ + chữ "Quá hạn"),
+  hướng dẫn trỏ tới nút "Đánh dấu đã hoàn tiền"; ẩn "Cấp thêm lượt" khi có remedy.
+- Sidebar Studio: `TenantNavItem.badge = { text, srText, urgent? }` — badge số yêu cầu hoàn tiền cạnh "Đơn hàng" (nền trắng chữ `#12213A`;
+  `urgent` nền `#B91C1C` chữ trắng), chữ hiển thị `aria-hidden`, `srText` đầy đủ ("N yêu cầu hoàn tiền chờ xử lý, M quá hạn").
+
+### 17.7. Việc còn mở (BACKLOG, liên quan UI)
+
+System Center chưa có menu mobile; Studio chưa có nav mobile; `VALIDATION_ERROR` chưa trả `field`; email hỗ trợ trong khối khoá Studio; nút theo
+dõi tranh chấp hoàn tiền.
+
+---
+
+## 18. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * `apps/web/app/admin/_ui/kit.tsx`, `apps/web/app/admin/_ui/kit-interactive.tsx`, `apps/web/app/admin/_ui/icons.tsx`
@@ -1053,6 +1300,8 @@ Trang chủ (`_home-sections.tsx`) dùng `DocumentCard` (mặc định `default`
 * `apps/web/app/_home-sections.tsx`, `apps/web/app/admin/cms/home-editor/{pin-picker,home-sections-editor}.tsx`, `apps/web/app/admin/settings/general/*`, `apps/web/app/admin/_ui/sidebar-nav.tsx` (§12) · [[01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-From-System-Center|ADR-018 (≙ ADR-032)]] · [[01-Architecture-Decisions/ADR-019-Home-Page-Real-Data-Sold-Count|ADR-019 (≙ ADR-033)]]
 * `apps/web/app/admin/cms/shop/{page,loading}.tsx`, `apps/web/app/admin/cms/shop/_ui/{shop-sections-editor,shop-fields,shop-validation}.ts(x)`, `apps/web/app/admin/_ui/kit.tsx` (`Notice`) (§13) · [[02-System-Specs/Shop-Marketplace-Specs|Shop-Marketplace-Specs]] ([Shop-Marketplace-Specs.md](../02-System-Specs/Shop-Marketplace-Specs.md)) · [[01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First|ADR-021 (≙ ADR-035)]]
 * `apps/web/app/_ui/{catalog-parts,document-card,tenant-card,product-shelf,category-grid,shop-hero,shelf-skeleton,shop-cta,mobile-nav}.tsx`, `apps/web/app/cua-hang/{layout,page,loading,error}.tsx`, `apps/web/app/cua-hang/tai-lieu/{page,loading}.tsx`, `apps/web/app/cua-hang/_ui/search-parts.tsx` (§14)
+* `apps/web/app/admin/_ui/{audit-log,link-pagination,audit-log-skeleton}.tsx`, `apps/web/app/admin/audit/*`, `apps/web/app/studio/[tenantSlug]/activity/*` (§15) · [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]] ([Audit-Log-Specs.md](../02-System-Specs/Audit-Log-Specs.md))
+* `apps/web/app/admin/_ui/sales-stats.tsx`, `apps/web/app/admin/page.tsx` (§16) · [[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]] ([Tenant-Stats-Specs.md](../02-System-Specs/Tenant-Stats-Specs.md))
 * [[04-Operations-Runbooks/README|Quay lại danh mục Operations Runbooks]]
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

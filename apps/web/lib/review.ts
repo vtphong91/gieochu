@@ -27,6 +27,8 @@ import {
 import { renderNewReviewEmail } from "@gieochu/email";
 import { sendEmailNow } from "./email-dispatch";
 import { checkRateLimit } from "./rate-limit";
+import { audit } from "./audit";
+import { contentModerationLocked } from "./moderation";
 
 /**
  * ADR-029 (M10a) — đánh giá sản phẩm (`reviews`, bảng L2 có RLS tách theo lệnh, migration `rls_m10a_reviews`).
@@ -215,15 +217,24 @@ export async function upsertMyReview(userId: string, productId: string, input: U
     outcome = await withCustomer(userId, async (tx) => {
       const item = await findEligibleItem(tx, userId, productId);
       if (!item) throw notEligible();
+      // ADR-040: chỉ gian hàng ACTIVE nhận đánh giá mới/sửa đánh giá (tenants là L1, không RLS).
+      const tenant = await tx.tenant.findUnique({ where: { id: item.tenantId }, select: { status: true } });
+      if (!tenant || tenant.status !== "ACTIVE") {
+        throw new AppError({ code: "TENANT_NOT_ACTIVE", message: "Gian hàng đang tạm ngưng hoạt động.", httpStatus: 409 });
+      }
 
-      const existing = await tx.review.findUnique({ where: { productId_userId: { productId, userId } }, select: { id: true, status: true, hiddenReason: true } });
+      const existing = await tx.review.findUnique({
+        where: { productId_userId: { productId, userId } },
+        select: { id: true, status: true, hiddenReason: true, moderationLockedAt: true },
+      });
       if (existing) {
         const review = await tx.review.update({
           where: { id: existing.id },
           data: { rating, body: body.value, displayName, orderItemId: item.orderItemId },
           select: MY_REVIEW_SELECT,
         });
-        const restoreRefunded = existing.status === "HIDDEN" && existing.hiddenReason === "REFUNDED";
+        // ADR-038: đánh giá đang bị khoá kiểm duyệt không tự hiện lại khi khách mua lại.
+        const restoreRefunded = existing.status === "HIDDEN" && existing.hiddenReason === "REFUNDED" && existing.moderationLockedAt === null;
         return { review, created: false, tenantId: item.tenantId, restoreRefunded };
       }
 
@@ -252,6 +263,15 @@ export async function upsertMyReview(userId: string, productId: string, input: U
       }),
     );
     logger.info({ reviewId: review.id, productId }, "REVIEW_RESTORED_AFTER_REPURCHASE");
+    await audit.log({
+      actorId: userId,
+      scope: "CUSTOMER",
+      tenantId: outcome.tenantId,
+      action: "REVIEW_RESTORED",
+      targetType: "Review",
+      targetId: review.id,
+      metadata: { productId, reason: "REPURCHASE" },
+    });
   }
 
   await recomputeProductRatings([productId]);
@@ -339,6 +359,10 @@ export interface TenantReviewItem {
   hiddenAt: Date | null;
   reply: string | null;
   repliedAt: Date | null;
+  /** ADR-038: khác null = admin đã ẩn do vi phạm — tenant không bỏ ẩn được (UI hiện nhãn "Bị khoá kiểm duyệt"). */
+  moderationLockedAt: Date | null;
+  /** Nhãn loại vi phạm (không chứa danh tính người báo cáo). */
+  moderationReason: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -369,6 +393,8 @@ export async function listTenantReviews(
         hiddenAt: true,
         reply: true,
         repliedAt: true,
+        moderationLockedAt: true,
+        moderationReason: true,
         createdAt: true,
         updatedAt: true,
         product: { select: { title: true, slug: true } },
@@ -410,20 +436,28 @@ export async function replyToReview(tenantId: string, reviewId: string, replyInp
 }
 
 /** Ẩn với lý do bắt buộc (không nhận REFUNDED). Đánh giá đã ẩn do hoàn tiền không đổi lý do được. */
-export async function hideReview(tenantId: string, reviewId: string, reason: unknown): Promise<void> {
+export async function hideReview(tenantId: string, reviewId: string, reason: unknown, actorId: string | null = null): Promise<void> {
   if (!isTenantReviewHideReason(reason)) {
     throw new AppError({ code: REVIEW_ERROR_CODES.INVALID_REASON, message: "Vui lòng chọn lý do ẩn đánh giá.", httpStatus: 400 });
   }
   const hideReason: TenantReviewHideReason = reason;
   const productId = await withTenant(tenantId, async (tx) => {
-    const review = await tx.review.findFirst({ where: { id: reviewId, tenantId }, select: { productId: true, hiddenReason: true } });
+    const review = await tx.review.findFirst({ where: { id: reviewId, tenantId }, select: { productId: true, hiddenReason: true, moderationLockedAt: true } });
     if (!review) throw reviewNotFound();
+    if (review.moderationLockedAt) throw contentModerationLocked();
     if (review.hiddenReason === "REFUNDED") throw refundedLocked();
     await tx.review.updateMany({ where: { id: reviewId, tenantId }, data: { status: "HIDDEN", hiddenReason: hideReason, hiddenAt: new Date() } });
     return review.productId;
   });
-  // Chưa có audit_logs (M12) — ghi log có cấu trúc như COUPON_OVERUSED (ADR-029 / kế hoạch M10 §4.6).
-  logger.info({ tenantId, reviewId, reason: hideReason }, "REVIEW_HIDDEN");
+  await audit.log({
+    actorId,
+    scope: "TENANT",
+    tenantId,
+    action: "REVIEW_HIDDEN",
+    targetType: "Review",
+    targetId: reviewId,
+    metadata: { productId, reason: hideReason },
+  });
   await recomputeProductRatings([productId]);
 }
 
@@ -435,17 +469,29 @@ function refundedLocked(): AppError {
   });
 }
 
-export async function unhideReview(tenantId: string, reviewId: string): Promise<void> {
+export async function unhideReview(tenantId: string, reviewId: string, actorId: string | null = null): Promise<void> {
   const productId = await withTenant(tenantId, async (tx) => {
-    const review = await tx.review.findFirst({ where: { id: reviewId, tenantId }, select: { productId: true, status: true, hiddenReason: true } });
+    const review = await tx.review.findFirst({
+      where: { id: reviewId, tenantId },
+      select: { productId: true, status: true, hiddenReason: true, moderationLockedAt: true },
+    });
     if (!review) throw reviewNotFound();
+    if (review.moderationLockedAt) throw contentModerationLocked();
     if (review.hiddenReason === "REFUNDED") throw refundedLocked();
     if (review.status === "VISIBLE") return null;
     await tx.review.updateMany({ where: { id: reviewId, tenantId }, data: { status: "VISIBLE", hiddenReason: null, hiddenAt: null } });
     return review.productId;
   });
   if (!productId) return;
-  logger.info({ tenantId, reviewId }, "REVIEW_RESTORED");
+  await audit.log({
+    actorId,
+    scope: "TENANT",
+    tenantId,
+    action: "REVIEW_RESTORED",
+    targetType: "Review",
+    targetId: reviewId,
+    metadata: { productId, reason: "TENANT_UNHIDE" },
+  });
   await recomputeProductRatings([productId]);
 }
 
@@ -457,7 +503,14 @@ export async function unhideReview(tenantId: string, reviewId: string): Promise<
 export async function hideReviewsForRevokedItems(tx: Tx, tenantId: string, orderItemIds: readonly string[]): Promise<string[]> {
   if (orderItemIds.length === 0) return [];
   const affected = await tx.review.findMany({
-    where: { tenantId, orderItemId: { in: [...orderItemIds] }, OR: [{ hiddenReason: null }, { hiddenReason: { not: "REFUNDED" } }] },
+    // ADR-038: bỏ qua đánh giá đang bị khoá kiểm duyệt (đã HIDDEN; trigger reviews_guard_moderation chặn scope tenant
+    // đổi status/lý do của chúng — để lại sẽ làm hỏng cả transaction hoàn tiền).
+    where: {
+      tenantId,
+      orderItemId: { in: [...orderItemIds] },
+      moderationLockedAt: null,
+      OR: [{ hiddenReason: null }, { hiddenReason: { not: "REFUNDED" } }],
+    },
     select: { id: true, productId: true },
   });
   if (affected.length === 0) return [];

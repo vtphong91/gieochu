@@ -27,6 +27,19 @@ import { assertPlanLimit } from "./plan-limits";
 import { listActiveCategoriesForStudio, type StudioCategoryOption } from "./document-category";
 import { getProductCoverUrl, hasProductCover } from "./product-cover";
 import { getSystemSettings } from "./system-settings";
+import { audit } from "./audit";
+import { assertNotModerationLocked } from "./moderation";
+
+/** ADR-038 mục 7: mã lỗi khi xuất bản mà chưa tích cam kết bản quyền (UI map vào field `rightsConfirmed`). */
+export const RIGHTS_CONFIRMATION_REQUIRED = "RIGHTS_CONFIRMATION_REQUIRED";
+
+export interface PublishProductOptions {
+  /**
+   * ADR-038 mục 7: tenant tích "Tôi cam kết có quyền bán/chia sẻ tài liệu này" ở MỖI lần xuất bản (DRAFT/ARCHIVED →
+   * PUBLISHED). Bắt buộc `true` — server từ chối nếu thiếu. Sản phẩm đang PUBLISHED (no-op) không cần.
+   */
+  rightsConfirmed: boolean;
+}
 
 /** ADR-026: nhãn hiển thị của link tài liệu ngoài (lưu ở `product_files.fileName`). */
 export const EXTERNAL_LINK_LABEL_MAX_LENGTH = 200;
@@ -379,16 +392,46 @@ export async function evaluateProductPublish(tenantId: string, product: Product)
  * ảnh bìa, ≥1 file bán CLEAN hoặc link ngoài hợp lệ, giá hợp lệ, tenant ACTIVE, còn chỗ trong gói).
  * Gọi lại trên sản phẩm đã PUBLISHED là no-op (dùng cho "lưu rồi xuất bản").
  */
-export async function publishProduct(tenantId: string, productId: string): Promise<Product> {
+export async function publishProduct(
+  tenantId: string,
+  productId: string,
+  actorId: string | null,
+  options: PublishProductOptions,
+): Promise<Product> {
   await requireWritableTenant(tenantId);
   const product = await requireOwnedProduct(tenantId, productId);
   if (product.status === "PUBLISHED") return product;
+  // ADR-038 mục 5: tài liệu bị admin lưu trữ do vi phạm không tự xuất bản lại được.
+  assertNotModerationLocked(product);
 
   const decision = await evaluateProductPublish(tenantId, product);
   if (!decision.allowed) throw new ProductNotPublishableError(decision.reasons);
 
+  if (options.rightsConfirmed !== true) {
+    throw new AppError({
+      code: RIGHTS_CONFIRMATION_REQUIRED,
+      message: "Vui lòng xác nhận bạn có quyền bán/chia sẻ tài liệu này trước khi xuất bản.",
+      httpStatus: 400,
+    });
+  }
+
   await assertPlanLimit(tenantId, "products", 1);
-  return withTenant(tenantId, (tx) => tx.product.update({ where: { id: productId }, data: { status: "PUBLISHED" } }));
+  const published = await withTenant(tenantId, (tx) =>
+    tx.product.update({
+      where: { id: productId },
+      data: { status: "PUBLISHED", rightsConfirmedAt: new Date(), rightsConfirmedById: actorId },
+    }),
+  );
+  await audit.log({
+    actorId,
+    scope: "TENANT",
+    tenantId,
+    action: "PRODUCT_PUBLISHED",
+    targetType: "Product",
+    targetId: productId,
+    metadata: { previousStatus: product.status, rightsConfirmed: true },
+  });
+  return published;
 }
 
 /**
@@ -398,21 +441,33 @@ export async function publishProduct(tenantId: string, productId: string): Promi
  */
 export async function unpublishProduct(tenantId: string, productId: string): Promise<Product> {
   await requireWritableTenant(tenantId);
-  await requireOwnedProduct(tenantId, productId);
+  assertNotModerationLocked(await requireOwnedProduct(tenantId, productId));
   return withTenant(tenantId, (tx) => tx.product.update({ where: { id: productId }, data: { status: "DRAFT" } }));
 }
 
 /** DRAFT/PUBLISHED -> ARCHIVED. Files are untouched — archiving never affects an existing buyer's download rights. */
-export async function archiveProduct(tenantId: string, productId: string): Promise<Product> {
+export async function archiveProduct(tenantId: string, productId: string, actorId: string | null = null): Promise<Product> {
   await requireWritableTenant(tenantId);
-  await requireOwnedProduct(tenantId, productId);
-  return withTenant(tenantId, (tx) => tx.product.update({ where: { id: productId }, data: { status: "ARCHIVED" } }));
+  const existing = await requireOwnedProduct(tenantId, productId);
+  const archived = await withTenant(tenantId, (tx) => tx.product.update({ where: { id: productId }, data: { status: "ARCHIVED" } }));
+  if (existing.status !== "ARCHIVED") {
+    await audit.log({
+      actorId,
+      scope: "TENANT",
+      tenantId,
+      action: "PRODUCT_ARCHIVED",
+      targetType: "Product",
+      targetId: productId,
+      metadata: { previousStatus: existing.status },
+    });
+  }
+  return archived;
 }
 
 /** ARCHIVED -> DRAFT — must be re-published explicitly, not restored straight to PUBLISHED. */
 export async function restoreProduct(tenantId: string, productId: string): Promise<Product> {
   await requireWritableTenant(tenantId);
-  await requireOwnedProduct(tenantId, productId);
+  assertNotModerationLocked(await requireOwnedProduct(tenantId, productId));
   return withTenant(tenantId, (tx) => tx.product.update({ where: { id: productId }, data: { status: "DRAFT" } }));
 }
 
@@ -479,6 +534,12 @@ export interface EditorProductData {
     saleStartsAt: Date | null;
     saleEndsAt: Date | null;
     downloadLimit: number;
+    /** ADR-038: khác null = admin lưu trữ do vi phạm — tenant không khôi phục/xuất bản lại được (UI hiện nhãn + ẩn nút). */
+    moderationLockedAt: Date | null;
+    /** Nhãn loại vi phạm (không chứa danh tính người báo cáo). */
+    moderationReason: string | null;
+    /** ADR-038 mục 7: lần gần nhất tích cam kết bản quyền khi xuất bản (null = chưa từng / sản phẩm cũ). */
+    rightsConfirmedAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
   };
@@ -546,6 +607,9 @@ export async function getProductEditorData(tenantId: string, productId: string):
       saleStartsAt: product.saleStartsAt,
       saleEndsAt: product.saleEndsAt,
       downloadLimit: product.downloadLimit,
+      moderationLockedAt: product.moderationLockedAt,
+      moderationReason: product.moderationReason,
+      rightsConfirmedAt: product.rightsConfirmedAt,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
     },

@@ -11,6 +11,7 @@ import { getPrismaClient } from "@gieochu/db";
 import { applyAuthCookies, clearAuthCookies, REFRESH_COOKIE_NAME } from "../../../../lib/cookies";
 import { getAccessTokenTtlSeconds, getJwtContext, getRefreshTokenTtl } from "../../../../lib/jwt-context";
 import { getRequestId, handleApiError } from "../../../../lib/api-response";
+import { audit, auditMetaFromRequest } from "../../../../lib/audit";
 
 export async function POST(request: NextRequest) {
   const requestId = getRequestId(request);
@@ -37,9 +38,18 @@ export async function POST(request: NextRequest) {
     const status = evaluateRefreshToken(record, now);
 
     if (status === "reused") {
-      await prisma.refreshToken.updateMany({
+      const revoked = await prisma.refreshToken.updateMany({
         where: { familyId: record.familyId, revokedAt: null },
         data: { revokedAt: now },
+      });
+      await audit.log({
+        actorId: record.userId,
+        scope: "SYSTEM",
+        action: "AUTH_REFRESH_REUSE",
+        targetType: "User",
+        targetId: record.userId,
+        metadata: { revokedSessions: revoked.count },
+        ...auditMetaFromRequest(request),
       });
       const response = handleApiError(
         new AppError({

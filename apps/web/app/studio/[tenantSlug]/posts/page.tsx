@@ -73,6 +73,8 @@ export default async function StudioPostsPage({
       excerpt: post.excerpt,
       status: post.status,
       hiddenReason: post.hiddenReason,
+      moderationLocked: post.moderationLockedAt !== null,
+      moderationReason: post.moderationReason,
       isPinned: post.isPinned,
       timeLabel: `${post.publishedAt ? "Đăng" : "Tạo"} ${formatPostDateTime(shownAt)}`,
       timeIso: shownAt.toISOString(),

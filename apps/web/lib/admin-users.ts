@@ -6,6 +6,7 @@ import { renderVerifyEmailTemplate } from "@gieochu/email";
 import { EMAIL_NOT_CONFIGURED, emailNotConfiguredError, sendEmailNow } from "./email-dispatch";
 import { getEffectiveBrand } from "./branding";
 import { getSystemSettings } from "./system-settings";
+import { audit } from "./audit";
 import type { CurrentUser } from "./session";
 
 /** §"M2" Khoá user: từ chối tự khoá/khoá super admin, thu hồi mọi refresh token khi cho phép. */
@@ -24,15 +25,25 @@ export async function lockUser(actor: CurrentUser, targetUserId: string): Promis
   }
 
   const now = new Date();
-  await prisma.$transaction([
+  const [, revoked] = await prisma.$transaction([
     prisma.user.update({ where: { id: targetUserId }, data: { status: "LOCKED" } }),
     prisma.refreshToken.updateMany({ where: { userId: targetUserId, revokedAt: null }, data: { revokedAt: now } }),
   ]);
+  // Đặc tả §"M2" ghi "USER_LOCKED + lý do" — form khoá hiện chưa có ô lý do (chưa xây), nên metadata chưa có `reason`.
+  await audit.log({
+    actorId: actor.userId,
+    scope: "SYSTEM",
+    action: "USER_LOCKED",
+    targetType: "User",
+    targetId: targetUserId,
+    metadata: { previousStatus: target.status, revokedSessions: revoked.count },
+  });
 }
 
-export async function unlockUser(targetUserId: string): Promise<void> {
+export async function unlockUser(actor: CurrentUser, targetUserId: string): Promise<void> {
   const prisma = getPrismaClient();
-  await prisma.user.update({ where: { id: targetUserId }, data: { status: "ACTIVE" } });
+  const updated = await prisma.user.update({ where: { id: targetUserId }, data: { status: "ACTIVE" } });
+  await audit.log({ actorId: actor.userId, scope: "SYSTEM", action: "USER_UNLOCKED", targetType: "User", targetId: updated.id });
 }
 
 export async function resendVerificationForUser(targetUserId: string): Promise<void> {

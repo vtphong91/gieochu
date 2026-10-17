@@ -29,3 +29,12 @@ export type { StorefrontMessageTemplateData } from "./templates/storefront-messa
 
 export { renderNewReviewEmail } from "./templates/new-review";
 export type { NewReviewTemplateData } from "./templates/new-review";
+
+export { renderAbuseReportResolvedEmail, renderContentModeratedEmail } from "./templates/abuse-report";
+export type { AbuseReportResolvedTemplateData, ContentModeratedTemplateData } from "./templates/abuse-report";
+export { renderPurchaseRemedyCustomerEmail, renderPurchaseRemedyTenantEmail, renderRefundRequestedEmail } from "./templates/entitlement-remedy";
+export type {
+  PurchaseRemedyCustomerTemplateData,
+  PurchaseRemedyTenantTemplateData,
+  RefundRequestedTemplateData,
+} from "./templates/entitlement-remedy";

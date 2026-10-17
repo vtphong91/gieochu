@@ -6,7 +6,7 @@ tags:
   - rollback
   - status/living
 date: 2026-07-02
-updated: 2026-10-16
+updated: 2026-10-17
 author: System Architect
 ---
 
@@ -70,12 +70,14 @@ pnpm install
 pnpm lint            # ESLint flat config, --max-warnings=0
 pnpm typecheck        # tsc --noEmit mọi package
 pnpm test             # Jest (unit, packages/*) + Vitest (integration, apps/web/tests/integration)
-pnpm test:count        # đối chiếu số test case: trần gốc mục 9 là 91/50, trần hiện 94/53 (ADR-026)
+pnpm test:count        # đối chiếu số test case: trần gốc mục 9 là 91/50, trần hiện 94/55 (ADR-026 + ADR-037)
 pnpm build            # build tất cả package/app qua Turborepo
 ```
 
-**Số test (chạy `pnpm test:count` 2026-10-15, sau ADR-032/033) ✅:** thực **93 / 94 unit**, **52 / 53 integration**. Trần
-gốc ở đặc tả mục 9 là 91/50, nâng lên 94/53 theo ADR-026; ADR-027…033 không nâng trần. Script
+**Số test (chạy `pnpm test:count` 2026-10-16, sau M12b — ADR-037) ✅:** thực **93 / 94 unit**, **54 / 55 integration**. Trần
+gốc ở đặc tả mục 9 là 91/50, nâng lên 94/53 theo ADR-026; ADR-027…036 không nâng trần; ADR-037 mục 6 nâng trần integration 53 → **55**
+cho đúng 2 test M12 (M12a — `audit.test.ts`; M12b — `stats.test.ts`; đã dùng đủ 2, còn 1 chỗ trống tới trần 55 chưa gán). Lưu ý: dòng `audit_logs` do integration test tạo không xoá
+được (12 tháng) — xem [[04-Operations-Runbooks/Deploy-Vercel-Runbook|Deploy-Vercel-Runbook]] §9.6. Script
 `scripts/count-tests.mjs` báo lỗi khi vượt trần. Không tự thêm/bớt test case khi chưa hỏi chủ dự án.
 
 #### 2.2.1. Quy tắc integration test: không được xoá cấu hình dùng chung
@@ -105,6 +107,11 @@ Migration mới nhất trong repo tại 2026-10-15 ✅: `20260929090000_adr032_s
 `20260929100000_adr032_drop_platform_name` (DROP — **contract**), `20260929120000_adr033_product_sold_count` (thêm
 `products.soldCount` + CHECK + backfill — expand). Hai file sau chưa commit. Sau migrate, ảnh tenant cần Cloudinary hệ thống đã
 cấu hình và "Kiểm tra kết nối" ở `/admin/settings/cloudinary` (không có thì chữ ký trả `CLOUDINARY_NOT_CONFIGURED`).
+
+Cập nhật 2026-10-17 ✅ (`ls packages/db/prisma/migrations`): migration mới nhất là `20261016180000_adr039_entitlement_remedy`, trước đó
+`20261016150000_m12c_abuse_reports`, `20261016120000_m12b_tenant_daily_stats`, `20261016090000_m12a_audit_logs` — đều *expand*, đều đã áp DB
+dùng chung 2026-10-16 🟡, chưa commit. **Hai migration M12c/ADR-039 bắt buộc chạy TRƯỚC khi deploy code** (code lên trước → P2022/500 trên
+mọi trang sản phẩm/đánh giá/bài viết/thư viện) — [[04-Operations-Runbooks/Deploy-Vercel-Runbook|Deploy-Vercel-Runbook]] §9.8.
 
 > ⚠️ **Một DB duy nhất (ADR-034) + sự cố 2026-10-15:** migration chỉ do Quốc duyệt và chạy, không `prisma migrate dev/reset`;
 > theo **expand → contract** — migration *thêm* chạy trước deploy, `DROP`/`RENAME` chạy **sau** khi bản code không còn dùng
@@ -159,6 +166,9 @@ Vì `proxy.ts` (không phải `middleware.ts`) chỉ gắn `x-request-id` và re
 3. **Studio** (`/studio/[tenantSlug]`) — mở được trang tổng quan, danh sách sản phẩm.
 4. **Checkout** (`/[tenantSlug]/checkout/[orderCode]`) — tạo một đơn test, xác nhận trạng thái poll đúng.
 5. **Tải file đã mua** (`/account/library`) — xác nhận presigned URL tải được (chạm tới R2 thật, ADR-017).
+6. **Từ M12c (2026-10-17):** mở một trang tài liệu công khai — nút "Báo cáo vi phạm" hiện, trang không 500 (dấu hiệu migration đã áp);
+   `/admin/reports` mở được; sau đơn thật đầu tiên kiểm email `order_paid`/`new_sale` đã tới (lần đầu gửi thật — Deploy-Vercel-Runbook §9.8).
+   Không gửi báo cáo thử bằng email thật của người khác; báo cáo thử phải dọn (ADR-034).
 
 ---
 

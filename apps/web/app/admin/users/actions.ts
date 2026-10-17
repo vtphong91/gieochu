@@ -12,8 +12,8 @@ export async function lockUserAction(userId: string): Promise<void> {
 }
 
 export async function unlockUserAction(userId: string): Promise<void> {
-  await requireRole("SYSTEM_ADMIN");
-  await unlockUser(userId);
+  const actor = await requireRole("SYSTEM_ADMIN");
+  await unlockUser(actor, userId);
   revalidatePath("/admin/users");
 }
 

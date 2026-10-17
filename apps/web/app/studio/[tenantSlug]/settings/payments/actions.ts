@@ -22,7 +22,7 @@ export async function saveManualQrAction(
   _prevState: PaymentActionState,
   formData: FormData,
 ): Promise<PaymentActionState> {
-  const { tenant } = await requireTenantMember(tenantSlug);
+  const { tenant, user } = await requireTenantMember(tenantSlug);
   const parsed = manualQrSchema.safeParse({
     bankBin: formData.get("bankBin"),
     accountNo: formData.get("accountNo"),
@@ -31,6 +31,7 @@ export async function saveManualQrAction(
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ." };
 
   await saveTenantProviderConfig(tenant.id, {
+    actorId: user.userId,
     provider: "MANUAL_QR",
     isEnabled: formData.get("isEnabled") === "on",
     publicConfig: parsed.data,
@@ -53,7 +54,7 @@ export async function saveSepayAction(
   _prevState: PaymentActionState,
   formData: FormData,
 ): Promise<PaymentActionState> {
-  const { tenant } = await requireTenantMember(tenantSlug);
+  const { tenant, user } = await requireTenantMember(tenantSlug);
   const parsed = sepaySchema.safeParse({
     bankBin: formData.get("bankBin"),
     accountNo: formData.get("accountNo"),
@@ -68,6 +69,7 @@ export async function saveSepayAction(
 
   try {
     await saveTenantProviderConfig(tenant.id, {
+      actorId: user.userId,
       provider: "SEPAY",
       isEnabled: formData.get("isEnabled") === "on",
       publicConfig: { ...publicConfig, authType, paymentPrefix },
@@ -92,7 +94,7 @@ export async function saveMomoAction(
   _prevState: PaymentActionState,
   formData: FormData,
 ): Promise<PaymentActionState> {
-  const { tenant } = await requireTenantMember(tenantSlug);
+  const { tenant, user } = await requireTenantMember(tenantSlug);
   const parsed = momoSchema.safeParse({
     partnerCode: formData.get("partnerCode"),
     accessKey: formData.get("accessKey"),
@@ -104,6 +106,7 @@ export async function saveMomoAction(
 
   try {
     await saveTenantProviderConfig(tenant.id, {
+      actorId: user.userId,
       provider: "MOMO",
       isEnabled: formData.get("isEnabled") === "on",
       publicConfig: {

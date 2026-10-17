@@ -4,7 +4,7 @@ tags:
   - index
   - taxonomy
 date: 2026-09-26
-updated: 2026-10-16
+updated: 2026-10-17
 author: System Architect
 ---
 
@@ -48,6 +48,11 @@ giúp phân loại nội dung và tra cứu nhanh cho người và AI agent đ�
 | `#reviews` | Đánh giá sản phẩm của khách đã mua (M10a, ADR-029): quyền đánh giá, kiểm duyệt/trả lời của tenant, điểm trung bình |
 | `#posts` | Bài viết tối giản của tenant (M10b, ADR-029): trạng thái DRAFT/PUBLISHED/HIDDEN, ghim, gắn tài liệu, trang `/[slug]/posts`, section `posts` |
 | `#marketplace` | Trang Cửa hàng tổng hợp tài liệu mọi tenant (ADR-035): CMS `shop` ở System Center (GĐ1), `/cua-hang` + `/cua-hang/tai-lieu` (GĐ2) |
+| `#audit-log` | Nhật ký hành động `audit_logs` (M12a, ADR-037): bảng L1 chỉ-INSERT, action/scope, `audit.log`, trang `/admin/audit` và Studio → Hoạt động. Khác `#audit` (rà soát tri thức KB) |
+| `#analytics` | Số liệu tổng hợp/thống kê (M12b, ADR-037): bảng `tenant_daily_stats`, job `stats.aggregate`, dashboard "Hoạt động bán tài liệu" trên `/admin` — chỉ số tổng hợp, không dữ liệu cá nhân (§7.9) |
+| `#abuse-report` | Báo cáo vi phạm (M12c, ADR-038): bảng L1 `abuse_reports`, `POST /api/reports`, xử lý ở `/admin/reports`, ẩn danh với tenant |
+| `#moderation` | Khoá kiểm duyệt nội dung (ADR-038): `moderationLockedAt` trên sản phẩm/đánh giá/bài viết, trigger `*_guard_moderation`, cam kết bản quyền khi xuất bản |
+| `#entitlement` | Quyền tải của người mua (`entitlements`) — lượt tải, thu hồi, quyền lợi khi tài liệu bị gỡ do vi phạm (ADR-039: tải lần cuối / yêu cầu hoàn tiền) |
 
 ---
 

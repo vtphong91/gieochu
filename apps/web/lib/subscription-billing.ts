@@ -10,6 +10,7 @@ import { getPrismaClient, Prisma } from "@gieochu/db";
 import { buildWebhookNotifyUrl, decryptSecret, getProvider, type PaymentProviderId } from "@gieochu/payments";
 import { getEnv } from "@gieochu/config";
 import { getSystemSettings } from "./system-settings";
+import { audit } from "./audit";
 
 const INVOICE_CODE_RETRIES = 10;
 
@@ -112,7 +113,12 @@ export async function createRenewalInvoice(tenantId: string, input: CreateRenewa
  * already-PAID invoice is a no-op, so the webhook route can call this
  * without worrying about double-processing beyond the webhook_events guard.
  */
-export async function markInvoicePaid(invoiceId: string): Promise<void> {
+export type InvoicePaidSource = "PLATFORM_WEBHOOK" | "ADMIN_MANUAL_CONFIRM";
+
+export async function markInvoicePaid(
+  invoiceId: string,
+  options: { source: InvoicePaidSource; actorId?: string | null } = { source: "PLATFORM_WEBHOOK" },
+): Promise<void> {
   const prisma = getPrismaClient();
   const invoice = await prisma.subscriptionInvoice.findUniqueOrThrow({ where: { id: invoiceId } });
   if (invoice.status === "PAID") return;
@@ -140,6 +146,24 @@ export async function markInvoicePaid(invoiceId: string): Promise<void> {
     }),
     ...(tenant.status === "READ_ONLY" ? [prisma.tenant.update({ where: { id: tenant.id }, data: { status: "ACTIVE" as const } })] : []),
   ]);
+  // ADR-037: thanh toán gói là L1 (PaymentScope PLATFORM) nhưng gắn tenantId để owner thấy ở /studio/{slug}/activity.
+  await audit.log({
+    actorId: options.actorId ?? null,
+    scope: "SYSTEM",
+    tenantId: invoice.tenantId,
+    action: "SUBSCRIPTION_PAID",
+    targetType: "SubscriptionInvoice",
+    targetId: invoice.id,
+    metadata: {
+      source: options.source,
+      provider: invoice.provider,
+      planId: invoice.planId,
+      previousPlanId: subscription.planId,
+      amountVnd: invoice.amountVnd,
+      periodEnd: invoice.periodEnd,
+      reactivated: tenant.status === "READ_ONLY",
+    },
+  });
 }
 
 /** §"M3" admin console: pending manual-transfer invoices waiting for reconciliation. No order/customer data — just billing-of-the-tenant, allowed under §7.9. */
@@ -153,11 +177,11 @@ export async function listPendingManualInvoices() {
 }
 
 /** Admin reconciles a MANUAL_QR invoice against the bank statement by hand — SePay/MoMo are only ever marked PAID by their own webhook. */
-export async function confirmManualInvoicePayment(invoiceId: string): Promise<void> {
+export async function confirmManualInvoicePayment(invoiceId: string, actorId: string | null = null): Promise<void> {
   const prisma = getPrismaClient();
   const invoice = await prisma.subscriptionInvoice.findUniqueOrThrow({ where: { id: invoiceId } });
   if (invoice.provider !== "MANUAL_QR") {
     throw new AppError({ code: "NOT_MANUAL_INVOICE", message: "Chỉ xác nhận thủ công cho hoá đơn QR thủ công.", httpStatus: 400 });
   }
-  await markInvoicePaid(invoiceId);
+  await markInvoicePaid(invoiceId, { source: "ADMIN_MANUAL_CONFIRM", actorId });
 }

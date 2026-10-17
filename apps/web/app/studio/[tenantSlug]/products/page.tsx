@@ -3,6 +3,7 @@ import { requireTenantMemberPage } from "../../../../lib/page-guards";
 import { listProducts } from "../../../../lib/product";
 import { AdminPageHeader, Badge, DataTable, EmptyState, PrimaryLinkButton, Td, Tr } from "../../../admin/_ui/kit";
 import { IconPackage, IconPlus } from "../../../admin/_ui/icons";
+import { ModerationLockBadge } from "../../../admin/_ui/moderation-lock";
 import { ProductRowActions } from "./_ui/product-row-actions";
 
 /** Nhãn theo ADR-027 (hiển thị): DRAFT = Riêng tư, PUBLISHED = Công khai. */
@@ -47,8 +48,18 @@ export default async function StudioProductsPage({ params }: { params: Promise<{
             headClassName={[undefined, "hidden md:table-cell", "hidden sm:table-cell", "text-right"]}
           >
             {products.map((product) => {
+              // ADR-038: tài liệu bị quản trị hệ thống lưu trữ do vi phạm → thêm nhãn khoá + lý do (loại vi phạm).
+              const locked = product.moderationLockedAt !== null;
               const badge = (
-                <Badge tone={STATUS_TONE[product.status] ?? "neutral"}>{STATUS_LABEL[product.status] ?? product.status}</Badge>
+                <span className="inline-flex flex-col items-start gap-1">
+                  <span className="inline-flex flex-wrap gap-1.5">
+                    <Badge tone={STATUS_TONE[product.status] ?? "neutral"}>{STATUS_LABEL[product.status] ?? product.status}</Badge>
+                    {locked ? <ModerationLockBadge /> : null}
+                  </span>
+                  {locked && product.moderationReason ? (
+                    <span className="text-xs text-red-700">Lý do: {product.moderationReason}</span>
+                  ) : null}
+                </span>
               );
               return (
                 <Tr key={product.id}>
@@ -71,6 +82,7 @@ export default async function StudioProductsPage({ params }: { params: Promise<{
                       productSlug={product.slug}
                       title={product.title}
                       status={product.status}
+                      moderationLocked={locked}
                     />
                   </Td>
                 </Tr>

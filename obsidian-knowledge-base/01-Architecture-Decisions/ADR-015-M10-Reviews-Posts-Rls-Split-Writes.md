@@ -59,7 +59,8 @@ mẫu hở được tìm thấy ở thêm 5 bảng.
    theo scope (customer: rating/body/displayName/orderItemId; tenant: status/hidden*/reply*) vì tenant và customer chung role
    `gieochu_app` nên không dùng được column GRANT; điểm TB tính lại toàn phần dưới `system_job` có advisory lock. Chi tiết:
    (a) mua lại sau hoàn tiền và sửa đánh giá → tự khôi phục `VISIBLE` (có log); (b) không giới hạn thời hạn sửa; (c) tenant
-   `READ_ONLY` vẫn nhận/kiểm duyệt đánh giá; (d) trả lời rỗng = xoá trả lời; (e) khách thấy nhãn "đã bị ẩn" kèm nhãn lý do
+   `READ_ONLY` vẫn nhận/kiểm duyệt đánh giá — **đã bị thay** bởi "Bổ sung ADR-040" (2026-10-17): tenant không `ACTIVE` chặn khách
+   gửi/sửa đánh giá (409 `TENANT_NOT_ACTIVE`), xem [[01-Architecture-Decisions/ADR-026-Only-Active-Tenant-Shows-Documents|ADR-026 KB]]; (d) trả lời rỗng = xoá trả lời; (e) khách thấy nhãn "đã bị ẩn" kèm nhãn lý do
    tiếng Việt; đánh giá ẩn vì `REFUNDED` tenant không khôi phục được.
 8. **Test:** chủ dự án chọn **chưa thêm test** — nợ cho RLS, đánh giá, bài viết; verify thủ công trên DB dev qua role
    `gieochu_app`.

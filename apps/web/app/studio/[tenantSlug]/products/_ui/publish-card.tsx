@@ -5,6 +5,7 @@ import Link from "next/link";
 import { brandColors } from "@gieochu/config/theme";
 import { Badge, ConfigCard, GhostButton } from "../../../../admin/_ui/kit";
 import { IconCheckCircle, IconExternalLink, IconGlobe, IconLock, IconShield, IconXCircle } from "../../../../admin/_ui/icons";
+import { ModerationLockBadge, ModerationLockNotice } from "../../../../admin/_ui/moderation-lock";
 import { GHOST_BTN, GREEN_TEXT, PRODUCT_STATUS_LABEL, PRODUCT_STATUS_TONE, WarningNote } from "./editor-bits";
 
 export type Visibility = "PUBLIC" | "PRIVATE";
@@ -30,6 +31,20 @@ const OPTIONS: { value: Visibility; label: string; description: string; icon: Re
   },
 ];
 
+/** ADR-038 mục 7: ô cam kết bản quyền — editor giữ state, card chỉ hiển thị. */
+export interface RightsConfirmation {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  /** Lỗi cục bộ (bấm Xuất bản khi chưa tích) hoặc `fieldErrors.rightsConfirmed` từ Server Action. */
+  error?: string;
+}
+
+/** ADR-038 mục 5: sản phẩm bị quản trị hệ thống lưu trữ do vi phạm. */
+export interface ModerationLock {
+  reason: string | null;
+  lockedAtLabel: string | null;
+}
+
 export interface ChecklistItem {
   requirement: string;
   label: string;
@@ -45,6 +60,8 @@ export interface ChecklistItem {
  * PUBLISHED: áp dụng khi bấm nút chính ngay bên dưới.
  * Sản phẩm ARCHIVED không có radio, chỉ còn "Khôi phục". Radio dạng thẻ (label bọc input gốc) → vùng bấm ≥ 44px.
  * `containerRef` (id `publish-status`) nhận focus khi bị chặn công khai.
+ * ADR-038: `rights` (chỉ truyền khi thao tác sẽ xuất bản — trang Tạo / DRAFT) hiện ô cam kết bản quyền ngay trên nút;
+ * `moderationLock` hiện nhãn + giải thích khoá kiểm duyệt và ẩn Khôi phục (editor không truyền `onRestore`).
  */
 export function PublishCard({
   containerRef,
@@ -61,6 +78,8 @@ export function PublishCard({
   publicHref,
   onArchive,
   onRestore,
+  rights,
+  moderationLock,
 }: {
   containerRef?: Ref<HTMLDivElement>;
   value: Visibility;
@@ -83,6 +102,8 @@ export function PublishCard({
   publicHref?: string;
   onArchive?: () => void;
   onRestore?: () => void;
+  rights?: RightsConfirmation;
+  moderationLock?: ModerationLock | null;
 }) {
   const archived = status === "ARCHIVED";
   const currentVisibility: Visibility | null = status === "PUBLISHED" ? "PUBLIC" : status === "DRAFT" ? "PRIVATE" : null;
@@ -138,9 +159,12 @@ export function PublishCard({
         title="Chế độ hiển thị"
         badges={
           status ? (
-            <Badge tone={PRODUCT_STATUS_TONE[status] ?? "neutral"}>
-              {archived ? PRODUCT_STATUS_LABEL[status] : currentVisibility === "PUBLIC" ? "Đang công khai" : "Đang riêng tư"}
-            </Badge>
+            <>
+              <Badge tone={PRODUCT_STATUS_TONE[status] ?? "neutral"}>
+                {archived ? PRODUCT_STATUS_LABEL[status] : currentVisibility === "PUBLIC" ? "Đang công khai" : "Đang riêng tư"}
+              </Badge>
+              {moderationLock ? <ModerationLockBadge /> : null}
+            </>
           ) : null
         }
         footer={footer}
@@ -155,10 +179,22 @@ export function PublishCard({
           </WarningNote>
         ) : null}
 
+        {moderationLock ? (
+          <ModerationLockNotice
+            subject="tài liệu"
+            measure="lưu trữ"
+            blocked="khôi phục hay xuất bản lại"
+            reason={moderationLock.reason}
+            lockedAtLabel={moderationLock.lockedAtLabel}
+          />
+        ) : null}
+
         {archived ? (
-          <p className="text-sm" style={{ color: INK_SOFT }}>
-            Sản phẩm đã lưu trữ và đang ẩn khỏi trang bán. Khôi phục để chọn lại Công khai hoặc Riêng tư.
-          </p>
+          moderationLock ? null : (
+            <p className="text-sm" style={{ color: INK_SOFT }}>
+              Sản phẩm đã lưu trữ và đang ẩn khỏi trang bán. Khôi phục để chọn lại Công khai hoặc Riêng tư.
+            </p>
+          )
         ) : (
           <fieldset id="visibility" tabIndex={-1} className="outline-none" aria-describedby={visibilityError ? "visibility-error" : undefined}>
             <legend className="sr-only">Chế độ hiển thị</legend>
@@ -258,6 +294,48 @@ export function PublishCard({
         ) : null}
 
         <div ref={actionsRef} className="space-y-3 border-t pt-4" style={{ borderColor: GRAY_LINE }}>
+          {rights ? (
+            <div>
+              <label
+                htmlFor="rightsConfirmed"
+                className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border px-3.5 py-3 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[#0F3B82] motion-reduce:transition-none"
+                style={{
+                  borderColor: rights.error ? RED : rights.checked ? brandColors.primary : GRAY_LINE,
+                  background: rights.checked ? brandColors.surface : "#FFFFFF",
+                }}
+              >
+                <input
+                  id="rightsConfirmed"
+                  type="checkbox"
+                  name="rightsConfirmed"
+                  checked={rights.checked}
+                  onChange={(e) => rights.onChange(e.target.checked)}
+                  disabled={busy}
+                  aria-invalid={rights.error ? true : undefined}
+                  aria-describedby={rights.error ? "rightsConfirmed-error" : "rightsConfirmed-hint"}
+                  className="mt-0.5 h-[18px] w-[18px] shrink-0 cursor-pointer accent-[#0F3B82]"
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold" style={{ color: brandColors.ink }}>
+                    Tôi sở hữu hoặc có quyền phân phối tài liệu này
+                    <span aria-hidden="true" style={{ color: RED }}>
+                      {" "}
+                      *
+                    </span>
+                    <span className="sr-only"> (bắt buộc khi xuất bản)</span>
+                  </span>
+                  <span id="rightsConfirmed-hint" className="mt-0.5 block text-xs" style={{ color: INK_SOFT }}>
+                    Bắt buộc mỗi lần xuất bản. Tài liệu vi phạm bản quyền có thể bị gỡ và gian hàng có thể bị khoá.
+                  </span>
+                </span>
+              </label>
+              {rights.error ? (
+                <p id="rightsConfirmed-error" role="alert" className="mt-1.5 text-sm" style={{ color: RED }}>
+                  {rights.error}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           <p role="status" aria-live="polite" className="min-h-5 text-sm" style={{ color: INK_SOFT }}>
             {statusMessage}
           </p>

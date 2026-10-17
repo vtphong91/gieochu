@@ -7,6 +7,7 @@ tags:
   - security
   - status/living
 date: 2026-09-28
+updated: 2026-10-17
 author: Long (tài liệu)
 ---
 
@@ -20,11 +21,14 @@ author: Long (tài liệu)
 > **Trạng thái chung:** code xong, **chưa có test** (chủ dự án chọn chưa thêm test — nợ trong `docs/BACKLOG.md`); verify
 > thủ công theo báo cáo 🟡. Mọi hành vi runtime (RLS/trigger trên Neon thật, upload ảnh Cloudinary thật) là ❓ cho tới khi có
 > test.
+> **Cập nhật ADR-040 (đọc code 2026-10-17):** bài viết chỉ công khai khi gian hàng `ACTIVE` — khách của gian hàng `READ_ONLY` nhận 404
+> ở `/posts` và `/posts/[postId]` (§4). Bản trích [[01-Architecture-Decisions/ADR-026-Only-Active-Tenant-Shows-Documents|ADR-026 (KB)]];
+> bảng truy cập đầy đủ: [[02-System-Specs/Storefront-CMS-Specs|Storefront-CMS-Specs]] §1.2.
 
 ## 1. Phạm Vi
 
 M10 giai đoạn 1: **M10a Đánh giá** ([[02-System-Specs/Reviews-Specs|Reviews-Specs]]) → **M10b Bài viết tối giản** (trang
-này) — cả hai xong code. **M10c** (bình luận, thả tim, theo dõi) ở BACKLOG; nút "Báo cáo vi phạm" đợi M12; **không có feed
+này) — cả hai xong code. **M10c** (bình luận, thả tim, theo dõi) ở BACKLOG; nút "Báo cáo vi phạm" có từ M12c (ADR-038, §6.1); **không có feed
 xuyên tenant**; **không giới hạn số bài theo gói** (ADR-029 mục 5).
 
 | Vùng | Đường dẫn | Ai dùng |
@@ -45,7 +49,7 @@ xuyên tenant**; **không giới hạn số bài theo gói** (ADR-029 mục 5).
 
 | Quy tắc | Chi tiết | Nguồn code |
 | :-- | :-- | :-- |
-| Trạng thái | `DRAFT` · `PUBLISHED` · `HIDDEN`. Tenant chỉ chuyển **DRAFT ⇄ PUBLISHED** (Đăng bài / Gỡ bài về nháp). `HIDDEN` (vi phạm) **chỉ `system_job` đặt/gỡ** — hiện chưa có luồng nào đặt (M12) | `TenantPostStatus`, trigger `posts_guard_columns`, RLS `tenant_insert` |
+| Trạng thái | `DRAFT` · `PUBLISHED` · `HIDDEN`. Tenant chỉ chuyển **DRAFT ⇄ PUBLISHED** (Đăng bài / Gỡ bài về nháp). `HIDDEN` (vi phạm) **chỉ `system_job` đặt/gỡ** — từ M12c đặt bởi admin xử lý báo cáo vi phạm (§6.1) | `TenantPostStatus`, trigger `posts_guard_columns`, RLS `tenant_insert` |
 | Bài `HIDDEN` | Tenant **chỉ xem và xoá**: sửa/đăng lại/ghim → `POST_HIDDEN_LOCKED` (403) trả sớm ở app; trigger là lớp thứ hai | `updatePost`, `setPostPinned` |
 | Tiêu đề | **Tuỳ chọn**, 1 dòng: NFC, bỏ ký tự điều khiển/ẩn, gộp khoảng trắng, trim; rỗng → `null`; > **200** ký tự (code point) → `POST_TITLE_INVALID` (không tự cắt). CHECK `posts_title_length` (NULL hoặc 1–200) | `normalizePostTitle` |
 | Nội dung | HTML từ Tiptap, **sanitize khi lưu** bằng `sanitizeRichTextHtml` theo cloud Cloudinary **hệ thống** (ảnh ngoài cloud hệ thống bị loại — ADR-028), và **sanitize lại khi render** (trang chi tiết, xem bài HIDDEN trong Studio). Bắt buộc có chữ **hoặc ≥ 1 ảnh** → nếu không: `POST_BODY_REQUIRED`. Trần 100 000 ký tự HTML → `POST_BODY_TOO_LONG` (CHECK `posts_body_length` 1–100 000) | `preparePostBody` |
@@ -54,7 +58,7 @@ xuyên tenant**; **không giới hạn số bài theo gói** (ADR-029 mục 5).
 | Gắn tài liệu | Tối đa **1 sản phẩm** (`productId`), phải **cùng tenant** và **chưa `ARCHIVED`** lúc gắn → sai: `POST_PRODUCT_INVALID`. Chỉ kiểm lại khi **đổi** sản phẩm (bài cũ gắn sản phẩm đã lưu trữ vẫn sửa được nội dung). Xoá sản phẩm → `productId` SET NULL. Trang công khai **chỉ hiện thẻ tài liệu khi sản phẩm `PUBLISHED`**; thẻ link tới `productPath(tenantSlug, product.slug)` = `/{tenantSlug}/{productSlug}` (ADR-030 ✅ `post-parts.tsx`, `storefront-posts.tsx`) | `assertAttachableProduct`, trigger `posts_guard_product_tenant`, `getPublicProductsByIds` |
 | Ghim | Tối đa **1 bài ghim / tenant** — partial unique index `posts_tenantId_pinned_key` (`WHERE "isPinned"`). Ghim bài mới tự bỏ ghim bài cũ **trong cùng transaction**; đua ghim → `POST_PIN_CONFLICT` (409). Ghim được bài **mọi trạng thái trừ `HIDDEN`**; công khai chỉ thấy bài ghim khi bài đó `PUBLISHED` | `setPostPinned` |
 | `publishedAt` | Đặt ở **lần đăng đầu tiên**, giữ nguyên khi gỡ về nháp rồi đăng lại. CHECK `posts_published_at_shape`: `PUBLISHED` ⇒ `publishedAt` NOT NULL | `createPost`, `updatePost` |
-| Tenant `READ_ONLY` / `LOCKED` | **Không tạo/sửa/xoá/ghim** bài (giống sản phẩm) — `assertTenantCanWrite` → `FORBIDDEN` khi `status ≠ ACTIVE`. Trang công khai: `LOCKED` → 404 (RLS public + `resolveStorefrontAccess`); `READ_ONLY` vẫn hiển thị bài đã đăng | `requireWritableTenant`, RLS `select_access` |
+| Tenant `READ_ONLY` / `LOCKED` | **Không tạo/sửa/xoá/ghim** bài (giống sản phẩm) — `assertTenantCanWrite` → `FORBIDDEN` khi `status ≠ ACTIVE`. Trang công khai (ADR-040): khách của tenant không `ACTIVE` → 404 (`resolveStorefrontAccess` trả `NOT_FOUND`/`SUSPENDED_NOTICE`; `LOCKED` còn bị RLS public chặn); chủ tenant vẫn xem. **Trước ADR-040** `READ_ONLY` vẫn hiển thị bài đã đăng | `requireWritableTenant`, RLS `select_access` |
 | Thứ tự Studio | Bài ghim trước, rồi mới **tạo** trước; 20 bài/trang, cursor = id mục cuối | `listTenantPosts` |
 | Thứ tự công khai | Mới **đăng** trước (`publishedAt desc`); trang `/posts` đặt bài ghim đầu trang 1 (luồng còn lại bỏ bài ghim để không trùng); 12 bài/trang (tối đa 30) | `listPublishedPosts` |
 
@@ -99,11 +103,11 @@ Migration: `20260928090000_m10b_posts`, `20260928090100_rls_m10b_posts`.
 ## 4. Trang Công Khai (trang hệ thống ADR-025) ✅
 
 - `/[tenantSlug]/posts`: header/footer + màu/font **hệ thống** (không theme tenant), khung `container-page`; truy cập theo
-  `resolveStorefrontAccess` như storefront (`NOT_FOUND` → 404); dữ liệu `listPublishedPosts` dưới `withPublic`. Rỗng → trạng
+  `resolveStorefrontAccess` như storefront (`NOT_FOUND` hoặc `SUSPENDED_NOTICE` → 404 — ADR-040; chủ tenant vẫn xem); dữ liệu `listPublishedPosts` dưới `withPublic`. Rỗng → trạng
   thái trống; phân trang `?cursor=` (id bài không ghim cuối trang trước; cursor sai dạng bị bỏ qua).
 - `/[tenantSlug]/posts/[postId]`: khung `container-prose`; `getPublishedPost` → `null` khi không có / không `PUBLISHED` /
-  tenant `LOCKED` → `notFound()`. `bodyHtml` sanitize lại lúc render (ảnh viết lại qua `cloudinaryDeliveryUrl` rộng 1536).
-  `generateMetadata` dùng `getPublishedPostMeta` (không đọc body). Thẻ "Tài liệu liên quan" dưới bài khi sản phẩm gắn còn
+  tenant `LOCKED` → `notFound()`; trước đó kiểm `resolveStorefrontAccess` như trang danh sách (khách của tenant `READ_ONLY` → 404, ADR-040). `bodyHtml` sanitize lại lúc render (ảnh viết lại qua `cloudinaryDeliveryUrl` rộng 1536).
+  `generateMetadata` dùng `getPublishedPostMeta` (không đọc body); cả 2 trang trả metadata `{}` khi tenant không `ACTIVE` (ADR-040, không lộ tiêu đề). Thẻ "Tài liệu liên quan" dưới bài khi sản phẩm gắn còn
   `PUBLISHED` (giá/ảnh bìa hiệu lực tính ở server).
 - Ảnh minh hoạ thẻ bài = ảnh Cloudinary hệ thống **hợp lệ đầu tiên** trong nội dung (`firstRichTextImageSrc(body, accept)`,
   rộng 640; Studio dùng rộng 320), không có → khối minh hoạ nhạt.
@@ -142,6 +146,18 @@ Nạp HTML vào Tiptap (`content`, vd `post.body` trong editor) **không cần**
 - Revalidate sau mỗi thao tác ghi: `/studio/<slug>/posts` (+ trang bài), `/<slug>`, `/<slug>/posts` (+ trang bài).
 - Chi tiết giao diện editor/danh sách: [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §11.
 
+### 6.1. Báo cáo vi phạm & khoá kiểm duyệt (M12c, ADR-038 — 2026-10-17) ✅
+
+Đối chiếu code working tree (chưa commit/deploy). Nghiệp vụ chung: [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]].
+- Trang bài viết công khai `/{tenantSlug}/posts/{postId}` có nút **"Báo cáo vi phạm"** (`targetType = "POST"`).
+- Admin quyết định `HIDE_CONTENT` → `status = HIDDEN`, `hiddenReason` = nhãn loại vi phạm, **bỏ ghim**, + `moderationLockedAt`/
+  `moderationReason`. CHECK `posts_moderation_shape`: khoá ⇒ `HIDDEN`.
+- Khi đang khoá: `updatePost`, `setPostPinned` → 409 `CONTENT_MODERATION_LOCKED` (kiểm trước `POST_HIDDEN_LOCKED`); trigger
+  `posts_guard_moderation` chặn đổi `status` và cột khoá ngoài `system_job`. Danh sách/editor Studio hiện nhãn "Bị khoá kiểm duyệt".
+- **Xoá bài đang bị khoá: cho phép** ("Bổ sung ADR-039 lần 2" (f)) — nội dung vi phạm biến mất, báo cáo giữ nguyên; `deletePost` không kiểm
+  khoá, trigger moderation không có nhánh DELETE ✅.
+- Admin gỡ khoá → bài về **`DRAFT`**, bỏ `hiddenReason` (tenant không tự gỡ `HIDDEN` được); tenant tự đăng lại.
+
 ---
 
 ## 7. Chưa Xác Minh / Nợ
@@ -153,7 +169,8 @@ Nạp HTML vào Tiptap (`content`, vd `post.body` trong editor) **không cần**
 | Verify thủ công M10b (theo brief: "verify thủ công") | 🟡 (Long chưa tự chạy) |
 | Upload ảnh bài viết lên Cloudinary thật + tính hạn mức | ❓ |
 | `prisma migrate dev` không làm mất partial unique index | ❓ (cảnh báo theo ADR, chưa thử) |
-| Báo cáo vi phạm / luồng đặt `HIDDEN` (M12), audit log | ✅ (chưa có) |
+| Báo cáo vi phạm / luồng đặt `HIDDEN` — có từ M12c (§6.1), chưa commit/deploy; audit log bài viết vẫn chưa có | ✅ (đọc code 2026-10-17) |
+| Trigger `posts_guard_moderation` chặn tenant trên DB thật | 🟡 (Quốc kiểm bằng `gieochu_app`, rollback, 2026-10-16) · chưa có test ❓ |
 
 ## 8. Liên Kết
 

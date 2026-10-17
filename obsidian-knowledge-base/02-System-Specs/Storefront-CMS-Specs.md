@@ -6,7 +6,7 @@ tags:
   - security
   - status/living
 date: 2026-09-26
-updated: 2026-09-28
+updated: 2026-10-17
 author: Long (tài liệu)
 ---
 
@@ -22,6 +22,8 @@ author: Long (tài liệu)
 > [[02-System-Specs/Reviews-Specs|Reviews-Specs]].
 > **Cập nhật ADR-029 (M10b, đọc code 2026-09-28):** thêm section `posts` ("Bài viết", bài `PUBLISHED` thật, anchor
 > `#bai-viet`, §3.4). Nghiệp vụ bài viết: [[02-System-Specs/Posts-Specs|Posts-Specs]].
+> **Cập nhật ADR-040 (đọc code 2026-10-17):** chỉ gian hàng `ACTIVE` hiển thị tài liệu; khách của gian hàng `READ_ONLY` chỉ thấy trang
+> "tạm ngưng hoạt động" — §1.2. Bản trích [[01-Architecture-Decisions/ADR-026-Only-Active-Tenant-Shows-Documents|ADR-026 (KB)]].
 
 ## 1. Phạm Vi
 
@@ -43,7 +45,7 @@ Sidebar Studio có thêm 2 mục "Trang bán hàng" và "Hộp thư (N)" — N =
 - Storefront `/[tenantSlug]` là trang public **duy nhất** mang giao diện tenant (màu `Tenant.branding` qua `--sf-*`,
   font Montserrat) — và chỉ trong vùng `<main class="sf-root">` chứa các section CMS.
 - Header/footer của storefront là **`SiteHeader`/`SiteFooter` hệ thống**; tenant **không có** header/footer/menu
-  anchor riêng. Banner READ_ONLY/LOCKED và "Nội dung mẫu" đặt ngay dưới header hệ thống.
+  anchor riêng. Banner trạng thái (`StorefrontNotice` — chỉ chủ tenant thấy, §1.2) và "Nội dung mẫu" đặt ngay dưới header hệ thống.
 - Trang chi tiết sản phẩm và checkout là **trang hệ thống** (không mang theme tenant); logic mua hàng M8 không đổi.
 - **Mạng xã hội tenant** (`Tenant.branding.socialLinks`, qua `getStorefrontProfile` → `socialEntries`) chỉ hiện ở
   **một nơi**: hàng icon trong khối CTA của section `contact`. Section `contact` bị tắt (`visible=false`) hoặc không có →
@@ -54,6 +56,36 @@ Sidebar Studio có thêm 2 mục "Trang bán hàng" và "Hộp thư (N)" — N =
   2026-09-26 vì menu tenant không còn ✅. Từ ADR-029: `reviews` → `#danh-gia` (đánh giá thật), `testimonials` → `#cam-nhan`; từ M10b: `posts` → `#bai-viet`;
   CTA cũ trỏ `#danh-gia` nay dẫn tới đánh giá thật (không có đích khi section không render) ✅.
 - Chi tiết UI: [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §1.1, §8.0, §8.4.
+
+### 1.2. Truy cập theo trạng thái tenant (ADR-040) ✅
+
+> Nguồn: ADR-040 trong `docs/DECISIONS.md` (chủ dự án chốt 2026-10-17) — bản trích
+> [[01-Architecture-Decisions/ADR-026-Only-Active-Tenant-Shows-Documents|ADR-026 (KB)]]. Đã đọc code 2026-10-17; chưa có test riêng,
+> hành vi thật trên dev server ❓. Thay đổi so với §4.4 đặc tả gốc (trước đây `READ_ONLY` vẫn render tài liệu, chỉ ẩn nút mua).
+
+Hàm thuần `resolveStorefrontAccess(status, viewer)` (`packages/core/src/tenant/access-policy.ts`); `viewer = "owner"` khi
+`currentUser.userId === tenant.ownerId`, còn lại `"guest"` (thành viên khác của tenant **chưa** được tính là chủ — BACKLOG).
+
+| `tenant.status` | Khách (`guest`) | Chủ (`owner`) |
+| :-- | :-- | :-- |
+| `ACTIVE` | `ACTIVE` — storefront đầy đủ | `ACTIVE` |
+| `READ_ONLY` | `SUSPENDED_NOTICE` — chỉ trang "Gian hàng đang tạm ngưng hoạt động" | `READ_ONLY` — storefront đầy đủ + `StorefrontNotice` |
+| `LOCKED` | `NOT_FOUND` — 404 | `LOCKED_NOTICE` — storefront + thông báo khoá |
+
+Áp dụng theo trang/luồng:
+
+| Trang / luồng | Tenant không `ACTIVE` |
+| :-- | :-- |
+| `/[tenantSlug]` | `SUSPENDED_NOTICE` → trả trang tạm ngưng **trước** mọi loader sản phẩm/bài viết/đánh giá (không truy vấn, không chỉ ẩn ở UI); `NOT_FOUND` → 404. `generateMetadata`: tenant không `ACTIVE` → `title` + `robots: { index: false, follow: false }` |
+| `/[tenantSlug]/[productSlug]` | Chỉ `ACTIVE` hoặc `READ_ONLY` (chủ) được xem; còn lại 404 — gồm `LOCKED` với **cả chủ** (như trước). `generateMetadata` trả `{}` khi tenant không `ACTIVE` (không lộ tiêu đề/mô tả) |
+| `/[tenantSlug]/posts`, `/[tenantSlug]/posts/[postId]` | `NOT_FOUND`/`SUSPENDED_NOTICE` → 404; chủ `READ_ONLY`/`LOCKED` vẫn xem; `generateMetadata` trả `{}` khi tenant không `ACTIVE` — [[02-System-Specs/Posts-Specs\|Posts-Specs]] |
+| Form liên hệ (§6) | Không nhận tin (điều kiện `=== "ACTIVE"` không đổi) |
+| Gửi/sửa đánh giá | 409 `TENANT_NOT_ACTIVE` — [[02-System-Specs/Reviews-Specs\|Reviews-Specs]] |
+| Báo cáo vi phạm | Đối tượng coi như không công khai → 404 `REPORT_TARGET_NOT_FOUND` — [[02-System-Specs/Abuse-Reports-Specs\|Abuse-Reports-Specs]] |
+| Share link (mở + tải) | 410 `SHARE_LINK_TENANT_LOCKED` — [[02-System-Specs/File-Storage-And-Downloads-Specs\|File-Storage-And-Downloads-Specs]] |
+| Checkout / thanh toán đơn `PENDING` | 409 `PRODUCT_UNAVAILABLE` — [[02-System-Specs/Order-State-Machine\|Order-State-Machine]] §3.8 |
+| Thư viện / tải của khách đã mua | Không đổi — vẫn tải được 🟡 (theo brief, không đổi code đợt này) |
+| `/cua-hang`, trang chủ | Vốn chỉ lấy tenant `ACTIVE` (`PUBLIC_PRODUCT_WHERE`) — không đổi |
 
 ---
 
@@ -205,7 +237,7 @@ Kết quả `{ ok: true } | { error: string }`. Thứ tự xử lý:
 1. **Honeypot** `website` khác rỗng → trả `{ ok: true }` giả, không lưu, không báo lỗi.
 2. **zod:** `name` 1–80, `email` ≤ 200 và đúng định dạng, `message` 1–2000 (đều `trim`).
 3. Tenant phải tồn tại và `resolveStorefrontAccess(tenant.status, "guest") === "ACTIVE"` (tức tenant
-   `READ_ONLY`/`LOCKED` không nhận tin — đọc `packages/core/src/tenant/access-policy.ts`); section `contact` (sau
+   `READ_ONLY` — khách nhận `SUSPENDED_NOTICE` từ ADR-040 — và `LOCKED` không nhận tin — đọc `packages/core/src/tenant/access-policy.ts`); section `contact` (sau
    `resolveStorefrontSections` với `isOwner:false`) phải có và `formEnabled = true` — nếu không: "Trang này hiện
    không nhận lời nhắn."
 4. IP = phần tử đầu `x-forwarded-for`, fallback `x-real-ip`. **Không lưu IP thô:** `ipHash` =

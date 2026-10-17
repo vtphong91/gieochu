@@ -351,6 +351,10 @@ export type TenantCustomer = Prisma.TenantCustomerModel
  * `downloadLimit` is a snapshot of `product.downloadLimit` at purchase
  * time (§5.3 snapshot convention) — a later change to the product's limit
  * never retroactively changes what an existing buyer already has.
+ * 
+ * ADR-039 — quyền lợi người mua khi tài liệu bị admin lưu trữ do vi phạm (`remedy*`). Chỉ scope `system_job` đặt/đổi
+ * (trigger `entitlements_guard_remedy`), ngoại lệ duy nhất: tenant hoàn tiền chuyển REFUND_REQUESTED → REFUNDED.
+ * `remedyReportId` trỏ `abuse_reports.id` (L1) — không FK, chỉ để truy vết.
  */
 export type Entitlement = Prisma.EntitlementModel
 /**
@@ -419,3 +423,29 @@ export type Review = Prisma.ReviewModel
  * `posts_tenantId_pinned_key` (`WHERE "isPinned"`, khai báo trong migration SQL — Prisma không biểu diễn được).
  */
 export type Post = Prisma.PostModel
+/**
+ * Model AuditLog
+ * ADR-037 mục 2 — §"M12" audit log, bảng L1 (không RLS; owner chỉ đọc qua loader lọc `tenantId` ở server,
+ * apps/web/lib/audit-query.ts). CHỈ INSERT: role `gieochu_app` không có UPDATE, trigger
+ * `audit_logs_block_update` chặn UPDATE mọi trường hợp, `audit_logs_guard_delete` chặn DELETE trừ khi phiên đặt
+ * `gieochu.audit_purge = 'on'` VÀ dòng cũ hơn 12 tháng (cron hằng ngày, ADR-036). KHÔNG khoá ngoại tới
+ * users/tenants (lịch sử bất biến, không chặn xoá dữ liệu khác). `action` là chuỗi (hằng `AUDIT_ACTIONS`,
+ * @gieochu/core) — thêm action không cần DDL. `metadata` đã lọc khoá nhạy cảm (secret/token/password/hash) trước
+ * khi ghi; hành động của tenant chỉ chứa id, không email khách/chi tiết đơn (§7.9). `createdAt` lưu UTC.
+ */
+export type AuditLog = Prisma.AuditLogModel
+/**
+ * Model TenantDailyStat
+ * ADR-037 (M12b) — số liệu tổng hợp theo tenant + ngày giờ VN (`Asia/Ho_Chi_Minh`). Bảng L1: không RLS, admin đọc bằng
+ * getPrismaClient(); chỉ job `stats.aggregate` (cron hằng ngày, chạy dưới withSystemJob) ghi. Chỉ chứa số đếm/tổng —
+ * không email, tên khách hay mã đơn (§7.9). Tính lại được nên xoá theo tenant (Cascade), khác audit_logs.
+ */
+export type TenantDailyStat = Prisma.TenantDailyStatModel
+/**
+ * Model AbuseReport
+ * ADR-038 mục 3 — báo cáo vi phạm, bảng L1 (không RLS; chỉ System Admin đọc qua apps/web/lib/abuse-report.ts — §7.9:
+ * tenant KHÔNG bao giờ đọc bảng này, danh tính người báo cáo chỉ admin thấy). `tenantId` = tenant sở hữu đối tượng lúc
+ * gửi (FK Cascade). `targetId` không FK (đối tượng thuộc 3 bảng khác nhau; bị xoá thì báo cáo vẫn giữ). `ip` dùng cho
+ * giới hạn 5 báo cáo/giờ/IP, xoá (SET NULL) sau 12 tháng bởi cron hằng ngày. Thời gian lưu UTC.
+ */
+export type AbuseReport = Prisma.AbuseReportModel

@@ -54,6 +54,10 @@ export default async function StudioEditPostPage({
           productId: post.productId ?? "",
           status: post.status,
           hiddenReason: post.hiddenReason,
+          // ADR-038: khoá kiểm duyệt — chỉ nhãn loại vi phạm + thời điểm, không danh tính người báo cáo.
+          moderationLock: post.moderationLockedAt
+            ? { reason: post.moderationReason, lockedAtLabel: formatPostDateTime(post.moderationLockedAt) }
+            : null,
           isPinned: post.isPinned,
           publishedLabel: post.publishedAt ? formatPostDateTime(post.publishedAt) : null,
         }}

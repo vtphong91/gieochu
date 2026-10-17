@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   IconCard,
+  IconEye,
   IconGear,
   IconGrid,
   IconMail,
@@ -36,10 +37,16 @@ const NAV_ICONS = {
   star: IconStarOutline,
   card: IconCard,
   gear: IconGear,
+  activity: IconEye,
 } satisfies Record<string, IconComponent>;
 
 export type TenantNavIcon = keyof typeof NAV_ICONS;
-export type TenantNavItem = { href: string; label: string; icon: TenantNavIcon };
+/**
+ * `badge` (tuỳ chọn): số việc chờ xử lý cạnh nhãn — `text` hiển thị (ẩn với trình đọc màn hình), `srText` là cụm đầy
+ * đủ ngữ cảnh đọc thay (vd. "2 yêu cầu hoàn tiền chờ xử lý"); `urgent` = có việc quá hạn (nền đỏ + chữ trong srText).
+ */
+export type TenantNavBadge = { text: string; srText: string; urgent?: boolean };
+export type TenantNavItem = { href: string; label: string; icon: TenantNavIcon; badge?: TenantNavBadge };
 type NavItem = TenantNavItem;
 
 // `/studio/{slug}` là tiền tố của mọi mục con khác (`/orders`, `/products`...),
@@ -64,7 +71,7 @@ export function TenantSidebarNav({ items, rootHref }: { items: NavItem[]; rootHr
 
   return (
     <nav className="flex flex-1 flex-col gap-1 px-3 py-3">
-      {items.map(({ href, label, icon }) => {
+      {items.map(({ href, label, icon, badge }) => {
         const active = href === currentActiveHref;
         const Icon = NAV_ICONS[icon];
         return (
@@ -76,7 +83,19 @@ export function TenantSidebarNav({ items, rootHref }: { items: NavItem[]; rootHr
             style={active ? { background: ACTIVE_BG, color: ACTIVE_FG } : { color: "rgba(255,255,255,0.8)" }}
           >
             <Icon className="h-[18px] w-[18px] shrink-0" />
-            {label}
+            <span className="min-w-0 flex-1">{label}</span>
+            {badge ? (
+              <>
+                <span
+                  aria-hidden="true"
+                  className="inline-flex min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-bold"
+                  style={badge.urgent ? { background: "#B91C1C", color: "white" } : { background: "white", color: "#12213A" }}
+                >
+                  {badge.text}
+                </span>
+                <span className="sr-only">, {badge.srText}</span>
+              </>
+            ) : null}
           </Link>
         );
       })}

@@ -3,7 +3,7 @@ tags:
   - meta
   - spec
 date: 2026-09-26
-updated: 2026-10-16
+updated: 2026-10-17
 ---
 
 # 📐 System Specifications (Living Specs)
@@ -56,6 +56,20 @@ bộ nội dung được viết lại từ nguồn thật: `CLAUDE.md`, `docs/AR
   Vercel: `payment.process`/`file.scan` vẫn `send` vào pg-boss rồi `after()` drain ngay sau response (`fetch` → `complete`/`fail`, ngân
   sách thời gian, retry 60 giây + backoff); `GET /api/cron/daily` (Vercel Cron 03:00 giờ VN, Bearer `CRON_SECRET`) chạy sweep thuê bao/đơn
   + bảo trì + dọn hàng đợi; `effectiveOrderStatus`; `worker.ts` chỉ còn cho local ([Background-Jobs-Specs.md](./Background-Jobs-Specs.md)).
+- `[[Audit-Log-Specs]]`: Audit log M12a (ADR-037) — **xong code (2026-10-16), chưa commit/deploy; migration đã áp DB**. Bảng L1
+  `audit_logs` chỉ-INSERT (quyền `gieochu_app` + 3 trigger, purge chỉ dòng > 12 tháng qua cờ `gieochu.audit_purge`), không khoá ngoại;
+  27 action + bảng nơi ghi; `audit.log` ghi sau commit, lỗi không ném; lọc metadata nhạy cảm; trang `/admin/audit` và
+  `/studio/{slug}/activity` (chỉ OWNER, che actor ngoài tenant); bước cron `audit.purge` ([Audit-Log-Specs.md](./Audit-Log-Specs.md)).
+- `[[Tenant-Stats-Specs]]`: Thống kê hằng ngày M12b (ADR-037) — **xong code (2026-10-16), chưa commit/deploy; migration đã áp DB**. Bảng L1
+  `tenant_daily_stats` (tenant + ngày giờ VN, FK Cascade, không RLS, không dữ liệu cá nhân); định nghĩa số liệu (GMV gộp theo `paidAt` tính
+  cả đơn hoàn tiền, khách mới theo `tenant_customers.firstOrderAt`, lượt tải theo `download_events`); job `stats.aggregate` trong cron
+  (hôm qua + hôm nay, backfill ≤ 400 ngày khi bảng trống, cửa sổ 31 ngày, advisory lock); loader `getAdminStatsOverview` + section dashboard
+  `/admin` ([Tenant-Stats-Specs.md](./Tenant-Stats-Specs.md)).
+- `[[Abuse-Reports-Specs]]`: Báo cáo vi phạm M12c (ADR-038) + quyền lợi người mua (ADR-039) — **xong code (2026-10-16), chưa commit/deploy;
+  2 migration đã áp DB**. Bảng L1 `abuse_reports` (ẩn danh với tenant); `POST /api/reports` (Origin, honeypot, 5/giờ/IP, chặn trùng); xử lý ở
+  `/admin/reports` (ẩn/lưu trữ/khoá gian hàng/bác bỏ) + khoá kiểm duyệt (trigger `*_guard_moderation`); cam kết bản quyền mỗi lần xuất bản;
+  người mua tài liệu bị lưu trữ chọn "tải lần cuối" (đủ mọi tệp) hoặc "yêu cầu hoàn tiền" (SLA 7 ngày, trigger `entitlements_guard_remedy`);
+  5 email mới; bước cron `abuse_report.ip_purge` ([Abuse-Reports-Specs.md](./Abuse-Reports-Specs.md)).
 
 ## Ghi chú lịch sử
 

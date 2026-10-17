@@ -840,3 +840,120 @@
 - **Làm rõ (2026-10-16):** "không làm app fail-fast" chỉ đúng khi **thiếu** `CRON_SECRET`; nếu đặt giá trị < 32 ký tự
   thì zod làm cả app dừng khi khởi động. Không chạy `worker.ts` local trên DB dùng chung (tạo lại lịch pg-boss, chạy
   song song cron) trừ khi Quốc duyệt.
+
+## ADR-037 — M12: chia 3 đợt; audit log chỉ-INSERT không khoá ngoại, giữ 12 tháng; thống kê hằng ngày
+
+- **Bối cảnh (2026-10-16):** M12 (đặc tả mục M12) chưa có gì: không có `audit_logs`, `tenant_daily_stats`,
+  `abuse_reports`; nhiều module đang ghi `logger` tạm và chờ M12 (BACKLOG). Chủ dự án chốt 4 điểm dưới.
+- **Quyết định:**
+  1. **3 đợt, deploy riêng:** M12a Audit log → M12b Thống kê (`tenant_daily_stats` + dashboard admin thật) → M12c Báo
+     cáo vi phạm (`abuse_reports`, nút Báo cáo, `/admin/reports`, email, cam kết bản quyền khi đăng sản phẩm).
+  2. **`audit_logs` (L1):** cột theo đặc tả (`actorId?`, `scope`, `tenantId?`, `action`, `targetType?`, `targetId?`,
+     `metadata Json`, `ip?`, `userAgent?`, `createdAt`); **không khoá ngoại** tới users/tenants (lịch sử bất biến, không
+     chặn xoá dữ liệu khác, test dọn được dữ liệu tạm); index `(createdAt)`, `(tenantId, createdAt)`, `(actorId, createdAt)`.
+     **Chỉ INSERT:** role `gieochu_app` không có UPDATE; trigger chặn UPDATE mọi trường hợp và chặn DELETE trừ khi
+     phiên đặt cờ purge **và** dòng cũ hơn 12 tháng. Không lưu secret/token/mật khẩu trong `metadata`.
+  3. **Lưu IP + User-Agent, giữ 12 tháng:** cron hằng ngày (`/api/cron/daily`, ADR-036) xoá dòng audit > 12 tháng.
+  4. **Partition theo tháng: để sau** (đặc tả cho phép ghi ADR nếu để sau) — vào BACKLOG khi bảng lớn.
+  5. **Thống kê hằng ngày** gộp vào `/api/cron/daily` (03:00 giờ VN), tính lại 2 ngày gần nhất theo `Asia/Ho_Chi_Minh`;
+     dashboard ghi rõ "số liệu đến hết hôm qua" (thay cho "mỗi giờ" của đặc tả).
+  6. **Test:** nâng trần integration 53 → **55** để thêm đúng 2 test M12 theo đặc tả mục 9 (audit không sửa/xoá được;
+     thống kê không chứa dữ liệu cá nhân + dashboard đọc được). Unit giữ trần 94. Lưu ý ADR-034: dòng audit do test tạo
+     không xoá được, tồn tới hết hạn 12 tháng — chấp nhận (dữ liệu giả, không có thông tin cá nhân thật).
+  7. Xem audit: admin `/admin/audit` (lọc actor, action, tenant, khoảng thời gian); owner `/studio/{slug}/activity` chỉ
+     dòng có `tenantId` của mình (kiểm quyền owner ở server, truy vấn luôn lọc `tenantId`). `ADMIN_VIEWED_TENANT` ghi khi
+     admin mở trang chi tiết tenant.
+- **Không đổi:** §7.9 — admin không đọc đơn/khách của tenant; thống kê chỉ số liệu tổng hợp.
+- **Bổ sung ADR-037 (2026-10-16, Quốc):** sau khi migration M12a áp, **mọi** integration test gọi hàm có audit (đơn,
+  entitlement, share link, sản phẩm, đăng nhập…) đều để lại dòng `audit_logs` giả không xoá được tới khi purge 12 tháng
+  — chấp nhận như mục 6 (dữ liệu test, email `@example.com`). Mục "Hoạt động" trong Studio chỉ hiện với OWNER (khớp
+  quyền loader). DB mới: tạo schema `pgboss` bằng role owner trước rồi chạy lại `setup-app-role` là quy trình chính thức.
+- **ADR-037 — M12b chốt định nghĩa số liệu (2026-10-16, Quốc):** `tenant_daily_stats(tenantId, date DATE theo ngày giờ
+  VN, ordersPaid, gmvVnd BigInt, newCustomers, downloads)`, unique `(tenantId, date)`, FK tenant `ON DELETE CASCADE`
+  (bảng tổng hợp, tính lại được — không bất biến như audit). Ngày VN = `Asia/Ho_Chi_Minh`.
+  - `ordersPaid` / `gmvVnd`: đơn có `paidAt` rơi vào ngày đó (**GMV gộp** — tính cả đơn sau này bị hoàn tiền; hoàn
+    tiền không trừ ngược vào ngày cũ). `gmvVnd` = tổng tiền khách trả (`totalVnd` sau giảm giá).
+  - `newCustomers`: `tenant_customers` tạo trong ngày. `downloads`: `download_events` trong ngày.
+  - Cron hằng ngày tính lại **hôm qua + hôm nay** (upsert, idempotent); bảng trống → tự backfill từ ngày có dữ liệu
+    sớm nhất (tối đa 400 ngày). Tính dưới `withSystemJob`; không lưu email/tên/mã đơn.
+  - Dashboard admin: GMV + đơn đã thanh toán + khách mới + lượt tải toàn nền tảng 30 ngày (biểu đồ + tổng) và top
+    gian hàng theo GMV 30 ngày (chỉ tên gian hàng + số tổng hợp — §7.9); ghi chú "số liệu đến lần tổng hợp gần nhất".
+  - **Duyệt khi triển khai M12b (2026-10-16, Quốc):** `newCustomers` đếm theo `tenant_customers.firstOrderAt` (bảng không
+    có `createdAt`; dòng chỉ tạo khi đơn đầu tiên PAID nên `firstOrderAt` = thời điểm tạo). `gieochu_app` có
+    SELECT/INSERT/UPDATE/DELETE trên `tenant_daily_stats` (bảng tổng hợp, tính lại được).
+
+## ADR-038 — M12c Báo cáo vi phạm: ai cũng báo cáo được, ẩn danh với tenant, khoá kiểm duyệt, cam kết bản quyền lưu vết
+
+- **Bối cảnh (2026-10-16):** đợt cuối M12 (đặc tả mục M12 "Báo cáo vi phạm"). Chủ dự án chốt 3 điểm (chống spam, ẩn
+  danh, cam kết); các điểm còn lại Quốc chọn phương án an toàn.
+- **Quyết định:**
+  1. **Đối tượng báo cáo:** sản phẩm, đánh giá, bài viết (bình luận chưa có — M10c). Loại: `COPYRIGHT`, `INAPPROPRIATE`,
+     `SCAM`, `OTHER`; mô tả bắt buộc (≤2000 ký tự), link bằng chứng tuỳ chọn (≤5 URL http/https).
+  2. **Ai cũng gửi được:** đã đăng nhập → lấy user; khách vãng lai → bắt buộc email. **Chống spam (chủ dự án chốt):**
+     tối đa 5 báo cáo/giờ/IP + ô ẩn (honeypot) + chặn trùng (cùng người báo cáo/email + cùng đối tượng đang OPEN).
+     Không captcha, không dịch vụ ngoài.
+  3. **Bảng `abuse_reports` (L1):** đối tượng (`targetType`, `targetId`, `tenantId`), loại, mô tả, bằng chứng,
+     người báo cáo (`reporterUserId?`, `reporterEmail`), `ip`, `status` OPEN/RESOLVED/REJECTED, quyết định, ghi chú
+     xử lý, `resolvedById`, `resolvedAt`. IP giữ theo chính sách 12 tháng như audit (dọn cùng cron).
+  4. **Ẩn danh với tenant (chủ dự án chốt):** chủ gian hàng chỉ biết loại vi phạm, nội dung bị xử lý và quyết định —
+     không bao giờ thấy email/danh tính người báo cáo. Chỉ admin thấy.
+  5. **Admin xử lý `/admin/reports`:** ẩn nội dung (đánh giá/bài viết), lưu trữ sản phẩm, khoá tenant (`LOCKED`), bác
+     bỏ. Nội dung bị admin ẩn/lưu trữ mang **khoá kiểm duyệt** (`moderationLockedAt` + lý do): tenant **không** tự
+     xuất bản lại/bỏ ẩn được cho tới khi admin gỡ khoá. Admin xem nội dung đối tượng (công khai/tenant) nhưng không
+     xem đơn/khách (§7.9; đánh giá chỉ hiện nội dung, không danh tính khách).
+  6. **Thông báo:** email cho người báo cáo (quyết định chung) và chủ gian hàng (khi có biện pháp hoặc khi tenant bị
+     khoá), qua `sendEmailNow`; lỗi gửi email không chặn việc xử lý. Audit `REPORT_SUBMITTED`, `REPORT_RESOLVED`,
+     `CONTENT_MODERATION_LOCKED/UNLOCKED`.
+  7. **Cam kết bản quyền (chủ dự án chốt):** bắt buộc tích mỗi lần **xuất bản** sản phẩm; lưu `rightsConfirmedAt` +
+     `rightsConfirmedById` (lần gần nhất). Sản phẩm đang công khai giữ nguyên, chỉ phải tích khi xuất bản lại.
+  8. **Test:** không thêm (ngân sách M12 đã đủ 2/2) — nợ test vào BACKLOG.
+
+## ADR-039 — Quyền lợi người mua khi tài liệu bị xác nhận vi phạm: chọn "tải lần cuối" hoặc "yêu cầu hoàn tiền"
+
+- **Bối cảnh (2026-10-16, chủ dự án chốt):** khi admin xử lý báo cáo bằng **lưu trữ sản phẩm** (vi phạm được xác nhận,
+  ADR-038), khách **đã mua và đã thanh toán** được 2 lựa chọn rõ ràng. Nền tảng không giữ tiền bán tài liệu (tiền về
+  thẳng tenant) nên chỉ **yêu cầu** tenant hoàn tiền; mỗi đơn chỉ 1 sản phẩm (`createOrder` 1 productId) nên hoàn tiền
+  = hoàn cả đơn bằng `markOrderRefunded` sẵn có.
+- **Quyết định:**
+  1. Khi `ARCHIVE_PRODUCT`: mọi entitlement còn hiệu lực (chưa thu hồi) của sản phẩm, thuộc đơn có số tiền > 0, chuyển
+     `remedyStatus = PENDING_CHOICE`; tải xuống bị chặn cho tới khi khách chọn. Đơn 0đ: chỉ có lựa chọn tải lần cuối.
+  2. **Lựa chọn A — tải lần cuối:** `downloadLimit = downloadsUsed + 1`, trước khi tải hiện cảnh báo (tài liệu bị gỡ do
+     vi phạm chính sách, chỉ dùng cá nhân, không phát tán, chịu trách nhiệm khi phát tán; đây là lần tải cuối).
+  3. **Lựa chọn B — yêu cầu hoàn tiền:** chặn tải vĩnh viễn, `remedyStatus = REFUND_REQUESTED`, email tenant; Studio
+     hiện yêu cầu ở trang đơn + lọc "Yêu cầu hoàn tiền"; tenant bấm "Hoàn tiền" sẵn có → `REFUNDED`. Tenant được đề nghị
+     xử lý trong **7 ngày**; admin chỉ thấy **số đếm** yêu cầu quá hạn theo tenant (§7.9) và có thể khoá tenant.
+  4. Lựa chọn **không đổi được** sau khi chọn; khách không bị giới hạn thời hạn chọn. Gỡ khoá kiểm duyệt không hoàn tác
+     lựa chọn.
+  5. Email khách (2 lựa chọn, link thư viện) và tenant (số khách bị ảnh hưởng) do hệ thống gửi; admin không thấy danh
+     sách khách. Audit `REMEDY_FINAL_DOWNLOAD_CHOSEN`, `REMEDY_REFUND_REQUESTED`.
+  6. Nút theo dõi tranh chấp hoàn tiền chi tiết → BACKLOG. Test: không thêm (nợ BACKLOG).
+- **Bổ sung ADR-039 (2026-10-16, Quốc):** (a) đơn 0đ cũng vào `PENDING_CHOICE` nhưng chỉ được chọn tải lần cuối
+  (server từ chối hoàn tiền); (b) khi entitlement có remedy (≠ NONE), tenant **không** đổi được `downloadLimit` ("Cấp
+  thêm lượt" bị chặn ở trigger + server) để giữ nghĩa "lần cuối"/"chặn vĩnh viễn"; (c) đơn được thanh toán **sau** khi
+  sản phẩm đã bị khoá kiểm duyệt (webhook muộn): entitlement tạo ra ở `PENDING_CHOICE` (gắn báo cáo gây khoá) — khách đã
+  trả tiền luôn có 2 lựa chọn; checkout mới cho sản phẩm bị khoá/không công khai bị chặn như hiện có. Email khách gửi
+  tuần tự trong `after()` — sản phẩm nhiều người mua chuyển sang job (BACKLOG).
+- **Bổ sung ADR-039 lần 2 (2026-10-17, Quốc — đính chính theo code):** (d) lựa chọn A cấp `downloadLimit = downloadsUsed +
+  max(1, số tệp khả dụng)` — **lượt dùng chung** cho cả entitlement (không đếm riêng từng tệp); UI ghi rõ "N lượt cho N
+  tệp, mỗi lượt tải một tệp". (e) Cột `remedyResolvedAt` ghi thời điểm REFUNDED (CHECK: chỉ REFUNDED mới có). (f) Tenant
+  xoá bài viết / khách xoá đánh giá đang bị khoá kiểm duyệt: **cho phép** (xoá chỉ làm nội dung vi phạm biến mất; báo cáo
+  giữ nguyên). (g) `PRODUCT_UNAVAILABLE` chặn thanh toán khi tenant không `ACTIVE` (gồm `READ_ONLY` — từ M3 v2 chỉ còn là
+  biện pháp quản trị) — khách chưa bị trừ tiền; chờ chủ dự án xác nhận.
+
+## ADR-040 — Chỉ gian hàng ACTIVE hiển thị tài liệu; READ_ONLY = trang "tạm ngưng" không có tài liệu
+
+- **Bối cảnh (2026-10-17, chủ dự án chốt):** "Gian hàng chỉ hiển thị tài liệu khi ở trạng thái Hoạt động; ngoài trạng thái
+  này tài liệu không hiển thị cho người dùng." Trước đó (§4.4 đặc tả gốc) READ_ONLY vẫn render storefront + tài liệu, chỉ
+  ẩn nút mua. Từ M3 v2 READ_ONLY chỉ còn là biện pháp quản trị.
+- **Quyết định:**
+  1. **ACTIVE:** như hiện tại. **LOCKED:** giữ nguyên (khách 404, chủ thấy thông báo).
+  2. **READ_ONLY:** khách vào `/{slug}` thấy trang thông báo "Gian hàng đang tạm ngưng hoạt động" — **không** danh sách
+     tài liệu/bài viết/đánh giá; trang tài liệu `/{slug}/{productSlug}` và bài viết trả 404. Chủ/thành viên gian hàng vẫn
+     xem storefront kèm thông báo trạng thái.
+  3. Cửa hàng `/cua-hang`, trang chủ: đã chỉ lấy tenant ACTIVE (ADR-033/035) — không đổi.
+  4. Thanh toán đơn PENDING khi tenant không ACTIVE: **chặn** (`PRODUCT_UNAVAILABLE`, chốt ADR-039 (g)). Khách đã mua
+     vẫn tải từ Thư viện (ADR-039 áp riêng cho tài liệu vi phạm).
+- **Bổ sung ADR-040 (2026-10-17, Quốc):** tenant không ACTIVE còn chặn: gửi/sửa đánh giá (409 `TENANT_NOT_ACTIVE`) —
+  **thay thế ADR-029 bổ sung (c)** ("READ_ONLY vẫn nhận đánh giá"); share link (410, cả mở link và tải); báo cáo vi phạm
+  (404). Code xác định "chủ" bằng `ownerId` (thành viên khác → BACKLOG). Để BACKLOG: coupon preview chưa kiểm trạng thái
+  tenant; đổi tên integration test READ_ONLY cũ; thống nhất cách chủ tenant LOCKED xem trang tài liệu/bài viết.
