@@ -15,12 +15,12 @@ status: Accepted (Chốt — Áp dụng chính thức)
 
 ## 1. Trạng Thái (Status)
 **ĐÃ PHÊ DUYỆT (Accepted)** — tương ứng **ADR-041** trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md), gồm "Bổ sung ADR-041" (chủ dự án
-chốt) và "Bổ sung ADR-041 lần 2" (2026-10-17). ADR-041 mục C.1 **bổ sung ADR-008** (hồ sơ không còn bắt buộc 4 trường). Bản trích ghi vào
+chốt), "Bổ sung ADR-041 lần 2" và "Bổ sung ADR-041 lần 3" (2026-10-17, Quốc đính chính theo code — xem §5). ADR-041 mục C.1 **bổ sung ADR-008** (hồ sơ không còn bắt buộc 4 trường). Bản trích ghi vào
 thư mục này theo duyệt của Quốc (brief 2026-10-17).
 
 Tiến độ (2026-10-17): **GĐ1 (dữ liệu/CMS) + GĐ2 (UI) xong code, chưa commit/deploy** ✅ `git status`; 2 migration expand
 (`20261017090000_adr041_email_change`, `20261017100000_adr041_subscription_refunds`) **đã áp DB dùng chung** 🟡 (brief Quốc). GĐ2b (menu
-mobile Studio) chưa làm.
+mobile Studio) **xong code 2026-10-17** theo ADR-042 ([[01-Architecture-Decisions/ADR-028-Shared-App-Sidebar-Logout-Mobile-Drawer|ADR-028 KB (≙ ADR-042)]]), chưa commit/deploy ✅ `git status`.
 
 Mức xác minh: ✅ Long đã đối chiếu code (2026-10-17) · 🟡 theo `docs/DECISIONS.md`/báo cáo · ❓ cần môi trường thật.
 
@@ -85,9 +85,9 @@ Chi tiết: [[02-System-Specs/Pricing-Page-Specs|Pricing-Page-Specs]], [[02-Syst
 
 ## 5. Hệ Quả (Consequences)
 - `markInvoicePaid` bỏ qua hoá đơn `REFUNDED` — webhook/xác nhận tay đến muộn không bật lại gói đã hoàn ✅.
-- Gói trên prod từng để `0` với ý "không giới hạn" sẽ thành "không được phép" ❓ (cần Quốc kiểm bảng `plans`).
+- Gói trên prod từng để `0` với ý "không giới hạn" sẽ thành "không được phép" — **Bổ sung lần 3:** Quốc kiểm bảng `plans` 2026-10-17: 4 gói, không gói nào dùng `0` 🟡 (Long không chạy truy vấn).
 - Đổi `PAYMENT_ENCRYPTION_KEY` làm mất khả năng đọc thông tin nhận tiền của yêu cầu đang chờ (cùng rủi ro với secret cổng).
-- **Lệch ADR ↔ code** (KB-Audit §21): đổi email thu hồi **mọi** phiên (ADR ghi "phiên khác"); chưa có giao diện admin xem SĐT/Tỉnh.
+- **Lệch ADR ↔ code** (KB-Audit §21) — **đã chốt ở "Bổ sung lần 3"**: đổi email thu hồi **mọi** phiên (kể cả phiên hiện tại, xoá cookie) — giữ theo code; giao diện admin xem SĐT/Tỉnh chưa có → BACKLOG; quy định "hồ sơ bắt buộc 4 trường" của ADR-008 gốc đã được thay bởi C.1.
 - Giới hạn đã biết (BACKLOG): access token sống tới hết TTL sau thu hồi; rate limit trong bộ nhớ; không xoá asset Cloudinary cũ; danh sách 34
   tỉnh chưa đối chiếu văn bản chính thức; nợ test.
 

@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { Be_Vietnam_Pro, Inter } from "next/font/google";
-import { brandColors } from "@gieochu/config/theme";
-import { getPrismaClient } from "@gieochu/db";
 import { requireAdminAccess } from "../../lib/page-guards";
+import { getAccountHeaderData } from "../../lib/account-profile";
 import { getEffectiveBrand, getEffectiveLogos } from "../../lib/branding";
 import { countOpenAbuseReports } from "../../lib/abuse-report";
 import { countPendingRefundRequests } from "../../lib/subscription-refund";
+import { AccountMenu } from "../_ui/account-menu";
 import { BrandMark } from "../_ui/brand-mark";
+import { AppSidebarPanel, SIDEBAR_FOOTER_LINK_CLASS } from "./_ui/app-sidebar";
+import { IconChevronLeft } from "./_ui/icons";
+import { SidebarDrawer } from "./_ui/sidebar-drawer";
 import { AdminSidebarNav } from "./_ui/sidebar-nav";
 
 const beVietnamPro = Be_Vietnam_Pro({
@@ -26,43 +29,56 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     countOpenAbuseReports(),
     countPendingRefundRequests(),
   ]);
-  const admin = await getPrismaClient().user.findUnique({ where: { id: user.userId }, select: { email: true } });
+  // ADR-042: họ tên + ảnh đại diện cho AccountMenu (cùng nguồn với Studio/SiteHeader).
+  const admin = await getAccountHeaderData(user.userId);
+
+  const panel = (
+    <AppSidebarPanel
+      brand={
+        <>
+          <BrandMark url={logos.logoSidebarUrl} brandName={brand.name} size={42} fallbackBg="rgba(255,255,255,0.15)" />
+          {logos.logoSidebarUrl ? (
+            <div className="text-xs leading-tight text-white/70">System Center</div>
+          ) : (
+            <div className="min-w-0">
+              <div className="truncate font-[family-name:var(--font-heading)] text-sm leading-tight font-bold">{brand.name}</div>
+              <div className="text-xs leading-tight text-white/70">System Center</div>
+            </div>
+          )}
+        </>
+      }
+      nav={<AdminSidebarNav badges={{ "/admin/reports": openReports, "/admin/billing/refunds": pendingRefunds }} />}
+      footer={
+        <Link href="/" className={SIDEBAR_FOOTER_LINK_CLASS}>
+          <IconChevronLeft className="h-3.5 w-3.5 shrink-0" /> Về trang chủ
+        </Link>
+      }
+    />
+  );
 
   return (
     <div className={`${beVietnamPro.variable} ${inter.variable} flex min-h-screen font-[family-name:var(--font-body)]`} style={{ background: "#F5F6F8" }}>
-      <aside className="hidden w-[288px] shrink-0 flex-col text-white lg:flex" style={{ background: brandColors.primary }}>
-        <div className="flex h-16 items-center gap-2.5 px-5">
-          <BrandMark url={logos.logoSidebarUrl} brandName={brand.name} size={42} fallbackBg="rgba(255,255,255,0.15)" />
-          {logos.logoSidebarUrl ? (
-            <div className="text-xs leading-tight text-white/60">System Center</div>
-          ) : (
-            <div>
-              <div className="font-[family-name:var(--font-heading)] text-sm leading-tight font-bold">{brand.name}</div>
-              <div className="text-xs leading-tight text-white/60">System Center</div>
-            </div>
-          )}
-        </div>
-        <AdminSidebarNav badges={{ "/admin/reports": openReports, "/admin/billing/refunds": pendingRefunds }} />
-        <div className="border-t border-white/10 px-4 py-4">
-          <Link href="/" className="text-xs font-medium text-white/60 hover:text-white">
-            ← Về trang chủ
-          </Link>
-        </div>
-      </aside>
+      <aside className="sticky top-0 hidden h-dvh w-[288px] shrink-0 lg:block">{panel}</aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 items-center justify-between border-b bg-white px-5 lg:px-8" style={{ borderColor: "#E5E7EB" }}>
-          <span className="text-sm font-semibold text-gray-500 lg:hidden">{brand.name} · System Center</span>
-          <span className="hidden text-sm text-gray-500 lg:block">Quản trị hệ thống</span>
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: brandColors.primary }}>
-              {(admin?.email ?? "A").slice(0, 1).toUpperCase()}
-            </div>
-            <span className="hidden text-sm font-medium text-gray-700 sm:inline">{admin?.email ?? "Admin"}</span>
+        <header className="flex h-16 items-center justify-between gap-3 border-b bg-white px-4 sm:px-5 lg:px-8" style={{ borderColor: "#E5E7EB" }}>
+          <div className="flex min-w-0 items-center gap-3">
+            <SidebarDrawer label="Menu System Center">{panel}</SidebarDrawer>
+            <span className="truncate text-sm font-semibold text-gray-600 lg:hidden">{brand.name} · System Center</span>
+            <span className="hidden text-sm text-gray-600 lg:block">Quản trị hệ thống</span>
           </div>
+          <AccountMenu
+            variant="app"
+            displayName={admin?.fullName || admin?.email || "Admin"}
+            email={admin?.email ?? null}
+            avatarUrl={admin?.avatarUrl ?? null}
+            primaryHref={null}
+            primaryLabel={null}
+            logoutRedirect="/login"
+          />
         </header>
         <main className="flex-1">{children}</main>
-        <footer className="border-t bg-white px-5 py-4 text-xs text-gray-400 lg:px-8" style={{ borderColor: "#E5E7EB" }}>
+        <footer className="border-t bg-white px-5 py-4 text-xs text-gray-500 lg:px-8" style={{ borderColor: "#E5E7EB" }}>
           © {new Date().getFullYear()} {brand.name} · System Center
         </footer>
       </div>

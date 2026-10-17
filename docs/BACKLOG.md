@@ -300,7 +300,7 @@ lộ ra 2 lỗi cả 2 đều tồn tại từ trước, không riêng module n�
 - **Chưa có luồng upload `Tenant.logoKey` / `coverKey`:** `getStorefrontProfile` đã đọc 2 cột này nhưng thực tế
   luôn `null`.
 - **Trang danh sách tài liệu `/[tenantSlug]/products`** chưa có — để bật nút "Xem tất cả" của section products.
-- **Menu mobile cho Studio** chưa có.
+- ~~**Menu mobile cho Studio** chưa có.~~ — **Xong 2026-10-17** (ADR-042: drawer `SidebarDrawer` dưới `lg`).
 - **Trang chủ hệ thống:** chưa có skip-link; mục nav "Giáo viên & Coach" / "Khám phá tài liệu" đang là `<span>`,
   chưa phải link.
 - **Chưa verify trang chi tiết sản phẩm / checkout với dữ liệu thật** (DB chưa có sản phẩm).
@@ -444,7 +444,8 @@ lộ ra 2 lỗi cả 2 đều tồn tại từ trước, không riêng module n�
 - **`loading.tsx` cho trang public** `/[tenantSlug]/posts` và `/[tenantSlug]/posts/[postId]` (Studio → Bài viết đã có).
 - **Modal xác nhận thay `window.confirm`** (xoá bài, gỡ bài; cùng mẫu với xoá đánh giá của khách).
 - **Báo trước tenant `READ_ONLY` trong editor bài viết** — hiện chỉ biết khi bấm lưu (server trả `FORBIDDEN`).
-- **Sidebar Studio đã 11 mục** — cân nhắc nhóm mục (vd Bán hàng / Nội dung / Cài đặt) khi thêm mục mới.
+- ~~**Sidebar Studio đã 11 mục** — cân nhắc nhóm mục (vd Bán hàng / Nội dung / Cài đặt) khi thêm mục mới.~~ — **Xong 2026-10-17** (ADR-042:
+  Tổng quan + nhóm Bán hàng / Nội dung / Gian hàng).
 - Danh sách Studio → Bài viết chưa hiển thị ảnh đầu bài dù `listTenantPosts` đã trả `imageUrl`.
 
 **Vận hành / dev**
@@ -705,8 +706,8 @@ nhiều trang; nhánh SEO từ CMS đã xuất bản (`seoTitle`/`seoDescription
   đang khoá, báo cáo giữ nguyên ("Bổ sung ADR-039 lần 2" (f)).
 
 **Giao diện**
-- **System Center chưa có menu mobile.**
-- **Studio chưa có nav mobile.**
+- ~~**System Center chưa có menu mobile.**~~ — **Xong 2026-10-17** (ADR-042).
+- ~~**Studio chưa có nav mobile.**~~ — **Xong 2026-10-17** (ADR-042).
 - **`VALIDATION_ERROR` chưa trả `field`** — hộp thoại báo cáo phải đoán trường lỗi theo nội dung thông điệp; đề nghị API trả
   `{ error: { code, message, field, requestId } }`.
 - **Email hỗ trợ trong khối "Bị khoá kiểm duyệt" ở Studio** (`ModerationLockNotice`) — hiện chỉ ghi "liên hệ bộ phận hỗ trợ", chưa hiện
@@ -756,7 +757,15 @@ nhiều trang; nhánh SEO từ CMS đã xuất bản (`seoTitle`/`seoDescription
 - Integration đổi mật khẩu (giữ phiên hiện tại, thu hồi phiên khác) và đổi email (hết hạn / đã dùng / email bị chiếm, vô hiệu token reset cũ).
 
 **Giao diện**
-- **Studio: menu điều hướng mobile (GĐ2b)** — chưa làm. Nút Đăng xuất đã có qua menu tài khoản ở header Studio.
+- ~~**Studio: menu điều hướng mobile (GĐ2b)** — chưa làm.~~ — **Xong 2026-10-17** (ADR-042).
 - **Editor CMS Cửa hàng: cột aside thiếu `min-w-0`** (nội dung dài có thể tràn).
 - **Danh sách phiên đăng nhập / IP, xoá tài khoản, tuỳ chọn thông báo, ảnh đại diện công khai, xác thực hai bước** — để sau theo ADR-041 C.4.
 - **Thẻ Enterprise, quà tặng theo kỳ hạn, dùng thử gói trả phí** — ngoài phạm vi ADR-041 (ghi để không đề xuất lại khi chưa có quyết định mới).
+
+## Phát sinh trong đợt ADR-042 (sidebar dùng chung System Center + Studio, Đăng xuất, drawer mobile)
+
+- ~~**System Center không có nút Đăng xuất.**~~ — **Xong 2026-10-17** (ADR-042: Đăng xuất cố định đáy sidebar + trong menu tài khoản header,
+  về `/login`). *(Ghi để giữ dấu vết — trước đợt này mục chưa có dòng riêng trong file.)*
+- **Skip-link "Bỏ qua tới nội dung"** cho shell System Center và Studio (`/account` đã có, `#noi-dung`).
+- **Cân nhắc chuyển `LogoutButton`** từ `apps/web/app/account/_ui/` về `apps/web/app/_ui/` — đang được `admin/_ui/app-sidebar.tsx` import chéo.
+- **Chưa kiểm thật:** phiên đăng nhập thật, đăng xuất thật (về `/login`), trình đọc màn hình với drawer/accordion — mới kiểm bằng dữ liệu giả.

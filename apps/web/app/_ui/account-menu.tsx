@@ -18,7 +18,7 @@ const ITEM_CLASS =
 
 /**
  * Menu tài khoản ở header (ADR-041 C7) — dùng ở `SiteHeader` (trang công khai, `variant="site"`: "Xin chào, {tên}")
- * và header app shell Studio / `/account` (`variant="app"`: tên gọn + mục "Về trang chủ").
+ * và header app shell System Center / Studio / `/account` (`variant="app"`: tên gọn + mục "Về trang chủ").
  *
  * Mẫu **disclosure** (nút `aria-expanded` + `aria-controls` mở danh sách link) thay cho `role="menu"` — `role="menu"`
  * bắt buộc điều hướng bằng phím mũi tên mà menu này không cần; link thường đi được bằng Tab. Đóng khi: bấm lại nút,
@@ -31,6 +31,7 @@ export function AccountMenu({
   primaryHref,
   primaryLabel,
   variant = "site",
+  logoutRedirect = "/",
 }: {
   displayName: string;
   /** Hiện ở đầu danh sách (dòng phụ) khi khác `displayName`. */
@@ -40,6 +41,8 @@ export function AccountMenu({
   primaryHref: string | null;
   primaryLabel: string | null;
   variant?: "site" | "app";
+  /** Trang chuyển tới sau khi đăng xuất — app shell System Center/Studio dùng `/login`. */
+  logoutRedirect?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [openedAt, setOpenedAt] = useState<string | null>(null);
@@ -76,7 +79,7 @@ export function AccountMenu({
   async function handleLogout() {
     setOpen(false);
     await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/");
+    router.push(logoutRedirect);
     router.refresh();
   }
 
@@ -94,8 +97,10 @@ export function AccountMenu({
         }}
         aria-expanded={open}
         aria-controls={panelId}
-        className="flex min-h-11 min-w-11 cursor-pointer items-center justify-center gap-2 rounded-full p-1 outline-offset-2 focus-visible:outline-2 [touch-action:manipulation]"
-        style={{ outlineColor: BLUE, color: INK }}
+        className={`flex min-h-11 min-w-11 cursor-pointer items-center justify-center gap-2 rounded-full p-1 outline-offset-2 focus-visible:outline-2 [touch-action:manipulation] ${
+          variant === "app" ? "border pr-2.5 transition-colors hover:bg-gray-50 motion-reduce:transition-none" : ""
+        }`}
+        style={{ outlineColor: BLUE, color: INK, ...(variant === "app" ? { borderColor: LINE } : {}) }}
       >
         <AccountAvatar url={avatarUrl ?? null} name={displayName} size={32} />
         <span className="sr-only sm:hidden">Tài khoản: {displayName}</span>
@@ -103,7 +108,7 @@ export function AccountMenu({
           {variant === "site" ? `Xin chào, ${displayName}` : displayName}
         </span>
         <IconChevronDown
-          className={`hidden h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none sm:block ${open ? "rotate-180" : ""}`}
+          className={`h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none ${variant === "app" ? "block" : "hidden sm:block"} ${open ? "rotate-180" : ""}`}
         />
       </button>
       <div

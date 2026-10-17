@@ -782,9 +782,9 @@ Chủ dự án chốt: gian hàng chỉ hiển thị tài liệu khi `ACTIVE`. K
 **Số test:** `pnpm test:count` = **93/94 unit, 54/55 integration** (Long chạy 2026-10-17, chỉ đếm). KB:
 `02-System-Specs/Storefront-CMS-Specs.md` §1.2, bản trích `01-Architecture-Decisions/ADR-026` (≙ ADR-040), `00-Index/KB-Audit-2026-09-26.md` §19.
 
-## Nâng cấp tài khoản + Hồ sơ + hoàn tiền gói (ADR-041) — GĐ1 + GĐ2 xong code, chưa commit/deploy — 2026-10-17
+## Nâng cấp tài khoản + Hồ sơ + hoàn tiền gói (ADR-041) — GĐ1 + GĐ2 + GĐ2b xong code, chưa commit/deploy — 2026-10-17
 
-Chủ dự án + Quốc chốt ngày 2026-10-17, ghi ở **ADR-041** (`docs/DECISIONS.md`, gồm bổ sung ADR-008 và 2 lần "Bổ sung ADR-041"). Kế hoạch:
+Chủ dự án + Quốc chốt ngày 2026-10-17, ghi ở **ADR-041** (`docs/DECISIONS.md`, gồm bổ sung ADR-008 và 3 lần "Bổ sung ADR-041"). Kế hoạch:
 [docs/ke-hoach-nang-cap-tai-khoan-va-ho-so-2026-10-17.md](ke-hoach-nang-cap-tai-khoan-va-ho-so-2026-10-17.md) (nguồn: hai đề xuất của Phong
 `docs/de-xuat-trang-bang-gia-2026-10-17.md`, `docs/de-xuat-trang-ho-so-2026-10-17.md`). Theo nguyên tắc "CMS/dữ liệu trước, UI sau".
 
@@ -813,11 +813,34 @@ AES-256-GCM). Deploy được.
 - **Kiểm thử dữ liệu thật (Hiếu, 2026-10-17):** 23/23 ca + 1 ca phụ đạt, gọi lib trực tiếp, email mock, đã dọn (audit để lại theo ADR-037). Chưa
   kiểm qua UI có đăng nhập, chưa SMTP thật. Build/lint/typecheck xanh; build sạch từ `F:\VSCODE\gieochu` (lỗi `workStore` chỉ khi 2 build song
   song chung `.next` hoặc chạy từ `f:\` chữ thường).
-- **GĐ2b:** menu điều hướng mobile Studio **chưa làm** (Đăng xuất đã có qua menu tài khoản ở header Studio).
+- **GĐ2b:** menu điều hướng mobile Studio — **xong code 2026-10-17** theo ADR-042 (mục dưới).
 - **Test:** không thêm (ADR-041) — `pnpm test:count` = **93/94 unit, 54/55 integration** (Long chạy 2026-10-17). Nợ test ghi `docs/BACKLOG.md`.
 - **Còn mở:** BG-Q9 (về Free khi vượt hạn mức Free); đổi email thu hồi mọi phiên (ADR ghi "phiên khác"); gói prod để `0` với ý không giới hạn
   cần kiểm. KB: `02-System-Specs/{Pricing-Page-Specs,Account-Profile-Specs,Payment-And-Billing}.md`, bản trích
   `01-Architecture-Decisions/ADR-027` (≙ ADR-041), `00-Index/KB-Audit-2026-09-26.md` §21.
+
+## Sidebar dùng chung System Center + Studio, Đăng xuất, drawer mobile (ADR-042) — xong code, chưa commit/deploy — 2026-10-17
+
+Chủ dự án yêu cầu: sidebar Studio cùng style System Center; dashboard admin/Studio có Đăng xuất; hoàn tất GĐ2b ADR-041. Không migration, không
+đổi API/schema, không thêm test.
+
+- **Một sidebar:** `apps/web/app/admin/_ui/sidebar-nav.tsx` — `SidebarNav` dùng chung (icon key chuỗi, badge `{count, srText, urgent?}`,
+  accordion 1 nhóm mở, nhớ `localStorage` `admin:nav:expanded`/`studio:nav:expanded`, `aria-current`, active `color-mix` từ accent) +
+  `AdminSidebarNav`. Sidebar riêng Studio `studio/[tenantSlug]/_ui/sidebar-nav.tsx` **đã xoá**. Studio: Tổng quan + Bán hàng (Đơn hàng, Khách
+  hàng, Mã giảm giá) / Nội dung (Sản phẩm, Bài viết, Trang bán hàng, Đánh giá) / Gian hàng (Hộp thư, Gói dịch vụ, Hoạt động — chỉ OWNER, Cài
+  đặt); badge bỏ hậu tố "(N)" trong nhãn.
+- **Đăng xuất:** `admin/_ui/app-sidebar.tsx` (`AppSidebarPanel`) — Đăng xuất cố định đáy sidebar (`LogoutButton tone="onDark"
+  redirectTo="/login"`); `AccountMenu` thêm `logoutRedirect` (admin/Studio `/login`; trang công khai, `/account` giữ `/`), `variant="app"` cho
+  cả header admin (viền + chevron), header admin lấy họ tên + avatar qua `getAccountHeaderData`. `LogoutButton` thêm `redirectTo`/`tone`.
+- **Mobile:** `admin/_ui/sidebar-drawer.tsx` (`SidebarDrawer`) — nút ☰ mở `<dialog>` `showModal()` chứa cùng sidebar; đóng Esc/nền/link/đổi
+  trang/lên `lg`, trả focus; `globals.css` `.app-drawer` khoá cuộn + animation tắt khi reduced-motion.
+- **Kiểm:** lint/typecheck/build đạt; xem trước dữ liệu giả 360/768/1280, bàn phím drawer. **Chưa** kiểm phiên đăng nhập thật, đăng xuất thật,
+  trình đọc màn hình. Việc còn lại: `docs/BACKLOG.md` mục "Phát sinh trong đợt ADR-042" (skip-link shell admin/Studio, chuyển `LogoutButton`
+  về `app/_ui/`).
+
+**Số test:** `pnpm test:count` = **93/94 unit, 54/55 integration** (Long chạy 2026-10-17, chỉ đếm). KB:
+`04-Operations-Runbooks/UI-Design-System.md` §5.1/§11.1/§12.6/§18.5, `02-System-Specs/User-Management-System-Center-Specs.md` §2,
+`02-System-Specs/Account-Profile-Specs.md` §5, bản trích `01-Architecture-Decisions/ADR-028` (≙ ADR-042), `00-Index/KB-Audit-2026-09-26.md` §22.
 
 ## Câu hỏi còn mở (đã chọn phương án an toàn, xem ADR tương ứng)
 

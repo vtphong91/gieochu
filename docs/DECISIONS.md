@@ -1004,3 +1004,15 @@
   phiên hiện tại, xoá cookie, phải đăng nhập lại) — chặt hơn câu "phiên khác" ở mục C.2, giữ theo code. Giao diện admin
   xem SĐT/Tỉnh của user: chưa có → BACKLOG. Bảng `plans` trên DB (Quốc kiểm 2026-10-17): 4 gói, không gói nào dùng hạn
   mức `0`. **ADR-008:** quy định "hồ sơ bắt buộc đủ 4 trường" đã được thay bởi ADR-041 C.1 (SĐT/Tỉnh tuỳ chọn).
+
+## ADR-042 — Một sidebar dùng chung cho System Center và Studio; Đăng xuất ở đáy sidebar; drawer mobile
+
+- **Bối cảnh (2026-10-17, chủ dự án yêu cầu):** sidebar Studio phải cùng style System Center; dashboard admin/Studio
+  phải có Đăng xuất (admin chưa có; Studio chỉ trong menu header, khó thấy); hoàn tất GĐ2b ADR-041 (menu mobile).
+- **Quyết định:**
+  1. Một component `SidebarNav` + `AppSidebarPanel` (`apps/web/app/admin/_ui/`) cho cả `/admin` và `/studio`; Studio
+     chia "Tổng quan" + 3 nhóm accordion (Bán hàng / Nội dung / Gian hàng); badge dạng `{count, srText, urgent}`.
+     Xoá sidebar riêng của Studio — không duy trì hai bộ.
+  2. **Đăng xuất** cố định ở đáy sidebar (tách khỏi điều hướng) + trong `AccountMenu` header; ở app shell
+     (admin/Studio) đăng xuất xong về `/login`; trang công khai và `/account` giữ về `/`.
+  3. Dưới `lg`: nút ☰ mở drawer `<dialog>` chứa cùng sidebar (focus trap, Esc/nền/đổi trang đóng, reduced-motion).

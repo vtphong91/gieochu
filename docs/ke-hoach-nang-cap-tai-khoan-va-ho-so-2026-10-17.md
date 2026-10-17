@@ -3,11 +3,11 @@ tags: [ke-hoach, pricing, account, cms, du-lieu-ca-nhan]
 date: 2026-10-17
 ---
 
-# Kế hoạch: Nâng cấp tài khoản (`/pricing` + CMS) và Hồ sơ (`/account`) — đã chốt (ADR-041), GĐ1 + GĐ2 xong code
+# Kế hoạch: Nâng cấp tài khoản (`/pricing` + CMS) và Hồ sơ (`/account`) — đã chốt (ADR-041), GĐ1 + GĐ2 + GĐ2b xong code
 
 > Người soạn: Long (tài liệu) theo brief của Quốc, 2026-10-17. **Trạng thái: ĐÃ CHỐT — ADR-041** (`docs/DECISIONS.md`, Quốc ghi
 > 2026-10-17, gồm bổ sung ADR-008 và 2 lần "Bổ sung ADR-041"); **GĐ1 + GĐ2 xong code, chưa commit/deploy** (cập nhật 2026-10-17, §0);
-> GĐ2b chưa làm. Bảng §6 ghi kết quả chốt; chỗ ADR-041 không nêu thì giữ đề xuất của Phong
+> GĐ2b (S1) xong code 2026-10-17 theo ADR-042. Bảng §6 ghi kết quả chốt; chỗ ADR-041 không nêu thì giữ đề xuất của Phong
 > (ghi rõ "theo đề xuất").
 >
 > **Nguồn:** hai đề xuất của Phong (giữ nguyên contract/đề xuất, không thêm nghiệp vụ):
@@ -38,7 +38,7 @@ date: 2026-10-17
 | A6, A7 | ✅ Xong code | `/pricing` dựng lại, Billing `?plan=` |
 | B8–B10 | ✅ Xong code | ⚠️ Khác B8/HS-Q11: `/account` là **app shell fluid + header gọn 64px**, không phải header/footer công khai + `container-page` |
 | G2 | ✅ | Build/lint/typecheck xanh; Hiếu kiểm dữ liệu thật 23/23 ca + 1 ca phụ (gọi lib trực tiếp, email mock) — **chưa** qua UI có đăng nhập, **chưa** SMTP thật |
-| S1 (GĐ2b) | ⏳ Chưa làm | Còn **menu điều hướng mobile Studio**; nút Đăng xuất đã có qua menu tài khoản ở header Studio |
+| S1 (GĐ2b) | ✅ Xong code (2026-10-17, ADR-042) | Không dùng `MobileNav` như §4.3 dự kiến: sidebar dùng chung `SidebarNav` + `AppSidebarPanel` cho System Center và Studio, dưới `lg` mở bằng drawer `<dialog>` (`SidebarDrawer`); Đăng xuất cố định đáy sidebar + trong menu tài khoản header (về `/login`). Chưa kiểm phiên đăng nhập thật/trình đọc màn hình |
 
 Test: không thêm — **93/94 unit, 54/55 integration** (`pnpm test:count`, 2026-10-17). Nợ test, việc để sau: `docs/BACKLOG.md` mục "Phát sinh trong
 đợt ADR-041". KB: `obsidian-knowledge-base/02-System-Specs/{Pricing-Page-Specs,Account-Profile-Specs,Payment-And-Billing}.md`, bản trích
@@ -261,6 +261,9 @@ tiền, thuê bao **về Free ngay** (không mất dữ liệu). Từ chối kè
 | Bước | Việc | Ai | Phụ thuộc | Tiêu chí xong |
 |---|---|---|---|---|
 | S1 | Menu mobile Studio tái dùng mẫu `MobileNav` (`UI-Design-System.md` §14.6) + menu tài khoản ở header có "Đăng xuất" (✅ sidebar Studio hiện `hidden … lg:flex`, không có nút Đăng xuất) | Phong | **Sau GĐ1**, chạy song song GĐ2 (Quốc chốt 2026-10-17) | Điều hướng + Đăng xuất dùng được dưới `lg`; target ≥ 44px |
+
+> **Kết quả (2026-10-17):** S1 làm theo **ADR-042** — drawer `SidebarDrawer` chứa sidebar dùng chung (không dùng `MobileNav`), áp cho cả Studio
+> lẫn System Center; xem `obsidian-knowledge-base/04-Operations-Runbooks/UI-Design-System.md` §5.1.
 
 **PLAN_CHECK:** luồng UX + mô hình dữ liệu có trước giao diện (§2, §3) · GĐ1 dữ liệu/CMS tách khỏi GĐ2 UI (§4.1/§4.2) · không hard-code
 chữ/giá/FAQ/nhãn trên `/pricing` (mọi chữ trong `CmsPage`, giá/hạn mức từ `Plan`). Hồ sơ không có chữ nghiệp vụ cần CMS ([HS] đầu trang).

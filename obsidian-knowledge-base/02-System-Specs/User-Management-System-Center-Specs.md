@@ -34,7 +34,11 @@ liệu kinh doanh của một gian hàng là riêng tư giữa Tenant Owner và 
 
 ## 2. Điều Hướng Thật Của `/admin/**` (`AdminSidebarNav`)
 
-Lấy trực tiếp từ `apps/web/app/admin/_ui/sidebar-nav.tsx` — nguồn sự thật duy nhất cho "System Center có gì":
+Lấy trực tiếp từ `apps/web/app/admin/_ui/sidebar-nav.tsx` (mảng `ADMIN_STANDALONE` + `ADMIN_GROUPS`, đối chiếu 2026-10-17 ✅) — nguồn sự thật duy
+nhất cho "System Center có gì". Từ ADR-042 menu dựng bằng `SidebarNav` **dùng chung với Studio** (accordion 1 nhóm mở, nhớ nhóm ở
+`localStorage` `admin:nav:expanded`), nằm trong `AppSidebarPanel` có nút **Đăng xuất** cố định đáy (về `/login`); dưới `lg` mở bằng nút ☰
+(drawer `<dialog>`). Header có menu tài khoản (họ tên + avatar, cũng có Đăng xuất). Chi tiết giao diện:
+[[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §5.1 · quyết định [[01-Architecture-Decisions/ADR-028-Shared-App-Sidebar-Logout-Mobile-Drawer|ADR-028 KB (≙ ADR-042)]].
 
 ```mermaid
 flowchart TB
@@ -50,11 +54,13 @@ flowchart TB
     subgraph G3["Nội dung"]
         C1["/admin/cms — Trang CMS"]
         C3["/admin/cms/shop — Trang Cửa hàng (ADR-035)"]
+        C4["/admin/cms/pricing — Trang Bảng giá (ADR-041)"]
         C2["/admin/categories — Danh mục tài liệu"]
     end
     subgraph G4["Tài chính"]
         F1["/admin/billing/payment — Thanh toán nền tảng"]
         F2["/admin/billing/invoices — Hoá đơn"]
+        F3["/admin/billing/refunds — Hoàn tiền gói (ADR-041) — badge số yêu cầu chờ duyệt"]
     end
     subgraph G5["Cấu hình hệ thống"]
         S0["/admin/settings/general — Cấu hình chung (ADR-032)"]
@@ -160,5 +166,5 @@ lượng theo vai trò (aggregate), không bao giờ trả về danh sách đơn
 * [[Payment-And-Billing]] — `PlatformPaymentConfig`, hoá đơn subscription ([Payment-And-Billing.md](./Payment-And-Billing.md))
 * CLAUDE.md §7.9 — nguyên tắc "System admin không có route nào đọc chi tiết đơn hàng/khách hàng của tenant"
 * Mã nguồn: `apps/web/lib/admin-users.ts`, `apps/web/lib/admin-roles.ts`, `apps/web/lib/page-guards.ts`,
-  `apps/web/app/admin/_ui/sidebar-nav.tsx`, `packages/auth/src/tokens/refresh-token.ts`,
+  `apps/web/app/admin/_ui/{sidebar-nav,app-sidebar,sidebar-drawer}.tsx`, `apps/web/app/admin/layout.tsx`, `packages/auth/src/tokens/refresh-token.ts`,
   `packages/db/prisma/schema.prisma` (`User`, `UserStatus`, `RefreshToken`)

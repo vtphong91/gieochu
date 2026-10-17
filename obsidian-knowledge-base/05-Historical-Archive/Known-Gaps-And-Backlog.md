@@ -103,7 +103,7 @@ video/membership, app mobile, hoá đơn điện tử, đa tiền tệ, partitio
 - ~~Chính sách tự xoá tin nhắn cũ~~ — đã quyết 2026-09-26: **không tự xoá** (giữ tới khi tenant xoá tay hoặc tenant
   bị xoá — FK cascade; xem lại nếu có yêu cầu pháp lý), xem ADR-023.
 - CSP `img-src` chưa cho host storage public (ảnh bìa sản phẩm); chưa có luồng upload `Tenant.logoKey/coverKey`.
-- Thiếu trang `/[tenantSlug]/products`, menu mobile Studio, skip-link + nav thật ở trang chủ; chưa verify trang
+- Thiếu trang `/[tenantSlug]/products`, ~~menu mobile Studio~~ (xong 2026-10-17, ADR-042), skip-link + nav thật ở trang chủ; chưa verify trang
   sản phẩm/checkout với dữ liệu thật.
 
 **Tách header/footer hệ thống (ADR-025) — 2026-09-26** (chi tiết đầy đủ: mục cùng tên trong

@@ -134,8 +134,13 @@ author: Long
 - Thẻ dẫn tới Billing (`/studio/{slug}/billing`, có `?plan=`) hoặc `/pricing` ("So sánh các gói"); khách chưa có gian hàng thấy thẻ "Mở gian
   hàng miễn phí" → `/studio`. Không dựng lại form gia hạn trong `/account` — Billing Studio là nơi duy nhất (ADR-021).
 - **Menu tài khoản** (`app/_ui/account-menu.tsx`): ảnh đại diện + họ tên, dạng **disclosure** (`aria-expanded`/`aria-controls`, không
-  `role="menu"`); dùng ở `SiteHeader` (`variant="site"`) và header app shell Studio + `/account` (`variant="app"`) — mục Hồ sơ, Bảo mật, Thư
-  viện, Về trang chủ, **Đăng xuất**. Dữ liệu header `getAccountHeaderData(userId)` (C7, chỉ của chính user).
+  `role="menu"`); dùng ở `SiteHeader` (`variant="site"`) và header app shell **System Center** (từ ADR-042) + Studio + `/account`
+  (`variant="app"`) — mục Hồ sơ, Bảo mật, Thư viện, Về trang chủ, **Đăng xuất**. Dữ liệu header `getAccountHeaderData(userId)` (C7, chỉ của
+  chính user).
+- **Đăng xuất đi đâu (ADR-042 ✅ code 2026-10-17):** System Center và Studio → `/login` (prop `logoutRedirect="/login"` của `AccountMenu`, và nút
+  Đăng xuất cố định đáy sidebar `LogoutButton redirectTo="/login"`); trang công khai (`SiteHeader`) và `/account` (menu + `LogoutButton` mặc
+  định) → `/`. Cả hai nút gọi cùng `POST /api/auth/logout`. Đăng xuất thật qua UI có đăng nhập chưa kiểm ❓.
+  Quyết định: [[01-Architecture-Decisions/ADR-028-Shared-App-Sidebar-Logout-Mobile-Drawer|ADR-028 KB (≙ ADR-042)]].
 
 ---
 

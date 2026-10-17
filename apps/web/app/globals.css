@@ -247,3 +247,31 @@ html:has(.studio-preview-bar) {
 .studio-editor.studio-post-editor .gieochu-editor-content {
   min-height: 22rem;
 }
+
+/* Drawer điều hướng app shell dưới lg (`admin/_ui/sidebar-drawer.tsx`, System Center + Studio): khoá cuộn trang nền khi
+   mở; panel trượt vào từ trái + nền mờ hiện dần — tắt hẳn khi người dùng bật giảm chuyển động. */
+html:has(dialog.app-drawer[open]) {
+  overflow: hidden;
+}
+dialog.app-drawer[open] .app-drawer-panel {
+  animation: app-drawer-in 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+dialog.app-drawer[open]::backdrop {
+  animation: app-drawer-fade 200ms ease-out;
+}
+@keyframes app-drawer-in {
+  from {
+    transform: translateX(-100%);
+  }
+}
+@keyframes app-drawer-fade {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  dialog.app-drawer[open] .app-drawer-panel,
+  dialog.app-drawer[open]::backdrop {
+    animation: none;
+  }
+}

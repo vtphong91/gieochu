@@ -261,11 +261,34 @@ module that depends on useState into a Server Component module".
 thay vì tự viết class Tailwind rời rạc cho bảng/badge/form — tránh lặp lại việc phân mảnh CSS mà kit này
 được tạo ra để giải quyết.
 
+### 5.1. App shell System Center + Studio — sidebar dùng chung, Đăng xuất, drawer mobile (ADR-042) ✅
+
+Đối chiếu working tree 2026-10-17 (**chưa commit/deploy**). Quyết định: [[01-Architecture-Decisions/ADR-028-Shared-App-Sidebar-Logout-Mobile-Drawer|ADR-028 KB (≙ ADR-042)]].
+**Một bộ duy nhất** cho `/admin` và `/studio/{slug}` — sidebar riêng của Studio (`studio/[tenantSlug]/_ui/sidebar-nav.tsx`) **đã xoá**, không
+dựng lại sidebar thứ hai.
+
+| Component (file) | Vai trò |
+| :--- | :--- |
+| `SidebarNav` (`admin/_ui/sidebar-nav.tsx`, client) | Props `{ standalone, groups, rootHref, storageKey, ariaLabel }`. Mục đứng riêng ở đầu + nhóm **accordion** (1 nhóm mở; nút nhóm `aria-expanded`/`aria-controls`, chevron xoay). Nhóm mở theo ưu tiên: thao tác tay trong phiên (kể cả đóng) → nhóm chứa trang đang xem → nhóm lưu `localStorage[storageKey]` → nhóm đầu. Active = href khớp **dài nhất** (gốc khu vực và `/admin/settings` là tiền tố của mục khác), `aria-current="page"`, nền/chữ `color-mix` từ `brandColors.accent` (không hex cứng). Mục ≥ 44px dưới `lg`. Icon bằng **key chuỗi** (`SidebarNavIcon` — 18 key trong `NAV_ICONS`, §8.5) |
+| `SidebarNavBadge = { count, srText, urgent? }` | Pill số (`99+` khi > 99) `aria-hidden` + `srText` `sr-only` đủ ngữ cảnh. `urgent` → nền `#B91C1C` chữ trắng + `IconAlertTriangle` (không chỉ bằng màu); thường → nền `accentSoft` chữ `ink`. Nhóm **đang đóng** hiện tổng badge các mục con ("N mục cần xử lý[, có mục quá hạn]"). Nhãn mục **không** còn hậu tố "(N)" |
+| `AdminSidebarNav({ badges })` (cùng file) | Cấu hình menu System Center (`ADMIN_STANDALONE` + `ADMIN_GROUPS`), `storageKey="admin:nav:expanded"`, `ariaLabel="Điều hướng System Center"`; `badges` theo href → `srText` riêng ("N báo cáo chờ xử lý", "N yêu cầu hoàn tiền chờ duyệt") |
+| `AppSidebarPanel({ brand, nav, footer })` (`admin/_ui/app-sidebar.tsx`, server được) | Nền `brandColors.primary`, chữ trắng: khối brand cao 64px · `nav` (cuộn riêng) · `footer` link phụ (class `SIDEBAR_FOOTER_LINK_CLASS`, 44px dưới `lg`) · **Đăng xuất cố định đáy**, tách bằng đường kẻ (`LogoutButton tone="onDark" redirectTo="/login"`) |
+| `SidebarDrawer({ label, children })` (`admin/_ui/sidebar-drawer.tsx`, client) | Dưới `lg`: nút ☰ 44×44 (`aria-label="Mở menu điều hướng"`, `aria-expanded`, `aria-controls`) mở `<dialog>` bằng `showModal()` → trình duyệt tự bẫy focus + Esc. Đóng thêm khi bấm nút đóng (chữ `sr-only` "Đóng menu điều hướng"), bấm nền mờ, bấm link trong drawer, đổi `pathname`, màn hình lên `lg`; đóng xong trả focus nút ☰. Panel rộng 288px (tối đa `100vw − 4rem`); nội dung chỉ render khi mở (không trùng `nav`) |
+| `.app-drawer` (`globals.css`) | `html:has(dialog.app-drawer[open])` khoá cuộn; panel trượt từ trái + nền mờ hiện dần 200ms; **tắt** khi `prefers-reduced-motion: reduce` |
+
+**Bố cục layout** (`admin/layout.tsx`, `studio/[tenantSlug]/layout.tsx`): tạo **một** phần tử `panel = <AppSidebarPanel …/>`, đặt vào
+`<aside className="sticky top-0 hidden h-dvh w-[288px] lg:block">` và vào `<SidebarDrawer>` trong header. Header 64px: bên trái nút ☰ + tên
+gọn (dưới `lg`) / nhãn khu vực (từ `lg`), bên phải `AccountMenu variant="app" logoutRedirect="/login"` (§18.5). Chân sidebar: System Center
+"Về trang chủ"; Studio "Xem trang công khai" (tab mới, chữ `sr-only` "(mở tab mới)") + "Về trang chủ".
+
+**Kiểm** 🟡 (báo cáo Quốc): lint/typecheck/build đạt; xem trước dữ liệu giả 360/768/1280, bàn phím trong drawer. **Chưa** kiểm phiên đăng nhập
+thật, đăng xuất thật, trình đọc màn hình ❓.
+
 ---
 
 ## 6. Bộ Icon Dùng Chung (`apps/web/app/admin/_ui/icons.tsx`)
 
-42 icon SVG dạng component (`IconProps = { className?: string }`; đếm `export function Icon` 2026-09-28 sau M10b ✅ — thêm
+**46** icon SVG dạng component (đếm lại `export function Icon` 2026-10-17 ✅; danh sách dưới là mốc 42 của 2026-09-28, các icon thêm sau — `IconMenu`, `IconClose`, `IconShoppingBag`… — ghi ở §14.6 và các mục tương ứng) (`IconProps = { className?: string }`; mốc 2026-09-28 sau M10b — thêm
 `IconNewspaper` (mục "Bài viết" sidebar Studio, key `posts`; icon trạng thái rỗng) và `IconPin` (ghim bài), ADR-029 M10b), dùng chung cho cả System Center và
 Studio, cùng vị trí `_ui` với `kit.tsx`:
 
@@ -426,8 +449,9 @@ Heading Montserrat + body Inter qua `[tenantSlug]/_ui/fonts.ts`, biến font g�
 Server Component **không được** truyền component (hàm) sang Client Component — lỗi "Functions cannot be passed
 directly to Client Components". Bài học thật: layout Studio truyền `Icon: IconGrid…` vào `TenantSidebarNav`
 ("use client") làm **mọi `/studio/*` trả 500** (🟡 lỗi runtime theo báo cáo; bản sửa ✅ đã đọc code). Cách đúng:
-layout gửi **key chuỗi** (`icon: "grid"`), Client Component giữ bảng `NAV_ICONS` map key → component
-(`studio/[tenantSlug]/_ui/sidebar-nav.tsx`, type `TenantNavIcon`). Áp dụng cho mọi prop dạng component/hàm.
+layout gửi **key chuỗi** (`icon: "grid"`), Client Component giữ bảng `NAV_ICONS` map key → component. Từ ADR-042 bảng này nằm ở
+`admin/_ui/sidebar-nav.tsx` (type `SidebarNavIcon`, dùng chung System Center + Studio — §5.1); file `TenantSidebarNav` cũ đã xoá ✅.
+Áp dụng cho mọi prop dạng component/hàm.
 
 ### 8.6. Pattern form công khai: `useActionState` + honeypot
 
@@ -705,8 +729,8 @@ thị là **"Cảm nhận"**, **bỏ sao** (trường `rating` cũ vẫn giữ t
   nút Khôi phục; đánh giá `REFUNDED` → nút khoá `disabled` + `aria-describedby` giải thích. Mọi nút dùng
   `RowActionButton size="touch"`. Kết quả qua vùng `role="status"`.
 - Trang danh sách: lọc trạng thái/sản phẩm/số sao, phân trang cursor `?cursor=`.
-- **Sidebar Studio:** mục **"Đánh giá (N)"** (icon `IconStarOutline`, key `star`) — N = số đánh giá `VISIBLE` **chưa trả lời**,
-  `99+` khi > 99; N = 0 → chỉ "Đánh giá". Tổng quan Studio có `StatCard` "Đánh giá mới" (7 ngày gần nhất).
+- **Sidebar Studio:** mục **"Đánh giá"** (icon `IconStarOutline`, key `star`, nhóm "Nội dung") kèm badge pill N = số đánh giá `VISIBLE`
+  **chưa trả lời** (`99+` khi > 99; N = 0 → không có pill; trình đọc màn hình "N đánh giá chưa trả lời"). Trước ADR-042 là nhãn "Đánh giá (N)". Tổng quan Studio có `StatCard` "Đánh giá mới" (7 ngày gần nhất).
 - Ghi nhận khi đối chiếu: `review-card.tsx` khai màu hex cục bộ (`#12213A`, `#6B7280`, `#E5E7EB`, `#0F3B82`) thay vì đọc
   `brandColors` như `review-composer.tsx` ✅ (đọc code) — ghi để Phong/Quốc cân nhắc, không phải lỗi hành vi.
 
@@ -719,9 +743,17 @@ thị là **"Cảm nhận"**, **bỏ sao** (trường `rating` cũ vẫn giữ t
 
 ### 11.1. Sidebar Studio
 
-Mục **"Bài viết"** (icon `IconNewspaper`, key `posts`) đứng ngay sau "Sản phẩm" → sidebar Studio có **11 mục**: Tổng quan,
-Đơn hàng, Khách hàng, Sản phẩm, Bài viết, Mã giảm giá, Trang bán hàng, Đánh giá (N), Hộp thư (N), Gói dịch vụ, Cài đặt ✅
-(`studio/[tenantSlug]/layout.tsx`). Cân nhắc nhóm mục khi sidebar dài — BACKLOG.
+Từ ADR-042 sidebar Studio dùng `SidebarNav` chung (§5.1) với `storageKey="studio:nav:expanded"`, `ariaLabel="Điều hướng Studio"` ✅
+(`studio/[tenantSlug]/layout.tsx`, mảng `NAV_STANDALONE` + `NAV_GROUPS`):
+
+| Vị trí | Mục (icon key) | Badge |
+| :-- | :-- | :-- |
+| Đứng riêng | Tổng quan (`grid`) | — |
+| Nhóm **Bán hàng** (`shoppingBag`) | Đơn hàng (`receipt`) · Khách hàng (`users`) · Mã giảm giá (`tag`) | Đơn hàng: số yêu cầu hoàn tiền của khách chờ xử lý (ADR-039), `urgent` khi có mục quá hạn |
+| Nhóm **Nội dung** (`doc`) | Sản phẩm (`package`) · **Bài viết** (`posts`) · Trang bán hàng (`layers` — trước là `store`) · Đánh giá (`star`) | Đánh giá: số chưa trả lời |
+| Nhóm **Gian hàng** (`store`) | Hộp thư (`mail`) · Gói dịch vụ (`card`) · Hoạt động (`eye`, **chỉ `OWNER`** — ADR-037) · Cài đặt (`gear`) | Hộp thư: số tin nhắn mới |
+
+Trước ADR-042: danh sách phẳng 11 mục (12 với OWNER), số đếm nằm trong nhãn "(N)" — đã thay. Mục BACKLOG "nhóm mục khi sidebar dài" đã xong.
 
 ### 11.2. Studio → Bài viết — danh sách (`studio/[tenantSlug]/posts/page.tsx` + `_ui/post-list.tsx`)
 
@@ -858,6 +890,10 @@ Quyết định: [[01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-F
 
 Nhóm cài đặt hệ thống nay có: **"Cấu hình chung"** → `/admin/settings/general` (`IconGear`), **"Email hỗ trợ"** →
 `/admin/settings` (`IconMail`), rồi "Nhận diện thương hiệu", "Lưu trữ file", "Cloudinary Upload", "Cấu hình Mail" như cũ.
+
+Từ ADR-042 (2026-10-17 ✅): `AdminSidebarNav` là lớp cấu hình trên `SidebarNav` dùng chung (§5.1) — icon theo key chuỗi, badge pill, Đăng xuất
+ở đáy `AppSidebarPanel`, drawer dưới `lg`. Cấu trúc 1 mục đứng riêng + 6 nhóm giữ nguyên; sơ đồ đầy đủ:
+[[02-System-Specs/User-Management-System-Center-Specs|User-Management-System-Center-Specs]] §2.
 
 ### 12.7. Thương hiệu và múi giờ trên giao diện
 
@@ -1270,12 +1306,13 @@ Long chưa chạy; brief không kèm kết quả kiểm của Phong.
   "… · quá hạn" (đỏ — chữ nói rõ, không chỉ màu).
 - Chi tiết đơn: `OrderItemRemedy` theo từng dòng (trạng thái, ngày chọn, hạn xử lý = `remedyChosenAt` + 7 ngày, quá hạn tô đỏ + chữ "Quá hạn"),
   hướng dẫn trỏ tới nút "Đánh dấu đã hoàn tiền"; ẩn "Cấp thêm lượt" khi có remedy.
-- Sidebar Studio: `TenantNavItem.badge = { text, srText, urgent? }` — badge số yêu cầu hoàn tiền cạnh "Đơn hàng" (nền trắng chữ `#12213A`;
-  `urgent` nền `#B91C1C` chữ trắng), chữ hiển thị `aria-hidden`, `srText` đầy đủ ("N yêu cầu hoàn tiền chờ xử lý, M quá hạn").
+- Sidebar Studio: badge số yêu cầu hoàn tiền cạnh "Đơn hàng", `srText` đầy đủ ("N yêu cầu hoàn tiền chờ xử lý, M quá hạn"), `urgent` khi có
+  mục quá hạn. Từ ADR-042 kiểu là `SidebarNavBadge = { count, srText, urgent? }` của `SidebarNav` chung (§5.1 — pill `accentSoft`/`ink`,
+  `urgent` nền `#B91C1C` + icon cảnh báo); kiểu cũ `TenantNavItem.badge = { text, … }` đã bỏ cùng file sidebar Studio.
 
 ### 17.7. Việc còn mở (BACKLOG, liên quan UI)
 
-System Center chưa có menu mobile; Studio chưa có nav mobile; `VALIDATION_ERROR` chưa trả `field`; email hỗ trợ trong khối khoá Studio; nút theo
+~~System Center chưa có menu mobile; Studio chưa có nav mobile~~ — xong ADR-042 (§5.1); `VALIDATION_ERROR` chưa trả `field`; email hỗ trợ trong khối khoá Studio; nút theo
 dõi tranh chấp hoàn tiền.
 
 ---
@@ -1343,8 +1380,13 @@ tác đọc qua **một** vùng `role="status"` ẩn, không dời focus; thêm 
   (giao diện đổi ngay, lỗi thì trả ảnh cũ).
 * **Menu tài khoản** (`app/_ui/account-menu.tsx`): mẫu **disclosure** — nút `aria-expanded` + `aria-controls`, danh sách link trong `<nav
   aria-label="Tài khoản">`, **không** `role="menu"` (menu này không cần phím mũi tên; link đi bằng Tab). Nút ≥ 44×44, dưới `sm` chỉ hiện avatar +
-  tên `sr-only`. `variant="site"` ("Xin chào, {tên}") ở `SiteHeader`; `variant="app"` ở header Studio và `/account`. Có mục **Đăng xuất**.
+  tên `sr-only`. `variant="site"` ("Xin chào, {tên}") ở `SiteHeader`; `variant="app"` ở header **System Center** (từ ADR-042, họ tên + avatar
+  qua `getAccountHeaderData`), Studio và `/account` — `variant="app"` có viền + chevron ở mọi kích thước. Có mục **Đăng xuất**; prop
+  `logoutRedirect` (mặc định `/`): System Center/Studio truyền `/login`, `SiteHeader` và `/account` giữ `/`.
   Header Studio thay khối avatar-chữ-cái + email cũ bằng menu này.
+* **`LogoutButton`** (`account/_ui/logout-button.tsx`): prop `redirectTo` (mặc định `/`) và `tone` — `light` (đỏ `#B91C1C` trên nền trắng, dùng
+  ở `/account`) / `onDark` (đỏ nhạt `#FCA5A5` trên nền primary, dùng ở đáy `AppSidebarPanel` — §5.1). Gọi `POST /api/auth/logout` rồi
+  `router.push(redirectTo)`.
 
 ### 18.6. Hoàn tiền gói
 
@@ -1359,7 +1401,9 @@ tác đọc qua **một** vùng `role="status"` ẩn, không dời focus; thêm 
 
 ### 18.7. Việc còn mở (BACKLOG, liên quan UI)
 
-* Studio chưa có **menu điều hướng mobile** (GĐ2b) — nút Đăng xuất đã có qua menu tài khoản ở header Studio (mọi kích thước) ✅.
+* ~~Studio chưa có **menu điều hướng mobile** (GĐ2b)~~ — **xong 2026-10-17** theo ADR-042 (`SidebarDrawer`, §5.1).
+* Shell System Center/Studio chưa có skip-link "Bỏ qua tới nội dung" (`/account` đã có) — BACKLOG (ADR-042).
+* Cân nhắc chuyển `LogoutButton` từ `account/_ui/` về `app/_ui/` (đang được `admin/_ui/app-sidebar.tsx` import chéo) — BACKLOG (ADR-042).
 * Editor CMS **Cửa hàng**: cột aside thiếu `min-w-0` (nội dung dài có thể tràn).
 * Hex cứng còn ở `owned-tenant-card.tsx` (`#E5E7EB`, `#B91C1C`), thanh 80% Billing (`#F3F4F6`) — thay bằng token khi có token màu danger/line.
 * Ghi chú tương phản khi admin đổi màu thương hiệu (đề xuất Phong) — chưa có cơ chế kiểm.
@@ -1371,6 +1415,7 @@ tác đọc qua **một** vùng `role="status"` ẩn, không dời focus; thêm 
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * `apps/web/app/admin/_ui/kit.tsx`, `apps/web/app/admin/_ui/kit-interactive.tsx`, `apps/web/app/admin/_ui/icons.tsx`
+* `apps/web/app/admin/_ui/{sidebar-nav,app-sidebar,sidebar-drawer}.tsx`, `apps/web/app/admin/layout.tsx`, `apps/web/app/studio/[tenantSlug]/layout.tsx`, `apps/web/app/account/_ui/logout-button.tsx`, `apps/web/app/globals.css` (`.app-drawer`) (§5.1) · [[01-Architecture-Decisions/ADR-028-Shared-App-Sidebar-Logout-Mobile-Drawer|ADR-028 (≙ ADR-042)]]
 * `packages/config/src/theme.ts` — design tokens màu + tên biến font
 * `apps/web/app/globals.css` — `@utility container-page/prose/narrow` (§4)
 * `docs/DECISIONS.md` ADR-025 (tenant chỉ sở hữu nội dung storefront), ADR-024 (độ rộng layout), ADR-023 (storefront tenant theo section CMS)
