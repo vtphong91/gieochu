@@ -1,11 +1,14 @@
 import { z } from "zod";
+import { resolveRawEnv } from "./db-url-builder";
 
 /**
- * ADR-032: env runtime chỉ còn hạ tầng + secret. Bắt buộc: APP_URL, DATABASE_URL, DIRECT_URL,
+ * ADR-032 / ADR-037: env runtime chỉ còn hạ tầng + secret. Bắt buộc: APP_URL, DATABASE_URL, DIRECT_URL,
  * JWT_ACCESS_SECRET, JWT_ISSUER, JWT_AUDIENCE, PAYMENT_ENCRYPTION_KEY, STORAGE_ENCRYPTION_KEY
- * (+ NODE_ENV do nền tảng đặt). Thương hiệu (SystemBranding) và cấu hình nghiệp vụ/TTL
- * (SystemSettings) quản lý ở System Center, lưu DB — không đặt qua env. Múi giờ hiển thị là hằng
- * `DISPLAY_TIME_ZONE` trong @gieochu/core.
+ * (+ NODE_ENV do nền tảng đặt). Các chuỗi URL (DATABASE_URL, DIRECT_URL, APP_URL) có thể được
+ * cung cấp trực tiếp hoặc tự động lắp ghép từ các biến thành phần (DB_HOST, DB_USER, DB_PASSWORD,
+ * DB_NAME, DB_PORT, APP_HOST, APP_PORT, v.v.).
+ * Thương hiệu (SystemBranding) và cấu hình nghiệp vụ/TTL (SystemSettings) quản lý ở System Center,
+ * lưu DB — không đặt qua env. Múi giờ hiển thị là hằng `DISPLAY_TIME_ZONE` trong @gieochu/core.
  */
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -18,6 +21,22 @@ const envSchema = z.object({
   // process.env on dev/CI machines. It must never be set on Vercel/runtime.
   /** Dev/CI only. */
   TEST_DATABASE_URL: z.string().optional(),
+
+  // Granular DB parts (optional at schema level, assembled into DATABASE_URL/DIRECT_URL before parse)
+  DB_HOST: z.string().optional(),
+  DB_PORT: z.coerce.number().int().optional(),
+  DB_NAME: z.string().optional(),
+  DB_USER: z.string().optional(),
+  DB_PASSWORD: z.string().optional(),
+  DB_POOLED_HOST: z.string().optional(),
+  DB_POOLED_PORT: z.coerce.number().int().optional(),
+  DB_SSLMODE: z.string().optional(),
+
+  // Granular App URL parts
+  APP_HOST: z.string().optional(),
+  APP_PORT: z.coerce.number().int().optional(),
+  APP_PROTOCOL: z.enum(["http", "https"]).optional(),
+
 
   JWT_ACCESS_SECRET: z.string().min(32, "JWT_ACCESS_SECRET phải có ít nhất 32 ký tự"),
   JWT_ISSUER: z.string().min(1),
@@ -75,7 +94,8 @@ export class EnvValidationError extends Error {
  * required variable is missing or malformed, per docs/GIEOCHU_PROMPT_MVP_PHASE1.md M0.
  */
 export function parseEnv(raw: Record<string, string | undefined>): Env {
-  const result = envSchema.safeParse(raw);
+  const resolved = resolveRawEnv(raw);
+  const result = envSchema.safeParse(resolved);
   if (!result.success) {
     throw new EnvValidationError(result.error.issues);
   }

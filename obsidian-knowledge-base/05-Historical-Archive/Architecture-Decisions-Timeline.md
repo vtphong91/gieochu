@@ -5,12 +5,12 @@ tags:
   - adr
   - history
 date: 2026-09-26
-updated: 2026-10-15
+updated: 2026-10-17
 ---
 
 # Architecture Decisions Timeline — Gieo Chữ
 
-Mục lục đầy đủ theo trình tự đánh số của **35 ADR thật** (ADR-001…ADR-035), nguồn duy nhất: [`docs/DECISIONS.md`](../../docs/DECISIONS.md).
+Mục lục đầy đủ theo trình tự đánh số của **38 ADR thật** (ADR-001…ADR-038), nguồn duy nhất: [`docs/DECISIONS.md`](../../docs/DECISIONS.md).
 Đây chỉ là "mục lục theo thời gian" (một dòng mỗi ADR) — không lặp lại toàn văn Bối cảnh/Quyết định/Lý do.
 
 Xem [[01-Architecture-Decisions/README|01-Architecture-Decisions]] để có nội dung đầy đủ của các ADR quan
@@ -53,5 +53,8 @@ trọng nhất; trang này chỉ là mốc thời gian đầy đủ 29 quyết �
 | ADR-033 | Trang chủ hệ thống dùng dữ liệu thật (số liệu, danh mục, giáo viên, tài liệu nổi bật, số đã bán) | Cột cache `products.soldCount` (đơn FULFILLED, trừ entitlement đã thu hồi), trang chủ không đọc `orders`; số liệu nổi bật thật, ô = 0 ẩn; chip từ danh mục có tài liệu Công khai; giáo viên/tài liệu nổi bật = ghim + tự bù theo điểm đánh giá rồi mới nhất; giữ nhập tay Hero/Vì sao chọn/Mở gian hàng/Cảm nhận người dùng/CTA. Bổ sung theo triển khai: "Công khai" = PUBLISHED + tenant ACTIVE, tính lại `soldCount` sau commit ở mọi đường đổi trạng thái đơn/entitlement, chưa có job đối soát. |
 | ADR-034 | Một database duy nhất cho dev, Preview và production | Chủ dự án không tách DB sau sự cố 2026-10-15: máy dev, Vercel Preview và Production dùng cùng database Neon; migration chỉ Quốc duyệt/chạy theo expand → contract, không `prisma migrate dev/reset`, không `pnpm db:seed`, integration test/script ghi dữ liệu thật phải dọn, Preview chỉ xem giao diện, dữ liệu demo trên production dọn bằng `demo:clean` trước khi mở cho người dùng thật. Thay khuyến nghị "tách DB dev bằng Neon branch". |
 | ADR-035 | Trang "Cửa hàng" (marketplace) `/cua-hang`: CMS trước, trang dữ liệu sau | GĐ1 = CMS Cửa hàng trong System Center (`CmsPage` slug `shop`, `blocks`/`blocksDraft`, không DDL; 9 section theo thứ tự Hero → Danh mục → Nổi bật → Theo từng danh mục → Bán chạy → Đánh giá cao → Gian hàng nổi bật → Mới → CTA); GĐ2 = `/cua-hang` + `/cua-hang/tai-lieu` đọc CMS + dữ liệu thật qua `withPublic`, tìm không dấu bằng `unaccent` (migration expand). Bổ sung: ngưỡng điểm lưu ×10, section thiếu thêm ở trạng thái ẩn, `SYSTEM_CMS_SLUGS = ["home","shop"]` chặn form CMS chung và `/p/[slug]`. Chủ dự án chốt: kệ Bán chạy theo tổng đã bán mọi thời gian, số bán 30 ngày chỉ để xếp hạng gian hàng, không hiển thị (2026-10-15). |
+| ADR-036 | Xử lý job nền ngay trong app (không worker thường trực): `after()` + Vercel Cron hằng ngày | `payment.process`/`file.scan` gửi vào pg-boss rồi `after()` drain ngay sau response; việc định kỳ do Vercel Cron gọi `GET /api/cron/daily` (xác thực Bearer `CRON_SECRET`); đơn PENDING quá hạn coi là hết hạn ngay khi đọc (`effectiveOrderStatus`) (2026-10-16). |
+| ADR-037 | Cấu hình Database và App URL bằng các biến môi trường thành phần | Cơ chế Hybrid ưu tiên URL hoàn chỉnh; nếu thiếu tự lắp ghép từ `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_SSLMODE` và `APP_HOST`/`PORT`; mã hoá an toàn `encodeURIComponent`; role migrate chỉ dành cho CLI/CI (2026-10-17). |
+| ADR-038 | Dual Storage MinIO song song Cloudflare R2, Dedicated Bucket cho gian hàng, Công cụ Đồng bộ & Giám sát | Cấu hình độc lập cả R2 lẫn MinIO trong `SystemStorageConfig` (`activeProvider`); mỗi tenant sở hữu 1 bucket riêng `${bucketPrefix}tenant-${tenantId}` (lazy-provisioning); công cụ đồng bộ luồng stream S3-to-S3 không đệm đĩa/RAM; màn hình giám sát dung lượng thực tế so với hạn mức gói thuê bao và trạng thái bucket (2026-10-17). |
 
 *Quay lại: [[05-Historical-Archive/README|05-Historical-Archive]] · [[MOC-Home]] (../00-Index/MOC-Home.md)*

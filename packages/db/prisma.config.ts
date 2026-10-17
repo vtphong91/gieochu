@@ -2,6 +2,8 @@ import { config as loadEnv } from "dotenv";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "prisma/config";
 
+import { resolvePrismaMigrateUrl } from "@gieochu/config";
+
 // Monorepo has a single root .env (see /.env.example), not one per package.
 loadEnv({ path: fileURLToPath(new URL("../../.env", import.meta.url)) });
 
@@ -22,11 +24,11 @@ loadEnv({ path: fileURLToPath(new URL("../../.env", import.meta.url)) });
  * omitted entirely, so migrate/studio/db push commands fail with Prisma's own
  * "datasource.url is required" error instead of silently hitting a fake host.
  */
-const migrateUrl = process.env.PRISMA_MIGRATE_URL?.trim() || undefined;
+const migrateUrl = resolvePrismaMigrateUrl(process.env);
 
 if (!migrateUrl) {
   console.warn(
-    "[prisma.config] PRISMA_MIGRATE_URL chưa đặt — chỉ `prisma generate` chạy được; " +
+    "[prisma.config] PRISMA_MIGRATE_URL (hoặc DB_MIGRATE_USER/DB_MIGRATE_PASSWORD/DB_HOST/DB_NAME) chưa đặt — chỉ `prisma generate` chạy được; " +
       "migrate/studio/db push sẽ báo lỗi thiếu datasource.url (cần URL role owner, xem ADR-010).",
   );
 }

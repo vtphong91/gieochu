@@ -59,6 +59,8 @@ export type ProductFileMinAggregateOutputType = {
   mimeType: string | null
   sizeBytes: number | null
   sha256: string | null
+  storageBucket: string | null
+  storageProvider: string | null
   scanStatus: $Enums.ProductFileScanStatus | null
   isPreview: boolean | null
   removedAt: Date | null
@@ -76,6 +78,8 @@ export type ProductFileMaxAggregateOutputType = {
   mimeType: string | null
   sizeBytes: number | null
   sha256: string | null
+  storageBucket: string | null
+  storageProvider: string | null
   scanStatus: $Enums.ProductFileScanStatus | null
   isPreview: boolean | null
   removedAt: Date | null
@@ -93,6 +97,8 @@ export type ProductFileCountAggregateOutputType = {
   mimeType: number
   sizeBytes: number
   sha256: number
+  storageBucket: number
+  storageProvider: number
   scanStatus: number
   isPreview: number
   removedAt: number
@@ -120,6 +126,8 @@ export type ProductFileMinAggregateInputType = {
   mimeType?: true
   sizeBytes?: true
   sha256?: true
+  storageBucket?: true
+  storageProvider?: true
   scanStatus?: true
   isPreview?: true
   removedAt?: true
@@ -137,6 +145,8 @@ export type ProductFileMaxAggregateInputType = {
   mimeType?: true
   sizeBytes?: true
   sha256?: true
+  storageBucket?: true
+  storageProvider?: true
   scanStatus?: true
   isPreview?: true
   removedAt?: true
@@ -154,6 +164,8 @@ export type ProductFileCountAggregateInputType = {
   mimeType?: true
   sizeBytes?: true
   sha256?: true
+  storageBucket?: true
+  storageProvider?: true
   scanStatus?: true
   isPreview?: true
   removedAt?: true
@@ -258,6 +270,8 @@ export type ProductFileGroupByOutputType = {
   mimeType: string | null
   sizeBytes: number
   sha256: string | null
+  storageBucket: string | null
+  storageProvider: string | null
   scanStatus: $Enums.ProductFileScanStatus | null
   isPreview: boolean
   removedAt: Date | null
@@ -298,6 +312,8 @@ export type ProductFileWhereInput = {
   mimeType?: Prisma.StringNullableFilter<"ProductFile"> | string | null
   sizeBytes?: Prisma.IntFilter<"ProductFile"> | number
   sha256?: Prisma.StringNullableFilter<"ProductFile"> | string | null
+  storageBucket?: Prisma.StringNullableFilter<"ProductFile"> | string | null
+  storageProvider?: Prisma.StringNullableFilter<"ProductFile"> | string | null
   scanStatus?: Prisma.EnumProductFileScanStatusNullableFilter<"ProductFile"> | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFilter<"ProductFile"> | boolean
   removedAt?: Prisma.DateTimeNullableFilter<"ProductFile"> | Date | string | null
@@ -318,6 +334,8 @@ export type ProductFileOrderByWithRelationInput = {
   mimeType?: Prisma.SortOrderInput | Prisma.SortOrder
   sizeBytes?: Prisma.SortOrder
   sha256?: Prisma.SortOrderInput | Prisma.SortOrder
+  storageBucket?: Prisma.SortOrderInput | Prisma.SortOrder
+  storageProvider?: Prisma.SortOrderInput | Prisma.SortOrder
   scanStatus?: Prisma.SortOrderInput | Prisma.SortOrder
   isPreview?: Prisma.SortOrder
   removedAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -341,6 +359,8 @@ export type ProductFileWhereUniqueInput = Prisma.AtLeast<{
   mimeType?: Prisma.StringNullableFilter<"ProductFile"> | string | null
   sizeBytes?: Prisma.IntFilter<"ProductFile"> | number
   sha256?: Prisma.StringNullableFilter<"ProductFile"> | string | null
+  storageBucket?: Prisma.StringNullableFilter<"ProductFile"> | string | null
+  storageProvider?: Prisma.StringNullableFilter<"ProductFile"> | string | null
   scanStatus?: Prisma.EnumProductFileScanStatusNullableFilter<"ProductFile"> | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFilter<"ProductFile"> | boolean
   removedAt?: Prisma.DateTimeNullableFilter<"ProductFile"> | Date | string | null
@@ -361,6 +381,8 @@ export type ProductFileOrderByWithAggregationInput = {
   mimeType?: Prisma.SortOrderInput | Prisma.SortOrder
   sizeBytes?: Prisma.SortOrder
   sha256?: Prisma.SortOrderInput | Prisma.SortOrder
+  storageBucket?: Prisma.SortOrderInput | Prisma.SortOrder
+  storageProvider?: Prisma.SortOrderInput | Prisma.SortOrder
   scanStatus?: Prisma.SortOrderInput | Prisma.SortOrder
   isPreview?: Prisma.SortOrder
   removedAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -386,6 +408,8 @@ export type ProductFileScalarWhereWithAggregatesInput = {
   mimeType?: Prisma.StringNullableWithAggregatesFilter<"ProductFile"> | string | null
   sizeBytes?: Prisma.IntWithAggregatesFilter<"ProductFile"> | number
   sha256?: Prisma.StringNullableWithAggregatesFilter<"ProductFile"> | string | null
+  storageBucket?: Prisma.StringNullableWithAggregatesFilter<"ProductFile"> | string | null
+  storageProvider?: Prisma.StringNullableWithAggregatesFilter<"ProductFile"> | string | null
   scanStatus?: Prisma.EnumProductFileScanStatusNullableWithAggregatesFilter<"ProductFile"> | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolWithAggregatesFilter<"ProductFile"> | boolean
   removedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"ProductFile"> | Date | string | null
@@ -402,6 +426,8 @@ export type ProductFileCreateInput = {
   mimeType?: string | null
   sizeBytes: number
   sha256?: string | null
+  storageBucket?: string | null
+  storageProvider?: string | null
   scanStatus?: $Enums.ProductFileScanStatus | null
   isPreview?: boolean
   removedAt?: Date | string | null
@@ -422,6 +448,8 @@ export type ProductFileUncheckedCreateInput = {
   mimeType?: string | null
   sizeBytes: number
   sha256?: string | null
+  storageBucket?: string | null
+  storageProvider?: string | null
   scanStatus?: $Enums.ProductFileScanStatus | null
   isPreview?: boolean
   removedAt?: Date | string | null
@@ -440,6 +468,8 @@ export type ProductFileUpdateInput = {
   mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   scanStatus?: Prisma.NullableEnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFieldUpdateOperationsInput | boolean
   removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -460,6 +490,8 @@ export type ProductFileUncheckedUpdateInput = {
   mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   scanStatus?: Prisma.NullableEnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFieldUpdateOperationsInput | boolean
   removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -479,6 +511,8 @@ export type ProductFileCreateManyInput = {
   mimeType?: string | null
   sizeBytes: number
   sha256?: string | null
+  storageBucket?: string | null
+  storageProvider?: string | null
   scanStatus?: $Enums.ProductFileScanStatus | null
   isPreview?: boolean
   removedAt?: Date | string | null
@@ -495,6 +529,8 @@ export type ProductFileUpdateManyMutationInput = {
   mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   scanStatus?: Prisma.NullableEnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFieldUpdateOperationsInput | boolean
   removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -512,6 +548,8 @@ export type ProductFileUncheckedUpdateManyInput = {
   mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   scanStatus?: Prisma.NullableEnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFieldUpdateOperationsInput | boolean
   removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -539,6 +577,8 @@ export type ProductFileCountOrderByAggregateInput = {
   mimeType?: Prisma.SortOrder
   sizeBytes?: Prisma.SortOrder
   sha256?: Prisma.SortOrder
+  storageBucket?: Prisma.SortOrder
+  storageProvider?: Prisma.SortOrder
   scanStatus?: Prisma.SortOrder
   isPreview?: Prisma.SortOrder
   removedAt?: Prisma.SortOrder
@@ -560,6 +600,8 @@ export type ProductFileMaxOrderByAggregateInput = {
   mimeType?: Prisma.SortOrder
   sizeBytes?: Prisma.SortOrder
   sha256?: Prisma.SortOrder
+  storageBucket?: Prisma.SortOrder
+  storageProvider?: Prisma.SortOrder
   scanStatus?: Prisma.SortOrder
   isPreview?: Prisma.SortOrder
   removedAt?: Prisma.SortOrder
@@ -577,6 +619,8 @@ export type ProductFileMinOrderByAggregateInput = {
   mimeType?: Prisma.SortOrder
   sizeBytes?: Prisma.SortOrder
   sha256?: Prisma.SortOrder
+  storageBucket?: Prisma.SortOrder
+  storageProvider?: Prisma.SortOrder
   scanStatus?: Prisma.SortOrder
   isPreview?: Prisma.SortOrder
   removedAt?: Prisma.SortOrder
@@ -680,6 +724,8 @@ export type ProductFileCreateWithoutProductInput = {
   mimeType?: string | null
   sizeBytes: number
   sha256?: string | null
+  storageBucket?: string | null
+  storageProvider?: string | null
   scanStatus?: $Enums.ProductFileScanStatus | null
   isPreview?: boolean
   removedAt?: Date | string | null
@@ -698,6 +744,8 @@ export type ProductFileUncheckedCreateWithoutProductInput = {
   mimeType?: string | null
   sizeBytes: number
   sha256?: string | null
+  storageBucket?: string | null
+  storageProvider?: string | null
   scanStatus?: $Enums.ProductFileScanStatus | null
   isPreview?: boolean
   removedAt?: Date | string | null
@@ -746,6 +794,8 @@ export type ProductFileScalarWhereInput = {
   mimeType?: Prisma.StringNullableFilter<"ProductFile"> | string | null
   sizeBytes?: Prisma.IntFilter<"ProductFile"> | number
   sha256?: Prisma.StringNullableFilter<"ProductFile"> | string | null
+  storageBucket?: Prisma.StringNullableFilter<"ProductFile"> | string | null
+  storageProvider?: Prisma.StringNullableFilter<"ProductFile"> | string | null
   scanStatus?: Prisma.EnumProductFileScanStatusNullableFilter<"ProductFile"> | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFilter<"ProductFile"> | boolean
   removedAt?: Prisma.DateTimeNullableFilter<"ProductFile"> | Date | string | null
@@ -762,6 +812,8 @@ export type ProductFileCreateWithoutDownloadTokensInput = {
   mimeType?: string | null
   sizeBytes: number
   sha256?: string | null
+  storageBucket?: string | null
+  storageProvider?: string | null
   scanStatus?: $Enums.ProductFileScanStatus | null
   isPreview?: boolean
   removedAt?: Date | string | null
@@ -781,6 +833,8 @@ export type ProductFileUncheckedCreateWithoutDownloadTokensInput = {
   mimeType?: string | null
   sizeBytes: number
   sha256?: string | null
+  storageBucket?: string | null
+  storageProvider?: string | null
   scanStatus?: $Enums.ProductFileScanStatus | null
   isPreview?: boolean
   removedAt?: Date | string | null
@@ -814,6 +868,8 @@ export type ProductFileUpdateWithoutDownloadTokensInput = {
   mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   scanStatus?: Prisma.NullableEnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFieldUpdateOperationsInput | boolean
   removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -833,6 +889,8 @@ export type ProductFileUncheckedUpdateWithoutDownloadTokensInput = {
   mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   scanStatus?: Prisma.NullableEnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFieldUpdateOperationsInput | boolean
   removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -850,6 +908,8 @@ export type ProductFileCreateWithoutDownloadEventsInput = {
   mimeType?: string | null
   sizeBytes: number
   sha256?: string | null
+  storageBucket?: string | null
+  storageProvider?: string | null
   scanStatus?: $Enums.ProductFileScanStatus | null
   isPreview?: boolean
   removedAt?: Date | string | null
@@ -869,6 +929,8 @@ export type ProductFileUncheckedCreateWithoutDownloadEventsInput = {
   mimeType?: string | null
   sizeBytes: number
   sha256?: string | null
+  storageBucket?: string | null
+  storageProvider?: string | null
   scanStatus?: $Enums.ProductFileScanStatus | null
   isPreview?: boolean
   removedAt?: Date | string | null
@@ -902,6 +964,8 @@ export type ProductFileUpdateWithoutDownloadEventsInput = {
   mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   scanStatus?: Prisma.NullableEnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFieldUpdateOperationsInput | boolean
   removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -921,6 +985,8 @@ export type ProductFileUncheckedUpdateWithoutDownloadEventsInput = {
   mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   scanStatus?: Prisma.NullableEnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFieldUpdateOperationsInput | boolean
   removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -938,6 +1004,8 @@ export type ProductFileCreateManyProductInput = {
   mimeType?: string | null
   sizeBytes: number
   sha256?: string | null
+  storageBucket?: string | null
+  storageProvider?: string | null
   scanStatus?: $Enums.ProductFileScanStatus | null
   isPreview?: boolean
   removedAt?: Date | string | null
@@ -954,6 +1022,8 @@ export type ProductFileUpdateWithoutProductInput = {
   mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   scanStatus?: Prisma.NullableEnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFieldUpdateOperationsInput | boolean
   removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -972,6 +1042,8 @@ export type ProductFileUncheckedUpdateWithoutProductInput = {
   mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   scanStatus?: Prisma.NullableEnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFieldUpdateOperationsInput | boolean
   removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -990,6 +1062,8 @@ export type ProductFileUncheckedUpdateManyWithoutProductInput = {
   mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   scanStatus?: Prisma.NullableEnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus | null
   isPreview?: Prisma.BoolFieldUpdateOperationsInput | boolean
   removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1047,6 +1121,8 @@ export type ProductFileSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   mimeType?: boolean
   sizeBytes?: boolean
   sha256?: boolean
+  storageBucket?: boolean
+  storageProvider?: boolean
   scanStatus?: boolean
   isPreview?: boolean
   removedAt?: boolean
@@ -1068,6 +1144,8 @@ export type ProductFileSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   mimeType?: boolean
   sizeBytes?: boolean
   sha256?: boolean
+  storageBucket?: boolean
+  storageProvider?: boolean
   scanStatus?: boolean
   isPreview?: boolean
   removedAt?: boolean
@@ -1086,6 +1164,8 @@ export type ProductFileSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   mimeType?: boolean
   sizeBytes?: boolean
   sha256?: boolean
+  storageBucket?: boolean
+  storageProvider?: boolean
   scanStatus?: boolean
   isPreview?: boolean
   removedAt?: boolean
@@ -1104,13 +1184,15 @@ export type ProductFileSelectScalar = {
   mimeType?: boolean
   sizeBytes?: boolean
   sha256?: boolean
+  storageBucket?: boolean
+  storageProvider?: boolean
   scanStatus?: boolean
   isPreview?: boolean
   removedAt?: boolean
   createdAt?: boolean
 }
 
-export type ProductFileOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "productId" | "tenantId" | "sourceKind" | "externalUrl" | "objectKey" | "fileName" | "mimeType" | "sizeBytes" | "sha256" | "scanStatus" | "isPreview" | "removedAt" | "createdAt", ExtArgs["result"]["productFile"]>
+export type ProductFileOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "productId" | "tenantId" | "sourceKind" | "externalUrl" | "objectKey" | "fileName" | "mimeType" | "sizeBytes" | "sha256" | "storageBucket" | "storageProvider" | "scanStatus" | "isPreview" | "removedAt" | "createdAt", ExtArgs["result"]["productFile"]>
 export type ProductFileInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
   downloadTokens?: boolean | Prisma.ProductFile$downloadTokensArgs<ExtArgs>
@@ -1142,6 +1224,14 @@ export type $ProductFilePayload<ExtArgs extends runtime.Types.Extensions.Interna
     mimeType: string | null
     sizeBytes: number
     sha256: string | null
+    /**
+     * ADR-038: dedicated bucket where this file is stored (null = shared system private bucket)
+     */
+    storageBucket: string | null
+    /**
+     * ADR-038: storage provider where this file is stored ("CLOUDFLARE_R2" | "MINIO", null = default)
+     */
+    storageProvider: string | null
     scanStatus: $Enums.ProductFileScanStatus | null
     isPreview: boolean
     removedAt: Date | null
@@ -1582,6 +1672,8 @@ export interface ProductFileFieldRefs {
   readonly mimeType: Prisma.FieldRef<"ProductFile", 'String'>
   readonly sizeBytes: Prisma.FieldRef<"ProductFile", 'Int'>
   readonly sha256: Prisma.FieldRef<"ProductFile", 'String'>
+  readonly storageBucket: Prisma.FieldRef<"ProductFile", 'String'>
+  readonly storageProvider: Prisma.FieldRef<"ProductFile", 'String'>
   readonly scanStatus: Prisma.FieldRef<"ProductFile", 'ProductFileScanStatus'>
   readonly isPreview: Prisma.FieldRef<"ProductFile", 'Boolean'>
   readonly removedAt: Prisma.FieldRef<"ProductFile", 'DateTime'>

@@ -3764,6 +3764,8 @@ export const TenantScalarFieldEnum = {
   orderCodePrefix: 'orderCodePrefix',
   status: 'status',
   storageUsedBytes: 'storageUsedBytes',
+  storageBucket: 'storageBucket',
+  storageProvider: 'storageProvider',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -3830,6 +3832,8 @@ export const ProductFileScalarFieldEnum = {
   mimeType: 'mimeType',
   sizeBytes: 'sizeBytes',
   sha256: 'sha256',
+  storageBucket: 'storageBucket',
+  storageProvider: 'storageProvider',
   scanStatus: 'scanStatus',
   isPreview: 'isPreview',
   removedAt: 'removedAt',

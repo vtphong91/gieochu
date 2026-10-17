@@ -120,16 +120,33 @@ export async function consumeDownloadToken(rawToken: string, ip: string | undefi
     await tx.downloadEvent.create({
       data: { tenantId: record.tenantId, fileId: productFile.id, entitlementId: record.entitlementId, userId: record.userId, ip },
     });
-    return { deliverable, fileName: productFile.fileName };
+    return {
+      deliverable,
+      fileName: productFile.fileName,
+      storageBucket: productFile.storageBucket,
+      storageProvider: productFile.storageProvider,
+    };
   });
 
   if (target.deliverable.kind === "EXTERNAL_URL") return target.deliverable.url;
 
   const storageConfig = await requireStorageConfig();
-  const client = createS3Client(storageConfig);
+  let client = createS3Client(storageConfig);
+  const bucket = target.storageBucket || storageConfig.bucketPrivate;
+
+  if (target.storageProvider && target.storageProvider !== storageConfig.activeProvider) {
+    try {
+      const { createClientForProvider } = await import("./system-storage");
+      const providerClient = await createClientForProvider(target.storageProvider as import("./system-storage").StorageProvider);
+      client = providerClient.client;
+    } catch {
+      // fallback to active client
+    }
+  }
+
   const settings = await getSystemSettings();
   return createPresignedDownload(client, {
-    bucket: storageConfig.bucketPrivate,
+    bucket,
     key: target.deliverable.objectKey,
     fileName: target.fileName,
     // ADR-032: ≤600 do validate; createPresignedDownload kẹp lại ≤600 lần nữa phòng DB sai (§7.6).

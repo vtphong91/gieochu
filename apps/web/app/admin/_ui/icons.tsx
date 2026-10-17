@@ -418,3 +418,37 @@ export function IconShoppingBag({ className }: IconProps) {
     </svg>
   );
 }
+
+/** Đám mây (Cloudflare R2 / S3 - ADR-038). */
+export function IconCloud({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
+    </svg>
+  );
+}
+
+/** Máy chủ / Server rack (MinIO host - ADR-038). */
+export function IconServer({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="2" y="3" width="20" height="8" rx="2" />
+      <rect x="2" y="13" width="20" height="8" rx="2" />
+      <line x1="6" y1="7" x2="6.01" y2="7" strokeWidth="2.5" />
+      <line x1="6" y1="17" x2="6.01" y2="17" strokeWidth="2.5" />
+    </svg>
+  );
+}
+
+/** Đồng bộ / Refresh hai chiều (Storage Sync - ADR-038). */
+export function IconRefresh({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 2v6h-6" />
+      <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+      <path d="M3 22v-6h6" />
+      <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+    </svg>
+  );
+}
+

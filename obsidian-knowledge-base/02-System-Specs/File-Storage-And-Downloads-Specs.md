@@ -4,32 +4,34 @@ tags:
   - storage
   - downloads
   - security
+  - multi-tenant
   - status/living
 date: 2026-09-26
-updated: 2026-10-16
+updated: 2026-10-17
 author: System Architect
 ---
 
 # 📐 Đặc Tả: Lưu Trữ File & Cơ Chế Tải Xuống (File Storage & Downloads Specs)
 
-> Đổi tên từ `Media-Storage-Cloudinary-Specs.md`. Gieo Chữ dùng **hai** hệ thống lưu trữ tách biệt, không dùng
-> chung: (1) storage S3-compatible (Cloudflare R2) cho **file sản phẩm bán** (bucket private, presigned URL);
-> (2) **Cloudinary hệ thống** cho **ảnh** — ảnh CMS của System Admin, và từ ADR-023/027/028 cả ảnh storefront, ảnh
-> bìa sản phẩm, ảnh trong mô tả của tenant (có hạn mức theo gói). Mục 1–5 nói về (1); mục 6–7 nói về (2).
+> Gieo Chữ dùng **hai** hệ thống lưu trữ tách biệt, không dùng chung:
+> 1. **Storage S3-compatible (Cloudflare R2 song song MinIO)**: Lưu trữ **file sản phẩm bán** (bucket private tuyệt đối, presigned URL $\le 10$ phút, mô hình **Dedicated Bucket riêng cho từng gian hàng**, kèm Công cụ Đồng bộ Dữ liệu và Màn hình Giám sát Dung lượng Bucket theo ADR-014/ADR-017/ADR-038).
+> 2. **Cloudinary hệ thống**: Lưu trữ **ảnh** — ảnh CMS của System Admin, và từ ADR-023/027/028 cả ảnh storefront, ảnh bìa sản phẩm, ảnh trong mô tả và bài viết của tenant (có hạn mức theo gói).
+>
+> Mục 1–6 đặc tả hệ thống (1); mục 7–8 đặc tả hệ thống (2).
+
+---
 
 ## 1. Mục Tiêu & Kiến Trúc Tổng Thể (File Sản Phẩm)
 
-`packages/storage` cung cấp lớp trừu tượng S3-compatible (`@aws-sdk/client-s3`), không gắn cứng vào một nhà
-cung cấp — production dùng **Cloudflare R2** (ADR-014/ADR-017 trong
-[docs/DECISIONS.md](../../docs/DECISIONS.md)), **không phải Cloudinary**. Nguyên tắc cốt lõi (CLAUDE.md §7.6):
+`packages/storage` cung cấp lớp trừu tượng S3-compatible (`@aws-sdk/client-s3`), không gắn cứng vào một nhà cung cấp cụ thể. Hệ thống vận hành kiến trúc **Dual Storage Provider** hỗ trợ song song **Cloudflare R2** và **MinIO tự host** ([[01-Architecture-Decisions/ADR-013-Dual-Storage-MinIO-R2-Dedicated-Buckets|ADR-013 (≙ ADR-038)]]).
 
-1. **Bucket private tuyệt đối** cho file bán — không có URL public trực tiếp tới object.
-2. **URL tải chỉ là presigned, sống ≤ 10 phút**, `Content-Disposition: attachment` — không bao giờ cho phép
-   trình duyệt hiển thị nội dung file thay vì tải xuống.
-3. **Cấu hình credential (endpoint/bucket/access key R2) quản lý qua System Admin + DB mã hoá**
-   (`SystemStorageConfig`), không phải biến môi trường tĩnh — đã cân nhắc đánh đổi bảo mật với người dùng
-   trước khi làm (ADR-017): mã hoá bằng key riêng `STORAGE_ENCRYPTION_KEY`, **không dùng chung**
-   `PAYMENT_ENCRYPTION_KEY` — lộ 1 key chỉ lộ đúng 1 miền secret.
+Nguyên tắc cốt lõi (CLAUDE.md §7.6 & ADR-038):
+
+1. **Bucket private tuyệt đối** cho file bán — không có URL public trực tiếp tới object (cả trên R2 lẫn MinIO).
+2. **URL tải chỉ là presigned, sống $\le$ 10 phút**, header `Content-Disposition: attachment` bắt buộc — không bao giờ cho phép trình duyệt hiển thị nội dung file trực tiếp thay vì tải xuống.
+3. **Cấu hình credential quản lý qua System Admin + DB mã hoá** (`SystemStorageConfig`, bảng L1 một dòng): Quản lý độc lập cả 2 nhà cung cấp `CLOUDFLARE_R2` và `MINIO`, chọn nhà cung cấp chính qua `activeProvider`. Secret (`accessKeyId`, `secretAccessKey`) được mã hoá AES-256-GCM bằng key riêng `STORAGE_ENCRYPTION_KEY`, **không dùng chung** `PAYMENT_ENCRYPTION_KEY` — lộ 1 key chỉ lộ đúng 1 miền secret (ADR-017).
+4. **Mô hình Dedicated Bucket riêng biệt cho từng gian hàng (Tenant):** Mỗi gian hàng sở hữu một bucket riêng biệt chuẩn S3 dạng `${bucketPrefix}tenant-${tenantId}`. Hệ thống tự động cấp phát hoặc lazy-provisioning khi phát sinh upload đầu tiên. Bản ghi `Tenant` và `ProductFile` lưu vết `storageBucket` và `storageProvider` để định tuyến chính xác.
+5. **Bộ công cụ Quản trị Dữ liệu (Storage Sync Engine & Bucket Monitoring):** Hỗ trợ chuyển đổi luồng stream S3-to-S3 trực tiếp giữa 2 provider mà không qua RAM/ổ cứng máy chủ, cùng màn hình trực quan giám sát dung lượng thực tế so với hạn mức gói thuê bao (`Plan.storageMb`).
 
 ---
 
@@ -39,56 +41,54 @@ cung cấp — production dùng **Cloudflare R2** (ADR-014/ADR-017 trong
 sequenceDiagram
     autonumber
     actor Owner as Tenant Owner (Studio)
-    participant Web as apps/web (Route Handler)
-    participant Cfg as SystemStorageConfig (DB, mã hoá)
-    participant R2 as Cloudflare R2 (S3-compatible)
+    participant Web as apps/web (Route Handler / Action)
+    participant Cfg as SystemStorageConfig (DB mã hoá)
+    participant DB as Postgres (Tenant & ProductFile)
+    participant S3 as Storage Provider (R2 / MinIO Bucket)
 
     Owner->>Web: POST /api/studio/[tenantSlug]/uploads/presign (tên file, size, mimeType)
-    Web->>Cfg: Đọc + giải mã credential (AES-256-GCM)
+    Web->>Cfg: requireStorageConfig() — giải mã credential activeProvider
     Web->>Web: assertPlanLimit("fileSize", ...) / assertPlanLimit("storage", ...)
+    Web->>DB: getOrCreateTenantBucket(tenantId) — lấy/tạo dedicated bucket
     alt size ≤ 50MB
-        Web-->>Owner: PresignedSinglePut { url } — 1 PUT ký sẵn
+        Web->>S3: PutObjectCommand (ký URL)
+        Web-->>Owner: PresignedSinglePut { url, objectKey }
     else size > 50MB
-        Web->>R2: CreateMultipartUploadCommand
-        Web-->>Owner: PresignedMultipartUpload { uploadId, partSizeBytes: 10MB, parts[] }
+        Web->>S3: CreateMultipartUploadCommand
+        Web-->>Owner: PresignedMultipartUpload { uploadId, partSizeBytes: 10MB, parts[], objectKey }
     end
-    Owner->>R2: PUT thẳng file lên URL đã ký (không qua server Next.js)
+    Owner->>S3: PUT thẳng file lên URL đã ký (không qua server Next.js)
     Owner->>Web: POST .../uploads/complete (key, uploadId?, parts?)
-    Web->>Web: isProductObjectKeyFor(key, tenantId, productId) — sai → 400 INVALID_OBJECT_KEY (chưa gọi storage)
-    Web->>Web: key đã ghi nhận? → 409 UPLOAD_ALREADY_COMPLETED
-    Web->>R2: HeadObjectCommand — kích thước thật (lệch khai báo → xoá object, 400 UPLOAD_SIZE_MISMATCH)
+    Web->>Web: assertOwnObjectKey() — kiểm tra tenantId/productId đúng định dạng
+    Web->>DB: kiểm tra objectKey đã tồn tại? → 409 UPLOAD_ALREADY_COMPLETED
+    Web->>S3: HeadObjectCommand — kiểm tra file thực tế trong bucket tenant
     Web->>Web: assertPlanLimit lại bằng kích thước thật (vượt → xoá object, từ chối)
-    Web->>Web: ProductFile.create(PENDING) + storageUsedBytes += kích thước thật
+    Web->>DB: ProductFile.create(PENDING, storageBucket, storageProvider) + storageUsedBytes += size
     Web->>Web: enqueue job file.scan (bất đồng bộ, magic-bytes khớp đuôi)
 ```
 
-- **Bảo mật bước `complete` (ADR-026 §1)** ✅ đọc `apps/web/lib/product-upload.ts` 2026-09-27: 4 bước kiểm trong sơ đồ
-  trên chạy theo đúng thứ tự đó; chi tiết + mã lỗi: [[02-System-Specs/Product-Editor-And-Publishing-Specs|Product-Editor-And-Publishing-Specs]] §2.
-  (Sơ đồ bản trước đặt `file.scan` đồng bộ trong `complete` — sai với code: scan luôn là job riêng.)
-- **Ngưỡng multipart:** `MULTIPART_THRESHOLD_BYTES = 50MB` (`packages/storage/src/presign.ts`) — file ≤ 50MB
-  dùng 1 `PutObjectCommand` ký sẵn; lớn hơn dùng multipart, mỗi phần `MULTIPART_PART_SIZE_BYTES = 10MB`.
-- **Ảnh bìa sản phẩm — luồng R2 cũ** qua cặp hàm riêng (`presignCoverImageUpload`/`completeCoverImageUpload`) — bucket
-  **công khai** (khác bucket file bán), không qua `file.scan`, không tính vào `storageUsedBytes`; `cover-complete` từ
-  ADR-026 cũng kiểm `isProductObjectKeyFor(..., "cover")`. **Từ ADR-027 editor dùng ảnh bìa Cloudinary**
-  (`Product.coverImageUrl`), R2 chỉ còn là fallback cho dữ liệu cũ — xem §6–§7.
-- **Link tài liệu ngoài (ADR-026)** không đi qua upload: không object, không quét, không tính dung lượng.
+- **Định tuyến Dedicated Bucket khi Upload:**
+  - `presignProductFileUpload` (`apps/web/lib/product-upload.ts`): Gọi `getOrCreateTenantBucket(tenantId)`. Nếu hệ thống đang dùng `MINIO` hoặc tenant đã có bucket riêng, file sẽ được presign thẳng vào bucket riêng của tenant trên provider tương ứng.
+  - Cấu trúc `objectKey` bất biến: `tenants/{tenantId}/products/{productId}/{uuid}/{fileName}`. Đảm bảo cô lập logic bổ trợ cho cô lập vật lý cấp bucket.
+- **Bảo mật bước `complete` (ADR-026 §1):**
+  1. `assertOwnObjectKey`: Kiểm tra chuỗi key khớp đúng `tenantId` và `productId`, đuôi file nằm trong danh mục cho phép.
+  2. Kiểm tra trùng lặp `objectKey` trên bảng `product_files` (`@unique`).
+  3. `HeadObjectCommand`: Xác thực object đã nằm trên bucket đích với kích thước thực tế khớp khai báo.
+  4. `assertPlanLimit`: Tái kiểm tra hạn mức gói (`fileSize` và tổng `storageUsedBytes`) bằng kích thước thực tế từ header S3.
+  5. Tạo dòng `ProductFile` ghi nhận đầy đủ `storageBucket` và `storageProvider` tương ứng, cập nhật `tenant.storageUsedBytes`.
+- **Ngưỡng multipart:** `MULTIPART_THRESHOLD_BYTES = 50MB`, mỗi phần `MULTIPART_PART_SIZE_BYTES = 10MB`.
+- **Link tài liệu ngoài (ADR-026):** Không qua upload S3, không object, không quét, không tính dung lượng.
 
 ---
 
-## 3. Kiểm Tra File (`file.scan`) — Chưa Có ClamAV Thật (ADR-018)
+## 3. Kiểm Tra File (`file.scan`) — Xác Nhận An Toàn & Magic Bytes
 
-`apps/web/lib/file-scan.ts`: mọi file qua được kiểm tra `matchesDeclaredExtension` (magic bytes khớp đuôi khai
-báo, `packages/storage/src/file-format.ts`) đều đánh dấu **`CLEAN`**, bất kể có set biến `CLAMAV_HOST` hay
-không (nếu có set mà chưa có client thật, chỉ ghi log cảnh báo — không chặn luồng). File sai định dạng bị xoá
-khỏi object storage + đánh dấu `REJECTED` + trừ lại dung lượng đã cộng + gửi email báo owner.
+`apps/web/lib/file-scan.ts` xử lý việc quét định dạng file sau khi upload hoàn tất:
 
-`readObjectForScan()` (`packages/storage/src/scan.ts`) đọc object **một lần duy nhất** (stream), vừa hash
-SHA-256 vừa lấy đầu file để nhận diện magic bytes — tránh buffer cả file vào memory.
-
-**Ai chạy job `file.scan` (ADR-036, chưa deploy) ✅:** route `POST /api/studio/[tenantSlug]/uploads/complete` sau khi
-`completeProductFileUpload` enqueue job gọi `scheduleQueueDrain([FILE_SCAN])` — job được xử lý trong `after()` ngay sau response
-(`maxDuration = 60`), cron `GET /api/cron/daily` dọn phần sót. Không còn phụ thuộc worker thường trực; file chỉ kẹt "Đang quét"
-khi cả `after()` lẫn cron đều lỗi. Chi tiết: [[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]].
+1. **Định tuyến Provider & Bucket:** Hàm `runFileScan(productFileId)` đọc `storageBucket` và `storageProvider` từ bản ghi `ProductFile`. Nếu file lưu ở provider khác `activeProvider`, hệ thống tự động khởi tạo client của provider đó qua `createClientForProvider(file.storageProvider)`. Fallback về `storageConfig.bucketPrivate` và `storageConfig.activeProvider` cho dữ liệu cũ.
+2. **Cơ chế một lần đọc (Single-pass Stream):** `readObjectForScan()` (`packages/storage/src/scan.ts`) stream trực tiếp object từ S3/MinIO, vừa tính toán mã băm SHA-256 vừa trích xuất các byte đầu để kiểm tra magic bytes (`matchesDeclaredExtension`) — hoàn toàn không đệm toàn bộ file vào bộ nhớ RAM.
+3. **Trạng thái quét:** File hợp lệ được đánh dấu `CLEAN`. File sai định dạng bị xoá khỏi bucket tương ứng (`deleteObject`), đánh dấu `REJECTED`, trừ lại dung lượng `storageUsedBytes` và gửi email thông báo cho chủ gian hàng.
+4. **Xử lý nền (ADR-036):** Được kích hoạt bất đồng bộ qua `after()` ngay sau response upload complete hoặc được quét dọn bởi cron hằng ngày `GET /api/cron/daily`.
 
 ---
 
@@ -98,106 +98,118 @@ khi cả `after()` lẫn cron đều lỗi. Chi tiết: [[02-System-Specs/Backgr
 sequenceDiagram
     actor C as Customer (đã mua)
     participant Web as apps/web
-    participant DB as Postgres (Entitlement, RLS)
-    participant R2 as Cloudflare R2
+    participant DB as Postgres (Entitlement, DownloadToken)
+    participant S3 as Storage Provider (R2 / MinIO Bucket)
 
     C->>Web: POST /api/downloads { fileId } (cookie đăng nhập)
-    Web->>DB: withCustomer(userId) — kiểm Entitlement chưa bị revoke, downloadsUsed < downloadLimit
-    Web->>DB: DownloadToken.create() — chỉ lưu hash SHA-256, TTL 60 giây
+    Web->>DB: withCustomer(userId) — kiểm tra Entitlement hợp lệ & lượt tải còn lại
+    Web->>DB: DownloadToken.create() — lưu SHA-256 hash, TTL 60 giây
     Web-->>C: { token }
     C->>Web: GET /api/downloads/{token}
-    Web->>DB: Tìm token theo hash, chưa usedAt, chưa hết hạn — atomic-claim (updateMany có điều kiện)
-    Web->>DB: Kiểm lại nguồn giao hàng (deliverableTarget) — không còn giao được → 410 DOWNLOAD_SOURCE_UNAVAILABLE
-    Web->>DB: entitlement.downloadsUsed += 1 (atomic) + DownloadEvent
+    Web->>DB: Atomic claim token theo hash (updateMany chưa usedAt)
+    Web->>DB: Kiểm tra nguồn giao hàng (deliverableTarget: CLEAN & có objectKey)
+    Web->>DB: entitlement.downloadsUsed += 1 + ghi DownloadEvent
     alt sourceKind = FILE
-        Web->>R2: createPresignedDownload() — GetObjectCommand + ResponseContentDisposition: attachment
-        Web-->>C: 302 redirect tới URL presigned (sống ≤ 600 giây, clamp bởi clampDownloadTtlSeconds)
+        Web->>S3: createPresignedDownload() trỏ đúng storageBucket & storageProvider của file
+        Web-->>C: 302 Redirect tới URL presigned (sống ≤ 600s, Content-Disposition: attachment)
     else sourceKind = EXTERNAL_URL (ADR-026)
-        Web-->>C: 302 redirect tới link ngoài đã chuẩn hoá lại qua allowlist
+        Web-->>C: 302 Redirect tới link ngoài chuẩn hoá
     end
 ```
 
-- **Link tài liệu ngoài (ADR-026)** ✅ đọc `apps/web/lib/{download,library,share-link}.ts` 2026-09-27:
-  - `deliverableTarget()` quyết định dòng nào giao được: `FILE` phải `CLEAN` và có `objectKey`; `EXTERNAL_URL` phải
-    còn qua `normalizeExternalDocumentUrl` (**kiểm ở cả 2 bước** — phòng allowlist bị thu hẹp sau khi đã lưu).
-  - Bước 1 không giao được → 404; bước 2 kiểm lại **trước khi trừ lượt** → `410 DOWNLOAD_SOURCE_UNAVAILABLE`
-    (token đã bị claim nhưng `downloadsUsed` không tăng).
-  - Link đi cùng luồng entitlement/`downloadLimit`/`DownloadEvent` như file — mỗi lần mở link ăn 1 lượt.
-  - Thư viện (`listLibraryEntitlements`, kiểu `LibraryFile`): mỗi mục có `kind: "FILE" | "EXTERNAL_URL"`; chỉ liệt kê file `CLEAN` và link còn qua
-    allowlist; nút hiện "Mở link tài liệu" cho link. `LibraryFile` **không chứa URL link** (chỉ `id, kind, fileName,
-    sizeBytes`) — URL chỉ lộ ra qua 302 ở bước 2.
-  - RLS nhánh customer của `product_files` đọc được dòng `EXTERNAL_URL` khi có entitlement (xem
-    [[03-API-Contracts/Database-Schema-Reference|Database-Schema-Reference]] §7).
-  - **Share link không bao giờ giao link ngoài** — chỉ `FILE`, không preview, `CLEAN`, chưa gỡ (§5).
-
-- **`DownloadToken` là bảng L1, không RLS** — cùng mẫu `RefreshToken`/`VerificationToken`: ranh giới bảo mật là
-  "ai đang giữ token thô" (chỉ lưu `tokenHash`, không lưu token gốc — CLAUDE.md §7.2), không phải lọc theo
-  dòng dữ liệu. Có `tenantId` denormalize từ `entitlement.tenantId` để mở đúng `withTenant()` ngay từ đầu.
-- **`buildAttachmentDisposition()`** (`packages/storage/src/download-disposition.ts`) dùng cú pháp RFC 5987
-  (`filename*=UTF-8''...`) — bắt buộc cho tên file tiếng Việt có dấu; `filename="..."` ASCII thường sẽ lỗi.
-- **`clampDownloadTtlSeconds()`**: giới hạn cứng `MAX_DOWNLOAD_PRESIGN_TTL_SECONDS = 600` (10 phút) — đúng
-  CLAUDE.md §7.6 "URL tải chỉ là presigned, sống ≤ 10 phút" — áp dụng ngay trong `createPresignedDownload()`,
-  không chỉ ở test.
-- **`downloadLimit = 0` nghĩa là không giới hạn số lượt tải** (ADR-015) — snapshot từ `Product.downloadLimit`
-  tại thời điểm mua vào `Entitlement.downloadLimit`, một thay đổi sau đó trên `Product` không ảnh hưởng khách
-  đã mua.
-- **Rate limit chống dò:** 20 lượt/10 phút mỗi user cho `/api/downloads`.
+- **Định tuyến chính xác theo bản ghi file:**
+  - `apps/web/lib/download.ts` lấy `storageBucket` và `storageProvider` từ `product_files`.
+  - Bucket được chọn: `productFile.storageBucket || storageConfig.bucketPrivate`.
+  - Nếu `storageProvider` của file khác `activeProvider` hiện tại, hệ thống nạp đúng client của provider lưu file (`CLOUDFLARE_R2` hoặc `MINIO`).
+- **An toàn tải xuống:**
+  - Presigned GET URL luôn kèm `ResponseContentDisposition: attachment; filename*=UTF-8''...` (RFC 5987 hỗ trợ tên tiếng Việt có dấu).
+  - Giới hạn cứng TTL presigned GET qua `clampDownloadTtlSeconds()`: tối đa 600 giây (10 phút) theo CLAUDE.md §7.6.
+  - `downloadLimit = 0` nghĩa là không giới hạn số lượt tải (ADR-015).
+  - Bảng `DownloadToken` thuộc Layer L1 không RLS, bảo vệ bằng mã băm SHA-256 dùng một lần (TTL 60s).
 
 ---
 
-## 5. Share Link — Chia Sẻ Công Khai Có Mật Khẩu (`ShareLink`)
+## 5. Share Link — Chia Sẻ File Công Khai Có Mật Khẩu (`ShareLink`)
 
-Owner tạo link tải riêng cho 1 sản phẩm tại `/studio/[tenantSlug]/products/[productId]/share-links`, không cần
-người nhận đăng nhập:
-
-- **`tokenHash`**: chỉ lưu hash — token thô chỉ hiện đúng **một lần** lúc tạo (CLAUDE.md §7.2).
-- **`passwordHash`** (tuỳ chọn): dùng **argon2id riêng trong `packages/core`**
-  (`packages/core/src/download/share-link-password.ts`) — không gọi lại `packages/auth`'s password functions,
-  để giữ đúng chiều phụ thuộc package (`core` không phụ thuộc `auth`, ADR-020).
-- **`fileIds` null/rỗng** = mọi file đang bán của sản phẩm (cùng quy ước "rỗng = không giới hạn" với
-  `Coupon.productIds`, M6).
-- **`maxUses`/`expiresAt`/`revokedAt`**: hết lượt/hết hạn/bị thu hồi → trả **410**; token không tồn tại → 404 —
-  RLS trên `share_links` **không lọc theo status** ở nhánh public, để phân biệt đúng 2 mã lỗi này. Từ ADR-029 mục 0
-  (migration `20260927130000_rls_adr029_split_write_policies`) nhánh public này chỉ còn trong policy **đọc**
-  `select_access`; tăng `usedCount` chạy dưới `withTenant` ✅ (theo comment migration). Trước đó scope public ghi được
-  mọi share link ở tầng DB (bỏ `revokedAt`, đặt lại `usedCount`).
-- **Rate limit:** 20 lượt/10 phút mỗi token — chống dò mật khẩu.
-- **Route công khai:** `GET /s/[token]` (trang nhập mật khẩu nếu cần), `POST /api/share-links/{token}/download`.
-- **Chỉ file (ADR-026)** ✅: share link là kênh ẩn danh nên chỉ nhận dòng `sourceKind = FILE` — link tài liệu ngoài
-  không bao giờ đi qua share link.
-
-**3 lỗ hổng RLS thật đã phát hiện và sửa qua chính integration test (ADR-020)** — không phải qua review:
-`products`/`product_files` (RLS từ M4/M5) từng thiếu nhánh "customer đã mua" (khách mua rồi vẫn không đọc được
-sản phẩm/file của chính mình một khi sản phẩm bị gỡ khỏi `PUBLISHED`); `consumeShareLinkDownload()` từng đọc
-`share_links` qua `getPrismaClient()` trần thay vì `withPublic()`. Cả 3 đã sửa bằng migration RLS riêng, không
-sửa lại policy gốc trong migration cũ (giữ lịch sử migration bất biến).
-
-**Siết ghi (ADR-029 mục 0)** ✅ đọc SQL: `products`, `product_files`, `share_links`, `entitlements` (cùng `coupons`,
-`orders`, `order_items`) chuyển từ 1 policy `tenant_isolation` `FOR ALL` sang `select_access` (giữ nguyên điều kiện đọc
-nêu ở trang này) + `write_insert/update/delete` chỉ tenant hoặc `system_job`. Khách không còn tự UPDATE được
-`downloadsUsed/downloadLimit` của entitlement ở tầng DB. Xem [[02-System-Specs/Architecture-Overview|Architecture-Overview]] §3.
+Chủ gian hàng tạo link tải trực tiếp tại `/studio/[tenantSlug]/products/[productId]/share-links`:
+- Token thô chỉ hiển thị **một lần duy nhất** khi tạo, DB chỉ lưu mã băm `tokenHash`.
+- Mật khẩu tuỳ chọn mã hoá bằng `argon2id` riêng trong `packages/core` (giữ tính độc lập của core package).
+- Khi khách mở link tải (`POST /api/share-links/{token}/download`), hàm `consumeShareLinkDownload` định tuyến lấy presigned URL từ đúng `storageBucket` và `storageProvider` được ghi nhận trên `ProductFile`.
+- Share link chỉ áp dụng cho tài liệu tệp (`sourceKind = FILE`), không áp dụng cho link ngoài.
 
 ---
 
-## 6. Cloudinary Hệ Thống — Bối Cảnh
+## 6. Kiến Trúc Dedicated Bucket, Dual Storage Provider & Bộ Công Cụ Quản Trị Storage (ADR-038)
 
-Tài khoản Cloudinary hệ thống cấu hình ở `/admin/settings/cloudinary` (`SystemCloudinaryConfig`, secret mã hoá bằng
-`STORAGE_ENCRYPTION_KEY`; đổi cloud name/key/secret thì tự tắt cho tới khi admin "Kiểm tra kết nối" lại — cùng cơ chế
-auto-disable của R2/SePay/MoMo) ✅ `apps/web/lib/system-cloudinary.ts`. Ban đầu chỉ phục vụ ảnh Landing Page CMS; sau
-đó dùng thêm cho ảnh storefront tenant (ADR-023), ảnh bìa sản phẩm (`Product.coverImageUrl`, ADR-027) và ảnh trong mô
-tả sản phẩm (ADR-028). File tài liệu bán **vẫn chỉ ở R2 private**. Ảnh không đi qua server Next.js: trình duyệt upload
-thẳng lên Cloudinary bằng chữ ký do server cấp, ảnh phục vụ từ CDN `res.cloudinary.com`.
+Theo quyết định [[01-Architecture-Decisions/ADR-013-Dual-Storage-MinIO-R2-Dedicated-Buckets|ADR-013 (≙ ADR-038)]], hệ thống chuyển đổi từ mô hình lưu trữ tập trung sang kiến trúc đa nền tảng kết hợp cô lập cấp bucket.
+
+### 6.1 Mô Hình Dedicated Bucket Cho Gian Hàng
+- **Mục tiêu:** Tách biệt triệt để dữ liệu giữa các giáo viên/coach, hạn chế rủi ro lộ lọt chéo, tạo điều kiện thuận lợi cho việc sao lưu, di chuyển hoặc thực thi chính sách tuân thủ dữ liệu riêng biệt.
+- **Quy tắc sinh tên bucket (`deriveTenantBucketName`):**
+  - Tiêu chuẩn đặt tên: Tuân thủ nghiêm ngặt regex S3/MinIO: `^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$`.
+  - Cấu trúc: `${bucketPrefix}tenant-${cleanTenantId}` (độ dài kẹp từ 3 đến 63 ký tự, chuyển toàn bộ thành chữ thường, loại bỏ ký tự đặc biệt).
+- **Cơ chế cấp phát tự động:**
+  - Cấp phát ngay khi đăng ký gian hàng (`createTenantForUser`).
+  - Khởi tạo lười (*lazy-provisioning*): Nếu một gian hàng cũ chưa có bucket, hệ thống tự động sinh tên, lưu vào `Tenant.storageBucket` và gọi `ensureBucketExists` ngay khi upload file đầu tiên.
+  - Khởi tạo thủ công: System Admin có thể bấm "Khởi tạo bucket" trực tiếp từ giao diện Giám sát Bucket.
+
+### 6.2 Cấu Hình Dual Storage Provider Trong `SystemStorageConfig`
+Quản trị viên cấu hình độc lập hai nền tảng lưu trữ tại `/admin/settings/storage`:
+
+| Tham số | Cloudflare R2 (`CLOUDFLARE_R2`) | MinIO (`MINIO`) |
+|---|---|---|
+| **Định danh / Host** | `endpoint` (URL Cloudflare R2) | `host` (Domain hoặc IP) + `port` (vd: 9000) |
+| **Giao thức SSL** | Mặc định HTTPS | Tuỳ chọn `useSSL: boolean` (HTTP / HTTPS) |
+| **Khu vực (Region)** | `auto` hoặc khu vực R2 | Mặc định `us-east-1` |
+| **Tiền tố Bucket** | — | `bucketPrefix` (vd: `gc-`) |
+| **Bucket chung (Fallback)** | `bucketPrivate` & `bucketPublic` | Tự động ghép theo prefix (`${prefix}private`) |
+| **Hạn mức tải lên** | Giới hạn theo Cloudflare R2 | `maxUploadMb` (cấu hình tuỳ chọn, vd: 500MB) |
+| **Khoá xác thực** | `accessKeyId` & `secretAccessKey` (AES-256-GCM) | `accessKeyId` & `secretAccessKey` (AES-256-GCM) |
+
+- Cờ `activeProvider` quyết định provider nào sẽ tiếp nhận các file mới tải lên.
+- Nút "Kiểm tra kết nối" thực hiện gọi lệnh `HeadBucketCommand` / `testS3Connection` thật lên từng provider để xác thực credential trước khi bật kích hoạt.
+
+### 6.3 Công Cụ Quản Trị Đồng Bộ Dữ Liệu (Storage Sync Engine)
+- **Vị trí:** Tích hợp trong System Admin tại `/admin/settings/storage` (panel "Đồng bộ dữ liệu").
+- **Chiều đồng bộ:** Cho phép chọn `R2_TO_MINIO` hoặc `MINIO_TO_R2`.
+- **Cơ chế Stream Copy (Zero-Disk / Zero-RAM Buffering):**
+  - Hàm `copyObjectBetweenClients` (`packages/storage/src/stream-copy.ts`) lấy `Body` (luồng stream) từ `GetObjectCommand` của source client truyền thẳng sang `PutObjectCommand` của target client.
+  - Không tải toàn bộ file về bộ nhớ máy chủ web Next.js, không ghi ra file tạm trên đĩa cứng, bảo đảm an toàn cho các file dung lượng lớn hàng trăm MB.
+  - Tự động gọi `ensureBucketExists` để tạo bucket trên provider đích nếu chưa có.
+  - Kiểm tra tính toàn vẹn thông qua kích thước byte truyền (`ContentLength`) và mã băm `ETag`.
+  - Cập nhật trường `ProductFile.storageBucket` và `ProductFile.storageProvider` sau khi hoàn tất sao chép thành công.
+
+### 6.4 Màn Hình Giám Sát Dung Lượng & Bucket Gian Hàng (Bucket Monitoring)
+- **Vị trí:** Tab "Giám sát Bucket & Dung lượng" tại `/admin/settings/storage`.
+- **Dữ liệu giám sát thời gian thực:**
+  - Danh sách tất cả gian hàng trong hệ thống: Tên, Slug, Trạng thái hoạt động.
+  - Bucket riêng (`storageBucket`) và Provider đang gán (`storageProvider`).
+  - Số lượng file bán (`fileCount`).
+  - Dung lượng sử dụng thực tế (`storageUsedBytes`).
+  - Hạn mức gói thuê bao (`Plan.storageMb`).
+  - Thanh tiến trình % dung lượng kèm mã màu cảnh báo trực quan:
+    + 🟢 **Xanh lá:** Sử dụng dưới 75% hạn mức.
+    + 🟡 **Vàng / Cam:** Sử dụng từ 75% đến 90% hạn mức (cần chú ý).
+    + 🔴 **Đỏ:** Sử dụng vượt 90% hoặc chạm ngưỡng hạn mức gói.
+- **Thao tác nhanh cho Admin:**
+  - Nút "Kiểm tra bucket" (`headBucket`): Xác minh kết nối vật lý tới bucket trên S3/MinIO.
+  - Nút "Khởi tạo bucket": Tạo ngay dedicated bucket cho các gian hàng cũ mà không cần chờ lượt upload đầu tiên.
 
 ---
 
-## 7. Ảnh Tenant Trên Cloudinary Hệ Thống — Chữ Ký, Hạn Mức, Tối Ưu (ADR-028)
+## 7. Cloudinary Hệ Thống — Bối Cảnh
 
-Đối chiếu code 2026-09-27 ✅: `apps/web/lib/tenant-media.ts`, `apps/web/lib/system-cloudinary.ts`,
-`apps/web/lib/cloudinary-signature.ts`, `apps/web/app/studio/[tenantSlug]/media-actions.ts`,
-`apps/web/app/_ui/cloudinary-actions.ts`, `packages/core/src/content/{cloudinary-url,sanitize-html}.ts`,
-`packages/core/src/tenant/storefront-sections.ts`. ADR: [[01-Architecture-Decisions/ADR-014-System-Cloudinary-Image-Quota|ADR-014 (≙ ADR-028)]].
+Tài khoản Cloudinary hệ thống cấu hình ở `/admin/settings/cloudinary` (`SystemCloudinaryConfig`, secret mã hoá bằng `STORAGE_ENCRYPTION_KEY`; đổi cloud name/key/secret thì tự tắt cho tới khi admin "Kiểm tra kết nối" lại — cùng cơ chế auto-disable của R2/SePay/MoMo) ✅ `apps/web/lib/system-cloudinary.ts`.
 
-### 7.1 Luồng ký → upload → register
+Ban đầu chỉ phục vụ ảnh Landing Page CMS; sau đó dùng thêm cho ảnh storefront tenant (ADR-023), ảnh bìa sản phẩm (`Product.coverImageUrl`, ADR-027) và ảnh trong mô tả sản phẩm (ADR-028). File tài liệu bán **vẫn chỉ ở R2/MinIO private**. Ảnh không đi qua server Next.js: trình duyệt upload thẳng lên Cloudinary bằng chữ ký do server cấp, ảnh phục vụ từ CDN `res.cloudinary.com`.
+
+---
+
+## 8. Ảnh Tenant Trên Cloudinary Hệ Thống — Chữ Ký, Hạn Mức, Tối Ưu (ADR-028)
+
+Đối chiếu code 2026-09-27 ✅: `apps/web/lib/tenant-media.ts`, `apps/web/lib/system-cloudinary.ts`, `apps/web/lib/cloudinary-signature.ts`, `apps/web/app/studio/[tenantSlug]/media-actions.ts`, `apps/web/app/_ui/cloudinary-actions.ts`, `packages/core/src/content/{cloudinary-url,sanitize-html}.ts`, `packages/core/src/tenant/storefront-sections.ts`. ADR: [[01-Architecture-Decisions/ADR-014-System-Cloudinary-Image-Quota|ADR-014 (≙ ADR-028)]].
+
+### 8.1 Luồng ký → upload → register
 
 ```mermaid
 sequenceDiagram
@@ -230,30 +242,13 @@ sequenceDiagram
     end
 ```
 
-- **Ký `public_id` đầy đủ, không ký `folder`** ✅: một chữ ký chỉ tạo/ghi đè đúng 1 asset — không dùng lại chữ ký để
-  upload hàng loạt trong 1 giờ hiệu lực. Chuỗi ký = mọi tham số (trừ `file`, `cloud_name`, `resource_type`,
-  `api_key`) sắp theo alphabet, nối `key=value` bằng `&`, cộng `apiSecret`, SHA-1. Client phải gửi **nguyên vẹn**
-  `uploadParams` — thêm/bớt/sửa một tham số là Cloudinary từ chối.
-- **Định dạng tenant:** `allowed_formats` = png, jpg, jpeg, webp (không SVG, không GIF) — nằm trong chữ ký ✅.
-- **Incoming transformation** `c_limit,w_2000,h_2000` nằm trong chữ ký: Cloudinary thu cạnh dài về ≤2000px trước khi
-  lưu bản gốc, không phóng ảnh nhỏ ✅.
-- **Giữ chỗ hạn mức lúc ký** ✅: mọi chữ ký đã cấp bị tính 5MB (`UNVERIFIED_IMAGE_BYTES`) cho tới khi xác minh — không
-  lách hạn mức bằng cách "upload rồi không báo". Dòng giữ chỗ quá 1 giờ (hết hiệu lực chữ ký) chưa xác minh được đối
-  soát lười **tối đa 3 dòng mỗi lần xin chữ ký** (Admin API có rate limit): Cloudinary báo không có → xoá; có → ghi số
-  thật; Admin API lỗi → dừng, để lần sau.
-- **Số liệu chỉ lấy từ server** ✅: `bytes/format/width/height` đọc qua Admin API (Basic Auth `api_key:api_secret`),
-  không nhận từ client. `secure_url` trả về chỉ được dùng khi đúng cloud hệ thống, nếu không thì dùng URL dựng từ
-  `public_id`.
-- **Hành vi đã biết — Cloudinary bị tắt giữa lúc ký và register** (Quốc chấp nhận 2026-09-27) ✅: register dùng
-  `getSystemCloudinaryLocation()` (không kiểm `isEnabled`) nên vẫn qua bước kiểm `public_id`, nhưng Admin API chỉ đọc
-  cấu hình đang bật → trả nhánh lỗi: ảnh được nhận với `verified:false`, giữ mức tạm 5MB (không trả
-  `CLOUDINARY_NOT_CONFIGURED`). Số thật được đối soát ở lần xin chữ ký sau khi Cloudinary bật lại.
-- **So hạn mức lúc cấp chữ ký** (`usedBytes >= limitBytes` → từ chối): ảnh cuối cùng có thể đẩy tổng vượt hạn mức tối
-  đa bằng một ảnh ✅ (đọc code — ghi nhận hành vi hiện tại).
-- **Chưa có:** job dọn asset mồ côi (ảnh đã register nhưng không còn được dùng vẫn tính hạn mức); UI hiển thị "Đã dùng
-  X/Y MB ảnh"; upload preset chặn cứng dung lượng file ở Cloudinary (BACKLOG).
+- **Ký `public_id` đầy đủ, không ký `folder`** ✅: Một chữ ký chỉ tạo/ghi đè đúng 1 asset. Chuỗi ký = mọi tham số sắp theo alphabet, nối `key=value` bằng `&`, cộng `apiSecret`, SHA-1.
+- **Định dạng tenant:** `allowed_formats` = png, jpg, jpeg, webp (không SVG, không GIF).
+- **Incoming transformation** `c_limit,w_2000,h_2000` nằm trong chữ ký: Cloudinary thu cạnh dài về $\le 2000$px trước khi lưu bản gốc.
+- **Giữ chỗ hạn mức lúc ký** ✅: Mỗi chữ ký đã cấp bị tính tạm 5MB (`UNVERIFIED_IMAGE_BYTES`) cho tới khi xác minh. Dòng giữ chỗ quá 1 giờ chưa xác minh được đối soát lười tối đa 3 dòng mỗi lần xin chữ ký.
+- **Số liệu chỉ lấy từ server** ✅: `bytes/format/width/height` đọc qua Admin API, không nhận từ client.
 
-### 7.2 Hạn mức theo gói
+### 8.2 Hạn mức theo gói
 
 | Gói (dữ liệu khởi tạo) | `Plan.imageStorageMb` |
 |---|---|
@@ -262,74 +257,41 @@ sequenceDiagram
 | PRO | 2048 |
 | BUSINESS | 5120 |
 
-✅ migration `20260927110000_adr028_image_quota_media_assets` (default 100 + UPDATE theo `code`) và `seed.ts`. Chỉ là
-dữ liệu khởi tạo — System Admin sửa ở `/admin/plans` (ô "Dung lượng ảnh (MB)", số nguyên ≥ 0 qua
-`packages/core/src/admin/plan-validation.ts`); logic không đọc `plan.code` (ADR-021). Hạn mức cộng chung ảnh mô tả +
-ảnh bìa + ảnh storefront (tổng `bytes` của `tenant_media_assets` theo tenant). Gói xác định từ `subscription` của
-tenant như `assertPlanLimit`. Hạn mức ảnh **tách riêng** với `storageUsedBytes` (dung lượng file R2).
+Hạn mức cộng chung ảnh mô tả + ảnh bìa + ảnh storefront + ảnh bài viết. Hạn mức ảnh **tách riêng** với `storageUsedBytes` (dung lượng file bán R2/MinIO).
 
-### 7.3 Chữ ký dùng chung (admin) và chữ ký tenant
+### 8.3 Chữ ký dùng chung (admin) và chữ ký tenant
 
 | Action | Guard | Ký gì | Dùng ở |
 |---|---|---|---|
-| `getCloudinaryUploadSignatureAction` (`app/_ui/cloudinary-actions.ts`) | `requireRole("SYSTEM_ADMIN")` | `folder` = root, `allowed_formats` png/jpg/jpeg/webp/svg | `ImageUploadField` mặc định (CMS, nhận diện thương hiệu, danh mục), editor mô tả danh mục |
+| `getCloudinaryUploadSignatureAction` (`app/_ui/cloudinary-actions.ts`) | `requireRole("SYSTEM_ADMIN")` | `folder` = root, `allowed_formats` png/jpg/jpeg/webp/svg | `ImageUploadField` mặc định (CMS, thương hiệu, danh mục) |
 | `getContentImageUploadSignatureAction` (`studio/[tenantSlug]/media-actions.ts`) | `requireTenantMember` | `public_id` `tenants/<id>/content/…` | Editor mô tả sản phẩm |
 | `getProductCoverUploadSignatureAction` (`studio/[tenantSlug]/products/actions.ts`) | `requireTenantMember` | `public_id` `tenants/<id>/products/…` | Card Ảnh đại diện |
 | `getTenantCloudinaryUploadSignatureAction` (`studio/[tenantSlug]/storefront/actions.ts`) | `requireTenantMember` | `public_id` `tenants/<id>/storefront/…` | Storefront editor |
 
-Trước 2026-09-27 chữ ký dùng chung chỉ `requireUser()` (mọi tài khoản, kể cả khách mua hàng, lấy được chữ ký upload vào
-folder gốc) — đã siết ✅. SVG giữ cho logo admin (hiển thị qua `<img>` nên không thực thi script). Ảnh admin **không**
-tính hạn mức và không ghi `tenant_media_assets`.
+### 8.4 Tối ưu hiển thị — `cloudinaryDeliveryUrl`
 
-### 7.4 Tối ưu hiển thị — `cloudinaryDeliveryUrl`
+`cloudinaryDeliveryUrl(secureUrl, { width })` (`packages/core/src/content/cloudinary-url.ts`) chèn `f_auto,q_auto,c_limit,w_<N>` sau `/image/upload/`, N kẹp về [1, 1600]. Chỉ áp dụng cho URL Cloudinary hệ thống; URL khác trả nguyên trạng.
 
-`cloudinaryDeliveryUrl(secureUrl, { width })` (`packages/core/src/content/cloudinary-url.ts`, subpath
-`@gieochu/core/cloudinary-url` để client component import) chèn `f_auto,q_auto,c_limit,w_<N>` sau `/image/upload/`, N
-kẹp về [1, 1600] ✅. Chỉ áp cho `https://res.cloudinary.com/<cloud>/image/upload/...`; URL khác (R2, host ngoài,
-`image/fetch`) trả nguyên. Idempotent (thay `w_` cũ), giữ transformation có sẵn khác, nối bộ tối ưu vào cuối chuỗi
-transformation.
+### 8.5 Sanitizer & kiểm URL ảnh
 
-| Ngữ cảnh | `width` | Nơi gọi ✅ |
-|---|---|---|
-| Thẻ tài liệu storefront | 800 | `app/[tenantSlug]/_ui/products.tsx` |
-| Ảnh bìa trang chi tiết | 1200 | `app/[tenantSlug]/_ui/product-detail.tsx` |
-| Ảnh trong mô tả (lúc render) | 1200 | `product-detail.tsx` → `sanitizeRichTextHtml(..., { imageWidth: 1200 })` |
-| Hero storefront | 1000 | `app/[tenantSlug]/_ui/hero.tsx` |
-| Avatar testimonial / icon dịch vụ | 200 | `testimonials.tsx`, `services.tsx` |
-| Preview trong `ImageUploadField` | 600 | `app/admin/_ui/image-upload-field.tsx` |
-| Logo | không áp | không có lời gọi `cloudinaryDeliveryUrl` cho logo (theo brief: logo giữ nguyên URL) |
-
-### 7.5 Sanitizer & kiểm URL ảnh
-
-- `sanitizeRichTextHtml(html, { imageCloudName, imageWidth? })` ✅: `img` chỉ giữ khi `src` là
-  `https://res.cloudinary.com/<imageCloudName>/image/upload/...`; ảnh host/cloud khác bị **bỏ hẳn thẻ**.
-  `imageCloudName = null` (chưa cấu hình Cloudinary) → loại mọi ảnh. Khi **lưu** không truyền `imageWidth` (DB giữ URL
-  gốc); khi **render** truyền `imageWidth` để viết lại `src` qua `cloudinaryDeliveryUrl`. Áp ở mô tả sản phẩm (lưu +
-  render trang chi tiết + trang Xem trước) và mô tả danh mục (admin, lúc lưu).
-- `isCloudinaryImageUrl(value, cloudName?)` ✅: không truyền `cloudName` = chỉ kiểm host `res.cloudinary.com` (schema zod
-  thuần/client); truyền chuỗi = bắt buộc tiền tố `/<cloudName>/image/upload/`; truyền `null` = luôn false. Server dùng
-  bản có cloud name khi lưu `coverImageUrl` (`products/actions.ts`) và ảnh storefront (`storefront/actions.ts`).
-- Cloud name đọc qua `getSystemCloudinaryLocation()` — đọc **cả khi cấu hình đang tắt** (ảnh đã lưu vẫn hiển thị và lọc
-  đúng cloud), `cache()` gộp trong một request.
-- `coverImageUrl` nay kiểm đúng cloud hệ thống nhưng **chưa kiểm folder** `tenants/<id>/products` — tenant về lý thuyết
-  dán được URL ảnh của tenant khác cùng cloud (BACKLOG).
-
-### 7.6 Chưa verify ❓
-Upload thật lên Cloudinary với chữ ký `public_id` + `transformation`; phản hồi Admin API thật (404, timeout, rate
-limit); ảnh `f_auto` qua CSP `img-src` trên trình duyệt; tenant gói FREE chạm 100MB trên dev server.
+- `sanitizeRichTextHtml(html, { imageCloudName, imageWidth? })`: Thẻ `img` chỉ giữ khi `src` là `https://res.cloudinary.com/<imageCloudName>/image/upload/...`. Ảnh host khác bị loại bỏ hoàn toàn.
+- `isCloudinaryImageUrl(value, cloudName?)`: Kiểm tra URL hợp lệ theo đúng cloud name hệ thống khi lưu trữ ảnh bìa hoặc ảnh storefront.
 
 ---
 
-## 8. Tài Liệu Tham Chiếu & Liên Kết
+## 9. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[Architecture-Overview]] — Tổng quan kiến trúc hệ thống ([Architecture-Overview.md](./Architecture-Overview.md))
-* [[Order-State-Machine]] — `Entitlement` được tạo khi đơn `FULFILLED` ([Order-State-Machine.md](./Order-State-Machine.md))
-* [docs/DECISIONS.md](../../docs/DECISIONS.md) — ADR-014 (chia 2 phần M5), ADR-017 (storage qua System Admin),
-  ADR-018 (file.scan chưa có ClamAV), ADR-020 (RLS/argon2 share link), ADR-028 (ảnh Cloudinary hệ thống)
-* Mã nguồn: `packages/storage/src/*.ts`, `apps/web/lib/{product-upload,file-scan,download,share-link,system-storage,system-cloudinary,tenant-media}.ts`,
-  `packages/core/src/download/*.ts`
-* [[02-System-Specs/Product-Editor-And-Publishing-Specs|Product-Editor-And-Publishing-Specs]] — ADR-026/027 ([Product-Editor-And-Publishing-Specs.md](./Product-Editor-And-Publishing-Specs.md))
-* [[01-Architecture-Decisions/ADR-014-System-Cloudinary-Image-Quota|ADR-014 (≙ ADR-028)]] — ảnh Cloudinary hệ thống + hạn mức ([ADR-014-System-Cloudinary-Image-Quota.md](../01-Architecture-Decisions/ADR-014-System-Cloudinary-Image-Quota.md))
-* [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §11 — contract action ảnh ([Endpoint-Directory.md](../03-API-Contracts/Endpoint-Directory.md))
+* [[Order-State-Machine]] — Vòng đời đơn hàng & cấp quyền Entitlement ([Order-State-Machine.md](./Order-State-Machine.md))
+* [[01-Architecture-Decisions/ADR-005-Storage-Config-System-Admin|ADR-005 (≙ ADR-017)]] — Cấu hình Storage quản lý qua System Admin + DB mã hoá.
+* [[01-Architecture-Decisions/ADR-013-Dual-Storage-MinIO-R2-Dedicated-Buckets|ADR-013 (≙ ADR-038)]] — Kiến trúc Dual Storage MinIO & R2, Dedicated Bucket per Tenant, Storage Sync Engine.
+* [[01-Architecture-Decisions/ADR-014-System-Cloudinary-Image-Quota|ADR-014 (≙ ADR-028)]] — Ảnh Cloudinary hệ thống & hạn mức ảnh theo gói.
+* [[02-System-Specs/Product-Editor-And-Publishing-Specs|Product-Editor-And-Publishing-Specs]] — Editor sản phẩm, kiểm soát upload và điều kiện xuất bản.
+* [[03-API-Contracts/Database-Schema-Reference|Database-Schema-Reference]] — Lược đồ Prisma cho `Tenant`, `ProductFile` và `SystemStorageConfig`.
+* [docs/DECISIONS.md](../../docs/DECISIONS.md) — ADR-014, ADR-017, ADR-018, ADR-020, ADR-028, ADR-038.
+* Mã nguồn cốt lõi:
+  - `packages/storage/src/{bucket,stream-copy,presign,scan,s3-client}.ts`
+  - `apps/web/lib/{tenant-storage,storage-sync,system-storage,product-upload,download,file-scan,share-link}.ts`
+  - `apps/web/app/admin/settings/storage/{page,actions,storage-form,bucket-monitoring,storage-sync-panel}.tsx`
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

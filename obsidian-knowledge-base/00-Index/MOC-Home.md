@@ -4,7 +4,7 @@ tags:
   - index
   - moc
 date: 2026-09-26
-updated: 2026-10-16
+updated: 2026-10-17
 author: System Architect
 ---
 
@@ -68,18 +68,18 @@ duy nhất cho dev/Preview/production + kỷ luật thao tác DB (ADR-034,
 [[01-Architecture-Decisions/ADR-020-Single-Database-Dev-Preview-Production|ADR-020 KB]]), trang Cửa hàng (marketplace) — CMS `shop` trước,
 trang công khai `/cua-hang` sau (ADR-035, [[01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First|ADR-021 KB]]), xử lý job nền
 ngay trong app bằng `after()` + Vercel Cron hằng ngày, không worker thường trực (ADR-036 — chưa có bản trích KB, chờ Quốc duyệt; nội dung ở
-[[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]]). Tổng cộng 36 ADR gốc.
+[[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]]), cấu hình Database/App URL bằng biến thành phần (ADR-037), và lưu trữ đa nền tảng MinIO song song Cloudflare R2 với Dedicated Bucket cho từng gian hàng, Công cụ Đồng bộ Stream Copy và Màn hình Giám sát Bucket (ADR-038, [[01-Architecture-Decisions/ADR-013-Dual-Storage-MinIO-R2-Dedicated-Buckets|ADR-013 KB]]). Tổng cộng 38 ADR gốc.
 ([Đường dẫn](../01-Architecture-Decisions/README.md))
 
 ### 2. [[02-System-Specs/README|02-System-Specs]] — Đặc tả Hệ thống Sống (Living Specs)
 Đặc tả các luồng nghiệp vụ đang hoạt động thật trong code, theo từng module đã hoàn thành ở `docs/PLAN.md`
 (M0–M9): xác thực & định danh, tenant workspace & storefront, System Admin console, billing/subscription &
 entitlement, cấu hình thanh toán tenant, sản phẩm & giá & khuyến mãi, checkout & vòng đời đơn hàng, thư viện/
-tải xuống/share link, storefront CMS + form liên hệ (ADR-023,
+tải xuống/share link, lưu trữ file bán S3-compatible — Dual Provider Cloudflare R2 + MinIO, Dedicated Bucket cho gian hàng, Công cụ Đồng bộ Stream Copy & Giám sát Bucket (ADR-038, [[02-System-Specs/File-Storage-And-Downloads-Specs|File-Storage-And-Downloads-Specs]]), storefront CMS + form liên hệ (ADR-023,
 [[02-System-Specs/Storefront-CMS-Specs|Storefront-CMS-Specs]]), editor sản phẩm + điều kiện xuất bản + link tài liệu
 ngoài + trang Xem trước + URL tài liệu `/{tenantSlug}/{productSlug}` và slug dành riêng (ADR-026/027/030,
 [[02-System-Specs/Product-Editor-And-Publishing-Specs|Product-Editor-And-Publishing-Specs]]), ảnh Cloudinary hệ thống + hạn mức ảnh
-(ADR-028, [[02-System-Specs/File-Storage-And-Downloads-Specs|File-Storage-And-Downloads-Specs]] §7), đánh giá sản phẩm M10a
+(ADR-028, [[02-System-Specs/File-Storage-And-Downloads-Specs|File-Storage-And-Downloads-Specs]] §8), đánh giá sản phẩm M10a
 (ADR-029, [[02-System-Specs/Reviews-Specs|Reviews-Specs]]), bài viết tối giản M10b (ADR-029, [[02-System-Specs/Posts-Specs|Posts-Specs]]), trang Cửa hàng — GĐ1 CMS `shop` + GĐ2 trang công khai `/cua-hang`, `/cua-hang/tai-lieu` xong code, chưa commit/deploy (ADR-035, [[02-System-Specs/Shop-Marketplace-Specs|Shop-Marketplace-Specs]]), job nền M11 — `after()` + cron `/api/cron/daily`, trạng thái đơn hiệu lực `effectiveOrderStatus` (ADR-036, xong code, chưa commit/deploy, [[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]]), cùng ranh giới RLS theo layer L1/L2/L3 (tách policy đọc/ghi từ ADR-029).
 ([Đường dẫn](../02-System-Specs/README.md))
 

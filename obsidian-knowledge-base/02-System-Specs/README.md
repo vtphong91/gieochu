@@ -24,10 +24,7 @@ bộ nội dung được viết lại từ nguồn thật: `CLAUDE.md`, `docs/AR
 - `[[Payment-And-Billing]]`: Hai hệ thống thanh toán tách biệt (Platform billing vs Tenant billing) dùng chung
   `packages/payments` qua `PaymentScope`, mô hình Free Forever + Paid Subscription (ADR-021), webhook
   idempotent với `timingSafeEqual`.
-- `[[File-Storage-And-Downloads-Specs]]`: Lưu trữ file sản phẩm qua S3-compatible (Cloudflare R2), presigned
-  URL ≤ 10 phút, `DownloadToken`/`ShareLink`, mật khẩu share link bằng argon2 riêng trong `packages/core`; §7 ảnh
-  tenant trên Cloudinary hệ thống — chữ ký `public_id`, giữ chỗ + đối soát hạn mức, `cloudinaryDeliveryUrl`,
-  sanitizer (ADR-028).
+- `[[File-Storage-And-Downloads-Specs]]`: Lưu trữ file sản phẩm qua S3-compatible — Dual Storage Provider (Cloudflare R2 song song MinIO) với Dedicated Bucket riêng cho từng gian hàng (ADR-038), presigned URL ≤ 10 phút, `DownloadToken`/`ShareLink`, mật khẩu share link bằng argon2 riêng trong `packages/core`, Công cụ Đồng bộ Dữ liệu (Stream Copy S3-to-S3) & Giám sát dung lượng bucket; §7–§8 ảnh tenant trên Cloudinary hệ thống — chữ ký `public_id`, giữ chỗ + đối soát hạn mức, `cloudinaryDeliveryUrl`, sanitizer (ADR-028).
 - `[[User-Management-System-Center-Specs]]`: Console quản trị `/admin/**`, khoá/mở khoá tài khoản, cơ chế
   refresh-token rotation + reuse detection, ranh giới "System Admin không đọc order/customer của tenant".
 - `[[Storefront-CMS-Specs]]`: Storefront tenant theo section CMS (7 loại section — thêm `reviews` và `posts` ở ADR-029, nháp/xuất bản/khôi phục, nội

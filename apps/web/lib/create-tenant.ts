@@ -108,5 +108,17 @@ export async function createTenantForUser(user: CurrentUser, input: CreateTenant
     return created;
   });
 
+  // ADR-038: If active provider is MINIO, attempt to provision dedicated bucket early
+  try {
+    const { getDecryptedSystemStorageConfig } = await import("./system-storage");
+    const sysConfig = await getDecryptedSystemStorageConfig();
+    if (sysConfig?.activeProvider === "MINIO") {
+      const { getOrCreateTenantBucket } = await import("./tenant-storage");
+      await getOrCreateTenantBucket(tenant.id);
+    }
+  } catch {
+    // Lazy provision fallback will handle bucket creation upon first upload
+  }
+
   return { id: tenant.id, slug: tenant.slug };
 }

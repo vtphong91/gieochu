@@ -303,6 +303,10 @@ model Tenant {
   orderCodePrefix         String       @unique
   status                  TenantStatus @default(ACTIVE)
   storageUsedBytes        Int          @default(0)
+  /// ADR-038: dedicated bucket name for this tenant (null = uses shared system bucket)
+  storageBucket           String?
+  /// ADR-038: storage provider for the tenant bucket ("CLOUDFLARE_R2" | "MINIO", null = default)
+  storageProvider         String?
   createdAt               DateTime     @default(now())
   updatedAt               DateTime     @updatedAt
 
@@ -470,6 +474,10 @@ model ProductFile {
   mimeType    String?
   sizeBytes   Int
   sha256      String?
+  /// ADR-038: dedicated bucket where this file is stored (null = shared system private bucket)
+  storageBucket String?
+  /// ADR-038: storage provider where this file is stored ("CLOUDFLARE_R2" | "MINIO", null = default)
+  storageProvider String?
   scanStatus  ProductFileScanStatus? @default(PENDING)
   isPreview   Boolean                @default(false)
   removedAt   DateTime?

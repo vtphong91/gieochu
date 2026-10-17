@@ -13,16 +13,11 @@ import { randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { config as loadEnv } from "dotenv";
 import { Client } from "pg";
+import { resolvePrismaMigrateUrl } from "@gieochu/config";
 
 loadEnv({ path: fileURLToPath(new URL("../../../.env", import.meta.url)) });
 
 const APP_ROLE = "gieochu_app";
-
-function assertEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) throw new Error(`Missing ${name} in .env`);
-  return value;
-}
 
 function generatePassword(): string {
   // Alphanumeric only — safe to embed in a connection-string URL unescaped.
@@ -30,7 +25,10 @@ function generatePassword(): string {
 }
 
 async function main() {
-  const ownerUrl = assertEnv("PRISMA_MIGRATE_URL");
+  const ownerUrl = resolvePrismaMigrateUrl(process.env);
+  if (!ownerUrl) {
+    throw new Error("Missing PRISMA_MIGRATE_URL (hoặc DB_MIGRATE_USER/DB_MIGRATE_PASSWORD/DB_HOST/DB_NAME) in .env");
+  }
   const ownerClient = new Client({ connectionString: ownerUrl });
   await ownerClient.connect();
 
@@ -87,10 +85,18 @@ async function main() {
       pooledUrlObj.hostname = pooledUrlObj.hostname.replace(/^([^.]+)\./, "$1-pooler.");
 
       console.log("Set these in .env (save the password — it will not be shown again):\n");
+      console.log("# Cách 1: Dùng chuỗi hoàn chỉnh [RUNTIME]");
       console.log(`DATABASE_URL="${pooledUrlObj.toString()}"`);
-      console.log(`DIRECT_URL="${directUrlObj.toString()}"`);
+      console.log(`DIRECT_URL="${directUrlObj.toString()}"\n`);
+      console.log("# Cách 2: Dùng các biến thành phần [RUNTIME]");
+      console.log(`DB_USER="${APP_ROLE}"`);
+      console.log(`DB_PASSWORD="${newPassword}"`);
+      console.log(`DB_HOST="${directUrlObj.hostname}"`);
+      console.log(`DB_PORT="${directUrlObj.port || 5432}"`);
+      console.log(`DB_NAME="${dbName}"`);
+      console.log(`DB_POOLED_HOST="${pooledUrlObj.hostname}"\n`);
     } else {
-      console.log("Role already existed — DATABASE_URL/DIRECT_URL in .env should already use its saved password.");
+      console.log("Role already existed — DATABASE_URL/DIRECT_URL (hoặc DB_PASSWORD) in .env should already use its saved password.");
     }
   } finally {
     await ownerClient.end();
