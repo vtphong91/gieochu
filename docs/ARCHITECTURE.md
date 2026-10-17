@@ -90,6 +90,10 @@ sửa 2 policy RLS có sẵn từ M4/M5 (`products`, `product_files`) thêm nhá
 M12c (ADR-038) thêm `abuse_reports` (L1, không RLS — chỉ System Admin đọc; tenant không bao giờ thấy người báo cáo) và cột khoá kiểm
 duyệt `moderationLockedAt`/`moderationReason` trên `products`/`reviews`/`posts` (trigger `*_guard_moderation`: chỉ scope `system_job` đặt/gỡ);
 ADR-039 thêm cột `remedy*` trên `entitlements` (trigger `entitlements_guard_remedy`) cho quyền lợi người mua khi tài liệu bị lưu trữ do vi phạm.
+ADR-041 thêm `subscription_refund_requests` (L1, không RLS — billing nền tảng `PaymentScope` PLATFORM như `subscription_invoices`; chủ gian
+hàng đọc/tạo dòng của mình qua `requireTenantMember` OWNER, admin duyệt qua `requireRole(SYSTEM_ADMIN)`; thông tin nhận tiền mã hoá
+AES-256-GCM, xoá khi đã xử lý), trạng thái hoá đơn `REFUNDED`, token `EMAIL_CHANGE` + cột `verification_tokens.newEmail` (L1), và CMS hệ
+thống `pricing` (`cms_pages`, không DDL).
 Bảng L2 còn lại chưa xây: `comments` (M10c) — `posts`/`reviews` đã có từ M10a/M10b — xem `docs/PLAN.md`.
 
 ## Ranh giới dữ liệu theo layer
@@ -98,7 +102,7 @@ Bảng L2 còn lại chưa xây: `comments` (M10c) — `posts`/`reviews` đã c�
 flowchart LR
     subgraph L1["L1 System — scope PLATFORM"]
         U["users, user_profiles<br/>refresh_tokens"]
-        P["plans, subscriptions<br/>subscription_invoices"]
+        P["plans, subscriptions<br/>subscription_invoices<br/>subscription_refund_requests"]
         PP["platform_payment_configs<br/>platform_payment_transactions"]
         C["cms_pages, audit_logs<br/>abuse_reports"]
         S["tenant_daily_stats"]
@@ -168,9 +172,11 @@ component nhạy cảm tự xác thực và phân quyền lại — không tin p
 │   └── web/                       # Next.js App Router
 │       ├── app/
 │       │   ├── (auth)/             # register, login, verify-email, forgot-password, reset-password
-│       │   ├── account/            # profile, security, library (đầy đủ — M9), orders (mới — M9)
+│       │   ├── account/            # Tổng quan + layout app shell (ADR-041), profile, security, email/xac-nhan (ADR-041),
+│       │   │                       # library (đầy đủ — M9), orders (mới — M9)
 │       │   ├── admin/              # dashboard, users, tenants, plans, cms(+[slug]/new),
-│       │   │                       # settings(+settings/storage — ADR-017), billing/payment, billing/invoices (M3)
+│       │   │                       # settings(+settings/storage — ADR-017), billing/payment, billing/invoices (M3),
+│       │   │                       # billing/refunds + cms/pricing (ADR-041)
 │       │   ├── studio/             # onboarding, dashboard (StatCard doanh thu/đơn chờ nối thật — M8),
 │       │   │                       # settings (+ settings/payments — M7, + billing — M3,
 │       │   │                       # + products(+new,+[productId](+share-links — M9)) — M5,
@@ -178,7 +184,7 @@ component nhạy cảm tự xác thực và phân quyền lại — không tin p
 │       │   ├── [tenantSlug]/       # storefront công khai (+ [productSlug] — ADR-030, products/[productSlug]/route.ts 301,
 │       │   │                       #   checkout/[orderCode] — M8, posts(+[postId]) — M10b)
 │       │   ├── s/[token]/          # M9: trang link chia sẻ công khai, không cần đăng nhập
-│       │   ├── pricing/, p/[slug]/ # trang công khai (M2)
+│       │   ├── pricing/, p/[slug]/ # trang công khai (M2); /pricing dựng lại đọc CMS `pricing` (ADR-041)
 │       │   ├── api/
 │       │   │   ├── auth/           # register, login, refresh, logout, verify-email, resend-verification,
 │       │   │   │                   # forgot-password, reset-password
@@ -201,8 +207,8 @@ component nhạy cảm tự xác thực và phân quyền lại — không tin p
 │       │                           # — M9 tái dùng)/file-scan/system-storage (M5),
 │       │                           # coupon (M6), order/payment-process (M8 — markOrderPaid duy nhất,
 │       │                           # xem docs/modules/M8.md), download/share-link/library/entitlement (M9,
-│       │                           # xem docs/modules/M9.md), pricing (giá gói /pricing, M2 — khác
-│       │                           # packages/core/src/pricing của M6), rate-limit, jobs, jwt-context, duration,
+│       │                           # xem docs/modules/M9.md), pricing (`getActivePlans` — nay chỉ khối bảng giá của /p/[slug], M2 — khác
+│       │                           # packages/core/src/pricing của M6), pricing-cms/subscription-refund/account-* (ADR-041), rate-limit, jobs, jwt-context, duration,
 │       │                           # job-handlers/job-runner (ADR-036), audit/audit-query (M12a, ADR-037),
 │       │                           # abuse-report/moderation/tenant-lock/origin-guard (M12c, ADR-038),
 │       │                           # entitlement-remedy (ADR-039)

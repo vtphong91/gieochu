@@ -38,3 +38,20 @@ export type {
   PurchaseRemedyTenantTemplateData,
   RefundRequestedTemplateData,
 } from "./templates/entitlement-remedy";
+
+export {
+  renderEmailChangedEmail,
+  renderEmailChangeRequestedEmail,
+  renderEmailChangeVerifyEmail,
+  renderPasswordChangedEmail,
+} from "./templates/account-security";
+export type {
+  EmailChangedTemplateData,
+  EmailChangeRequestedTemplateData,
+  EmailChangeVerifyTemplateData,
+  PasswordChangedTemplateData,
+} from "./templates/account-security";
+
+// ADR-041 B — hoàn tiền gói dịch vụ
+export { renderSubscriptionRefundEmail } from "./templates/subscription-refund";
+export type { SubscriptionRefundEmailData, SubscriptionRefundEmailStage } from "./templates/subscription-refund";

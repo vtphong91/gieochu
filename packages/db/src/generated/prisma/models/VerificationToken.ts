@@ -29,6 +29,7 @@ export type VerificationTokenMinAggregateOutputType = {
   userId: string | null
   type: $Enums.VerificationTokenType | null
   tokenHash: string | null
+  newEmail: string | null
   expiresAt: Date | null
   usedAt: Date | null
   createdAt: Date | null
@@ -39,6 +40,7 @@ export type VerificationTokenMaxAggregateOutputType = {
   userId: string | null
   type: $Enums.VerificationTokenType | null
   tokenHash: string | null
+  newEmail: string | null
   expiresAt: Date | null
   usedAt: Date | null
   createdAt: Date | null
@@ -49,6 +51,7 @@ export type VerificationTokenCountAggregateOutputType = {
   userId: number
   type: number
   tokenHash: number
+  newEmail: number
   expiresAt: number
   usedAt: number
   createdAt: number
@@ -61,6 +64,7 @@ export type VerificationTokenMinAggregateInputType = {
   userId?: true
   type?: true
   tokenHash?: true
+  newEmail?: true
   expiresAt?: true
   usedAt?: true
   createdAt?: true
@@ -71,6 +75,7 @@ export type VerificationTokenMaxAggregateInputType = {
   userId?: true
   type?: true
   tokenHash?: true
+  newEmail?: true
   expiresAt?: true
   usedAt?: true
   createdAt?: true
@@ -81,6 +86,7 @@ export type VerificationTokenCountAggregateInputType = {
   userId?: true
   type?: true
   tokenHash?: true
+  newEmail?: true
   expiresAt?: true
   usedAt?: true
   createdAt?: true
@@ -164,6 +170,7 @@ export type VerificationTokenGroupByOutputType = {
   userId: string
   type: $Enums.VerificationTokenType
   tokenHash: string
+  newEmail: string | null
   expiresAt: Date
   usedAt: Date | null
   createdAt: Date
@@ -195,6 +202,7 @@ export type VerificationTokenWhereInput = {
   userId?: Prisma.StringFilter<"VerificationToken"> | string
   type?: Prisma.EnumVerificationTokenTypeFilter<"VerificationToken"> | $Enums.VerificationTokenType
   tokenHash?: Prisma.StringFilter<"VerificationToken"> | string
+  newEmail?: Prisma.StringNullableFilter<"VerificationToken"> | string | null
   expiresAt?: Prisma.DateTimeFilter<"VerificationToken"> | Date | string
   usedAt?: Prisma.DateTimeNullableFilter<"VerificationToken"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"VerificationToken"> | Date | string
@@ -206,6 +214,7 @@ export type VerificationTokenOrderByWithRelationInput = {
   userId?: Prisma.SortOrder
   type?: Prisma.SortOrder
   tokenHash?: Prisma.SortOrder
+  newEmail?: Prisma.SortOrderInput | Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
   usedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -220,6 +229,7 @@ export type VerificationTokenWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.VerificationTokenWhereInput | Prisma.VerificationTokenWhereInput[]
   userId?: Prisma.StringFilter<"VerificationToken"> | string
   type?: Prisma.EnumVerificationTokenTypeFilter<"VerificationToken"> | $Enums.VerificationTokenType
+  newEmail?: Prisma.StringNullableFilter<"VerificationToken"> | string | null
   expiresAt?: Prisma.DateTimeFilter<"VerificationToken"> | Date | string
   usedAt?: Prisma.DateTimeNullableFilter<"VerificationToken"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"VerificationToken"> | Date | string
@@ -231,6 +241,7 @@ export type VerificationTokenOrderByWithAggregationInput = {
   userId?: Prisma.SortOrder
   type?: Prisma.SortOrder
   tokenHash?: Prisma.SortOrder
+  newEmail?: Prisma.SortOrderInput | Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
   usedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -247,6 +258,7 @@ export type VerificationTokenScalarWhereWithAggregatesInput = {
   userId?: Prisma.StringWithAggregatesFilter<"VerificationToken"> | string
   type?: Prisma.EnumVerificationTokenTypeWithAggregatesFilter<"VerificationToken"> | $Enums.VerificationTokenType
   tokenHash?: Prisma.StringWithAggregatesFilter<"VerificationToken"> | string
+  newEmail?: Prisma.StringNullableWithAggregatesFilter<"VerificationToken"> | string | null
   expiresAt?: Prisma.DateTimeWithAggregatesFilter<"VerificationToken"> | Date | string
   usedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"VerificationToken"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"VerificationToken"> | Date | string
@@ -256,6 +268,7 @@ export type VerificationTokenCreateInput = {
   id?: string
   type: $Enums.VerificationTokenType
   tokenHash: string
+  newEmail?: string | null
   expiresAt: Date | string
   usedAt?: Date | string | null
   createdAt?: Date | string
@@ -267,6 +280,7 @@ export type VerificationTokenUncheckedCreateInput = {
   userId: string
   type: $Enums.VerificationTokenType
   tokenHash: string
+  newEmail?: string | null
   expiresAt: Date | string
   usedAt?: Date | string | null
   createdAt?: Date | string
@@ -276,6 +290,7 @@ export type VerificationTokenUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumVerificationTokenTypeFieldUpdateOperationsInput | $Enums.VerificationTokenType
   tokenHash?: Prisma.StringFieldUpdateOperationsInput | string
+  newEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   usedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -287,6 +302,7 @@ export type VerificationTokenUncheckedUpdateInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumVerificationTokenTypeFieldUpdateOperationsInput | $Enums.VerificationTokenType
   tokenHash?: Prisma.StringFieldUpdateOperationsInput | string
+  newEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   usedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -297,6 +313,7 @@ export type VerificationTokenCreateManyInput = {
   userId: string
   type: $Enums.VerificationTokenType
   tokenHash: string
+  newEmail?: string | null
   expiresAt: Date | string
   usedAt?: Date | string | null
   createdAt?: Date | string
@@ -306,6 +323,7 @@ export type VerificationTokenUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumVerificationTokenTypeFieldUpdateOperationsInput | $Enums.VerificationTokenType
   tokenHash?: Prisma.StringFieldUpdateOperationsInput | string
+  newEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   usedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -316,6 +334,7 @@ export type VerificationTokenUncheckedUpdateManyInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumVerificationTokenTypeFieldUpdateOperationsInput | $Enums.VerificationTokenType
   tokenHash?: Prisma.StringFieldUpdateOperationsInput | string
+  newEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   usedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -336,6 +355,7 @@ export type VerificationTokenCountOrderByAggregateInput = {
   userId?: Prisma.SortOrder
   type?: Prisma.SortOrder
   tokenHash?: Prisma.SortOrder
+  newEmail?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
   usedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -346,6 +366,7 @@ export type VerificationTokenMaxOrderByAggregateInput = {
   userId?: Prisma.SortOrder
   type?: Prisma.SortOrder
   tokenHash?: Prisma.SortOrder
+  newEmail?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
   usedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -356,6 +377,7 @@ export type VerificationTokenMinOrderByAggregateInput = {
   userId?: Prisma.SortOrder
   type?: Prisma.SortOrder
   tokenHash?: Prisma.SortOrder
+  newEmail?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
   usedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -411,6 +433,7 @@ export type VerificationTokenCreateWithoutUserInput = {
   id?: string
   type: $Enums.VerificationTokenType
   tokenHash: string
+  newEmail?: string | null
   expiresAt: Date | string
   usedAt?: Date | string | null
   createdAt?: Date | string
@@ -420,6 +443,7 @@ export type VerificationTokenUncheckedCreateWithoutUserInput = {
   id?: string
   type: $Enums.VerificationTokenType
   tokenHash: string
+  newEmail?: string | null
   expiresAt: Date | string
   usedAt?: Date | string | null
   createdAt?: Date | string
@@ -459,6 +483,7 @@ export type VerificationTokenScalarWhereInput = {
   userId?: Prisma.StringFilter<"VerificationToken"> | string
   type?: Prisma.EnumVerificationTokenTypeFilter<"VerificationToken"> | $Enums.VerificationTokenType
   tokenHash?: Prisma.StringFilter<"VerificationToken"> | string
+  newEmail?: Prisma.StringNullableFilter<"VerificationToken"> | string | null
   expiresAt?: Prisma.DateTimeFilter<"VerificationToken"> | Date | string
   usedAt?: Prisma.DateTimeNullableFilter<"VerificationToken"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"VerificationToken"> | Date | string
@@ -468,6 +493,7 @@ export type VerificationTokenCreateManyUserInput = {
   id?: string
   type: $Enums.VerificationTokenType
   tokenHash: string
+  newEmail?: string | null
   expiresAt: Date | string
   usedAt?: Date | string | null
   createdAt?: Date | string
@@ -477,6 +503,7 @@ export type VerificationTokenUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumVerificationTokenTypeFieldUpdateOperationsInput | $Enums.VerificationTokenType
   tokenHash?: Prisma.StringFieldUpdateOperationsInput | string
+  newEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   usedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -486,6 +513,7 @@ export type VerificationTokenUncheckedUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumVerificationTokenTypeFieldUpdateOperationsInput | $Enums.VerificationTokenType
   tokenHash?: Prisma.StringFieldUpdateOperationsInput | string
+  newEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   usedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -495,6 +523,7 @@ export type VerificationTokenUncheckedUpdateManyWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumVerificationTokenTypeFieldUpdateOperationsInput | $Enums.VerificationTokenType
   tokenHash?: Prisma.StringFieldUpdateOperationsInput | string
+  newEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   usedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -507,6 +536,7 @@ export type VerificationTokenSelect<ExtArgs extends runtime.Types.Extensions.Int
   userId?: boolean
   type?: boolean
   tokenHash?: boolean
+  newEmail?: boolean
   expiresAt?: boolean
   usedAt?: boolean
   createdAt?: boolean
@@ -518,6 +548,7 @@ export type VerificationTokenSelectCreateManyAndReturn<ExtArgs extends runtime.T
   userId?: boolean
   type?: boolean
   tokenHash?: boolean
+  newEmail?: boolean
   expiresAt?: boolean
   usedAt?: boolean
   createdAt?: boolean
@@ -529,6 +560,7 @@ export type VerificationTokenSelectUpdateManyAndReturn<ExtArgs extends runtime.T
   userId?: boolean
   type?: boolean
   tokenHash?: boolean
+  newEmail?: boolean
   expiresAt?: boolean
   usedAt?: boolean
   createdAt?: boolean
@@ -540,12 +572,13 @@ export type VerificationTokenSelectScalar = {
   userId?: boolean
   type?: boolean
   tokenHash?: boolean
+  newEmail?: boolean
   expiresAt?: boolean
   usedAt?: boolean
   createdAt?: boolean
 }
 
-export type VerificationTokenOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "type" | "tokenHash" | "expiresAt" | "usedAt" | "createdAt", ExtArgs["result"]["verificationToken"]>
+export type VerificationTokenOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "type" | "tokenHash" | "newEmail" | "expiresAt" | "usedAt" | "createdAt", ExtArgs["result"]["verificationToken"]>
 export type VerificationTokenInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }
@@ -566,6 +599,10 @@ export type $VerificationTokenPayload<ExtArgs extends runtime.Types.Extensions.I
     userId: string
     type: $Enums.VerificationTokenType
     tokenHash: string
+    /**
+     * ADR-041: email đích (đã chuẩn hoá) — chỉ có giá trị với type = EMAIL_CHANGE. Dữ liệu cá nhân.
+     */
+    newEmail: string | null
     expiresAt: Date
     usedAt: Date | null
     createdAt: Date
@@ -997,6 +1034,7 @@ export interface VerificationTokenFieldRefs {
   readonly userId: Prisma.FieldRef<"VerificationToken", 'String'>
   readonly type: Prisma.FieldRef<"VerificationToken", 'VerificationTokenType'>
   readonly tokenHash: Prisma.FieldRef<"VerificationToken", 'String'>
+  readonly newEmail: Prisma.FieldRef<"VerificationToken", 'String'>
   readonly expiresAt: Prisma.FieldRef<"VerificationToken", 'DateTime'>
   readonly usedAt: Prisma.FieldRef<"VerificationToken", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"VerificationToken", 'DateTime'>

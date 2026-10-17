@@ -76,7 +76,7 @@ Hàm thuần, không phụ thuộc Prisma (client component import được nhã
 | Export | Vai trò |
 | :-- | :-- |
 | `AUDIT_SCOPES`, `isAuditScope`, `AUDIT_SCOPE_LABELS` | 3 scope + nhãn ("Hệ thống", "Gian hàng", "Khách hàng") |
-| `AUDIT_ACTIONS` (32 — 27 từ M12a + 5 từ M12c/ADR-039), `isAuditAction`, `AUDIT_ACTION_LABELS`, `auditActionLabel` | Danh sách action + nhãn tiếng Việt; action lạ hiển thị nguyên chuỗi |
+| `AUDIT_ACTIONS` (40 — 27 từ M12a + 5 từ M12c/ADR-039 + 8 từ ADR-041), `isAuditAction`, `AUDIT_ACTION_LABELS`, `auditActionLabel` | Danh sách action + nhãn tiếng Việt; action lạ hiển thị nguyên chuỗi |
 | `sanitizeAuditMetadata` | Thay giá trị khoá nhạy cảm (khớp `pass(word)`, `secret`, `token`, `hash`, `authorization`, `cookie`, `api key`, `private key`, `signature`, `otp`) bằng `"[REDACTED]"` ở mọi độ sâu; bỏ giá trị không phải JSON; giới hạn độ sâu 4, 40 khoá, 50 phần tử mảng, chuỗi 500 ký tự; JSON > 4096 byte → chỉ còn `{ truncated: true }`. Không bao giờ ném |
 | `maskEmail` | `nguyen@gmail.com` → `n***@gmail.com` |
 | `extractAuditIp`, `normalizeAuditUserAgent` | IP = phần tử đầu `x-forwarded-for` (hoặc `x-real-ip`), cắt 64 ký tự; User-Agent cắt 512 |
@@ -110,9 +110,10 @@ Từ M12c (ADR-038, 2026-10-17) ✅: **`publishProduct(tenantId, productId, acto
 
 ---
 
-## 4. Action và nơi ghi ✅ (grep `audit.log(` 2026-10-16; cập nhật M12c 2026-10-17)
+## 4. Action và nơi ghi ✅ (grep `audit.log(` 2026-10-16; cập nhật M12c 2026-10-17; cập nhật ADR-041 2026-10-17)
 
-32 action trong `AUDIT_ACTIONS`: 21 theo đặc tả §"M12" + 6 bổ sung ở M12a (trước đây chỉ ghi `logger`) + 5 ở M12c/ADR-039.
+40 action trong `AUDIT_ACTIONS` ✅ (đếm 2026-10-17): 21 theo đặc tả §"M12" + 6 bổ sung ở M12a (trước đây chỉ ghi `logger`) + 5 ở M12c/ADR-039
++ 8 ở ADR-041 (Hồ sơ, Bảng giá CMS, hoàn tiền gói). Thêm action không cần DDL (`action` là chuỗi).
 
 | Action | Scope | Nơi ghi | Actor |
 | :-- | :-- | :-- | :-- |
@@ -138,6 +139,14 @@ Từ M12c (ADR-038, 2026-10-17) ✅: **`publishProduct(tenantId, productId, acto
 | `REPORT_RESOLVED` | SYSTEM, `tenantId = null` | `lib/abuse-report.ts` `resolveAbuseReport` — metadata `decision`, `status`, `targetTenantId`, `alsoResolved`; không email/ghi chú | admin |
 | `CONTENT_MODERATION_LOCKED` / `CONTENT_MODERATION_UNLOCKED` | SYSTEM (+`tenantId` — chủ gian hàng thấy ở Studio, actor hiện "Quản trị hệ thống") | `lib/abuse-report.ts` (`resolveAbuseReport` khi ẩn/lưu trữ; `unlockModeration`) | admin |
 | `REMEDY_FINAL_DOWNLOAD_CHOSEN` / `REMEDY_REFUND_REQUESTED` | CUSTOMER (+`tenantId`) | `lib/entitlement-remedy.ts` (`chooseFinalDownload`, `requestRefund`) — metadata `productId`, `orderId` (+`grantedDownloads`); không email | khách |
+| `AUTH_PASSWORD_CHANGED` | CUSTOMER | `lib/account-security.ts` `changePassword` — metadata `revokedOtherSessions` (số phiên khác bị thu hồi) | user |
+| `AUTH_EMAIL_CHANGE_REQUESTED` | CUSTOMER | `lib/account-security.ts` `requestEmailChange` — metadata `newEmail` **đã che** (`maskEmail`) | user |
+| `AUTH_EMAIL_CHANGED` | CUSTOMER | `lib/account-security.ts` `confirmEmailChange` — metadata `from`/`to` **đã che**; actor = chủ tài khoản (xác nhận được khi chưa đăng nhập) | user |
+| `PRICING_CMS_UPDATED` | SYSTEM | `app/admin/cms/pricing/actions.ts` (`logChange`) — `targetType: "CmsPage"`, `targetId: "pricing"`, metadata chỉ `operation` (`SAVE_DRAFT`/`PUBLISH`/`RESTORE_LIVE`) | admin |
+| `SUBSCRIPTION_REFUND_REQUESTED` | SYSTEM (+`tenantId`) | `lib/subscription-refund.ts` `requestSubscriptionRefund` — metadata `invoiceId`, `amountVnd`; **không** thông tin nhận tiền | chủ gian hàng |
+| `SUBSCRIPTION_REFUNDED` | SYSTEM (+`tenantId`) | `lib/subscription-refund.ts` `approveRefundRequest` — metadata `invoiceId`, `amountVnd`, `previousPlanId` | admin |
+| `SUBSCRIPTION_REFUND_REJECTED` | SYSTEM (+`tenantId`) | `lib/subscription-refund.ts` `rejectRefundRequest` | admin |
+| `SUBSCRIPTION_REFUND_PAYOUT_VIEWED` | SYSTEM | `lib/subscription-refund.ts` `revealRefundPayout` (nút "Xem đầy đủ" ở `/admin/billing/refunds`) — **chỉ id**, không số tài khoản | admin |
 | `SYSTEM_SETTINGS_UPDATED` | SYSTEM | `lib/system-settings.ts` (form "Cấu hình chung", metadata `changes` cũ→mới) và `app/admin/settings/actions.ts` (email hỗ trợ) | admin |
 
 **Có trong `AUDIT_ACTIONS` nhưng chưa nối:**
@@ -148,7 +157,11 @@ Từ M12c (ADR-038, 2026-10-17) ✅: **`publishProduct(tenantId, productId, acto
 **Cố ý không ghi:** đăng nhập với email **không tồn tại** — bảng chỉ-INSERT giữ 12 tháng, tránh bị spam dòng bằng email ngẫu nhiên và
 không lưu email người lạ.
 
-**Chưa audit:** thay đổi cấu hình SMTP, storage, Cloudinary, thương hiệu ở System Center (BACKLOG).
+**Chưa audit:** thay đổi cấu hình SMTP, storage, Cloudinary, thương hiệu ở System Center (BACKLOG); đổi/gỡ ảnh đại diện và sửa hồ sơ
+(ADR-041 — kế hoạch nêu `PROFILE_AVATAR_CHANGED` là tuỳ chọn, code không thêm ✅); "Đăng xuất mọi thiết bị" (`logoutAllDevicesAction`) ✅.
+
+**Kiểm dữ liệu thật ADR-041** 🟡 (Hiếu báo 2026-10-17, gọi lib trực tiếp, email mock): reveal thông tin nhận tiền ghi audit chỉ id; dữ liệu
+tạm đã dọn, **dòng audit để lại** theo ADR-037 (bảng chỉ-INSERT).
 
 ---
 

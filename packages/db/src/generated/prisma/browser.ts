@@ -253,6 +253,17 @@ export type PlatformPaymentConfig = Prisma.PlatformPaymentConfigModel
  */
 export type SubscriptionInvoice = Prisma.SubscriptionInvoiceModel
 /**
+ * Model SubscriptionRefundRequest
+ * ADR-041 B (+ bổ sung) — yêu cầu hoàn tiền gói trả phí. Bảng L1 (billing nền tảng, PaymentScope PLATFORM — như
+ * subscription_invoices): không RLS; chủ gian hàng chỉ đọc/tạo dòng của tenant mình qua requireTenantMember(OWNER),
+ * admin đọc/duyệt qua requireRole(SYSTEM_ADMIN) (§7.9: hoá đơn gói là L1, không phải đơn/khách của tenant).
+ * Mỗi tenant tối đa 1 yêu cầu (chỉ lần thanh toán gói đầu tiên được hoàn) — `tenantId` và `invoiceId` đều unique.
+ * `payoutEncrypted` = JSON {bankBin, bankName, accountNo, accountName} mã hoá AES-256-GCM (PAYMENT_ENCRYPTION_KEY),
+ * chỉ admin giải mã; đặt NULL khi APPROVED_REFUNDED/REJECTED (CHECK). Không đưa vào audit/log/email.
+ * `requestedById`/`decidedById` không FK (cùng mẫu products.rightsConfirmedById) — user không bị xoá ở MVP.
+ */
+export type SubscriptionRefundRequest = Prisma.SubscriptionRefundRequestModel
+/**
  * Model PlatformPaymentTransaction
  * §"M3" — PLATFORM_PAYMENT_TRANSACTIONS. Every platform webhook event that
  * passed signature verification is recorded here, matched or not — the

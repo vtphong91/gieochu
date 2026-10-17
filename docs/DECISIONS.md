@@ -68,6 +68,9 @@
 
 ## ADR-008 — `UserProfile` được tạo một phần ngay khi đăng ký, hoàn thiện dần sau
 
+> **Đã thay một phần (2026-10-17):** yêu cầu "hồ sơ bắt buộc đủ 4 trường" được thay bởi **ADR-041 C.1** — SĐT và
+> Tỉnh/Thành là tuỳ chọn, chỉ chủ tài khoản + admin thấy.
+
 - **Bối cảnh:** Mục "M1" liệt kê đăng ký thu thập "họ tên" cùng lúc với "đồng ý điều khoản", nhưng ERD §5.1
   đặt `consentAt` trong bảng `UserProfile` cùng với `phone`, `occupation`, `province` — những trường chỉ được
   thu thập sau, ở bước hoàn thiện hồ sơ bắt buộc. Hai đoạn đặc tả này mâu thuẫn nếu `UserProfile` yêu cầu đủ 4
@@ -957,3 +960,47 @@
   **thay thế ADR-029 bổ sung (c)** ("READ_ONLY vẫn nhận đánh giá"); share link (410, cả mở link và tải); báo cáo vi phạm
   (404). Code xác định "chủ" bằng `ownerId` (thành viên khác → BACKLOG). Để BACKLOG: coupon preview chưa kiểm trạng thái
   tenant; đổi tên integration test READ_ONLY cũ; thống nhất cách chủ tenant LOCKED xem trang tài liệu/bài viết.
+
+## ADR-041 — Nâng cấp tài khoản (Bảng giá CMS) + Hồ sơ tài khoản; gói năm; hoàn tiền gói 7 ngày
+
+- **Bối cảnh (2026-10-17):** kế hoạch `docs/ke-hoach-nang-cap-tai-khoan-va-ho-so-2026-10-17.md` (đề xuất Phong
+  `docs/de-xuat-trang-bang-gia-2026-10-17.md`, `docs/de-xuat-trang-ho-so-2026-10-17.md`). Nguyên tắc CMS/dữ liệu trước,
+  UI sau. Chủ dự án chốt các điểm tiền/dữ liệu cá nhân/bảo mật; còn lại Quốc chốt theo đề xuất.
+- **A. Bảng giá `/pricing` (CMS `pricing`):**
+  1. Nội dung trang + marketing từng gói lưu `CmsPage` slug `pricing` (thêm vào `SYSTEM_CMS_SLUGS`), nháp/xuất bản/khôi
+     phục, xem trước nháp chỉ admin. Giá/hạn mức chỉ đọc từ `Plan`. Gói đang bật chưa cấu hình CMS → tự hiện mặc định.
+  2. **Gói năm, giảm theo % (chủ dự án chốt):** admin tạo `Plan` `interval = YEAR`; CMS ghép cặp gói tháng ↔ năm; %
+     tiết kiệm **tính từ giá thật** (không nhập tay). Không quà tặng thêm tháng. Không dùng thử. Không thẻ Enterprise.
+  3. **Chỉ quảng cáo tính năng có thật:** bảng so sánh/quyền lợi không được ghi 6 cờ tính năng chưa chặn theo gói cho
+     tới khi có thật; dòng "tính năng" gắn khoá cờ chỉ hiện khi cờ được đánh dấu "đã triển khai".
+  4. **Hạn mức 0 = không được phép**; "không giới hạn" dùng giá trị riêng (Hiếu đề xuất theo dữ liệu hiện có, sửa
+     hiển thị Billing cho thống nhất).
+  5. Đổi gói giữ hiện hành (không tính chênh lệch, kỳ mới nối sau). VAT/hoá đơn, hoa hồng, kênh hỗ trợ: là **nội dung
+     CMS** do admin nhập (không hard-code); FAQ mẫu để trống các ý chưa có dữ kiện.
+  6. Dải số liệu thật (số lấy từ DB, 0 → ẩn).
+- **B. Hoàn tiền gói trả phí (chủ dự án chốt):** trong **7 ngày** kể từ thanh toán, **chỉ lần thanh toán gói đầu tiên**
+  của mỗi tenant, hoàn **100%**. Chủ gian hàng gửi yêu cầu trong Billing Studio → admin duyệt ở System Center, **tự
+  chuyển khoản tay** rồi bấm "Đã hoàn" → hoá đơn đánh dấu hoàn tiền, thuê bao về Free ngay (không mất dữ liệu). Từ
+  chối kèm lý do. Audit mọi bước. Cổng QR/MoMo không tự hoàn.
+- **C. Hồ sơ `/account`:** một hồ sơ cá nhân cho mọi User (khách + chủ gian hàng); Studio chỉ giữ cài đặt gian hàng,
+  hai bên liên kết. Bỏ mục không có nghiệp vụ (Referrals, Blocklist…). Họ tên gộp một ô.
+  1. **SĐT, Tỉnh/Thành: tuỳ chọn**, chỉ chủ tài khoản + admin thấy, gian hàng không thấy (chủ dự án chốt; bổ sung
+     ADR-008 — hồ sơ không còn bắt buộc 4 trường).
+  2. **Bảo mật chặt (chủ dự án chốt):** đổi mật khẩu cần mật khẩu cũ, thu hồi mọi phiên khác, email báo; đổi email cần
+     nhập lại mật khẩu, xác minh link tới email mới (token `EMAIL_CHANGE`, xác nhận được khi chưa đăng nhập), báo email
+     cũ, thu hồi phiên khác. Email mới hiện ở Studio các gian hàng từng bán cho user (đơn không lưu bản chụp) — chấp nhận.
+  3. Ảnh đại diện: Cloudinary hệ thống, png/jpeg/webp ≤2MB, không tính hạn mức gói; GĐ1 chỉ hiện ở chỗ riêng tư.
+  4. Để sau (BACKLOG): danh sách phiên/IP, xoá tài khoản, tuỳ chọn thông báo, ảnh công khai.
+- **Test:** không thêm (93/54, trần 94/55) — nợ BACKLOG. Migration expand-only, Quốc duyệt, chủ dự án chạy (ADR-034).
+- **Bổ sung ADR-041 (2026-10-17, chủ dự án chốt):** thông tin nhận tiền hoàn gói (ngân hàng, số tài khoản, tên chủ
+  TK) do chủ gian hàng **nhập trong form yêu cầu hoàn tiền**; lưu **mã hoá AES-256-GCM** (dùng khoá mã hoá có sẵn, như
+  secret thanh toán), **chỉ admin** xem (UI che bớt, hiện đầy đủ khi admin bấm xem), **tự xoá** (đặt null) khi yêu cầu
+  được hoàn xong hoặc bị từ chối. Không ghi vào audit/log/email. Cờ tính năng "đã triển khai": hằng trong `packages/core`.
+- **Bổ sung ADR-041 lần 2 (2026-10-17):** (chủ dự án chốt) tenant đã có **hoá đơn gói PAID thứ hai** thì **mất quyền
+  yêu cầu hoàn tiền** (ẩn nút, server từ chối) — trường hợp đặc biệt liên hệ hỗ trợ. (Quốc) "Không giới hạn" trong
+  hạn mức gói = `-1`, `0` = không được phép; admin xem đầy đủ thông tin nhận tiền ghi audit
+  `SUBSCRIPTION_REFUND_PAYOUT_VIEWED` (chỉ id).
+- **Bổ sung ADR-041 lần 3 (2026-10-17, Quốc — đính chính theo code):** xác nhận đổi email thu hồi **mọi** phiên (kể cả
+  phiên hiện tại, xoá cookie, phải đăng nhập lại) — chặt hơn câu "phiên khác" ở mục C.2, giữ theo code. Giao diện admin
+  xem SĐT/Tỉnh của user: chưa có → BACKLOG. Bảng `plans` trên DB (Quốc kiểm 2026-10-17): 4 gói, không gói nào dùng hạn
+  mức `0`. **ADR-008:** quy định "hồ sơ bắt buộc đủ 4 trường" đã được thay bởi ADR-041 C.1 (SĐT/Tỉnh tuỳ chọn).

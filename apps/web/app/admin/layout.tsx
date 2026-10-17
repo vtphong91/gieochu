@@ -5,6 +5,7 @@ import { getPrismaClient } from "@gieochu/db";
 import { requireAdminAccess } from "../../lib/page-guards";
 import { getEffectiveBrand, getEffectiveLogos } from "../../lib/branding";
 import { countOpenAbuseReports } from "../../lib/abuse-report";
+import { countPendingRefundRequests } from "../../lib/subscription-refund";
 import { BrandMark } from "../_ui/brand-mark";
 import { AdminSidebarNav } from "./_ui/sidebar-nav";
 
@@ -17,8 +18,14 @@ const inter = Inter({ subsets: ["latin", "vietnamese"], weight: ["400", "500", "
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await requireAdminAccess("/admin");
-  // ADR-038: số báo cáo vi phạm chờ xử lý → badge menu "Báo cáo vi phạm" (bảng chưa có → 0).
-  const [brand, logos, openReports] = await Promise.all([getEffectiveBrand(), getEffectiveLogos(), countOpenAbuseReports()]);
+  // ADR-038: số báo cáo vi phạm chờ xử lý → badge menu "Báo cáo vi phạm"; ADR-041 B: yêu cầu hoàn tiền gói chờ duyệt
+  // → badge "Hoàn tiền gói" (bảng chưa có → 0).
+  const [brand, logos, openReports, pendingRefunds] = await Promise.all([
+    getEffectiveBrand(),
+    getEffectiveLogos(),
+    countOpenAbuseReports(),
+    countPendingRefundRequests(),
+  ]);
   const admin = await getPrismaClient().user.findUnique({ where: { id: user.userId }, select: { email: true } });
 
   return (
@@ -35,7 +42,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </div>
           )}
         </div>
-        <AdminSidebarNav badges={{ "/admin/reports": openReports }} />
+        <AdminSidebarNav badges={{ "/admin/reports": openReports, "/admin/billing/refunds": pendingRefunds }} />
         <div className="border-t border-white/10 px-4 py-4">
           <Link href="/" className="text-xs font-medium text-white/60 hover:text-white">
             ← Về trang chủ

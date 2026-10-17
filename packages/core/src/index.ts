@@ -65,10 +65,46 @@ export type { PlanInterval, PlanIntervalInfo } from "./billing/period";
 export { generateInvoiceCode, isValidInvoiceCode } from "./billing/invoice-code";
 export { transitionSubscriptionStatus } from "./billing/subscription-state";
 export type { SubscriptionEvent, SubscriptionStatus } from "./billing/subscription-state";
-export { isWithinPlanLimit } from "./billing/plan-limits";
-export type { PlanLimitKind, PlanLimits } from "./billing/plan-limits";
-export { canUsePlanFeature } from "./billing/feature-gate";
+export {
+  describePlanLimit,
+  formatPlanLimit,
+  isUnlimitedPlanLimit,
+  isWithinPlanLimit,
+  PLAN_LIMIT_FIELD_LABELS,
+  PLAN_LIMIT_FIELDS,
+  PLAN_LIMIT_UNLIMITED,
+} from "./billing/plan-limits";
+export type { PlanLimitDisplay, PlanLimitField, PlanLimitKind, PlanLimits } from "./billing/plan-limits";
+export {
+  canUsePlanFeature,
+  IMPLEMENTED_PLAN_FEATURES,
+  isImplementedPlanFeature,
+  isPlanFeatureKey,
+  PLAN_FEATURE_KEYS,
+  PLAN_FEATURE_LABELS,
+} from "./billing/feature-gate";
 export type { PlanFeatureKey } from "./billing/feature-gate";
+export {
+  evaluateRefundEligibility,
+  maskAccountNo,
+  normalizeRefundText,
+  parseRefundPayoutInput,
+  REFUND_INELIGIBLE_MESSAGES,
+  refundDeadline,
+  SUBSCRIPTION_REFUND_ADMIN_NOTE_MAX,
+  SUBSCRIPTION_REFUND_ERROR_CODES,
+  SUBSCRIPTION_REFUND_REASON_MAX,
+  SUBSCRIPTION_REFUND_STATUS_LABELS,
+  SUBSCRIPTION_REFUND_STATUSES,
+  SUBSCRIPTION_REFUND_WINDOW_DAYS,
+} from "./billing/subscription-refund";
+export type {
+  RefundEligibility,
+  RefundIneligibleReason,
+  RefundPayoutDetails,
+  RefundPayoutField,
+  SubscriptionRefundStatusValue,
+} from "./billing/subscription-refund";
 
 export { CLOUDINARY_DELIVERY_HOST, CLOUDINARY_MAX_DELIVERY_WIDTH, cloudinaryDeliveryUrl } from "./content/cloudinary-url";
 export type { CloudinaryDeliveryOptions } from "./content/cloudinary-url";
@@ -194,7 +230,7 @@ export {
   DEFAULT_HOME_DOCUMENTS_TEXT,
 } from "./admin/home-sections";
 export type { HomeSection, HomeSectionType, HomeStatKey } from "./admin/home-sections";
-export { HOME_CMS_SLUG, isSystemCmsSlug, SHOP_CMS_SLUG, SYSTEM_CMS_SLUGS } from "./admin/cms-slugs";
+export { HOME_CMS_SLUG, isSystemCmsSlug, PRICING_CMS_SLUG, SHOP_CMS_SLUG, SYSTEM_CMS_SLUGS } from "./admin/cms-slugs";
 export type { SystemCmsSlug } from "./admin/cms-slugs";
 export {
   defaultShopSectionData,
@@ -248,6 +284,34 @@ export type {
   ShopShelfData,
   ShopTopRatedData,
 } from "./admin/shop-sections";
+export {
+  applyPricingTemplate,
+  applyPricingTemplateDeep,
+  computeCycleSavingsPercent,
+  defaultPricingSections,
+  parsePricingSections,
+  PRICING_SECTION_LABELS,
+  PRICING_SECTION_TYPES,
+  PRICING_SEO_DESCRIPTION_MAX,
+  PRICING_SEO_TITLE_MAX,
+  pricingSectionsSchema,
+  pricingSeoSchema,
+  resolvePricingPlanSlots,
+  resolvePricingSections,
+  stripUndefinedPricing,
+  validatePricingPlanRefs,
+} from "./admin/pricing-sections";
+export type {
+  PricingComparisonRow,
+  PricingCtaKey,
+  PricingCtaLabels,
+  PricingPlanCardItem,
+  PricingPlanCardSlot,
+  PricingSection,
+  PricingSectionIssue,
+  PricingSectionType,
+  PricingSeoInput,
+} from "./admin/pricing-sections";
 export { buildAdminDashboardSummary } from "./admin/dashboard-summary";
 export type { AdminDashboardCounts, AdminDashboardSummary } from "./admin/dashboard-summary";
 

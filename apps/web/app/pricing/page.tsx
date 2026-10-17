@@ -1,64 +1,129 @@
+import { cache } from "react";
 import type { Metadata } from "next";
-import { getEffectiveBrand } from "../../lib/branding";
-import { getActivePlans } from "../../lib/pricing";
+import { getEnv } from "@gieochu/config";
+import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
+import type { PricingSection } from "@gieochu/core/pricing-sections";
+import { getPricingPageData, type PricingCardCtas } from "../../lib/pricing-cms";
+import { ShopEmptyState } from "../_ui/shop-cta";
+import {
+  PricingComparison,
+  PricingCtaFinal,
+  PricingFaq,
+  PricingHero,
+  PricingPaymentMethods,
+  PricingPreviewBanner,
+  PricingPriceNote,
+  PricingStats,
+  PricingWhyUs,
+} from "../_ui/pricing/pricing-blocks";
+import { PricingPlans } from "../_ui/pricing/pricing-plans";
 
-export const metadata: Metadata = {
-  title: "Bảng giá",
-};
+/**
+ * Trang Bảng giá `/pricing` (ADR-041 A GĐ2; đề xuất Phong §6). Mọi chữ đọc từ CMS slug `pricing` (`getPricingPageData`, đã
+ * thay `{brand}`/`{graceDays}`; chưa xuất bản → cấu hình mặc định), giá/hạn mức từ `Plan`, CTA theo người xem tính ở server.
+ * Section `visible` render đúng thứ tự CMS; section rỗng tự ẩn. `?xem-truoc=nhap`: chỉ SYSTEM_ADMIN thấy bản nháp (kiểm ở
+ * loader) → dải "Đang xem bản nháp"; URL có tham số này luôn `noindex`.
+ */
 
-const FEATURE_LABELS: Record<string, string> = {
-  coupons: "Mã giảm giá",
-  advancedAnalytics: "Thống kê nâng cao",
-  advancedBranding: "Thương hiệu nâng cao",
-  seoTools: "Công cụ SEO",
-  automation: "Tự động hoá",
-  customDomain: "Tên miền riêng",
-};
+const PREVIEW_PARAM = "xem-truoc";
+const PREVIEW_VALUE = "nhap";
+const PATH = "/pricing";
 
-export default async function PricingPage() {
-  const brand = await getEffectiveBrand();
-  const plans = await getActivePlans();
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+type SectionOf<T extends PricingSection["type"]> = Extract<PricingSection, { type: T }>;
+
+function wantsPreview(params: Record<string, string | string[] | undefined>): boolean {
+  return params[PREVIEW_PARAM] === PREVIEW_VALUE;
+}
+
+/** Một lần đọc dữ liệu cho cả `generateMetadata` và trang trong cùng request. */
+const loadPricing = cache((preview: boolean) => getPricingPageData({ preview }));
+
+function findSection<T extends PricingSection["type"]>(sections: readonly PricingSection[], type: T): SectionOf<T> | undefined {
+  return sections.find((section): section is SectionOf<T> => section.type === type);
+}
+
+export async function generateMetadata({ searchParams }: { searchParams: SearchParams }): Promise<Metadata> {
+  const preview = wantsPreview(await searchParams);
+  const data = await loadPricing(preview);
+  const hero = findSection(data.sections, "hero");
+  return {
+    // SEO CMS (đã xuất bản, không rỗng) ưu tiên; không có → mặc định theo hero + tên thương hiệu (cùng mẫu `/cua-hang`).
+    title: data.seoTitle ?? `Bảng giá | ${data.brandName}`,
+    description: data.seoDescription ?? hero?.data.subtitle,
+    alternates: { canonical: `${getEnv().APP_URL.replace(/\/+$/, "")}${PATH}` },
+    ...(preview ? { robots: { index: false, follow: false } } : {}),
+  };
+}
+
+export default async function PricingPage({ searchParams }: { searchParams: SearchParams }) {
+  const data = await loadPricing(wantsPreview(await searchParams));
+  const visible = data.sections.filter((section) => section.visible);
+  const hasHero = visible.some((section) => section.type === "hero");
+
+  // CTA đầu cột bảng so sánh = CTA của thẻ gói tương ứng (gói chính + gói ghép cặp).
+  const ctasByPlan = new Map<string, PricingCardCtas>();
+  for (const card of data.cards) {
+    ctasByPlan.set(card.plan.id, card.ctas);
+    if (card.altPlan && card.altCtas) ctasByPlan.set(card.altPlan.id, card.altCtas);
+  }
+  const plansData = findSection(data.sections, "plans")?.data;
+  const viewer = data.viewer;
+  const currentPlanId = viewer.kind === "TENANT" ? viewer.currentPlanId : null;
+  const currentPeriodEndLabel =
+    viewer.kind === "TENANT" && viewer.currentPeriodEnd ? viewer.currentPeriodEnd.toLocaleDateString("vi-VN", { timeZone: DISPLAY_TIME_ZONE }) : null;
 
   return (
-    <main className="container-page py-16">
-      <div className="mx-auto max-w-2xl">
-        <h1 className="text-3xl font-bold">Bảng giá</h1>
-        <p className="mt-2 text-gray-600">
-          Bắt đầu miễn phí trên {brand.name}. Chỉ nâng cấp khi bạn cần nhiều hơn.
-        </p>
-      </div>
+    <>
+      {data.isPreview ? <PricingPreviewBanner /> : null}
+      {hasHero ? null : (
+        // Hero bị ẩn trong CMS → vẫn giữ một H1 duy nhất cho trang.
+        <h1 className="sr-only">Bảng giá</h1>
+      )}
 
-      <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {plans.map((plan) => {
-          const features = plan.features as Record<string, boolean> | null;
-          const activeFeatures = Object.entries(FEATURE_LABELS).filter(([key]) => features?.[key] === true);
-          return (
-            <div key={plan.id} className={`rounded border p-6 ${plan.isFree ? "border-[var(--color-primary)]" : ""}`}>
-              <h2 className="text-lg font-semibold">{plan.name}</h2>
-              <p className="mt-2 text-2xl font-bold">
-                {plan.priceVnd === 0 ? "Miễn phí" : `${plan.priceVnd.toLocaleString("vi-VN")}đ`}
-                {plan.priceVnd > 0 ? (
-                  <span className="text-sm font-normal text-gray-500">
-                    {" "}
-                    / {plan.intervalCount} {plan.interval === "MONTH" ? "tháng" : "năm"}
-                  </span>
-                ) : null}
-              </p>
-              {plan.isFree ? <p className="mt-1 text-xs text-[var(--color-primary)]">Không bao giờ hết hạn</p> : null}
-              <ul className="mt-4 space-y-1 text-sm text-gray-600">
-                <li>Tối đa {plan.maxProducts} sản phẩm</li>
-                <li>{plan.storageMb.toLocaleString("vi-VN")} MB dung lượng</li>
-                <li>File tối đa {plan.maxFileMb} MB</li>
-                {activeFeatures.map(([key, label]) => (
-                  <li key={key}>{label}</li>
-                ))}
-              </ul>
-            </div>
-          );
-        })}
-      </div>
-
-      {plans.length === 0 ? <p className="mt-8 text-sm text-gray-500">Chưa có gói dịch vụ nào.</p> : null}
-    </main>
+      {visible.map((section) => {
+        switch (section.type) {
+          case "hero":
+            return <PricingHero key={section.id} data={section.data} />;
+          case "plans":
+            return data.cards.length > 0 ? (
+              <PricingPlans key={section.id} data={section.data} cards={data.cards} currentPeriodEndLabel={currentPeriodEndLabel} />
+            ) : (
+              <ShopEmptyState
+                key={section.id}
+                title="Bảng giá đang được cập nhật"
+                description="Hiện chưa có gói dịch vụ nào đang mở bán. Bạn vui lòng quay lại sau."
+                cta={null}
+                secondary={{ label: "Về trang chủ", href: "/" }}
+              />
+            );
+          case "priceNote":
+            return data.cards.length > 0 ? <PricingPriceNote key={section.id} data={section.data} /> : null;
+          case "stats":
+            return <PricingStats key={section.id} title={section.data.title} items={data.stats} />;
+          case "comparison":
+            return (
+              <PricingComparison
+                key={section.id}
+                data={section.data}
+                plans={data.plans}
+                ctasByPlan={ctasByPlan}
+                currentPlanId={currentPlanId}
+                currentLabel={plansData?.ctaLabels.current ?? ""}
+              />
+            );
+          case "whyUs":
+            return <PricingWhyUs key={section.id} data={section.data} />;
+          case "faq":
+            return <PricingFaq key={section.id} data={section.data} />;
+          case "ctaFinal":
+            return <PricingCtaFinal key={section.id} data={section.data} cta={data.finalCta} />;
+          case "paymentMethods":
+            return <PricingPaymentMethods key={section.id} data={section.data} providers={data.enabledProviders} />;
+          default:
+            return null;
+        }
+      })}
+    </>
   );
 }

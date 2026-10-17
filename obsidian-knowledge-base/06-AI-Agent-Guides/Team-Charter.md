@@ -5,7 +5,7 @@ tags:
   - ui-ux
   - status/living
 date: 2026-09-26
-updated: 2026-10-16
+updated: 2026-10-17
 author: Long (A08)
 ---
 
@@ -76,6 +76,23 @@ Các thư mục `0X-*` ở bảng trên nằm trong `obsidian-knowledge-base/` (
    các trang đã sửa; Quốc kiểm tra diff.
 6. Task xong khi code đạt verify **và** Long đã ghi nhận (bỏ qua bước 5 với sửa lỗi nhỏ không đổi hành
    vi/contract). Commit chỉ khi chủ dự án yêu cầu.
+
+### 2.1. Nguyên tắc lập kế hoạch tính năng
+
+Chủ dự án chốt ngày 2026-10-17; nguồn: `CLAUDE.md` mục "Nguyên tắc lập kế hoạch tính năng" ✅ (đối chiếu trực tiếp
+2026-10-17). Áp dụng cho **mọi trang/tính năng có nội dung**:
+
+1. **Kế hoạch bắt đầu bằng luồng UX + mô hình dữ liệu**, sau đó mới thiết kế giao diện.
+2. **Giai đoạn 1 — CMS quản trị:** xây màn quản trị (System Center hoặc Studio) lưu **toàn bộ** nội dung/cấu hình
+   vào database. Không hard-code chữ, giá, FAQ, nhãn trong JSX.
+3. **Giai đoạn 2 — UI công khai:** dựng giao diện đọc dữ liệu từ DB.
+
+Mẫu đã áp dụng: trang chủ CMS — ADR-033; Cửa hàng `/cua-hang` — ADR-035 (tiêu đề ADR: "CMS trước, trang dữ liệu
+sau") ✅ (đối chiếu `docs/DECISIONS.md`).
+
+Hệ quả cho quy trình §2: ở bước 1 Quốc chốt với chủ dự án luồng UX + mô hình dữ liệu và tách GĐ1/GĐ2 trước khi
+giao việc; ở bước 2 brief GĐ1 (schema, CMS, đọc/ghi DB) đi trước brief UI công khai GĐ2. Kiểm tra bằng mục
+`PLAN_CHECK` trong mẫu brief (§4).
 
 ## 3. Trách nhiệm chi tiết
 
@@ -148,6 +165,11 @@ Nguồn: `.claude/agents/phong.md` ✅ (đối chiếu 2026-09-26).
   CONSTRAINTS, OUTPUT_EXPECTED, DO_NOT_TOUCH, VERIFY_REQUIRED.
 - `READ_REQUIRED` chỉ trỏ vào vùng của agent nhận việc (theo bảng §1).
 - Mọi brief yêu cầu agent báo lại: file đã đổi, kết quả verify, và tác động tài liệu.
+- Brief/kế hoạch cho trang/tính năng có nội dung thêm mục `PLAN_CHECK` (theo §2.1):
+  - [ ] Đã có luồng UX + mô hình dữ liệu trước khi thiết kế giao diện?
+  - [ ] Đã tách **GĐ1 CMS + mô hình dữ liệu** (System Center/Studio, nội dung/cấu hình lưu DB) và **GĐ2 UI công
+        khai** đọc từ DB chưa?
+  - [ ] Không còn chữ, giá, FAQ, nhãn hard-code trong JSX?
 
 ## 5. Ranh giới với quy tắc dự án
 
@@ -217,6 +239,9 @@ trò** như §2–§3.
 13. **Không chạy `pnpm db:seed`** (ghi đè nội dung trang chủ CMS — `.env` luôn trỏ DB production theo ADR-034). Integration
     test/script thủ công ghi dữ liệu thật: chỉ chạy khi cần, tự dọn dữ liệu tạm, không đụng cấu hình dùng chung, không gửi email
     tới địa chỉ thật; Preview chỉ để xem giao diện.
+14. **CMS trước, UI sau — UX trước UI** (chủ dự án chốt 2026-10-17, `CLAUDE.md` mục "Nguyên tắc lập kế hoạch tính
+    năng"): trang/tính năng có nội dung làm GĐ1 CMS quản trị lưu toàn bộ nội dung/cấu hình vào DB, GĐ2 mới dựng UI
+    công khai đọc từ DB; không hard-code chữ, giá, FAQ, nhãn trong JSX — chi tiết §2.1.
 
 *Ghi chú:* `.claude/settings.json` không còn quyền shell rộng `Bash(cat > *)` (bỏ ngày 2026-09-26) để giảm nguy
 cơ ghi đè file ngoài vùng mà không bị hỏi lại ✅ (grep file cấu hình 2026-09-26).

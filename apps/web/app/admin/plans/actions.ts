@@ -59,7 +59,7 @@ export async function createPlanAction(_prevState: PlanActionState, formData: Fo
     return { error: "Dữ liệu không hợp lệ." };
   }
   if (!isValidPlanInput(parsed.data)) {
-    return { error: "Chu kỳ hoặc giới hạn không hợp lệ (phải là số nguyên không âm)." };
+    return { error: "Chu kỳ hoặc giới hạn không hợp lệ (giá là số nguyên không âm; hạn mức là số nguyên ≥ 0, hoặc -1 = không giới hạn)." };
   }
 
   const prisma = getPrismaClient();
@@ -97,7 +97,7 @@ export async function updatePlanAction(planId: string, _prevState: PlanActionSta
     return { error: "Dữ liệu không hợp lệ." };
   }
   if (!isValidPlanInput(parsed.data)) {
-    return { error: "Chu kỳ hoặc giới hạn không hợp lệ (phải là số nguyên không âm)." };
+    return { error: "Chu kỳ hoặc giới hạn không hợp lệ (giá là số nguyên không âm; hạn mức là số nguyên ≥ 0, hoặc -1 = không giới hạn)." };
   }
 
   const prisma = getPrismaClient();

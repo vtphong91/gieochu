@@ -28,7 +28,8 @@ export type UserStatus = (typeof UserStatus)[keyof typeof UserStatus]
 
 export const VerificationTokenType = {
   EMAIL_VERIFY: 'EMAIL_VERIFY',
-  PASSWORD_RESET: 'PASSWORD_RESET'
+  PASSWORD_RESET: 'PASSWORD_RESET',
+  EMAIL_CHANGE: 'EMAIL_CHANGE'
 } as const
 
 export type VerificationTokenType = (typeof VerificationTokenType)[keyof typeof VerificationTokenType]
@@ -137,10 +138,20 @@ export const SubscriptionInvoiceStatus = {
   PENDING: 'PENDING',
   PAID: 'PAID',
   EXPIRED: 'EXPIRED',
-  VOID: 'VOID'
+  VOID: 'VOID',
+  REFUNDED: 'REFUNDED'
 } as const
 
 export type SubscriptionInvoiceStatus = (typeof SubscriptionInvoiceStatus)[keyof typeof SubscriptionInvoiceStatus]
+
+
+export const SubscriptionRefundStatus = {
+  REQUESTED: 'REQUESTED',
+  APPROVED_REFUNDED: 'APPROVED_REFUNDED',
+  REJECTED: 'REJECTED'
+} as const
+
+export type SubscriptionRefundStatus = (typeof SubscriptionRefundStatus)[keyof typeof SubscriptionRefundStatus]
 
 
 export const WebhookScope = {

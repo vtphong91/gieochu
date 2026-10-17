@@ -76,6 +76,7 @@ export const ModelName = {
   TenantPaymentConfig: 'TenantPaymentConfig',
   PlatformPaymentConfig: 'PlatformPaymentConfig',
   SubscriptionInvoice: 'SubscriptionInvoice',
+  SubscriptionRefundRequest: 'SubscriptionRefundRequest',
   PlatformPaymentTransaction: 'PlatformPaymentTransaction',
   WebhookEvent: 'WebhookEvent',
   BankBin: 'BankBin',
@@ -167,6 +168,7 @@ export const VerificationTokenScalarFieldEnum = {
   userId: 'userId',
   type: 'type',
   tokenHash: 'tokenHash',
+  newEmail: 'newEmail',
   expiresAt: 'expiresAt',
   usedAt: 'usedAt',
   createdAt: 'createdAt'
@@ -513,6 +515,26 @@ export const SubscriptionInvoiceScalarFieldEnum = {
 } as const
 
 export type SubscriptionInvoiceScalarFieldEnum = (typeof SubscriptionInvoiceScalarFieldEnum)[keyof typeof SubscriptionInvoiceScalarFieldEnum]
+
+
+export const SubscriptionRefundRequestScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  invoiceId: 'invoiceId',
+  requestedById: 'requestedById',
+  reason: 'reason',
+  payoutEncrypted: 'payoutEncrypted',
+  status: 'status',
+  amountVnd: 'amountVnd',
+  adminNote: 'adminNote',
+  decidedById: 'decidedById',
+  decidedAt: 'decidedAt',
+  refundedAt: 'refundedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SubscriptionRefundRequestScalarFieldEnum = (typeof SubscriptionRefundRequestScalarFieldEnum)[keyof typeof SubscriptionRefundRequestScalarFieldEnum]
 
 
 export const PlatformPaymentTransactionScalarFieldEnum = {

@@ -723,3 +723,40 @@ nhiều trang; nhánh SEO từ CMS đã xuất bản (`seoTitle`/`seoDescription
   already-published products" vẫn đúng ở tầng lib nhưng tên mô tả hành vi người dùng đã đổi theo ADR-040; đổi tên/ý, **giữ nguyên số test**.
 - **Thống nhất cách chủ tenant `LOCKED` xem trang tài liệu/bài viết** — trang tài liệu trả 404 cả với chủ, còn `/posts` và
   `/posts/[postId]` cho chủ xem.
+
+## Phát sinh trong đợt ADR-041 (Bảng giá CMS, hoàn tiền gói, Hồ sơ tài khoản)
+
+**Chờ chủ dự án / Quốc**
+- **Danh sách 34 tỉnh/thành** (`VN_PROVINCES`, `packages/core/src/account/profile.ts`) ghi căn cứ "Nghị quyết 202/2025/QH15" trong comment —
+  chưa đối chiếu văn bản chính thức; chờ chủ dự án xác nhận.
+- **BG-Q9** — FAQ "về Free khi đang vượt hạn mức Free" chưa có dữ kiện (hành vi code khi gói Free có hạn mức thấp hơn số đang dùng).
+- **Đổi email thu hồi mọi phiên** — ADR-041 C.2 ghi "thu hồi phiên khác", `confirmEmailChange` thu hồi mọi phiên và buộc đăng nhập lại; xác
+  nhận giữ hay sửa ADR.
+- **Kiểm `plans` trên production** — gói nào để hạn mức `0` với ý "không giới hạn" (trước ADR-041) nay hiện "Không có"; sửa thành `-1` ở
+  `/admin/plans` nếu cần (truy vấn chỉ đọc).
+- **Giao diện admin xem SĐT/Tỉnh** — ADR-041 C.1 cho admin thấy nhưng chưa có trang nào hiển thị.
+
+**Kỹ thuật / bảo mật**
+- **Xoá asset Cloudinary cũ** khi đổi/gỡ ảnh đại diện (chưa có helper Admin API xoá asset) — ảnh cũ còn trên Cloudinary.
+- **Hoàn tác gỡ ảnh đại diện** — gỡ là mất ngay.
+- **Rate limit trong bộ nhớ** (`checkRateLimit`: đổi mật khẩu 5/15 phút, đổi email 3/giờ, xác nhận 20/15 phút/IP, chữ ký ảnh 10/giờ) — mỗi
+  instance Vercel một bộ đếm riêng.
+- **Access token sống tới hết TTL sau khi thu hồi phiên** (đổi mật khẩu, đổi email, đăng xuất mọi thiết bị) — mặc định 15 phút.
+- **`lib/pricing.ts` `getActivePlans`** — `/pricing` không còn dùng; vẫn dùng ở `app/p/[slug]/page.tsx` (khối `pricingTable` nguồn `plans`) và
+  `tests/integration/admin.test.ts`. Dọn khi bỏ khối đó (giữ nguyên số test).
+- **Đổi `PAYMENT_ENCRYPTION_KEY`** làm mất khả năng giải mã `subscription_refund_requests.payoutEncrypted` của yêu cầu đang chờ — cần quy trình
+  xoay khoá chung với secret cổng thanh toán.
+
+**Test (ADR-041 không thêm — nợ, giữ 93/94 unit, 54/55 integration cho tới khi chủ dự án duyệt nâng trần)**
+- Unit `parsePricingSections` / `validatePricingPlanRefs` / `computeCycleSavingsPercent` (dữ liệu hỏng → mặc định, gói thiếu/tắt).
+- Unit ngữ nghĩa hạn mức `0`/`-1` (`isWithinPlanLimit`, `canPublishProduct`, `formatPlanLimit`).
+- Unit `evaluateRefundEligibility`; integration hoàn tiền (ngoài 7 ngày, không phải lần đầu, có hoá đơn PAID thứ hai → 409, Đã hoàn → `REFUNDED`
+  + Free + payout NULL, từ chối cần lý do).
+- Integration action CMS Bảng giá từ chối non-admin.
+- Integration đổi mật khẩu (giữ phiên hiện tại, thu hồi phiên khác) và đổi email (hết hạn / đã dùng / email bị chiếm, vô hiệu token reset cũ).
+
+**Giao diện**
+- **Studio: menu điều hướng mobile (GĐ2b)** — chưa làm. Nút Đăng xuất đã có qua menu tài khoản ở header Studio.
+- **Editor CMS Cửa hàng: cột aside thiếu `min-w-0`** (nội dung dài có thể tràn).
+- **Danh sách phiên đăng nhập / IP, xoá tài khoản, tuỳ chọn thông báo, ảnh đại diện công khai, xác thực hai bước** — để sau theo ADR-041 C.4.
+- **Thẻ Enterprise, quà tặng theo kỳ hạn, dùng thử gói trả phí** — ngoài phạm vi ADR-041 (ghi để không đề xuất lại khi chưa có quyết định mới).

@@ -39,7 +39,8 @@ author: System Architect
 > `/api/downloads` và `/api/downloads/[token]` có thêm mã lỗi remedy (§7). Đợt ADR-040 (2026-10-17, **chưa commit/deploy**) **không thêm
 > `route.ts`** (đếm lại 2026-10-17: vẫn 22 dưới `/api`, 23 toàn app ✅) — đổi điều kiện ở `POST /api/share-links/[token]/download` (§7,
 > 410 `SHARE_LINK_TENANT_LOCKED` khi tenant không `ACTIVE`), `POST /api/reports` (§20.1, 404 khi tenant không `ACTIVE`) và thêm mã
-> `TENANT_NOT_ACTIVE` cho action đánh giá (§12).
+> `TENANT_NOT_ACTIVE` cho action đánh giá (§12). Đợt ADR-041 (2026-10-17, **chưa commit/deploy**) **không thêm `route.ts`** (đếm lại
+> 2026-10-17: vẫn 22 dưới `/api`, 23 toàn app ✅) — trang + Server Action Bảng giá CMS, hoàn tiền gói, Hồ sơ/Bảo mật/đổi email ở §21.
 
 ## 1. Quy Ước Chung
 
@@ -748,7 +749,99 @@ entitlementId)`; trả `RemedyActionState = { ok?, error?, code? }`; revalidate 
 
 ---
 
-## 21. Tài Liệu Tham Chiếu & Liên Kết
+## 21. Bảng giá CMS, hoàn tiền gói, Hồ sơ tài khoản (ADR-041) ✅
+
+Đối chiếu working tree 2026-10-17 (**chưa commit/deploy**; 2 migration đã áp DB 🟡). Nghiệp vụ:
+[[02-System-Specs/Pricing-Page-Specs|Pricing-Page-Specs]], [[02-System-Specs/Account-Profile-Specs|Account-Profile-Specs]],
+[[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5A–§5B. Không thêm `route.ts` — toàn bộ là trang + Server Action.
+
+### 21.1. CMS Bảng giá — `app/admin/cms/pricing/actions.ts`
+
+Mỗi action tự `requireRole("SYSTEM_ADMIN")`; trả `PricingEditorActionState = { success?, error?, issues?: PricingSectionIssue[] }`
+(`issues` ≤ 20, `{ sectionId, field, message }`, `field` là đường dẫn chấm trong `data`). Section validate lại bằng
+`pricingSectionsSchema` (chặt) + `validatePricingPlanRefs` với danh sách `Plan` thật. Audit `PRICING_CMS_UPDATED` (metadata chỉ `operation`).
+
+| Action | Hành vi |
+| :-- | :-- |
+| `savePricingDraftAction(sections, seo)` | Ghi `blocksDraft` + SEO (cột không có nháp → đã `PUBLISHED` thì SEO đổi ngay); chưa có dòng `pricing` → `upsert` tạo dòng DRAFT, live = mặc định |
+| `publishPricingAction(sections, seo)` | Ghi `blocks`, xoá nháp, `status = PUBLISHED`; `revalidatePath("/pricing")` |
+| `restoreLivePricingAction()` | Bỏ nháp, quay về bản live |
+
+`seo = { seoTitle, seoDescription }` — trim, ≤ 120 / ≤ 320 ký tự (`PRICING_SEO_TITLE_MAX`/`PRICING_SEO_DESCRIPTION_MAX`), rỗng → `null`; trang
+`/pricing` chỉ dùng khi dòng `PUBLISHED` ✅.
+
+Loader `apps/web/lib/pricing-cms.ts`:
+- `getPricingCmsEditorData()` → `PricingCmsEditorData { sections (nháp ?? live ?? mặc định), live, hasDraft, status: "NONE" | "DRAFT" |
+  "PUBLISHED", updatedAt, seoTitle, seoDescription, plans (mọi gói, kể cả đã tắt), stats, enabledProviders, graceDays, implementedFeatures }`.
+- `getPricingPageData({ preview? })` → `PricingPageData { sections (đã thay {brand}/{graceDays}, đã bỏ dòng cờ chưa triển khai), cards,
+  plans, stats (chỉ > 0), enabledProviders, graceDays, brandName, implementedFeatures, viewer, isPreview, finalCta, seoTitle, seoDescription }`.
+  `preview` chỉ có hiệu lực khi người xem là `SYSTEM_ADMIN` (kiểm ở server); khi xem nháp `viewer` ép `ANON`.
+- `PricingViewer` = `{ kind: "ANON" }` · `{ kind: "NO_TENANT" }` · `{ kind: "TENANT", tenantSlug, currentPlanId, isFree, status,
+  currentPeriodEnd, hasPendingInvoice }` — chỉ gian hàng người xem **sở hữu** (`Tenant.ownerId`).
+- Trang `/pricing` (`?xem-truoc=nhap` → nháp cho admin, `robots: noindex`); `/admin/cms/pricing` (System Center).
+
+Subpath `@gieochu/core/pricing-sections`: `PRICING_SECTION_TYPES` (9), `PRICING_SECTION_LABELS`, `PRICING_CTA_KEYS` (10),
+`pricingSectionsSchema`, `parsePricingSections`, `resolvePricingSections`, `defaultPricingSections`, `resolvePricingPlanSlots`,
+`validatePricingPlanRefs`, `computeCycleSavingsPercent`, `applyPricingTemplate(Deep)`, `stripUndefinedPricing` + kiểu.
+
+### 21.2. Hạn mức / cờ tính năng — subpath mới
+
+- `@gieochu/core/plan-limits`: `PLAN_LIMIT_UNLIMITED = -1`, `isUnlimitedPlanLimit`, `isWithinPlanLimit`, `PLAN_LIMIT_FIELDS`,
+  `PLAN_LIMIT_FIELD_LABELS`, `describePlanLimit`, `formatPlanLimit`.
+- `@gieochu/core/plan-features`: `PLAN_FEATURE_KEYS`, `PLAN_FEATURE_LABELS`, `IMPLEMENTED_PLAN_FEATURES` (hiện `[]`), `isPlanFeatureKey`,
+  `isImplementedPlanFeature`, `canUsePlanFeature`.
+- `isValidPlanInput` (`/admin/plans`): hạn mức là số nguyên ≥ 0 hoặc đúng `-1`. `createPlanAction`/`updatePlanAction`/`togglePlanActiveAction`
+  thêm `revalidatePath("/pricing")`.
+- Billing Studio `/studio/{slug}/billing?plan={planId}` — chọn sẵn gói trả phí đang bật trong form gia hạn; sai → gói hiện tại.
+
+### 21.3. Hoàn tiền gói — Studio + System Center
+
+| Action | Gác quyền | Trả | Mã lỗi |
+| :-- | :-- | :-- | :-- |
+| `requestSubscriptionRefundAction(tenantSlug, prev, formData)` (`studio/[tenantSlug]/billing/actions.ts`) — FormData `reason?`, `bankBin`, `accountNo`, `accountName` (không gửi id hoá đơn/số tiền) | `requireTenantMember(slug)` = **OWNER** | `RefundRequestActionState = { error?, success?, fieldErrors?: { bankBin?, accountNo?, accountName? } }` | Không đủ điều kiện → `{ error }` (thông điệp `REFUND_INELIGIBLE_MESSAGES`); `REFUND_LATER_PAYMENT_EXISTS` 409; `REFUND_UNAVAILABLE` 503 |
+| `approveRefundAction(requestId, prev, formData)` (`admin/billing/refunds/actions.ts`) — `adminNote?` | `requireRole("SYSTEM_ADMIN")` | `RefundDecisionActionState` | `NOT_FOUND` 404, `REFUND_NOT_PENDING` 409, `REFUND_LATER_PAYMENT_EXISTS` 409, `FREE_PLAN_MISSING` 409, `SUBSCRIPTION_MISSING` 409, `INVOICE_NOT_PAID` 409 |
+| `rejectRefundAction(requestId, prev, formData)` — lý do bắt buộc | `requireRole("SYSTEM_ADMIN")` | `RefundDecisionActionState` | `VALIDATION_ERROR` 400, `REFUND_NOT_PENDING` 409 |
+| `revealRefundPayoutAction(requestId)` | `requireRole("SYSTEM_ADMIN")` | `RevealPayoutResult` (thông tin nhận tiền đầy đủ) | `REFUND_NOT_PENDING` 409 (đã xử lý → đã xoá), `PAYOUT_UNREADABLE` 500; audit `SUBSCRIPTION_REFUND_PAYOUT_VIEWED` |
+
+Action admin revalidate `/admin/billing/refunds` + `/admin/billing/invoices`. Trang `/admin/billing/refunds?status=` (lọc trạng thái). Menu
+System Center "Hoàn tiền gói" có badge số yêu cầu `REQUESTED` (`countPendingRefundRequests()` gọi ở `app/admin/layout.tsx`) ✅.
+Lib `apps/web/lib/subscription-refund.ts`: `getTenantRefundState`, `requestSubscriptionRefund`, `countPendingRefundRequests()`,
+`listRefundRequestsForAdmin({ status? })` (item có `payoutMasked { bankName, accountNoMasked }`, `approveBlocked`), `revealRefundPayout`,
+`approveRefundRequest`, `rejectRefundRequest`, `isRefundSchemaMissing`, `formatRefundDate`. `downgradeToFree` (`lib/subscription-sweep.ts`)
+nay được export và nhận cả transaction client.
+Subpath `@gieochu/core/subscription-refund`: `SUBSCRIPTION_REFUND_WINDOW_DAYS = 7`, `SUBSCRIPTION_REFUND_STATUSES`/`_LABELS`,
+`SUBSCRIPTION_REFUND_ERROR_CODES` (`REFUND_NOT_ELIGIBLE`, `REFUND_ALREADY_REQUESTED`, `REFUND_NOT_PENDING`, `REFUND_UNAVAILABLE`,
+`REFUND_INVALID_PAYOUT`, `REFUND_LATER_PAYMENT_EXISTS`), `evaluateRefundEligibility`, `refundDeadline`, `parseRefundPayoutInput`,
+`maskAccountNo`, `normalizeRefundText`, `REFUND_INELIGIBLE_MESSAGES`.
+
+### 21.4. Hồ sơ / Bảo mật / đổi email — `app/account/**`
+
+State chung `AccountActionState<T>` (`apps/web/lib/account-state.ts`) cho `useActionState`: `{ ok: true, message, ...T }` hoặc `{ ok: false,
+code, formError?, fieldErrors?, values? }` (`values` để giữ nội dung đã gõ — không bao giờ chứa mật khẩu). Thay cho redirect + query cũ.
+
+| Action | Gác quyền | Ghi chú |
+| :-- | :-- | :-- |
+| `updateProfileAction(prev, formData)` (`account/profile/actions.ts`) | `requireVerified()` | `fullName` 1–80 (bắt buộc), `phone?` (chuẩn hoá `0XXXXXXXXX`), `province?` (thuộc `VN_PROVINCES`; giữ giá trị cũ nhập tự do trước ADR-041); ký lại access token khi `pc` đổi; revalidate `/account` layout |
+| `getAvatarUploadSignatureAction()` | `requireVerified()` | `CloudinarySignatureResult`; `public_id` server sinh `<root>/users/<userId>/avatar/<24 hex>`; png/jpg/jpeg/webp; 10 chữ ký/giờ/user; `CLOUDINARY_NOT_CONFIGURED` khi chưa cấu hình |
+| `saveAvatarAction(publicId)` | `requireVerified()` | Kiểm `publicId` đúng thư mục của chính user, xác minh asset qua Admin API (≤ 2 MB); revalidate `/` layout. Ảnh cũ **không** bị xoá trên Cloudinary |
+| `removeAvatarAction()` | `requireVerified()` | Đặt `avatarKey = null` |
+| `changePasswordAction(prev, formData)` (`account/security/actions.ts`) | `requireVerified()` | Cần mật khẩu hiện tại; mới ≥ 8 ký tự gồm chữ + số, khác cũ; 5 lần sai/15 phút/user (không khoá đăng nhập); thu hồi mọi refresh token **trừ** `familyId` hiện tại; email `password_changed`; audit |
+| `requestEmailChangeAction(prev, formData)` | `requireVerified()` | `newEmail` + `currentPassword`; `EMAIL_TAKEN` khi email thuộc tài khoản khác; 3 lần/giờ/user (gộp gửi lại); tạo token `EMAIL_CHANGE` (TTL = `emailVerifyTtlHours`), xoá yêu cầu cũ; email tới email mới + báo email cũ |
+| `resendEmailChangeAction()` / `cancelEmailChangeAction()` | `requireVerified()` | Gửi lại (token mới, cũ vô hiệu) / huỷ (xoá token) |
+| `logoutAllDevicesAction()` | `requireUser()` | Thu hồi mọi refresh token, xoá cookie `at` + `rt` (`Path=/api/auth`), redirect `/login`; không audit |
+| `confirmEmailChangeAction(prev, formData)` (`account/email/xac-nhan/actions.ts`) | **Không cần đăng nhập** | 20 lần/15 phút/IP; một transaction: đánh dấu token đã dùng (`usedAt IS NULL` → chống bấm 2 lần), đổi `User.email` + `emailVerifiedAt`, thu hồi **mọi** refresh token, vô hiệu token `PASSWORD_RESET`/`EMAIL_VERIFY` chưa dùng; lỗi hết hạn/đã dùng/không hợp lệ, `EMAIL_TAKEN`, `ACCOUNT_LOCKED`, `RATE_LIMITED`; email `email_changed` tới email cũ; xoá cookie nếu trình duyệt đang đăng nhập đúng tài khoản |
+
+Trang `/account/email/xac-nhan?token=…` — GET chỉ đọc (`previewEmailChangeToken` → `valid`/`expired`/`used`/`invalid`), xác nhận bằng nút
+(POST), `noindex`. Loader: `getAccountOverview(user)` / `getCachedAccountOverview()` (C1), `getAccountHeaderData(userId)` (C7, `cache()`),
+`findPendingEmailChange`, `avatarUrlFromKey`; `isSystemCloudinaryUploadEnabled()` (`lib/system-cloudinary.ts`, `cache()`) cấp cờ `avatarUploadEnabled`. Subpath `@gieochu/core/account-profile`: `PROFILE_FULL_NAME_MAX_LENGTH = 80`, `VN_PROVINCES`
+(34), `isVnProvince`, `normalizeVnPhone`, `PROFILE_FIELD_MESSAGES`.
+
+`@gieochu/email` thêm: `renderPasswordChangedEmail`, `renderEmailChangeVerifyEmail`, `renderEmailChangeRequestedEmail`,
+`renderEmailChangedEmail`, `renderSubscriptionRefundEmail(stage: "REQUESTED" | "REFUNDED" | "REJECTED", data)`.
+
+---
+
+## 22. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * [[Database-Schema-Reference]] — Lược đồ dữ liệu ([Database-Schema-Reference.md](./Database-Schema-Reference.md))
@@ -764,6 +857,7 @@ entitlementId)`; trả `RemedyActionState = { ok?, error?, code? }`; revalidate 
 * [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]] — audit log M12a (ADR-037) ([Audit-Log-Specs.md](../02-System-Specs/Audit-Log-Specs.md))
 * [[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]] — thống kê hằng ngày M12b (ADR-037) ([Tenant-Stats-Specs.md](../02-System-Specs/Tenant-Stats-Specs.md))
 * [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]] — báo cáo vi phạm M12c + quyền lợi người mua (ADR-038/039) ([Abuse-Reports-Specs.md](../02-System-Specs/Abuse-Reports-Specs.md))
+* [[02-System-Specs/Pricing-Page-Specs|Pricing-Page-Specs]] ([Pricing-Page-Specs.md](../02-System-Specs/Pricing-Page-Specs.md)) · [[02-System-Specs/Account-Profile-Specs|Account-Profile-Specs]] ([Account-Profile-Specs.md](../02-System-Specs/Account-Profile-Specs.md)) · [[01-Architecture-Decisions/ADR-027-Account-Upgrade-Pricing-Profile-Refund|ADR-027 (≙ ADR-041)]] ([ADR-027-Account-Upgrade-Pricing-Profile-Refund.md](../01-Architecture-Decisions/ADR-027-Account-Upgrade-Pricing-Profile-Refund.md))
 * [[02-System-Specs/Shop-Marketplace-Specs|Shop-Marketplace-Specs]] ([Shop-Marketplace-Specs.md](../02-System-Specs/Shop-Marketplace-Specs.md)) · [[01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First|ADR-021 (≙ ADR-035)]] ([ADR-021-Shop-Marketplace-Cms-First.md](../01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First.md))
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

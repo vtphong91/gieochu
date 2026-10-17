@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { AppError, isCloudinaryImageUrl, logger } from "@gieochu/core";
+import { AppError, isCloudinaryImageUrl, isUnlimitedPlanLimit, logger } from "@gieochu/core";
 import { getPrismaClient, withTenant, type TenantMediaUsage } from "@gieochu/db";
 import {
   createCloudinaryUploadSignature,
@@ -73,7 +73,9 @@ export async function getTenantImageQuota(tenantId: string): Promise<TenantImage
   });
   const aggregate = await withTenant(tenantId, (tx) => tx.tenantMediaAsset.aggregate({ where: { tenantId }, _sum: { bytes: true } }));
   const limitMb = subscription.plan.imageStorageMb;
-  return { usedBytes: aggregate._sum.bytes ?? 0, limitBytes: limitMb * 1024 * 1024, limitMb };
+  // ADR-041 A4: -1 = không giới hạn → limitBytes = Infinity (so sánh `used >= limit` luôn false).
+  const limitBytes = isUnlimitedPlanLimit(limitMb) ? Number.POSITIVE_INFINITY : limitMb * 1024 * 1024;
+  return { usedBytes: aggregate._sum.bytes ?? 0, limitBytes, limitMb };
 }
 
 function formatQuota(limitMb: number): string {

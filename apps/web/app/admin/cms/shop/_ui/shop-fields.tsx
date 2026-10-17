@@ -38,7 +38,12 @@ function HelpLine({ id, error, hint }: { id: string; error?: string; hint?: stri
   ) : null;
 }
 
-/** Ô chữ 1 dòng bắt buộc, có `maxLength` + đếm ký tự trong gợi ý. */
+/** Nhãn ô không bắt buộc ghi rõ bằng chữ (không chỉ dựa vào việc thiếu dấu `required`). */
+function fieldLabel(label: string, required: boolean): string {
+  return required ? label : `${label} (không bắt buộc)`;
+}
+
+/** Ô chữ 1 dòng (mặc định bắt buộc), có `maxLength` + đếm ký tự trong gợi ý. `required={false}` → nhãn ghi "(không bắt buộc)". */
 export function ShopTextField({
   id,
   label,
@@ -47,6 +52,7 @@ export function ShopTextField({
   error,
   hint,
   placeholder,
+  required = true,
   onChange,
 }: {
   id: string;
@@ -56,13 +62,14 @@ export function ShopTextField({
   error?: string;
   hint?: string;
   placeholder?: string;
+  required?: boolean;
   onChange: (value: string) => void;
 }) {
   return (
     <TextField
       id={id}
-      label={label}
-      required
+      label={fieldLabel(label, required)}
+      required={required}
       maxLength={max}
       value={value}
       placeholder={placeholder}
@@ -74,7 +81,7 @@ export function ShopTextField({
   );
 }
 
-/** Ô chữ nhiều dòng bắt buộc (mô tả). */
+/** Ô chữ nhiều dòng (mặc định bắt buộc — mô tả). `required={false}` → nhãn ghi "(không bắt buộc)". */
 export function ShopTextAreaField({
   id,
   label,
@@ -83,6 +90,7 @@ export function ShopTextAreaField({
   rows = 3,
   error,
   hint,
+  required = true,
   onChange,
 }: {
   id: string;
@@ -92,18 +100,19 @@ export function ShopTextAreaField({
   rows?: number;
   error?: string;
   hint?: string;
+  required?: boolean;
   onChange: (value: string) => void;
 }) {
   const help = hint ? `${hint} · ${counter(value, max)}` : counter(value, max);
   return (
     <div>
       <label htmlFor={id} className="block text-sm font-medium" style={{ color: INK }}>
-        {label}
+        {fieldLabel(label, required)}
       </label>
       <textarea
         id={id}
         rows={rows}
-        required
+        required={required}
         maxLength={max}
         value={value}
         aria-invalid={error ? true : undefined}

@@ -52,6 +52,8 @@ giúp phân loại nội dung và tra cứu nhanh cho người và AI agent đ�
 | `#analytics` | Số liệu tổng hợp/thống kê (M12b, ADR-037): bảng `tenant_daily_stats`, job `stats.aggregate`, dashboard "Hoạt động bán tài liệu" trên `/admin` — chỉ số tổng hợp, không dữ liệu cá nhân (§7.9) |
 | `#abuse-report` | Báo cáo vi phạm (M12c, ADR-038): bảng L1 `abuse_reports`, `POST /api/reports`, xử lý ở `/admin/reports`, ẩn danh với tenant |
 | `#moderation` | Khoá kiểm duyệt nội dung (ADR-038): `moderationLockedAt` trên sản phẩm/đánh giá/bài viết, trigger `*_guard_moderation`, cam kết bản quyền khi xuất bản |
+| `#pricing` | Trang Bảng giá `/pricing` + CMS `pricing` ở System Center (ADR-041 A): thẻ gói, gói năm ghép cặp, bảng so sánh, CTA theo người xem. Khác engine giá tài liệu `packages/core/src/pricing` (M6, dùng `#order`/`#product`) |
+| `#account` | Khu vực tài khoản cá nhân `/account` (ADR-041 C): hồ sơ, ảnh đại diện, đổi mật khẩu, đổi email, menu tài khoản |
 | `#entitlement` | Quyền tải của người mua (`entitlements`) — lượt tải, thu hồi, quyền lợi khi tài liệu bị gỡ do vi phạm (ADR-039: tải lần cuối / yêu cầu hoàn tiền) |
 
 ---

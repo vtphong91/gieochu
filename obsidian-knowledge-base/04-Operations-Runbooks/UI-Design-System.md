@@ -74,13 +74,13 @@ lập) là nợ kỹ thuật đã biết — nếu tách `apps/web/app/admin` sa
   checkout; **trang chủ chưa có** skip-link (cũng không có `<main id="noi-dung">`) — đã có trong `docs/BACKLOG.md`.
   Skip-link hiện nằm ở từng trang, không nằm trong `SiteHeader`.
 - Trang đang dùng: trang chủ (`app/page.tsx`), storefront `/[tenantSlug]`, chi tiết sản phẩm, checkout, Cửa hàng (`app/cua-hang/layout.tsx`,
-  ADR-035). `/pricing` và `/p/[slug]` **chưa** chuyển — xem §4.6.
+  ADR-035), Bảng giá (`app/pricing/layout.tsx`, ADR-041 — §18.4). `/p/[slug]` **chưa** chuyển — xem §4.6.
 - **Điều hướng (ADR-035 GĐ2)** ✅ đọc code 2026-10-15:
   - Nav ngang (chỉ hiện từ `lg`): "Bảng giá" (`/pricing`) · "Giáo viên & Coach" (vẫn `<span>`, chưa có trang) · **"Cửa hàng"**
     (`/cua-hang`, thay `<span>` "Khám phá tài liệu" cũ). Link dùng `NAV_LINK_CLASS`: `min-h-11`, mục ứng với `current` có
     `aria-current="page"` + chữ đậm + gạch chân (không chỉ đổi màu).
-  - `current` do **trang tự truyền** (header là Server Component, không biết pathname). Hiện chỉ `cua-hang/layout.tsx` truyền
-    `current="shop"`; `/pricing` chưa truyền `current="pricing"` (BACKLOG).
+  - `current` do **trang tự truyền** (header là Server Component, không biết pathname). `cua-hang/layout.tsx` truyền
+    `current="shop"`; `pricing/layout.tsx` truyền `current="pricing"` (ADR-041, 2026-10-17) ✅.
   - **Menu mobile** `MobileNav` (`app/_ui/mobile-nav.tsx`, client) dưới `lg`: §14.6. Mục = "Cửa hàng", "Bảng giá" (+ "Đăng nhập" khi chưa
     đăng nhập — nút "Đăng nhập" ở header bị ẩn dưới `sm`).
   - Footer cột "Khám phá": link **"Cửa hàng"** → `/cua-hang` thay dòng chữ "Tài liệu"; "Bảng giá" thành link có `FOOTER_LINK` (chữ trắng
@@ -205,7 +205,7 @@ Cột "Chrome" = có dùng `SiteHeader`/`SiteFooter` hệ thống (§1.1, ADR-02
 | :--- | :--- | :--- | :--- |
 | Trang chủ hệ thống (`app/page.tsx`, `app/_home-sections.tsx`) | ✅ đã áp dụng | ✅ `SiteHeader` + `SiteFooter` | Mọi section dùng `container-page` |
 | Storefront tenant (`app/[tenantSlug]/page.tsx`, `_ui/*`) | ✅ đã áp dụng | ✅ `SiteHeader` + `SiteFooter` | Hằng `CONTAINER` trong `[tenantSlug]/_ui/primitives.tsx` = `"container-page"` (bí danh, giữ tên để các section khỏi đổi import) |
-| `/pricing` | ✅ đã áp dụng (2026-09-26) | ❌ **chưa** — trang chưa có header/footer nào | `main.container-page`; phần giới thiệu `mx-auto max-w-2xl` bên trong (khối con, hợp lệ theo §4.3); lưới gói `lg:grid-cols-4`. Chuyển sang chrome hệ thống: việc sau (`docs/BACKLOG.md`) |
+| `/pricing` | ✅ đã áp dụng (2026-09-26) | ✅ `SiteHeader current="pricing"` + `SiteFooter` ở `app/pricing/layout.tsx` (ADR-041, 2026-10-17 — dựng lại đọc CMS, §18.4) | Trang dựng lại theo CMS `pricing`; chi tiết §18.4 |
 | `/p/[slug]` (CMS) | ✅ đã áp dụng (2026-09-26) | ❌ **chưa** — còn `<header>` riêng (cao 64px, logo hard-code chữ "G", chỉ có link Đăng nhập), **chưa có footer**; còn tự khai `next/font` | `<header>` full-bleed + `container-page`; `main.container-prose`. Chuyển sang chrome hệ thống: việc sau (`docs/BACKLOG.md`) |
 | Checkout (`[tenantSlug]/checkout/[orderCode]`) | ✅ đã áp dụng (2026-09-26) | ✅ `SiteHeader` + `SiteFooter` | Trang hệ thống (§8.4); `main.container-narrow` |
 | Chi tiết sản phẩm (`[tenantSlug]/[productSlug]` — ADR-030; URL cũ `…/products/[productSlug]` → 301) | ✅ đã áp dụng (2026-09-26) | ✅ `SiteHeader` + `SiteFooter` | Trang hệ thống (§8.4). `container-page`, bố cục thương mại 2 cột: lưới `lg:grid-cols-12`, ảnh + mô tả `lg:col-span-7`, khối mua `lg:col-span-5 lg:sticky lg:top-[112px]`; mô tả `max-w-prose` |
@@ -1036,7 +1036,7 @@ Trang chủ (`_home-sections.tsx`) dùng `DocumentCard` (mặc định `default`
 
 * Token màu sale/danger trong `theme.ts` (thay `#B91C1C`, `#241503` hard-code).
 * Nhãn "Xem gian hàng" của `TenantCard` xuống 2 dòng ở 360px.
-* `/pricing` chưa truyền `current="pricing"` cho `SiteHeader`.
+* ~~`/pricing` chưa truyền `current="pricing"` cho `SiteHeader`.~~ — xong ở ADR-041 (§18.4).
 * Title trang tìm khi lọc danh mục chưa có tên danh mục.
 * `PUBLIC_PAGE_READY` còn `false` trong editor CMS Cửa hàng (§13.5).
 * Chưa kiểm thực tế: trạng thái rỗng toàn trang, `error.tsx` khi lỗi thật, phân trang nhiều trang ❓.
@@ -1280,7 +1280,94 @@ dõi tranh chấp hoàn tiền.
 
 ---
 
-## 18. Tài Liệu Tham Chiếu & Liên Kết
+## 18. Bảng Giá CMS, Khu Vực Tài Khoản `/account`, Hoàn Tiền Gói (ADR-041) ✅
+
+Đối chiếu working tree 2026-10-17 (**chưa commit/deploy**). Nghiệp vụ: [[02-System-Specs/Pricing-Page-Specs|Pricing-Page-Specs]],
+[[02-System-Specs/Account-Profile-Specs|Account-Profile-Specs]], [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5B. Đề xuất gốc
+của Phong: `docs/de-xuat-trang-bang-gia-2026-10-17.md`, `docs/de-xuat-trang-ho-so-2026-10-17.md`.
+
+### 18.1. Kit — thay đổi dùng chung (`admin/_ui/kit.tsx`, `kit-interactive.tsx`)
+
+* `PrimaryButton` / `GhostButton`: `min-h-11` (44px) **dưới `lg`**, `lg:min-h-0`; vòng focus `focus-visible:outline-2` màu primary.
+* `TextField` (`FieldShell`): đoạn lỗi có `id="${id}-error"`, gợi ý `id="${id}-hint"` để ô tham chiếu bằng `aria-describedby`.
+* `PasswordField`: có `id` thì tự gắn `aria-invalid` + `aria-describedby` (lỗi ưu tiên, rồi gợi ý) như `TextField`; nút ẩn/hiện nhãn **cố định**
+  `toggleLabel` (mặc định "Hiện giá trị") + `aria-pressed` + `aria-controls`, vùng bấm rộng 44px, vòng focus nhìn thấy; không chặn dán /
+  trình quản lý mật khẩu.
+
+### 18.2. `SortableListEditor` (`app/admin/cms/_ui/sortable-list-editor.tsx`, client)
+
+Danh sách mục có thứ tự dùng chung cho editor CMS (thay `ArrayObjectEditor` không đổi được thứ tự): Thêm / Lên / Xuống / Xoá. Lên/Xuống thay
+kéo-thả (WCAG 2.5.7); nút icon 44px dưới `lg`, 36px từ `lg`; mục đầu/cuối dùng `aria-disabled` (không `disabled`) để focus không rơi; mỗi thao
+tác đọc qua **một** vùng `role="status"` ẩn, không dời focus; thêm mục → focus ô đầu của mục mới; xoá → focus về nút Thêm; mảng không có id
+(vd mảng chuỗi) vẫn giữ key ổn định.
+
+### 18.3. Editor `/admin/cms/pricing`
+
+* Cùng pattern editor Cửa hàng (§13.3): thanh trạng thái, danh sách 9 khu vực (ẩn/hiện, Lên/Xuống), form khu vực đang chọn
+  (`_ui/pricing-section-forms.tsx`), **kiểm tra trước khi gửi bằng đúng schema server + tham chiếu gói** (`_ui/pricing-validation.ts`), khung
+  tóm tắt lỗi nhận focus và dẫn tới đúng ô, lỗi server (`issues`) gộp vào cùng khung và hiện dưới từng ô, cảnh báo rời trang khi chưa lưu.
+* Ô SEO (tiêu đề ≤ 120, mô tả ≤ 320) — cột riêng, **không có nháp** (đã xuất bản thì "Lưu nháp" đổi SEO ngay).
+* Dòng loại `feature` có cờ ngoài `implementedFeatures` (hiện rỗng) hiện nhãn "(chưa triển khai)" — và không ra trang công khai. Có
+  `loading.tsx`.
+* Menu System Center (`sidebar-nav.tsx`): "Trang Bảng giá" (`IconPackage`), "Hoàn tiền gói" (`IconReceipt`) kèm badge số yêu cầu chờ
+  (nhãn đọc "N yêu cầu hoàn tiền chờ duyệt").
+
+### 18.4. Trang `/pricing` (`app/pricing/*`, `app/_ui/pricing/*`)
+
+* Khung hệ thống ở `layout.tsx`: skip-link → `#noi-dung`, `SiteHeader current="pricing"` (`aria-current="page"`), `SiteFooter`; `loading.tsx` +
+  `error.tsx` nằm trong khung có header.
+* **Thẻ gói** (`pricing-plans.tsx`, client): mỗi thẻ `<article aria-labelledby>`; giá có bản đọc trọn câu (`sr-only`); "Gói hiện tại"/nhãn nổi
+  bật là **chữ thật** (không chỉ viền màu); một nút chính mỗi thẻ (nền primary chữ trắng). **Toggle Tháng/Năm = nhóm radio** (`fieldset` +
+  `legend` ẩn), đổi chu kỳ cập nhật giá tại chỗ, không dời focus, một vùng `role="status"` đọc chu kỳ đang hiển thị; không JS → hiện giá chu
+  kỳ chính.
+* **Bảng so sánh** (`pricing-blocks.tsx`): bảng thật trong vùng cuộn ngang **riêng** (`role="region"` + `aria-labelledby` + `tabIndex=0` để
+  cuộn bằng phím), cột nhãn `sticky left-0`. ⚠️ Vùng cuộn **phải có `relative`** — thiếu nó, các span `sr-only` (absolute) trong bảng kéo rộng
+  cả trang ở màn hẹp (trang cuộn ngang). Dưới màn hẹp có dòng gợi ý "Vuốt ngang trong bảng để xem đủ các gói".
+* **FAQ** bằng `<details>` (không JS). Section rỗng tự ẩn; số liệu = 0 ẩn.
+* Xem nháp (`?xem-truoc=nhap`, chỉ admin): dải "Đang xem bản nháp" + `noindex`.
+
+### 18.5. Khu vực `/account`
+
+* **App shell fluid** (`_ui/account-shell.tsx`; ADR-024 §4.4 — không `container-page`): skip-link, header hệ thống gọn **64px** (logo → trang
+  chủ, nhãn "Tài khoản", menu tài khoản) — giống Studio.
+* **Sidebar** (`_ui/account-sidebar-nav.tsx`, chỉ từ `lg`): 3 nhóm "Tài khoản của bạn" · "Mua sắm" · "Gian hàng của bạn" (chỉ chủ gian hàng),
+  nút Đăng xuất tách riêng (`_ui/logout-button.tsx`, đặt trong shell và danh sách mobile). Chữ phụ (tên gói, số đơn chờ) luôn là chữ; `metaTone="warning"` khi cần chú ý; mục
+  sang khu vực khác (Studio) có icon + chữ ẩn cho trình đọc màn hình. Icon truyền bằng **key chuỗi** (§8.5).
+* **Mobile (< `lg`)**: `/account` là danh sách mục kiểu cài đặt (`_ui/account-nav-list.tsx`); trang con có link "← Tài khoản"
+  (`_ui/back-link.tsx`).
+* Trang Tổng quan (`_ui/overview-view.tsx`), thẻ "Gian hàng của bạn" (`_ui/owned-tenant-card.tsx` — nút đích theo Free/ACTIVE/GRACE/CANCELED,
+  thanh dùng chỉ khi hạn mức `LIMITED`), Hồ sơ (`profile/_ui/profile-view.tsx`, `profile-form.tsx`, `avatar-card.tsx`), Bảo mật
+  (`security-forms.tsx`). Phản hồi form: `_ui/form-feedback.tsx` — thành công `role="status"`, lỗi chung `role="alert"`, lỗi dưới ô +
+  `aria-describedby`, giữ nội dung đã gõ. Mỗi trang một H1. Có `loading.tsx`, `error.tsx`.
+* **Ảnh đại diện**: `app/_ui/account-avatar.tsx` (ảnh hoặc chữ cái đầu). `avatarUploadEnabled=false` → ẩn ô tải, hiện ghi chú, vẫn cho "Gỡ ảnh"
+  (giao diện đổi ngay, lỗi thì trả ảnh cũ).
+* **Menu tài khoản** (`app/_ui/account-menu.tsx`): mẫu **disclosure** — nút `aria-expanded` + `aria-controls`, danh sách link trong `<nav
+  aria-label="Tài khoản">`, **không** `role="menu"` (menu này không cần phím mũi tên; link đi bằng Tab). Nút ≥ 44×44, dưới `sm` chỉ hiện avatar +
+  tên `sr-only`. `variant="site"` ("Xin chào, {tên}") ở `SiteHeader`; `variant="app"` ở header Studio và `/account`. Có mục **Đăng xuất**.
+  Header Studio thay khối avatar-chữ-cái + email cũ bằng menu này.
+
+### 18.6. Hoàn tiền gói
+
+* **Studio → Gói dịch vụ** (`billing/page.tsx`, `refund-request-form.tsx`): card hoàn tiền chỉ hiện khi đủ điều kiện hoặc đã có yêu cầu; mô tả
+  "Hoàn 100% lần thanh toán gói đầu tiên … trong 7 ngày"; form ngân hàng (danh sách `bank_bins`) + số TK + tên chủ TK + lý do, hiện số tiền và
+  hạn chót; sau khi gửi hiện trạng thái (badge `REQUESTED` vàng / `APPROVED_REFUNDED` xanh / `REJECTED` đỏ, mốc thời gian, lý do từ chối).
+  `?plan=` chọn sẵn gói trong form gia hạn. Thanh dùng hạn mức: `-1` không vẽ thanh %.
+* **System Center `/admin/billing/refunds`** (`page.tsx`, `refund-actions.tsx`, `loading.tsx`): lọc trạng thái bằng link; thông tin nhận tiền
+  **che sẵn từ server** (`••••1234`) + nút "Xem đầy đủ"/"Ẩn thông tin"; "Đã hoàn tiền" / "Từ chối" là **hai bước** (bấm nút → mở khung xác
+  nhận tại chỗ — progressive disclosure, thay `window.confirm`), từ chối bắt buộc lý do; `approveBlocked` → ẩn "Đã hoàn tiền", hiện `Notice`
+  giải thích chỉ có thể từ chối.
+
+### 18.7. Việc còn mở (BACKLOG, liên quan UI)
+
+* Studio chưa có **menu điều hướng mobile** (GĐ2b) — nút Đăng xuất đã có qua menu tài khoản ở header Studio (mọi kích thước) ✅.
+* Editor CMS **Cửa hàng**: cột aside thiếu `min-w-0` (nội dung dài có thể tràn).
+* Hex cứng còn ở `owned-tenant-card.tsx` (`#E5E7EB`, `#B91C1C`), thanh 80% Billing (`#F3F4F6`) — thay bằng token khi có token màu danger/line.
+* Ghi chú tương phản khi admin đổi màu thương hiệu (đề xuất Phong) — chưa có cơ chế kiểm.
+* Chưa kiểm thực tế qua trình duyệt có đăng nhập: 360/375px, bàn phím, trình đọc màn hình ❓.
+
+---
+
+## 19. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * `apps/web/app/admin/_ui/kit.tsx`, `apps/web/app/admin/_ui/kit-interactive.tsx`, `apps/web/app/admin/_ui/icons.tsx`
@@ -1302,6 +1389,7 @@ dõi tranh chấp hoàn tiền.
 * `apps/web/app/_ui/{catalog-parts,document-card,tenant-card,product-shelf,category-grid,shop-hero,shelf-skeleton,shop-cta,mobile-nav}.tsx`, `apps/web/app/cua-hang/{layout,page,loading,error}.tsx`, `apps/web/app/cua-hang/tai-lieu/{page,loading}.tsx`, `apps/web/app/cua-hang/_ui/search-parts.tsx` (§14)
 * `apps/web/app/admin/_ui/{audit-log,link-pagination,audit-log-skeleton}.tsx`, `apps/web/app/admin/audit/*`, `apps/web/app/studio/[tenantSlug]/activity/*` (§15) · [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]] ([Audit-Log-Specs.md](../02-System-Specs/Audit-Log-Specs.md))
 * `apps/web/app/admin/_ui/sales-stats.tsx`, `apps/web/app/admin/page.tsx` (§16) · [[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]] ([Tenant-Stats-Specs.md](../02-System-Specs/Tenant-Stats-Specs.md))
+* `apps/web/app/admin/cms/_ui/sortable-list-editor.tsx`, `apps/web/app/admin/cms/pricing/*`, `apps/web/app/pricing/*`, `apps/web/app/_ui/pricing/*`, `apps/web/app/account/**`, `apps/web/app/_ui/{account-menu,account-avatar}.tsx`, `apps/web/app/admin/billing/refunds/*`, `apps/web/app/studio/[tenantSlug]/billing/refund-request-form.tsx` (§18) · [[02-System-Specs/Pricing-Page-Specs|Pricing-Page-Specs]] ([Pricing-Page-Specs.md](../02-System-Specs/Pricing-Page-Specs.md)) · [[02-System-Specs/Account-Profile-Specs|Account-Profile-Specs]] ([Account-Profile-Specs.md](../02-System-Specs/Account-Profile-Specs.md)) · [[01-Architecture-Decisions/ADR-027-Account-Upgrade-Pricing-Profile-Refund|ADR-027 (≙ ADR-041)]]
 * [[04-Operations-Runbooks/README|Quay lại danh mục Operations Runbooks]]
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

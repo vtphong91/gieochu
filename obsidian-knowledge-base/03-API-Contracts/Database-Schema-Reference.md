@@ -13,7 +13,7 @@ author: System Architect
 
 > [!NOTE] Nguồn sinh tài liệu
 > Danh mục §2–§3 được đối chiếu trực tiếp với `packages/db/prisma/schema.prisma` ngày 2026-09-26:
-> **45 model + 30 enum** (`grep -c "^model " / "^enum "`, đếm lại 2026-10-17 ✅ sau migration M12c/ADR-038 — +`AbuseReport`, +`AbuseTargetType`, +`AbuseReportType`, +`AbuseReportStatus`, +`AbuseReportDecision` — và ADR-039 — +`EntitlementRemedyStatus`; trước đó M12b/ADR-037 — +`TenantDailyStat` (không thêm enum); trước đó M12a — +`AuditLog`, +`AuditScope`; trước đó 2026-09-28 sau M10b/ADR-029 — +`Post`, +`PostStatus` (và giá trị enum `TenantMediaUsage.POST`); trước đó M10a +`Review`, +`ReviewStatus`, +`ReviewHiddenReason`; trước đó ADR-028 +`TenantMediaAsset`, +`TenantMediaUsage`; trước đó ADR-026/027 +`ProductFileSource`; trước đó +`StorefrontMessage`, +`StorefrontMessageStatus` ở Storefront CMS), mỗi model đều được phân loại theo layer L1/L2/L3
+> **46 model + 31 enum** (`grep -c "^model " / "^enum "`, đếm lại 2026-10-17 ✅ sau 2 migration ADR-041 — +`SubscriptionRefundRequest`, +`SubscriptionRefundStatus`, giá trị enum `VerificationTokenType.EMAIL_CHANGE`, `SubscriptionInvoiceStatus.REFUNDED`; trước đó migration M12c/ADR-038 — +`AbuseReport`, +`AbuseTargetType`, +`AbuseReportType`, +`AbuseReportStatus`, +`AbuseReportDecision` — và ADR-039 — +`EntitlementRemedyStatus`; trước đó M12b/ADR-037 — +`TenantDailyStat` (không thêm enum); trước đó M12a — +`AuditLog`, +`AuditScope`; trước đó 2026-09-28 sau M10b/ADR-029 — +`Post`, +`PostStatus` (và giá trị enum `TenantMediaUsage.POST`); trước đó M10a +`Review`, +`ReviewStatus`, +`ReviewHiddenReason`; trước đó ADR-028 +`TenantMediaAsset`, +`TenantMediaUsage`; trước đó ADR-026/027 +`ProductFileSource`; trước đó +`StorefrontMessage`, +`StorefrontMessageStatus` ở Storefront CMS), mỗi model đều được phân loại theo layer L1/L2/L3
 > (không sót). Danh sách bảng thật sự có RLS được đối chiếu với `packages/db/prisma/migrations/*_rls_*/migration.sql`
 > (`ALTER TABLE ... ENABLE ROW LEVEL SECURITY`) — không suy đoán từ comment trong schema. Chi tiết field/kiểu/
 > constraint: mở thẳng [schema.prisma](../../packages/db/prisma/schema.prisma), file này chỉ là bản đồ.
@@ -99,21 +99,21 @@ erDiagram
 
 ---
 
-## 3. Danh Mục 45 Model Theo Layer
+## 3. Danh Mục 46 Model Theo Layer
 
 ### 3.1. L1 — System (không `tenantId`, không RLS, truy cập qua `getPrismaClient()` thẳng)
 
 | Model | Mục đích | Quan hệ tới | Enum |
 | :-- | :-- | :-- | :-- |
 | `User` | Tài khoản mọi actor (customer/tenant owner/system admin dùng chung 1 bảng, phân biệt bằng `systemRole`), khoá tạm sau 5 lần sai mật khẩu (`passwordResetRequired`) | UserProfile, RefreshToken, VerificationToken, Tenant (owner), TenantMember, Order, Entitlement, TenantCustomer, DownloadToken, DownloadEvent | `SystemRole`, `UserStatus` |
-| `UserProfile` | Hồ sơ mở rộng 1-1 (`fullName`, `phone`, `avatarKey`, `consentAt`) — tạo ngay lúc đăng ký, không còn là cổng bắt buộc trước khi dùng hệ thống | User | — |
+| `UserProfile` | Hồ sơ mở rộng 1-1 (`fullName`, `phone`, `avatarKey`, `consentAt`) — tạo ngay lúc đăng ký, không còn là cổng bắt buộc trước khi dùng hệ thống. ADR-041 C (không đổi schema) ✅: `phone`/`province` **tuỳ chọn**, dữ liệu cá nhân, chỉ chủ tài khoản + admin thấy; `province` lưu đúng chuỗi trong `VN_PROVINCES` (34 đơn vị); `avatarKey` = `public_id` Cloudinary hệ thống `<root>/users/<userId>/avatar/<24 hex>` | User | — |
 | `RefreshToken` | Refresh token xoay theo `familyId` (rotate-on-use); reuse token đã bị thay thế → revoke cả family (§7.1 CLAUDE.md) | User | — |
-| `VerificationToken` | Token kích hoạt email + reset mật khẩu, chỉ lưu `tokenHash` (SHA-256) | User | `VerificationTokenType` |
+| `VerificationToken` | Token kích hoạt email + reset mật khẩu + **đổi email** (ADR-041), chỉ lưu `tokenHash` (SHA-256). `newEmail String?` (ADR-041) — email đích đã chuẩn hoá, chỉ có giá trị với `EMAIL_CHANGE`, **dữ liệu cá nhân** ✅ | User | `VerificationTokenType` |
 | `Plan` | Gói subscription do System Admin quản lý (`priceVnd`, `maxProducts`, `storageMb`, `features` JSON entitlement flags); `isFree` đánh dấu gói gán tự động cho tenant mới (ADR-021). ADR-028: `imageStorageMb Int @default(100)` — hạn mức ảnh Cloudinary (MB), cộng chung ảnh mô tả + ảnh bìa + ảnh storefront; dữ liệu khởi tạo FREE 100, CREATOR 1024, PRO 2048, BUSINESS 5120; sửa ở `/admin/plans` ("Dung lượng ảnh (MB)") ✅ | Subscription, SubscriptionInvoice | `PlanInterval` |
 | `Role` | Nguồn sự thật RBAC cho "tier này làm được gì" (ADR-022) — định nghĩa toàn cục theo `code`, đối chiếu với `User.systemRole`/`TenantMember.role` (vẫn giữ làm nhãn định danh, không đổi thành FK) | RolePermission | `RoleScope` |
 | `Permission` | 1 row / hành động cấp quyền được, namespace kiểu `system:manage_users`, `tenant:manage_products` | RolePermission | — |
 | `RolePermission` | Bảng nối N-N `Role` ↔ `Permission` | Role, Permission | — |
-| `CmsPage` | Nội dung trang marketing (`blocks` = bản live, `blocksDraft` = bản đang sửa — publish copy draft → live). Slug hệ thống `SYSTEM_CMS_SLUGS` = `home` (trang chủ, ADR-033) và `shop` (Cửa hàng, ADR-035 — dòng tạo bằng `upsert` ở lần lưu đầu) lưu mảng section riêng, có editor riêng; form CMS chung và `/p/[slug]` không nhận hai slug này ✅ | — | `CmsPageStatus` |
+| `CmsPage` | Nội dung trang marketing (`blocks` = bản live, `blocksDraft` = bản đang sửa — publish copy draft → live). Slug hệ thống `SYSTEM_CMS_SLUGS` = `home` (trang chủ, ADR-033), `shop` (Cửa hàng, ADR-035) và `pricing` (Bảng giá, ADR-041) — `shop`/`pricing` tạo dòng bằng `upsert` ở lần lưu đầu — lưu mảng section riêng, có editor riêng; form CMS chung và `/p/[slug]` không nhận ba slug này ✅ | — | `CmsPageStatus` |
 | `Subscription` | Subscription SaaS của 1 tenant — có `tenantId` nhưng **không** RLS (không nằm trong danh sách §4): billing là nghiệp vụ system-managed, quyền đọc gác ở app layer (`requireTenantMember` cho owner, `requireRole SYSTEM_ADMIN` cho admin), cùng nhóm với `Plan`/`SubscriptionInvoice` | Tenant, Plan, SubscriptionInvoice | `SubscriptionStatus` |
 | `TenantSlugHistory` | Lịch sử đổi slug tenant (redirect 301 slug cũ → mới), có `tenantId` nhưng không RLS | Tenant | — |
 | `SystemSettings` | (ADR-032) Cấu hình hệ thống 1 dòng `id="default"` (`@@map("system_settings")`): `supportEmail String?` + 11 khoá `Int` có default — `accessTokenTtlMinutes` 15, `refreshTokenTtlDays` 7, `emailVerifyTtlHours` 24, `passwordResetTtlMinutes` 30, `presignUploadTtlSeconds` 600, `presignDownloadTtlSeconds` 600, `trialDays` 14 (chưa dùng), `graceDays` 7, `orderPendingTtlMinutes` 60, `invoicePendingTtlHours` 24, `defaultDownloadLimit` 5 — giới hạn ở `SYSTEM_SETTINGS_BOUNDS` (app, không có CHECK ở DB); `updatedById String?` (không FK), `updatedAt`. **`platformName` đã bỏ khỏi schema** ✅ nhưng cột còn trên DB production sau sự cố 2026-10-15 🟡 (§7). Đọc qua `getSystemSettings()`, sửa ở `/admin/settings/general` + `/admin/settings` (`supportEmail`) | — | — |
@@ -124,7 +124,8 @@ erDiagram
 | `DocumentCategory` | Danh mục tài liệu **cấp platform** do System Admin tạo trước (`/admin/categories`), không phải danh mục riêng từng tenant. Từ ADR-026 là đích FK của `Product.categoryId` (bảng L1 không RLS; `products` vẫn RLS như cũ) — Studio chỉ liệt kê danh mục `isActive` ✅ | Product (ADR-026) | — |
 | `SystemBranding` | Nhận diện thương hiệu nền tảng (khác `Tenant.branding` — đó là branding riêng từng tenant); field null = dùng mặc định từ `@gieochu/config/brand` | — | — |
 | `PlatformPaymentConfig` | Cấu hình cổng thanh toán **phí nền tảng** (Tenant → Gieo Chữ), 1 dòng/provider; `encryptedSecrets` mã hoá bằng `PAYMENT_ENCRYPTION_KEY` | — | `PaymentProviderId` |
-| `SubscriptionInvoice` | Hoá đơn phí nền tảng của 1 tenant — có `tenantId` nhưng **không** RLS (comment trong schema: "billing is system-managed... not RLS protected"); gác quyền ở app layer | Tenant, Plan, PlatformPaymentTransaction | `SubscriptionInvoiceStatus` |
+| `SubscriptionInvoice` | Hoá đơn phí nền tảng của 1 tenant — có `tenantId` nhưng **không** RLS (comment trong schema: "billing is system-managed... not RLS protected"); gác quyền ở app layer. ADR-041: trạng thái `REFUNDED` (không bao giờ quay lại `PAID` — `markInvoicePaid` bỏ qua) ✅ | Tenant, Plan, PlatformPaymentTransaction, SubscriptionRefundRequest | `SubscriptionInvoiceStatus` |
+| `SubscriptionRefundRequest` | (ADR-041 B — `@@map("subscription_refund_requests")`) Yêu cầu hoàn tiền gói: `tenantId` **unique** (FK `tenants` Cascade), `invoiceId` **unique** (FK `subscription_invoices` Cascade), `requestedById` (không FK), `reason?` (≤500), `payoutEncrypted?` (JSON `{bankBin, bankName, accountNo, accountName}` mã hoá AES-256-GCM bằng `PAYMENT_ENCRYPTION_KEY` — **dữ liệu cá nhân**, chỉ admin giải mã, NULL khi đã xử lý), `status` (mặc định `REQUESTED`), `amountVnd Int` (chụp từ hoá đơn, > 0), `adminNote?` (≤500, bắt buộc khi `REJECTED`), `decidedById?` (không FK), `decidedAt?`, `refundedAt?`, `createdAt`, `updatedAt`. Index `(status, createdAt)`. Có `tenantId` nhưng **không RLS** (L1, PaymentScope PLATFORM — như `subscription_invoices`); chủ gian hàng đọc/tạo dòng của mình qua `requireTenantMember` (OWNER), admin qua `requireRole(SYSTEM_ADMIN)` ✅ | Tenant, SubscriptionInvoice | `SubscriptionRefundStatus` |
 | `PlatformPaymentTransaction` | Mọi webhook thanh toán phí nền tảng đã qua xác thực chữ ký, khớp hoặc `UNMATCHED` để admin xử lý tay | SubscriptionInvoice | — |
 | `WebhookEvent` | Idempotency guard cho webhook (unique `scope+provider+providerEventId`), ghi qua `withSystemJob` | — | `WebhookScope` |
 | `BankBin` | Danh sách BIN ngân hàng (NAPAS/VietQR) cho form chọn ngân hàng khi cấu hình `MANUAL_QR`/`SEPAY` | — | — |
@@ -156,7 +157,8 @@ erDiagram
 | `DownloadEvent` | Nhật ký mọi lượt tải (qua `Entitlement` hoặc `ShareLink`, đúng 1 trong 2 khác null) — chỉ owner đọc, không có view khách hàng | ✅ `rls_m9` | Tenant, ProductFile, Entitlement?, ShareLink?, User? | — |
 | `StorefrontMessage` | Tin nhắn form liên hệ trên storefront `/[tenantSlug]` (ADR-023): `name`, `email`, `message`, `status`, `ipHash?` (HMAC, không lưu IP thô); FK `tenantId` `ON DELETE CASCADE`; index `(tenantId, createdAt)`, `(ipHash, createdAt)`. **Policy tách theo lệnh**: public chỉ INSERT, tenant SELECT/UPDATE/DELETE đúng `tenantId`, không nhánh admin/system_job | ✅ `rls_storefront_messages` (`20260926090100`) | Tenant | `StorefrontMessageStatus` |
 | `TenantMediaAsset` | (ADR-028) Sổ ghi nhận ảnh tenant đã upload lên Cloudinary **hệ thống** để tính hạn mức `Plan.imageStorageMb`: `publicId` (`@unique`, server sinh — nằm trong chữ ký), `bytes Int`, `format?`, `width?`, `height?`, `usage` (`TenantMediaUsage`), `verifiedAt?` (`null` = mới giữ chỗ lúc ký, `bytes` là mức tạm 5MB; có giá trị = đã đọc số thật qua Cloudinary Admin API), `createdAt`. FK `tenantId` `ON DELETE CASCADE`; index `(tenantId, createdAt)`. `bytes` **không bao giờ** lấy từ client. Policy `tenant_isolation` (1 policy, không `WITH CHECK` riêng): đúng `app.tenant_id` **hoặc** `app.scope = 'system_job'` (dành cho job dọn asset — chưa có); **không** nhánh public/customer ✅ | ✅ `rls_adr028_media_assets` (`20260927110100`) | Tenant | `TenantMediaUsage` |
-| `Entitlement` | Quyền tải của khách đã mua (`downloadsUsed`/`downloadLimit` snapshot từ `Product` tại thời điểm mua) — vừa có `tenantId` (RLS bật, owner xem) vừa lọc theo `userId` (khách xem quyền của chính mình) — từ ADR-029 nhánh customer **chỉ đọc**. ADR-039: `remedyStatus` (mặc định `NONE`), `remedyRequestedAt?`, `remedyChosenAt?`, `remedyResolvedAt?`, `remedyReportId?` (trỏ `abuse_reports.id`, không FK), index `(tenantId, remedyStatus)`, CHECK `entitlements_remedy_shape` + `entitlements_remedy_refunded_revoked`, trigger `entitlements_guard_remedy` (§7) ✅ | ✅ `rls_m9`, `rls_adr029_split_write_policies` | User, Tenant, Product, OrderItem, DownloadToken, DownloadEvent | `EntitlementRemedyStatus` |
+| `Entitlement` | Quyền tải của khách đã mua (`downloadsUsed`/`downloadLimit` snapshot từ `Product` tại thời điểm mua) — vừa có `tenantId` (RLS bật, owner xem) vừa lọc theo `userId` (khách xem quyền của chính mình) — từ ADR-029 nhánh customer **chỉ đọc**. ADR-039: `remedyStatus` (mặc định `NONE`), `remedyRequestedAt?`, `remedyChosenAt?`, `remedyResolvedAt?`, `remedyReportId?` (trỏ `abuse_reports.id`, không FK), index `(tenantId, remedyStatus)`, CHECK `entitlements_remedy_shape` + `entitlements_remedy_refunded_revoked`, trigger `entitlements_guard_remedy` (§7) ✅ | ✅ `rls_m9`, `rls_adr029_split_write_policies` | User, Tenant, Product, OrderItem, DownloadToken, DownloadEvent | `SubscriptionRefundStatus` | `REQUESTED` · `APPROVED_REFUNDED` · `REJECTED` (ADR-041 B) |
+| `EntitlementRemedyStatus` |
 | `Post` | (ADR-029, M10b) Bài viết tối giản của tenant: `title String?` (≤200), `body` (HTML đã `sanitizeRichTextHtml`, 1–100 000 ký tự, ≤6 ảnh kiểm ở app), `excerpt` (văn bản thuần ≤300 tự sinh, mặc định `""`), `productId?` (FK `products` `ON DELETE SET NULL`, phải cùng tenant — trigger), `status` (`PostStatus`, mặc định `DRAFT`), `hiddenReason?` (chỉ khi `HIDDEN`), `isPinned Boolean @default(false)`, `publishedAt?` (lần đăng đầu), `createdAt`, `updatedAt`. Không có `authorId`. FK `tenantId` `ON DELETE CASCADE`; index `(tenantId, status, publishedAt DESC)`, `productId`; **partial unique index `posts_tenantId_pinned_key` (`WHERE "isPinned"`) chỉ có trong SQL**. 6 CHECK + 2 trigger (xem §7). **Policy tách theo lệnh**, không nhánh customer/admin ✅. ADR-038 (M12c): `moderationLockedAt?`, `moderationReason?` + CHECK `posts_moderation_shape` (khoá ⇒ `HIDDEN`) + trigger `posts_guard_moderation` ✅ | ✅ `rls_m10b_posts` (`20260928090100`) | Tenant, Product | `PostStatus` |
 | `Review` | (ADR-029, M10a) Đánh giá sản phẩm của khách đã mua: `productId`, `userId`, `orderItemId` (dòng đơn chứng minh quyền — FK `order_items`), `rating Int` (1–5), `body String?` (văn bản thuần ≤2000), `displayName` (snapshot "Minh N.", 1–80 ký tự), `status` (`ReviewStatus`, mặc định `VISIBLE`), `hiddenReason?`/`hiddenAt?`, `reply?`/`repliedAt?` (1 trả lời/đánh giá). `@@unique([productId, userId])` = 1 đánh giá/khách/sản phẩm; index `(tenantId, createdAt)`, `(productId, status, createdAt)`, `userId`, `orderItemId`; mọi FK `ON DELETE CASCADE`. 7 CHECK (6 trên `reviews` + 1 trên `products`) + trigger `reviews_guard_columns` (xem §7). **Policy tách theo lệnh**, không nhánh admin ✅. ADR-038 (M12c): `moderationLockedAt?`, `moderationReason?` + CHECK `reviews_moderation_shape` (khoá ⇒ `HIDDEN`) + trigger `reviews_guard_moderation` ✅ | ✅ `rls_m10a_reviews` (`20260927150100`) | Tenant, Product, User, OrderItem | `ReviewStatus`, `ReviewHiddenReason` |
 
@@ -169,13 +171,13 @@ Gieo Chữ không có bảng nào gắn nhãn "L3" tách riêng — L3 là **gó
 
 ---
 
-## 4. Enum (30)
+## 4. Enum (31)
 
 | Enum | Giá trị |
 | :-- | :-- |
 | `SystemRole` | `USER` · `SYSTEM_ADMIN` |
 | `UserStatus` | `PENDING` · `ACTIVE` · `LOCKED` |
-| `VerificationTokenType` | `EMAIL_VERIFY` · `PASSWORD_RESET` |
+| `VerificationTokenType` | `EMAIL_VERIFY` · `PASSWORD_RESET` · `EMAIL_CHANGE` (ADR-041 — link gửi tới email mới, xác nhận được khi chưa đăng nhập) |
 | `PlanInterval` | `MONTH` · `YEAR` |
 | `RoleScope` | `SYSTEM` · `TENANT` |
 | `CmsPageStatus` | `DRAFT` · `PUBLISHED` |
@@ -187,7 +189,7 @@ Gieo Chữ không có bảng nào gắn nhãn "L3" tách riêng — L3 là **gó
 | `ProductFileScanStatus` | `PENDING` · `CLEAN` · `REJECTED` (cột nullable từ ADR-026 — `NULL` với dòng link ngoài) |
 | `ProductFileSource` | `FILE` (mặc định) · `EXTERNAL_URL` (ADR-026) |
 | `PaymentProviderId` | `MANUAL_QR` · `SEPAY` · `MOMO` |
-| `SubscriptionInvoiceStatus` | `PENDING` · `PAID` · `EXPIRED` · `VOID` |
+| `SubscriptionInvoiceStatus` | `PENDING` · `PAID` · `EXPIRED` · `VOID` · `REFUNDED` (ADR-041 B — admin đã chuyển khoản hoàn 100%) |
 | `WebhookScope` | `PLATFORM` · `TENANT` |
 | `CouponType` | `PERCENT` · `FIXED` |
 | `OrderStatus` | `PENDING` · `PAID` · `FULFILLED` · `EXPIRED` · `CANCELED` · `REFUNDED` |
@@ -225,6 +227,7 @@ nóng). `RoleScope` (`SYSTEM` | `TENANT`) phân biệt "role này áp cho ai": `
 | `SystemStorageConfig` | `encryptedSecrets` | `STORAGE_ENCRYPTION_KEY` |
 | `SystemCloudinaryConfig` | `encryptedSecrets` | `STORAGE_ENCRYPTION_KEY` |
 | `SystemSmtpConfig` | `encryptedSecrets` | `STORAGE_ENCRYPTION_KEY` |
+| `SubscriptionRefundRequest` (ADR-041) | `payoutEncrypted` — thông tin nhận tiền hoàn (không phải secret cổng, nhưng là dữ liệu tài chính cá nhân); che `••••1234` ở danh sách, giải mã khi admin bấm "Xem đầy đủ" (audit chỉ id) | `PAYMENT_ENCRYPTION_KEY` |
 
 Hai key hoàn toàn tách biệt theo ADR-017: `PAYMENT_ENCRYPTION_KEY` chỉ dùng cho secret cổng thanh toán (cả
 Platform và Tenant — hai scope khác bảng nhưng cùng key, vì cùng domain "tiền"); `STORAGE_ENCRYPTION_KEY` cho
@@ -412,6 +415,21 @@ cả hai. Không secret nào trả plaintext về client (UI chỉ hiện `•�
   - ⚠️ **Thứ tự deploy: migration TRƯỚC code** (code mới đọc `remedyStatus` → code lên trước lỗi P2022 ở thư viện/tải/đơn Studio).
   - Đã áp lên DB dùng chung 2026-10-16; Quốc kiểm bằng `gieochu_app` (rollback): tenant đặt khoá/remedy → `42501`; tenant cấp thêm lượt khi
     có remedy → `42501`; `system_job` được; CHECK shape chặn; checksum migration khớp file 🟡 (báo cáo Quốc). File chưa commit ✅ `git status`.
+- **Migration ADR-041 — đổi email** ✅ đọc SQL (2026-10-17): `20261017090000_adr041_email_change` — loại **expand**: `ALTER TYPE
+  "VerificationTokenType" ADD VALUE 'EMAIL_CHANGE'` (chạy được trong transaction từ PG 12 vì không dùng giá trị mới cùng transaction) +
+  cột nullable `verification_tokens."newEmail" TEXT`. ⚠️ **Thứ tự deploy: migration TRƯỚC code** — Prisma Client mới chọn cột `newEmail`,
+  code lên trước → mọi truy vấn `verification_tokens` (đăng ký, xác minh, quên mật khẩu) lỗi P2022.
+- **Migration ADR-041 — hoàn tiền gói** ✅ đọc SQL (2026-10-17): `20261017100000_adr041_subscription_refunds` — loại **expand**:
+  `SubscriptionInvoiceStatus` thêm `REFUNDED`; `CREATE TYPE "SubscriptionRefundStatus"`; bảng L1 `subscription_refund_requests` (2 unique
+  index `tenantId`/`invoiceId`, index `(status, createdAt)`, FK Cascade tới `tenants`/`subscription_invoices`) + 3 CHECK:
+  - `subscription_refund_requests_amount_positive` (`amountVnd > 0`);
+  - `subscription_refund_requests_status_shape`: `REQUESTED` ⇔ có `payoutEncrypted`, chưa `decidedAt`/`decidedById`/`refundedAt`;
+    `APPROVED_REFUNDED` ⇔ `payoutEncrypted` NULL + có `decidedAt`/`decidedById`/`refundedAt`; `REJECTED` ⇔ `payoutEncrypted` NULL + có
+    `decidedAt`/`decidedById`, không `refundedAt`, `adminNote` không rỗng;
+  - `subscription_refund_requests_text_length` (`reason`, `adminNote` ≤ 500).
+  - **Quyền:** `GRANT SELECT, INSERT, UPDATE, DELETE` cho `gieochu_app` (bọc `IF EXISTS`). Không RLS.
+  - Thứ tự deploy: code chạy được trước migration (bắt P2021 → "chức năng hoàn tiền chưa sẵn sàng"), nhưng nên áp trước.
+- Hai migration ADR-041 **đã áp lên DB dùng chung 2026-10-17** 🟡 (brief Quốc; Long không chạy lệnh DB). File chưa commit ✅ `git status`.
 - **Sửa lỗi RLS khi đọc `orders` (2026-10-16)** ✅ đọc `git diff`: `sendOrderPaidEmailsInner` và `resolveUniqueOrderCode`
   (`apps/web/lib/order.ts`) từng đọc `orders` (RLS `FORCE`) bằng `getPrismaClient()` không scope → 0 dòng → email `order_paid`/`new_sale`
   chưa từng gửi, kiểm trùng mã đơn chưa từng chạy. Nay dưới `withSystemJob`. Bài học: **mọi đọc bảng L2 ngoài phạm vi request (sau commit,

@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { Be_Vietnam_Pro, Inter } from "next/font/google";
 import { brandColors } from "@gieochu/config/theme";
-import { getPrismaClient } from "@gieochu/db";
+import { getAccountHeaderData } from "../../../lib/account-profile";
 import { requireTenantMemberPage } from "../../../lib/page-guards";
 import { getEffectiveBrand, getEffectiveLogos } from "../../../lib/branding";
 import { countNewStorefrontMessages } from "../../../lib/storefront-messages";
 import { countReviewsNeedingAttention } from "../../../lib/review";
 import { countPendingRefundRequests } from "../../../lib/entitlement-remedy";
+import { AccountMenu } from "../../_ui/account-menu";
 import { BrandMark } from "../../_ui/brand-mark";
 import { IconExternalLink } from "../../admin/_ui/icons";
 import { TenantSidebarNav, type TenantNavItem } from "./_ui/sidebar-nav";
@@ -28,7 +29,8 @@ export default async function StudioLayout({
   const { tenantSlug } = await params;
   const { user, tenant, role } = await requireTenantMemberPage(tenantSlug, `/studio/${tenantSlug}`);
   const [brand, logos] = await Promise.all([getEffectiveBrand(), getEffectiveLogos()]);
-  const member = await getPrismaClient().user.findUnique({ where: { id: user.userId }, select: { email: true } });
+  // ADR-041 C7: `member` (email, fullName, avatarUrl) cho menu tài khoản ở header Studio.
+  const member = await getAccountHeaderData(user.userId);
   const [newMessages, reviewsNeedingAttention, refundRequests] = await Promise.all([
     countNewStorefrontMessages(tenant.id),
     countReviewsNeedingAttention(tenant.id),
@@ -96,12 +98,15 @@ export default async function StudioLayout({
         <header className="flex h-16 items-center justify-between border-b bg-white px-5 lg:px-8" style={{ borderColor: "#E5E7EB" }}>
           <span className="text-sm font-semibold text-gray-500 lg:hidden">{tenant.name} · Studio</span>
           <span className="hidden text-sm text-gray-500 lg:block">Quản lý gian hàng</span>
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: brandColors.primary }}>
-              {(member?.email ?? "U").slice(0, 1).toUpperCase()}
-            </div>
-            <span className="hidden text-sm font-medium text-gray-700 sm:inline">{member?.email}</span>
-          </div>
+          {/* ADR-041 C7: menu tài khoản (ảnh đại diện + họ tên) — Hồ sơ cá nhân, Bảo mật, Thư viện, Về trang chủ, Đăng xuất. */}
+          <AccountMenu
+            variant="app"
+            displayName={member?.fullName || member?.email || "Tài khoản"}
+            email={member?.email ?? null}
+            avatarUrl={member?.avatarUrl ?? null}
+            primaryHref={null}
+            primaryLabel={null}
+          />
         </header>
         <main className="flex-1">{children}</main>
         <footer className="border-t bg-white px-5 py-4 text-xs text-gray-400 lg:px-8" style={{ borderColor: "#E5E7EB" }}>

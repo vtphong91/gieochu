@@ -1,5 +1,5 @@
 import { computeGraceEndsAt, DISPLAY_TIME_ZONE, logger, transitionSubscriptionStatus, type SubscriptionStatus } from "@gieochu/core";
-import { getPrismaClient, type Tenant } from "@gieochu/db";
+import { getPrismaClient, type Prisma, type Tenant } from "@gieochu/db";
 import { renderSubscriptionStatusEmail, type SubscriptionEmailStage } from "@gieochu/email";
 import { getEnv } from "@gieochu/config";
 import { sendEmailNow } from "./email-dispatch";
@@ -37,8 +37,15 @@ async function notify(tenant: Pick<Tenant, "name" | "slug" | "ownerId">, stage: 
  * FREE plan — `tenant.status` is never touched here anymore (Free still
  * sells; `READ_ONLY` is now exclusively an admin/moderation action, not a
  * billing consequence).
+ *
+ * ADR-041 B: dùng lại khi admin duyệt hoàn tiền gói (`lib/subscription-refund.ts`) — nhận cả client lẫn transaction.
  */
-async function downgradeToFree(prisma: ReturnType<typeof getPrismaClient>, subscriptionId: string, freePlanId: string, now: Date) {
+export async function downgradeToFree(
+  prisma: ReturnType<typeof getPrismaClient> | Prisma.TransactionClient,
+  subscriptionId: string,
+  freePlanId: string,
+  now: Date,
+) {
   await prisma.subscription.update({
     where: { id: subscriptionId },
     data: {

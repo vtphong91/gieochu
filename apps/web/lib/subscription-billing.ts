@@ -121,7 +121,8 @@ export async function markInvoicePaid(
 ): Promise<void> {
   const prisma = getPrismaClient();
   const invoice = await prisma.subscriptionInvoice.findUniqueOrThrow({ where: { id: invoiceId } });
-  if (invoice.status === "PAID") return;
+  // ADR-041 B: hoá đơn đã hoàn tiền không bao giờ được áp lại (webhook/xác nhận tay đến muộn).
+  if (invoice.status === "PAID" || invoice.status === "REFUNDED") return;
 
   const [subscription, tenant] = await Promise.all([
     prisma.subscription.findUniqueOrThrow({ where: { tenantId: invoice.tenantId } }),

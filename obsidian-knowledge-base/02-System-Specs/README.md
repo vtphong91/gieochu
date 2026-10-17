@@ -23,7 +23,8 @@ bộ nội dung được viết lại từ nguồn thật: `CLAUDE.md`, `docs/AR
   `Role`/`Permission`/`RolePermission` (ADR-022), cơ chế guard 3 tầng không có middleware tập trung.
 - `[[Payment-And-Billing]]`: Hai hệ thống thanh toán tách biệt (Platform billing vs Tenant billing) dùng chung
   `packages/payments` qua `PaymentScope`, mô hình Free Forever + Paid Subscription (ADR-021), webhook
-  idempotent với `timingSafeEqual`.
+  idempotent với `timingSafeEqual`; §5A hạn mức `0`/`-1` + cờ tính năng + gói năm, §5B hoàn tiền gói 7 ngày (bảng L1
+  `subscription_refund_requests`, ADR-041 B).
 - `[[File-Storage-And-Downloads-Specs]]`: Lưu trữ file sản phẩm qua S3-compatible (Cloudflare R2), presigned
   URL ≤ 10 phút, `DownloadToken`/`ShareLink`, mật khẩu share link bằng argon2 riêng trong `packages/core`; §7 ảnh
   tenant trên Cloudinary hệ thống — chữ ký `public_id`, giữ chỗ + đối soát hạn mức, `cloudinaryDeliveryUrl`,
@@ -70,6 +71,13 @@ bộ nội dung được viết lại từ nguồn thật: `CLAUDE.md`, `docs/AR
   `/admin/reports` (ẩn/lưu trữ/khoá gian hàng/bác bỏ) + khoá kiểm duyệt (trigger `*_guard_moderation`); cam kết bản quyền mỗi lần xuất bản;
   người mua tài liệu bị lưu trữ chọn "tải lần cuối" (đủ mọi tệp) hoặc "yêu cầu hoàn tiền" (SLA 7 ngày, trigger `entitlements_guard_remedy`);
   5 email mới; bước cron `abuse_report.ip_purge` ([Abuse-Reports-Specs.md](./Abuse-Reports-Specs.md)).
+- `[[Pricing-Page-Specs]]`: Trang Bảng giá `/pricing` + CMS `pricing` (ADR-041 A) — **GĐ1 + GĐ2 xong code (2026-10-17), chưa commit/deploy; không
+  DDL**. 9 section, giá/hạn mức chỉ từ `Plan`, ghép cặp gói năm (`altPlanId`, % tính từ giá thật), CTA theo người xem (ANON/NO_TENANT/TENANT),
+  `IMPLEMENTED_PLAN_FEATURES = []`, xem nháp chỉ admin + `noindex`, SEO CMS, Billing `?plan=` ([Pricing-Page-Specs.md](./Pricing-Page-Specs.md)).
+- `[[Account-Profile-Specs]]`: Khu vực tài khoản `/account` (ADR-041 C) — **xong code (2026-10-17), chưa commit/deploy; migration `EMAIL_CHANGE` đã
+  áp DB**. Tổng quan + app shell + sidebar 3 nhóm, hồ sơ (SĐT/Tỉnh tuỳ chọn, 34 tỉnh), ảnh đại diện Cloudinary riêng tư ≤2MB, đổi mật khẩu
+  (giữ phiên hiện tại, thu hồi phiên khác), đổi email qua token `EMAIL_CHANGE`, menu tài khoản disclosure, 4 email
+  ([Account-Profile-Specs.md](./Account-Profile-Specs.md)).
 
 ## Ghi chú lịch sử
 

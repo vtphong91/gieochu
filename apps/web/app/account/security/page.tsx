@@ -1,71 +1,96 @@
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import { brandColors } from "@gieochu/config/theme";
+import { getPrismaClient } from "@gieochu/db";
 import { requireVerifiedAccess } from "../../../lib/page-guards";
-import { changePasswordAction, logoutAllDevicesAction } from "./actions";
+import { findPendingEmailChange } from "../../../lib/account-profile";
+import { IconLock, IconMail, IconShield } from "../../admin/_ui/icons";
+import { ChangePasswordForm, EmailChangeSection, LogoutAllDevices } from "./security-forms";
 
-const ERROR_MESSAGES: Record<string, string> = {
-  invalid: "Vui lòng điền đầy đủ các trường.",
-  wrong_password: "Mật khẩu hiện tại không đúng.",
-  weak_password: "Mật khẩu mới phải có ít nhất 8 ký tự, gồm cả chữ và số.",
-};
+export const metadata: Metadata = { title: "Bảo mật", robots: { index: false, follow: false } };
 
-export default async function SecurityPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string; success?: string }>;
-}) {
-  const params = await searchParams;
-  await requireVerifiedAccess("/account/security");
+const INK = brandColors.ink;
+const INK_SOFT = brandColors.inkSoft;
+const LINE = "#E5E7EB";
+
+/**
+ * ADR-041 C3/C4 — Bảo mật: ba khối có neo `#mat-khau`, `#email`, `#phien` (deep link từ Hồ sơ/menu). `scroll-mt-24`
+ * để neo không bị header dính (64px) che.
+ */
+export default async function SecurityPage() {
+  const user = await requireVerifiedAccess("/account/security");
+  const [dbUser, pendingEmail] = await Promise.all([
+    getPrismaClient().user.findUniqueOrThrow({ where: { id: user.userId }, select: { email: true } }),
+    findPendingEmailChange(user.userId),
+  ]);
 
   return (
-    <main className="mx-auto max-w-md px-4 py-16">
-      <h1 className="text-2xl font-bold">Bảo mật tài khoản</h1>
+    <div className="mx-auto w-full max-w-2xl space-y-6">
+      <div>
+        <h1 className="font-[family-name:var(--font-heading)] text-2xl font-bold" style={{ color: INK }}>
+          Bảo mật
+        </h1>
+        <p className="mt-1.5 text-sm" style={{ color: INK_SOFT }}>
+          Mật khẩu, email đăng nhập và các phiên đăng nhập của tài khoản.
+        </p>
+      </div>
 
-      <section className="mt-8">
-        <h2 className="text-lg font-semibold">Đổi mật khẩu</h2>
-        <form action={changePasswordAction} className="mt-3 space-y-4">
-          <div>
-            <label className="block text-sm font-medium" htmlFor="currentPassword">
-              Mật khẩu hiện tại
-            </label>
-            <input
-              id="currentPassword"
-              name="currentPassword"
-              type="password"
-              required
-              className="mt-1 w-full rounded border px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium" htmlFor="newPassword">
-              Mật khẩu mới
-            </label>
-            <input
-              id="newPassword"
-              name="newPassword"
-              type="password"
-              required
-              minLength={8}
-              className="mt-1 w-full rounded border px-3 py-2"
-            />
-          </div>
-          {params.error ? <p className="text-sm text-red-600">{ERROR_MESSAGES[params.error] ?? "Có lỗi xảy ra."}</p> : null}
-          {params.success === "password_changed" ? (
-            <p className="text-sm text-green-700">Đổi mật khẩu thành công.</p>
-          ) : null}
-          <button type="submit" className="w-full rounded bg-[var(--color-primary)] px-4 py-2 text-white">
-            Đổi mật khẩu
-          </button>
-        </form>
-      </section>
+      <SecurityCard id="mat-khau" icon={<IconLock className="h-5 w-5" />} title="Đổi mật khẩu" description="Sau khi đổi, các thiết bị khác sẽ bị đăng xuất; thiết bị này vẫn đăng nhập.">
+        <ChangePasswordForm />
+      </SecurityCard>
 
-      <section className="mt-10 border-t pt-6">
-        <h2 className="text-lg font-semibold">Phiên đăng nhập</h2>
-        <p className="mt-2 text-sm text-gray-600">Đăng xuất khỏi tất cả thiết bị đang đăng nhập.</p>
-        <form action={logoutAllDevicesAction} className="mt-3">
-          <button type="submit" className="w-full rounded border border-red-600 px-4 py-2 text-red-600">
-            Đăng xuất mọi thiết bị
-          </button>
-        </form>
-      </section>
-    </main>
+      <SecurityCard id="email" icon={<IconMail className="h-5 w-5" />} title="Email đăng nhập" description="Đổi email cần xác minh qua link gửi tới email mới.">
+        <EmailChangeSection currentEmail={dbUser.email} pendingEmail={pendingEmail} />
+      </SecurityCard>
+
+      <SecurityCard
+        id="phien"
+        icon={<IconShield className="h-5 w-5" />}
+        title="Phiên đăng nhập"
+        description="Nếu nghi ngờ ai đó đang dùng tài khoản của bạn, hãy đổi mật khẩu rồi đăng xuất khỏi mọi thiết bị."
+        danger
+      >
+        <LogoutAllDevices />
+      </SecurityCard>
+    </div>
+  );
+}
+
+function SecurityCard({
+  id,
+  icon,
+  title,
+  description,
+  danger = false,
+  children,
+}: {
+  id: string;
+  icon: ReactNode;
+  title: string;
+  description: string;
+  danger?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-24 rounded-2xl border bg-white p-5 sm:p-6" style={{ borderColor: danger ? "#FCA5A5" : LINE }}>
+      <div className="flex items-start gap-3">
+        <span
+          aria-hidden="true"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+          style={danger ? { background: "#FEF2F2", color: "#B91C1C" } : { background: brandColors.surface, color: brandColors.primary }}
+        >
+          {icon}
+        </span>
+        <div className="min-w-0">
+          <h2 id={`${id}-title`} className="font-[family-name:var(--font-heading)] font-semibold" style={{ color: INK }}>
+            {title}
+          </h2>
+          <p className="mt-1 text-sm" style={{ color: INK_SOFT }}>
+            {description}
+          </p>
+        </div>
+      </div>
+      <div className="mt-5">{children}</div>
+    </section>
   );
 }

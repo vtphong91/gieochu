@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { HOME_CMS_SLUG, isSystemCmsSlug, SHOP_CMS_SLUG } from "@gieochu/core";
+import { HOME_CMS_SLUG, isSystemCmsSlug, PRICING_CMS_SLUG, SHOP_CMS_SLUG } from "@gieochu/core";
 import { getPrismaClient } from "@gieochu/db";
 import { requireAdminAccess } from "../../../lib/page-guards";
 import { AdminPageHeader, Badge, DataTable, EmptyState, PrimaryButton, Td, Tr } from "../_ui/kit";
@@ -8,10 +8,11 @@ import { MenuItemButton, RowMenu } from "../_ui/row-menu";
 import { Pagination } from "../_ui/pagination";
 import { parsePagination } from "../_ui/pagination-utils";
 
-/** Đường dẫn công khai của trang CMS (ADR-035: `home` → `/`, `shop` → `/cua-hang`, còn lại `/p/{slug}`). */
+/** Đường dẫn công khai của trang CMS (ADR-035: `home` → `/`, `shop` → `/cua-hang`; ADR-041: `pricing` → `/pricing`; còn lại `/p/{slug}`). */
 function publicPathOf(slug: string): string {
   if (slug === HOME_CMS_SLUG) return "/";
   if (slug === SHOP_CMS_SLUG) return "/cua-hang";
+  if (slug === PRICING_CMS_SLUG) return "/pricing";
   return `/p/${slug}`;
 }
 
@@ -19,6 +20,7 @@ function publicPathOf(slug: string): string {
 function editPathOf(slug: string): string | null {
   if (slug === HOME_CMS_SLUG) return "/admin/cms/home";
   if (slug === SHOP_CMS_SLUG) return "/admin/cms/shop";
+  if (slug === PRICING_CMS_SLUG) return "/admin/cms/pricing";
   return isSystemCmsSlug(slug) ? null : `/admin/cms/${slug}`;
 }
 

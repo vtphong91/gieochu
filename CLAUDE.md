@@ -102,6 +102,13 @@ Xem sơ đồ đầy đủ ở `docs/GIEOCHU_PROMPT_MVP_PHASE1.md` §4.4. Tóm t
   (sẽ tạo lại lịch pg-boss và chạy song song với cron) trừ khi Quốc duyệt.
 - `docker/docker-compose.yml` — MinIO (+ tạo bucket), Mailpit, Postgres 16 (`profile: local-db`, tuỳ chọn).
 
+## Nguyên tắc lập kế hoạch tính năng (chủ dự án chốt 2026-10-17)
+
+**CMS trước, UI sau — UX trước UI.** Mọi trang/tính năng có nội dung: Giai đoạn 1 xây **CMS quản trị** (System Center
+hoặc Studio) lưu **toàn bộ** nội dung/cấu hình vào **database** (không hard-code chữ, giá, FAQ, nhãn trong JSX);
+Giai đoạn 2 mới dựng UI công khai đọc dữ liệu từ DB. Kế hoạch bắt đầu bằng luồng UX + mô hình dữ liệu, sau đó mới
+thiết kế giao diện. Mẫu đã áp dụng: trang chủ CMS (ADR-033), Cửa hàng (ADR-035).
+
 ## Quy ước code
 
 - TypeScript `strict: true` (kế thừa `tsconfig.base.json`), không `any` không cần thiết.

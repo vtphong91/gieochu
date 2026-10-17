@@ -1,8 +1,10 @@
+import { brandColors } from "@gieochu/config/theme";
+
 /** Trạng thái đang tải của Thư viện — khung xương giữ chỗ (không nhảy bố cục), tôn trọng giảm chuyển động. */
 export default function LibraryLoading() {
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10 sm:py-16" aria-busy="true">
-      <h1 className="text-2xl font-bold">Thư viện của bạn</h1>
+    <div className="mx-auto w-full max-w-3xl" aria-busy="true">
+      <h1 className="font-[family-name:var(--font-heading)] text-2xl font-bold" style={{ color: brandColors.ink }}>Thư viện của bạn</h1>
       <p className="sr-only" role="status">
         Đang tải thư viện...
       </p>
@@ -15,6 +17,6 @@ export default function LibraryLoading() {
           </div>
         ))}
       </div>
-    </main>
+    </div>
   );
 }

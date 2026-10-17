@@ -314,6 +314,7 @@ Các lỗi dưới theo báo cáo đợt ADR-031 🟡; phần "cách sửa" đã
 | 7.3 | Runtime/build lỗi **`APP_URL: Invalid URL`** | Giá trị `APP_URL` thiếu scheme (vd `gieochu.net`) | Đặt `https://gieochu.net` — có `https://`, không `/` cuối (§3.1) |
 | 7.4 | `next build` lỗi khi **prerender `/_not-found`** (đọc DB) | Root layout đọc `SystemBranding` từ DB cho mọi trang, kể cả `/_not-found`, nên prerender cần DB/env | Root `app/layout.tsx` `export const dynamic = "force-dynamic"` ✅ |
 | 7.5 | **Production trả 500** (2026-10-15) | Migration `20260929100000_adr032_drop_platform_name` chạy trên DB dev — **chính là DB production** — trong khi bản đang deploy còn đọc `system_settings.platformName` 🟡 | Khôi phục cột bằng tay `ADD COLUMN IF NOT EXISTS "platformName" TEXT` 🟡; quy trình phòng ngừa §9 |
+| 7.6 | `next build` **trên máy dev** lỗi `workStore` (2026-10-17) | Hai phiên build chạy song song dùng chung thư mục `.next`, hoặc chạy build từ đường dẫn ổ đĩa chữ thường `f:\` 🟡 (Quốc kiểm) | Chỉ chạy **một** build mỗi lúc; chạy từ `F:\VSCODE\gieochu` (chữ hoa) — build sạch đạt 2026-10-17 🟡. Không liên quan Vercel |
 
 ---
 
@@ -461,6 +462,26 @@ cột đã xoá) **không** quay lại được. Point-in-Time Restore ảnh hư
 * Bước cron mới `abuse_report.ip_purge` không cần cấu hình thêm (§6). Route mới `POST /api/reports` kiểm `Origin` theo `APP_URL` — `APP_URL`
   phải đúng domain production ✅ đọc code.
 * Không có migration contract nào đi kèm. Nghiệp vụ: [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]].
+
+### 9.9. Migration ADR-041 (Hồ sơ + hoàn tiền gói) — đã áp 2026-10-17, deploy được
+
+* `20261017090000_adr041_email_change` — chỉ *thêm*: giá trị enum `VerificationTokenType.EMAIL_CHANGE` + cột nullable
+  `verification_tokens."newEmail"` ✅ đọc SQL. ⚠️ **Bắt buộc trước code:** Prisma Client mới chọn cột `newEmail` → code lên môi trường chưa có
+  migration này thì mọi truy vấn `verification_tokens` (đăng ký, xác minh email, quên/đặt lại mật khẩu) lỗi **P2022**.
+* `20261017100000_adr041_subscription_refunds` — chỉ *thêm*: `SubscriptionInvoiceStatus.REFUNDED`, enum `SubscriptionRefundStatus`, bảng L1
+  `subscription_refund_requests` + 3 CHECK + `GRANT` cho `gieochu_app` ✅ đọc SQL. Code chịu được thứ tự ngược (P2021 → "chức năng hoàn tiền chưa
+  sẵn sàng", 503 `REFUND_UNAVAILABLE`, không 500).
+* Cả hai **đã áp lên DB dùng chung 2026-10-17** 🟡 (brief Quốc) → **deploy được**. Mọi DB khác (restore, branch mới): `pnpm db:migrate` trước
+  khi deploy code ADR-041. Không có migration contract. Rollback code về bản trước: an toàn (cột nullable, giá trị enum chưa ai ghi, bảng mới
+  không ai đọc) ✅ theo comment migration.
+* **Không cần biến env mới.** Thông tin nhận tiền hoàn mã hoá bằng `PAYMENT_ENCRYPTION_KEY` có sẵn — **đổi khoá này làm mất khả năng đọc**
+  `payoutEncrypted` của yêu cầu đang chờ (cùng rủi ro với secret cổng thanh toán).
+* **Sau deploy — kiểm tay** ❓ (chưa làm qua UI có đăng nhập, chưa SMTP thật): `/pricing` khi chưa xuất bản CMS hiện cấu hình mặc định; gói nào
+  trên production đang để hạn mức `0` với ý "không giới hạn" sẽ hiện "Không có" (ADR-041 A.4 — Quốc kiểm bảng `plans` bằng truy vấn chỉ đọc
+  trước, sửa thành `-1` ở `/admin/plans` nếu cần); 4 email tài khoản + 3 email hoàn tiền gửi qua SMTP System Center; **không** thử đổi
+  email/hoàn tiền với địa chỉ/tài khoản ngân hàng thật của người khác (ADR-034).
+* Build: xem §7.6 (lỗi `workStore` chỉ ở máy dev). Nghiệp vụ: [[02-System-Specs/Pricing-Page-Specs|Pricing-Page-Specs]],
+  [[02-System-Specs/Account-Profile-Specs|Account-Profile-Specs]], [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5A–§5B.
 
 ---
 

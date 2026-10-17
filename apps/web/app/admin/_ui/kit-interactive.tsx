@@ -20,11 +20,11 @@ function FieldShell({ label, htmlFor, hint, error, children }: { label: string; 
       </label>
       <div className="mt-1.5">{children}</div>
       {error ? (
-        <p role="alert" className="mt-1.5 text-sm" style={{ color: RED }}>
+        <p id={`${htmlFor}-error`} role="alert" className="mt-1.5 text-sm" style={{ color: RED }}>
           {error}
         </p>
       ) : hint ? (
-        <p className="mt-1.5 text-xs" style={{ color: INK_SOFT }}>
+        <p id={`${htmlFor}-hint`} className="mt-1.5 text-xs" style={{ color: INK_SOFT }}>
           {hint}
         </p>
       ) : null}
@@ -85,15 +85,22 @@ export function Toggle({
   );
 }
 
-/** Ô nhập mật khẩu/secret có nút con mắt ẩn/hiện — tái dùng khung FieldShell, chỉ thêm nút toggle type. */
+/**
+ * Ô nhập mật khẩu/secret có nút con mắt ẩn/hiện — tái dùng khung FieldShell, chỉ thêm nút toggle type.
+ * A11y (ADR-041 GĐ2): có `id` thì tự gắn `aria-invalid` + `aria-describedby` (`${id}-error` ưu tiên, rồi `${id}-hint`)
+ * như `TextField`; nút ẩn/hiện có nhãn cố định (`toggleLabel`, mặc định "Hiện giá trị") + `aria-pressed`, vùng bấm
+ * 44px chiều ngang, vòng focus nhìn thấy. Không chặn dán/trình quản lý mật khẩu.
+ */
 export function PasswordField({
   label,
   hint,
   error,
   id,
+  toggleLabel = "Hiện giá trị",
   ...rest
-}: ComponentProps<"input"> & { label: string; hint?: string; error?: string }) {
+}: ComponentProps<"input"> & { label: string; hint?: string; error?: string; toggleLabel?: string }) {
   const [visible, setVisible] = useState(false);
+  const describedBy = id ? (error ? `${id}-error` : hint ? `${id}-hint` : undefined) : undefined;
 
   return (
     <FieldShell label={label} htmlFor={id!} hint={hint} error={error}>
@@ -101,15 +108,19 @@ export function PasswordField({
         <input
           id={id}
           type={visible ? "text" : "password"}
-          className={`${inputBase} pr-10`}
+          className={`${inputBase} pr-12`}
           style={{ borderColor: error ? RED : GRAY_LINE }}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy}
           {...rest}
         />
         <button
           type="button"
           onClick={() => setVisible((v) => !v)}
-          aria-label={visible ? "Ẩn giá trị" : "Hiện giá trị"}
-          className="absolute top-1/2 right-2.5 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          aria-label={toggleLabel}
+          aria-pressed={visible}
+          aria-controls={id}
+          className="absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center rounded-r-lg text-gray-500 outline-offset-[-3px] hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-[#0F3B82]"
         >
           {visible ? <IconEyeOff className="h-[18px] w-[18px]" /> : <IconEye className="h-[18px] w-[18px]" />}
         </button>

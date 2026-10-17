@@ -9,6 +9,10 @@
     ".": "./src/index.ts",
     "./home-sections": "./src/admin/home-sections.ts",
     "./shop-sections": "./src/admin/shop-sections.ts",
+    "./pricing-sections": "./src/admin/pricing-sections.ts",
+    "./plan-limits": "./src/billing/plan-limits.ts",
+    "./plan-features": "./src/billing/feature-gate.ts",
+    "./subscription-refund": "./src/billing/subscription-refund.ts",
     "./storefront-sections": "./src/tenant/storefront-sections.ts",
     "./content/word-count": "./src/content/word-count.ts",
     "./content/sanitize-html": "./src/content/sanitize-html.ts",
@@ -21,7 +25,8 @@
     "./system-settings": "./src/settings/system-settings.ts",
     "./audit": "./src/audit/audit.ts",
     "./abuse-report": "./src/report/abuse-report.ts",
-    "./entitlement-remedy": "./src/download/entitlement-remedy.ts"
+    "./entitlement-remedy": "./src/download/entitlement-remedy.ts",
+    "./account-profile": "./src/account/profile.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

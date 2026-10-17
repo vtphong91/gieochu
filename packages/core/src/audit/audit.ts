@@ -48,6 +48,16 @@ export const AUDIT_ACTIONS = [
   // ADR-039
   "REMEDY_FINAL_DOWNLOAD_CHOSEN",
   "REMEDY_REFUND_REQUESTED",
+  // ADR-041 mục C (Hồ sơ)
+  "AUTH_PASSWORD_CHANGED",
+  "AUTH_EMAIL_CHANGE_REQUESTED",
+  "AUTH_EMAIL_CHANGED",
+  // ADR-041 A/B
+  "PRICING_CMS_UPDATED",
+  "SUBSCRIPTION_REFUND_REQUESTED",
+  "SUBSCRIPTION_REFUNDED",
+  "SUBSCRIPTION_REFUND_REJECTED",
+  "SUBSCRIPTION_REFUND_PAYOUT_VIEWED",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -95,6 +105,14 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   CONTENT_MODERATION_UNLOCKED: "Gỡ khoá kiểm duyệt nội dung",
   REMEDY_FINAL_DOWNLOAD_CHOSEN: "Khách chọn tải lần cuối (tài liệu bị gỡ)",
   REMEDY_REFUND_REQUESTED: "Khách yêu cầu hoàn tiền (tài liệu bị gỡ)",
+  AUTH_PASSWORD_CHANGED: "Đổi mật khẩu",
+  AUTH_EMAIL_CHANGE_REQUESTED: "Yêu cầu đổi email đăng nhập",
+  AUTH_EMAIL_CHANGED: "Đổi email đăng nhập",
+  PRICING_CMS_UPDATED: "Cập nhật trang Bảng giá",
+  SUBSCRIPTION_REFUND_REQUESTED: "Yêu cầu hoàn tiền gói dịch vụ",
+  SUBSCRIPTION_REFUNDED: "Hoàn tiền gói dịch vụ",
+  SUBSCRIPTION_REFUND_REJECTED: "Từ chối hoàn tiền gói dịch vụ",
+  SUBSCRIPTION_REFUND_PAYOUT_VIEWED: "Xem thông tin nhận tiền hoàn gói",
 };
 
 export const AUDIT_SCOPE_LABELS: Record<AuditScopeValue, string> = {

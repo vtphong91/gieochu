@@ -1,3 +1,4 @@
+import { PLAN_LIMIT_UNLIMITED } from "../billing/plan-limits";
 export type PublishBlockReason =
   | "CATEGORY_REQUIRED"
   | "CATEGORY_INACTIVE"
@@ -76,7 +77,8 @@ export function canPublishProduct(input: PublishEligibilityInput): PublishEligib
   if (!input.hasCoverImage) codes.push("NO_COVER_IMAGE");
   if (!Number.isInteger(input.priceVnd) || input.priceVnd < 0) codes.push("INVALID_PRICE");
   if (input.tenantStatus !== "ACTIVE") codes.push("TENANT_NOT_ACTIVE");
-  if (input.currentPublishedCount >= input.maxProducts) codes.push("PRODUCT_LIMIT_REACHED");
+  // ADR-041 A4: -1 = không giới hạn; 0 = không được phép.
+  if (input.maxProducts !== PLAN_LIMIT_UNLIMITED && input.currentPublishedCount >= input.maxProducts) codes.push("PRODUCT_LIMIT_REACHED");
 
   const reasons = codes.map((code) => ({ code, message: MESSAGES[code] }));
   const checklist = REQUIREMENTS.map(({ requirement, label, codes: owned }) => {

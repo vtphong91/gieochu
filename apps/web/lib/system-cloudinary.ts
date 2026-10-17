@@ -232,6 +232,17 @@ export const getSystemCloudinaryLocation = cache(async function getSystemCloudin
   return cloudName ? { cloudName, uploadRoot: uploadRootOf(publicConfig) } : null;
 });
 
+/**
+ * Upload qua Cloudinary hệ thống có dùng được không (đã cấu hình + đang bật + có cloud name) — chỉ đọc cấu hình công khai,
+ * không giải mã secret. Cùng điều kiện với `createCloudinaryUploadSignature` (trừ lỗi giải mã). `cache()` theo request.
+ */
+export const isSystemCloudinaryUploadEnabled = cache(async function isSystemCloudinaryUploadEnabled(): Promise<boolean> {
+  const row = await getPrismaClient().systemCloudinaryConfig.findUnique({ where: { id: CONFIG_ID }, select: { isEnabled: true, publicConfig: true } });
+  if (!row?.isEnabled) return false;
+  const publicConfig = row.publicConfig as unknown as SystemCloudinaryPublicConfig;
+  return Boolean(publicConfig.cloudName?.trim());
+});
+
 /** ADR-028 §5: cloud name hệ thống cho sanitizer / kiểm URL ảnh. `null` = chưa cấu hình → mọi ảnh bị loại. */
 export async function getSystemCloudinaryCloudName(): Promise<string | null> {
   return (await getSystemCloudinaryLocation())?.cloudName ?? null;

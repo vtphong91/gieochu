@@ -559,6 +559,23 @@ export type EnumSubscriptionInvoiceStatusWithAggregatesFilter<$PrismaModel = nev
   _max?: Prisma.NestedEnumSubscriptionInvoiceStatusFilter<$PrismaModel>
 }
 
+export type EnumSubscriptionRefundStatusFilter<$PrismaModel = never> = {
+  equals?: $Enums.SubscriptionRefundStatus | Prisma.EnumSubscriptionRefundStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.SubscriptionRefundStatus[] | Prisma.ListEnumSubscriptionRefundStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.SubscriptionRefundStatus[] | Prisma.ListEnumSubscriptionRefundStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumSubscriptionRefundStatusFilter<$PrismaModel> | $Enums.SubscriptionRefundStatus
+}
+
+export type EnumSubscriptionRefundStatusWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.SubscriptionRefundStatus | Prisma.EnumSubscriptionRefundStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.SubscriptionRefundStatus[] | Prisma.ListEnumSubscriptionRefundStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.SubscriptionRefundStatus[] | Prisma.ListEnumSubscriptionRefundStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumSubscriptionRefundStatusWithAggregatesFilter<$PrismaModel> | $Enums.SubscriptionRefundStatus
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumSubscriptionRefundStatusFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumSubscriptionRefundStatusFilter<$PrismaModel>
+}
+
 export type EnumWebhookScopeFilter<$PrismaModel = never> = {
   equals?: $Enums.WebhookScope | Prisma.EnumWebhookScopeFieldRefInput<$PrismaModel>
   in?: $Enums.WebhookScope[] | Prisma.ListEnumWebhookScopeFieldRefInput<$PrismaModel>
@@ -1360,6 +1377,23 @@ export type NestedEnumSubscriptionInvoiceStatusWithAggregatesFilter<$PrismaModel
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumSubscriptionInvoiceStatusFilter<$PrismaModel>
   _max?: Prisma.NestedEnumSubscriptionInvoiceStatusFilter<$PrismaModel>
+}
+
+export type NestedEnumSubscriptionRefundStatusFilter<$PrismaModel = never> = {
+  equals?: $Enums.SubscriptionRefundStatus | Prisma.EnumSubscriptionRefundStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.SubscriptionRefundStatus[] | Prisma.ListEnumSubscriptionRefundStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.SubscriptionRefundStatus[] | Prisma.ListEnumSubscriptionRefundStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumSubscriptionRefundStatusFilter<$PrismaModel> | $Enums.SubscriptionRefundStatus
+}
+
+export type NestedEnumSubscriptionRefundStatusWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.SubscriptionRefundStatus | Prisma.EnumSubscriptionRefundStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.SubscriptionRefundStatus[] | Prisma.ListEnumSubscriptionRefundStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.SubscriptionRefundStatus[] | Prisma.ListEnumSubscriptionRefundStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumSubscriptionRefundStatusWithAggregatesFilter<$PrismaModel> | $Enums.SubscriptionRefundStatus
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumSubscriptionRefundStatusFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumSubscriptionRefundStatusFilter<$PrismaModel>
 }
 
 export type NestedEnumWebhookScopeFilter<$PrismaModel = never> = {

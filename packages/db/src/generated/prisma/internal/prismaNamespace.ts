@@ -422,6 +422,7 @@ export const ModelName = {
   TenantPaymentConfig: 'TenantPaymentConfig',
   PlatformPaymentConfig: 'PlatformPaymentConfig',
   SubscriptionInvoice: 'SubscriptionInvoice',
+  SubscriptionRefundRequest: 'SubscriptionRefundRequest',
   PlatformPaymentTransaction: 'PlatformPaymentTransaction',
   WebhookEvent: 'WebhookEvent',
   BankBin: 'BankBin',
@@ -457,7 +458,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userProfile" | "refreshToken" | "verificationToken" | "plan" | "role" | "permission" | "rolePermission" | "cmsPage" | "subscription" | "tenant" | "tenantMember" | "tenantSlugHistory" | "product" | "productFile" | "systemSettings" | "systemStorageConfig" | "systemCloudinaryConfig" | "systemSmtpConfig" | "emailSendLog" | "documentCategory" | "systemBranding" | "tenantPaymentConfig" | "platformPaymentConfig" | "subscriptionInvoice" | "platformPaymentTransaction" | "webhookEvent" | "bankBin" | "coupon" | "couponRedemption" | "order" | "orderItem" | "tenantPaymentTransaction" | "tenantCustomer" | "entitlement" | "downloadToken" | "shareLink" | "downloadEvent" | "storefrontMessage" | "tenantMediaAsset" | "review" | "post" | "auditLog" | "tenantDailyStat" | "abuseReport"
+    modelProps: "user" | "userProfile" | "refreshToken" | "verificationToken" | "plan" | "role" | "permission" | "rolePermission" | "cmsPage" | "subscription" | "tenant" | "tenantMember" | "tenantSlugHistory" | "product" | "productFile" | "systemSettings" | "systemStorageConfig" | "systemCloudinaryConfig" | "systemSmtpConfig" | "emailSendLog" | "documentCategory" | "systemBranding" | "tenantPaymentConfig" | "platformPaymentConfig" | "subscriptionInvoice" | "subscriptionRefundRequest" | "platformPaymentTransaction" | "webhookEvent" | "bankBin" | "coupon" | "couponRedemption" | "order" | "orderItem" | "tenantPaymentTransaction" | "tenantCustomer" | "entitlement" | "downloadToken" | "shareLink" | "downloadEvent" | "storefrontMessage" | "tenantMediaAsset" | "review" | "post" | "auditLog" | "tenantDailyStat" | "abuseReport"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2311,6 +2312,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    SubscriptionRefundRequest: {
+      payload: Prisma.$SubscriptionRefundRequestPayload<ExtArgs>
+      fields: Prisma.SubscriptionRefundRequestFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.SubscriptionRefundRequestFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionRefundRequestPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.SubscriptionRefundRequestFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionRefundRequestPayload>
+        }
+        findFirst: {
+          args: Prisma.SubscriptionRefundRequestFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionRefundRequestPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.SubscriptionRefundRequestFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionRefundRequestPayload>
+        }
+        findMany: {
+          args: Prisma.SubscriptionRefundRequestFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionRefundRequestPayload>[]
+        }
+        create: {
+          args: Prisma.SubscriptionRefundRequestCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionRefundRequestPayload>
+        }
+        createMany: {
+          args: Prisma.SubscriptionRefundRequestCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.SubscriptionRefundRequestCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionRefundRequestPayload>[]
+        }
+        delete: {
+          args: Prisma.SubscriptionRefundRequestDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionRefundRequestPayload>
+        }
+        update: {
+          args: Prisma.SubscriptionRefundRequestUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionRefundRequestPayload>
+        }
+        deleteMany: {
+          args: Prisma.SubscriptionRefundRequestDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.SubscriptionRefundRequestUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.SubscriptionRefundRequestUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionRefundRequestPayload>[]
+        }
+        upsert: {
+          args: Prisma.SubscriptionRefundRequestUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionRefundRequestPayload>
+        }
+        aggregate: {
+          args: Prisma.SubscriptionRefundRequestAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateSubscriptionRefundRequest>
+        }
+        groupBy: {
+          args: Prisma.SubscriptionRefundRequestGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SubscriptionRefundRequestGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.SubscriptionRefundRequestCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SubscriptionRefundRequestCountAggregateOutputType> | number
+        }
+      }
+    }
     PlatformPaymentTransaction: {
       payload: Prisma.$PlatformPaymentTransactionPayload<ExtArgs>
       fields: Prisma.PlatformPaymentTransactionFieldRefs
@@ -3883,6 +3958,7 @@ export const VerificationTokenScalarFieldEnum = {
   userId: 'userId',
   type: 'type',
   tokenHash: 'tokenHash',
+  newEmail: 'newEmail',
   expiresAt: 'expiresAt',
   usedAt: 'usedAt',
   createdAt: 'createdAt'
@@ -4229,6 +4305,26 @@ export const SubscriptionInvoiceScalarFieldEnum = {
 } as const
 
 export type SubscriptionInvoiceScalarFieldEnum = (typeof SubscriptionInvoiceScalarFieldEnum)[keyof typeof SubscriptionInvoiceScalarFieldEnum]
+
+
+export const SubscriptionRefundRequestScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  invoiceId: 'invoiceId',
+  requestedById: 'requestedById',
+  reason: 'reason',
+  payoutEncrypted: 'payoutEncrypted',
+  status: 'status',
+  amountVnd: 'amountVnd',
+  adminNote: 'adminNote',
+  decidedById: 'decidedById',
+  decidedAt: 'decidedAt',
+  refundedAt: 'refundedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SubscriptionRefundRequestScalarFieldEnum = (typeof SubscriptionRefundRequestScalarFieldEnum)[keyof typeof SubscriptionRefundRequestScalarFieldEnum]
 
 
 export const PlatformPaymentTransactionScalarFieldEnum = {
@@ -4884,6 +4980,20 @@ export type ListEnumSubscriptionInvoiceStatusFieldRefInput<$PrismaModel> = Field
 
 
 /**
+ * Reference to a field of type 'SubscriptionRefundStatus'
+ */
+export type EnumSubscriptionRefundStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SubscriptionRefundStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'SubscriptionRefundStatus[]'
+ */
+export type ListEnumSubscriptionRefundStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SubscriptionRefundStatus[]'>
+    
+
+
+/**
  * Reference to a field of type 'WebhookScope'
  */
 export type EnumWebhookScopeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WebhookScope'>
@@ -5296,6 +5406,7 @@ export type GlobalOmitConfig = {
   tenantPaymentConfig?: Prisma.TenantPaymentConfigOmit
   platformPaymentConfig?: Prisma.PlatformPaymentConfigOmit
   subscriptionInvoice?: Prisma.SubscriptionInvoiceOmit
+  subscriptionRefundRequest?: Prisma.SubscriptionRefundRequestOmit
   platformPaymentTransaction?: Prisma.PlatformPaymentTransactionOmit
   webhookEvent?: Prisma.WebhookEventOmit
   bankBin?: Prisma.BankBinOmit

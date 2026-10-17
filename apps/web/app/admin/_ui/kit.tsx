@@ -219,7 +219,7 @@ export function PrimaryButton({ children, loading, ...rest }: ComponentProps<"bu
     <button
       type="submit"
       disabled={loading || rest.disabled}
-      className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F3B82] disabled:cursor-not-allowed disabled:opacity-60 lg:min-h-0"
       style={{ background: brandColors.primary }}
       {...rest}
     >
@@ -232,7 +232,7 @@ export function GhostButton({ children, ...rest }: ComponentProps<"button">) {
   return (
     <button
       type="button"
-      className="inline-flex items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F3B82] disabled:cursor-not-allowed disabled:opacity-60 lg:min-h-0"
       style={{ borderColor: GRAY_LINE, color: INK }}
       {...rest}
     >

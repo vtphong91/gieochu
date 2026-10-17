@@ -43,7 +43,16 @@ CONSTRAINTS:
 OUTPUT_EXPECTED: [Diff-only | New file | Report only | Updated docs]
 DO_NOT_TOUCH: [phạm vi cấm sửa, để tránh lấn domain khác hoặc tốn token đọc không cần thiết]
 VERIFY_REQUIRED: [lệnh/test bắt buộc chạy và báo kết quả thật trước khi coi là hoàn thành]
+PLAN_CHECK: [chỉ với trang/tính năng có nội dung — bỏ qua với sửa lỗi nhỏ]
+  - [ ] Đã có luồng UX + mô hình dữ liệu trước khi thiết kế giao diện?
+  - [ ] Đã tách GĐ1 CMS + mô hình dữ liệu (màn quản trị lưu nội dung/cấu hình vào DB) / GĐ2 UI công khai đọc từ DB chưa?
+  - [ ] Không hard-code chữ, giá, FAQ, nhãn trong JSX/template?
 ```
+
+**Nguyên tắc lập kế hoạch "CMS trước, UI sau — UX trước UI"** (tuỳ chọn, bật khi project chốt — ghi vào
+`PROJECT-SPECIFIC RULES`): kế hoạch tính năng có nội dung bắt đầu bằng luồng UX + mô hình dữ liệu; giai đoạn 1 xây
+CMS quản trị lưu toàn bộ nội dung/cấu hình vào DB; giai đoạn 2 mới dựng UI công khai đọc từ DB. Brief GĐ1 phải đi
+trước brief UI GĐ2. Ví dụ project đã bật: Gieo Chữ (`Team-Charter.md` §2.1).
 
 ## 4. Nguồn sự thật (Sources of Truth)
 

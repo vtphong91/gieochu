@@ -110,6 +110,8 @@ model RefreshToken {
 enum VerificationTokenType {
   EMAIL_VERIFY
   PASSWORD_RESET
+  /// ADR-041: đổi email đăng nhập — link gửi tới email MỚI (`newEmail`), xác nhận được khi chưa đăng nhập.
+  EMAIL_CHANGE
 }
 
 /// §5.1 Layer System — VERIFICATION_TOKENS (email activation + password reset)
@@ -119,6 +121,8 @@ model VerificationToken {
   user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   type      VerificationTokenType
   tokenHash String                @unique
+  /// ADR-041: email đích (đã chuẩn hoá) — chỉ có giá trị với type = EMAIL_CHANGE. Dữ liệu cá nhân.
+  newEmail  String?
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime              @default(now())
@@ -327,6 +331,7 @@ model Tenant {
   posts                Post[]
   dailyStats           TenantDailyStat[]
   abuseReports         AbuseReport[]
+  subscriptionRefund   SubscriptionRefundRequest?
 
   @@map("tenants")
 }
@@ -708,6 +713,9 @@ enum SubscriptionInvoiceStatus {
   PAID
   EXPIRED
   VOID
+  /// ADR-041 B: admin đã chuyển khoản hoàn 100% (yêu cầu `subscription_refund_requests` APPROVED_REFUNDED).
+  /// Không bao giờ quay lại PAID (markInvoicePaid bỏ qua hoá đơn REFUNDED).
+  REFUNDED
 }
 
 /// §"M3" — SUBSCRIPTION_INVOICES. L1 like Subscription/Plan (billing is
@@ -739,10 +747,49 @@ model SubscriptionInvoice {
   createdAt       DateTime                  @default(now())
   updatedAt       DateTime                  @updatedAt
 
-  transactions PlatformPaymentTransaction[]
+  transactions  PlatformPaymentTransaction[]
+  refundRequest SubscriptionRefundRequest?
 
   @@index([tenantId])
   @@map("subscription_invoices")
+}
+
+enum SubscriptionRefundStatus {
+  REQUESTED
+  APPROVED_REFUNDED
+  REJECTED
+}
+
+/// ADR-041 B (+ bổ sung) — yêu cầu hoàn tiền gói trả phí. Bảng L1 (billing nền tảng, PaymentScope PLATFORM — như
+/// subscription_invoices): không RLS; chủ gian hàng chỉ đọc/tạo dòng của tenant mình qua requireTenantMember(OWNER),
+/// admin đọc/duyệt qua requireRole(SYSTEM_ADMIN) (§7.9: hoá đơn gói là L1, không phải đơn/khách của tenant).
+/// Mỗi tenant tối đa 1 yêu cầu (chỉ lần thanh toán gói đầu tiên được hoàn) — `tenantId` và `invoiceId` đều unique.
+/// `payoutEncrypted` = JSON {bankBin, bankName, accountNo, accountName} mã hoá AES-256-GCM (PAYMENT_ENCRYPTION_KEY),
+/// chỉ admin giải mã; đặt NULL khi APPROVED_REFUNDED/REJECTED (CHECK). Không đưa vào audit/log/email.
+/// `requestedById`/`decidedById` không FK (cùng mẫu products.rightsConfirmedById) — user không bị xoá ở MVP.
+model SubscriptionRefundRequest {
+  id              String                   @id @default(cuid(2))
+  tenantId        String                   @unique
+  tenant          Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoiceId       String                   @unique
+  invoice         SubscriptionInvoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  requestedById   String
+  /// Lý do (tuỳ chọn, văn bản thuần ≤500).
+  reason          String?
+  payoutEncrypted String?
+  status          SubscriptionRefundStatus @default(REQUESTED)
+  /// Số tiền hoàn (VND, số nguyên) = `amountVnd` của hoá đơn, chụp lúc tạo yêu cầu.
+  amountVnd       Int
+  /// Lý do từ chối / ghi chú admin (bắt buộc khi REJECTED — CHECK). Gửi cho chủ gian hàng.
+  adminNote       String?
+  decidedById     String?
+  decidedAt       DateTime?
+  refundedAt      DateTime?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  @@index([status, createdAt])
+  @@map("subscription_refund_requests")
 }
 
 /// §"M3" — PLATFORM_PAYMENT_TRANSACTIONS. Every platform webhook event that

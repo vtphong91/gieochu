@@ -27,7 +27,7 @@ BACKLOG) → M12 → hoàn thiện M2.
 | M10 | Social Feed và Đánh giá (tách theo ADR-029) | 🟡 **GĐ1 hoàn tất code** (nợ test): **M10a Đánh giá: xong code** (verify thủ công) · **M10b Bài viết tối giản: xong code** (verify thủ công) · M10c (bình luận/thả tim/theo dõi): chuyển `docs/BACKLOG.md` | M10a: `apps/web/lib/review.ts`, `packages/core/src/review`, `apps/web/app/studio/[tenantSlug]/reviews`; M10b: `apps/web/lib/post.ts`, `packages/core/src/content/post.ts`, `apps/web/app/studio/[tenantSlug]/posts`, `apps/web/app/[tenantSlug]/posts` | 4 / 3 (ngân sách gốc — chưa dùng, ADR-029 chọn chưa thêm test) |
 | M11 | Email và Background Jobs | 🟡 Email gửi đồng bộ (`sendEmailNow`); **job nền theo ADR-036: xong code, chưa commit/deploy** — `after()` drain hàng đợi trong route + Vercel Cron hằng ngày `GET /api/cron/daily`, `worker.ts` chỉ còn cho local | `packages/jobs`, `packages/email`, `apps/web/lib/{jobs,job-handlers,job-runner}.ts`, `apps/web/app/api/cron/daily`, `apps/web/worker.ts` | 0 / 0 (tính trong module khác) |
 | M12 | Audit Log, Thống kê, Báo cáo vi phạm (chia 3 đợt theo ADR-037) | 🟡 **Xong code cả 3 đợt — chờ commit/deploy** (M12a Audit log, M12b Thống kê, M12c Báo cáo vi phạm + quyền lợi người mua ADR-038/039; 4 migration đã áp DB 2026-10-16 — M12c/ADR-039 phải áp **trước** khi deploy code) | M12a: `packages/core/src/audit`, `apps/web/lib/{audit,audit-query}.ts`, `apps/web/app/admin/audit`, `apps/web/app/studio/[tenantSlug]/activity`; M12b: `apps/web/lib/{tenant-stats,admin-stats}.ts`, `apps/web/app/admin/_ui/sales-stats.tsx`, `apps/web/app/admin/page.tsx`; M12c: `packages/core/src/report`, `packages/core/src/download/entitlement-remedy.ts`, `apps/web/lib/{abuse-report,entitlement-remedy,moderation,tenant-lock,origin-guard}.ts`, `apps/web/app/api/reports`, `apps/web/app/admin/reports`, `apps/web/app/account/library` | 2 / 2 (M12a `audit.test.ts`, M12b `stats.test.ts`) |
-| | **Tổng** | | | Trần gốc mục 9: **91 / 50** · trần hiện **94 / 55** (ADR-026 + ADR-037 mục 6) · thực **93 / 53** (`pnpm test:count` 2026-10-16). Cộng cột theo module ra 92 / 51 — cột là ngân sách gốc từng module, không phải số thực |
+| | **Tổng** | | | Trần gốc mục 9: **91 / 50** · trần hiện **94 / 55** (ADR-026 + ADR-037 mục 6) · thực **93 / 54** (`pnpm test:count` 2026-10-17). Cộng cột theo module ra 92 / 51 — cột là ngân sách gốc từng module, không phải số thực |
 
 ## M0 — Việc đã làm (bản đầu, xem docs/modules/M0.md để có sơ đồ)
 
@@ -781,6 +781,43 @@ Chủ dự án chốt: gian hàng chỉ hiển thị tài liệu khi `ACTIVE`. K
 
 **Số test:** `pnpm test:count` = **93/94 unit, 54/55 integration** (Long chạy 2026-10-17, chỉ đếm). KB:
 `02-System-Specs/Storefront-CMS-Specs.md` §1.2, bản trích `01-Architecture-Decisions/ADR-026` (≙ ADR-040), `00-Index/KB-Audit-2026-09-26.md` §19.
+
+## Nâng cấp tài khoản + Hồ sơ + hoàn tiền gói (ADR-041) — GĐ1 + GĐ2 xong code, chưa commit/deploy — 2026-10-17
+
+Chủ dự án + Quốc chốt ngày 2026-10-17, ghi ở **ADR-041** (`docs/DECISIONS.md`, gồm bổ sung ADR-008 và 2 lần "Bổ sung ADR-041"). Kế hoạch:
+[docs/ke-hoach-nang-cap-tai-khoan-va-ho-so-2026-10-17.md](ke-hoach-nang-cap-tai-khoan-va-ho-so-2026-10-17.md) (nguồn: hai đề xuất của Phong
+`docs/de-xuat-trang-bang-gia-2026-10-17.md`, `docs/de-xuat-trang-ho-so-2026-10-17.md`). Theo nguyên tắc "CMS/dữ liệu trước, UI sau".
+
+**Migration (expand, đã áp DB dùng chung 2026-10-17):** `20261017090000_adr041_email_change` (`VerificationTokenType.EMAIL_CHANGE`,
+`verification_tokens.newEmail` — **bắt buộc trước code**, thiếu → P2022) và `20261017100000_adr041_subscription_refunds`
+(`SubscriptionInvoiceStatus.REFUNDED`, enum `SubscriptionRefundStatus`, bảng L1 `subscription_refund_requests` + 3 CHECK, `payoutEncrypted`
+AES-256-GCM). Deploy được.
+
+- **A. Bảng giá:** `packages/core/src/admin/pricing-sections.ts` (9 section, ghép gói năm bằng `altPlanId`, % tiết kiệm tính từ giá thật,
+  biến `{brand}`/`{graceDays}`); `"pricing"` vào `SYSTEM_CMS_SLUGS`; `apps/web/lib/pricing-cms.ts` (`getPricingCmsEditorData`,
+  `getPricingPageData` — viewer ANON/NO_TENANT/TENANT, xem nháp chỉ admin); editor `/admin/cms/pricing` (pattern Cửa hàng, `SortableListEditor`
+  dùng chung, kiểm tra phía client) + SEO CMS (≤120/≤320, cột không có nháp, chỉ dùng khi PUBLISHED); trang `/pricing` dựng lại
+  (`app/_ui/pricing/*`, layout hệ thống, toggle Tháng/Năm radio, bảng so sánh cuộn trong khung, FAQ `<details>`, noindex khi xem nháp);
+  Billing Studio nhận `?plan=`. Hạn mức **0 = không được phép, -1 = không giới hạn** (`PLAN_LIMIT_UNLIMITED`, `describePlanLimit`/
+  `formatPlanLimit`, form gói có gợi ý). `IMPLEMENTED_PLAN_FEATURES = []` — trang không quảng cáo cờ chưa có.
+- **Hoàn tiền gói:** 7 ngày, 100%, chỉ hoá đơn PAID đầu, mất quyền khi có hoá đơn PAID thứ hai (`REFUND_LATER_PAYMENT_EXISTS`, kiểm lại khi
+  duyệt). Studio Billing: form + trạng thái. `/admin/billing/refunds`: lọc, che STK, "Xem đầy đủ" (audit `SUBSCRIPTION_REFUND_PAYOUT_VIEWED`
+  chỉ id), Đã hoàn/Từ chối xác nhận 2 bước, `approveBlocked`, badge số yêu cầu chờ ở menu. Đã hoàn → hoá đơn `REFUNDED` + về Free + xoá
+  thông tin nhận tiền (1 transaction). `markInvoicePaid` bỏ qua hoá đơn `REFUNDED`. 3 email `subscription_refund_*` không chứa STK.
+- **B. Hồ sơ:** `/account` thành Tổng quan (app shell + header gọn, sidebar 3 nhóm, mobile danh sách mục), Hồ sơ (avatar Cloudinary
+  `users/<id>/avatar/`, ≤2MB, `avatarUploadEnabled` ẩn ô tải nhưng vẫn cho gỡ; SĐT/Tỉnh tuỳ chọn — 34 tỉnh), Bảo mật (đổi mật khẩu giữ phiên
+  hiện tại + thu hồi phiên khác; đổi email qua `/account/email/xac-nhan`; đăng xuất mọi thiết bị); menu tài khoản có avatar (disclosure) ở
+  header công khai + Studio; `getCachedAccountOverview`; bất biến "tenant luôn có subscription" (không fallback, chỉ `logger.warn`). Audit
+  `AUTH_PASSWORD_CHANGED`/`AUTH_EMAIL_CHANGE_REQUESTED`/`AUTH_EMAIL_CHANGED` (+ `PRICING_CMS_UPDATED`, 4 action hoàn tiền — tổng 40 action),
+  4 email tài khoản mới. Kit: `PrimaryButton`/`GhostButton` 44px dưới `lg`, `PasswordField` a11y + `toggleLabel`.
+- **Kiểm thử dữ liệu thật (Hiếu, 2026-10-17):** 23/23 ca + 1 ca phụ đạt, gọi lib trực tiếp, email mock, đã dọn (audit để lại theo ADR-037). Chưa
+  kiểm qua UI có đăng nhập, chưa SMTP thật. Build/lint/typecheck xanh; build sạch từ `F:\VSCODE\gieochu` (lỗi `workStore` chỉ khi 2 build song
+  song chung `.next` hoặc chạy từ `f:\` chữ thường).
+- **GĐ2b:** menu điều hướng mobile Studio **chưa làm** (Đăng xuất đã có qua menu tài khoản ở header Studio).
+- **Test:** không thêm (ADR-041) — `pnpm test:count` = **93/94 unit, 54/55 integration** (Long chạy 2026-10-17). Nợ test ghi `docs/BACKLOG.md`.
+- **Còn mở:** BG-Q9 (về Free khi vượt hạn mức Free); đổi email thu hồi mọi phiên (ADR ghi "phiên khác"); gói prod để `0` với ý không giới hạn
+  cần kiểm. KB: `02-System-Specs/{Pricing-Page-Specs,Account-Profile-Specs,Payment-And-Billing}.md`, bản trích
+  `01-Architecture-Decisions/ADR-027` (≙ ADR-041), `00-Index/KB-Audit-2026-09-26.md` §21.
 
 ## Câu hỏi còn mở (đã chọn phương án an toàn, xem ADR tương ứng)
 

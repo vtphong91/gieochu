@@ -293,6 +293,7 @@ export type SubscriptionInvoiceWhereInput = {
   tenant?: Prisma.XOR<Prisma.TenantScalarRelationFilter, Prisma.TenantWhereInput>
   plan?: Prisma.XOR<Prisma.PlanScalarRelationFilter, Prisma.PlanWhereInput>
   transactions?: Prisma.PlatformPaymentTransactionListRelationFilter
+  refundRequest?: Prisma.XOR<Prisma.SubscriptionRefundRequestNullableScalarRelationFilter, Prisma.SubscriptionRefundRequestWhereInput> | null
 }
 
 export type SubscriptionInvoiceOrderByWithRelationInput = {
@@ -313,6 +314,7 @@ export type SubscriptionInvoiceOrderByWithRelationInput = {
   tenant?: Prisma.TenantOrderByWithRelationInput
   plan?: Prisma.PlanOrderByWithRelationInput
   transactions?: Prisma.PlatformPaymentTransactionOrderByRelationAggregateInput
+  refundRequest?: Prisma.SubscriptionRefundRequestOrderByWithRelationInput
 }
 
 export type SubscriptionInvoiceWhereUniqueInput = Prisma.AtLeast<{
@@ -336,6 +338,7 @@ export type SubscriptionInvoiceWhereUniqueInput = Prisma.AtLeast<{
   tenant?: Prisma.XOR<Prisma.TenantScalarRelationFilter, Prisma.TenantWhereInput>
   plan?: Prisma.XOR<Prisma.PlanScalarRelationFilter, Prisma.PlanWhereInput>
   transactions?: Prisma.PlatformPaymentTransactionListRelationFilter
+  refundRequest?: Prisma.XOR<Prisma.SubscriptionRefundRequestNullableScalarRelationFilter, Prisma.SubscriptionRefundRequestWhereInput> | null
 }, "id" | "code">
 
 export type SubscriptionInvoiceOrderByWithAggregationInput = {
@@ -396,6 +399,7 @@ export type SubscriptionInvoiceCreateInput = {
   tenant: Prisma.TenantCreateNestedOneWithoutSubscriptionInvoicesInput
   plan: Prisma.PlanCreateNestedOneWithoutInvoicesInput
   transactions?: Prisma.PlatformPaymentTransactionCreateNestedManyWithoutMatchedInvoiceInput
+  refundRequest?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutInvoiceInput
 }
 
 export type SubscriptionInvoiceUncheckedCreateInput = {
@@ -414,6 +418,7 @@ export type SubscriptionInvoiceUncheckedCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   transactions?: Prisma.PlatformPaymentTransactionUncheckedCreateNestedManyWithoutMatchedInvoiceInput
+  refundRequest?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutInvoiceInput
 }
 
 export type SubscriptionInvoiceUpdateInput = {
@@ -432,6 +437,7 @@ export type SubscriptionInvoiceUpdateInput = {
   tenant?: Prisma.TenantUpdateOneRequiredWithoutSubscriptionInvoicesNestedInput
   plan?: Prisma.PlanUpdateOneRequiredWithoutInvoicesNestedInput
   transactions?: Prisma.PlatformPaymentTransactionUpdateManyWithoutMatchedInvoiceNestedInput
+  refundRequest?: Prisma.SubscriptionRefundRequestUpdateOneWithoutInvoiceNestedInput
 }
 
 export type SubscriptionInvoiceUncheckedUpdateInput = {
@@ -450,6 +456,7 @@ export type SubscriptionInvoiceUncheckedUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   transactions?: Prisma.PlatformPaymentTransactionUncheckedUpdateManyWithoutMatchedInvoiceNestedInput
+  refundRequest?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutInvoiceNestedInput
 }
 
 export type SubscriptionInvoiceCreateManyInput = {
@@ -568,6 +575,11 @@ export type SubscriptionInvoiceSumOrderByAggregateInput = {
   amountVnd?: Prisma.SortOrder
 }
 
+export type SubscriptionInvoiceScalarRelationFilter = {
+  is?: Prisma.SubscriptionInvoiceWhereInput
+  isNot?: Prisma.SubscriptionInvoiceWhereInput
+}
+
 export type SubscriptionInvoiceNullableScalarRelationFilter = {
   is?: Prisma.SubscriptionInvoiceWhereInput | null
   isNot?: Prisma.SubscriptionInvoiceWhereInput | null
@@ -661,6 +673,20 @@ export type EnumSubscriptionInvoiceStatusFieldUpdateOperationsInput = {
   set?: $Enums.SubscriptionInvoiceStatus
 }
 
+export type SubscriptionInvoiceCreateNestedOneWithoutRefundRequestInput = {
+  create?: Prisma.XOR<Prisma.SubscriptionInvoiceCreateWithoutRefundRequestInput, Prisma.SubscriptionInvoiceUncheckedCreateWithoutRefundRequestInput>
+  connectOrCreate?: Prisma.SubscriptionInvoiceCreateOrConnectWithoutRefundRequestInput
+  connect?: Prisma.SubscriptionInvoiceWhereUniqueInput
+}
+
+export type SubscriptionInvoiceUpdateOneRequiredWithoutRefundRequestNestedInput = {
+  create?: Prisma.XOR<Prisma.SubscriptionInvoiceCreateWithoutRefundRequestInput, Prisma.SubscriptionInvoiceUncheckedCreateWithoutRefundRequestInput>
+  connectOrCreate?: Prisma.SubscriptionInvoiceCreateOrConnectWithoutRefundRequestInput
+  upsert?: Prisma.SubscriptionInvoiceUpsertWithoutRefundRequestInput
+  connect?: Prisma.SubscriptionInvoiceWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.SubscriptionInvoiceUpdateToOneWithWhereWithoutRefundRequestInput, Prisma.SubscriptionInvoiceUpdateWithoutRefundRequestInput>, Prisma.SubscriptionInvoiceUncheckedUpdateWithoutRefundRequestInput>
+}
+
 export type SubscriptionInvoiceCreateNestedOneWithoutTransactionsInput = {
   create?: Prisma.XOR<Prisma.SubscriptionInvoiceCreateWithoutTransactionsInput, Prisma.SubscriptionInvoiceUncheckedCreateWithoutTransactionsInput>
   connectOrCreate?: Prisma.SubscriptionInvoiceCreateOrConnectWithoutTransactionsInput
@@ -692,6 +718,7 @@ export type SubscriptionInvoiceCreateWithoutPlanInput = {
   updatedAt?: Date | string
   tenant: Prisma.TenantCreateNestedOneWithoutSubscriptionInvoicesInput
   transactions?: Prisma.PlatformPaymentTransactionCreateNestedManyWithoutMatchedInvoiceInput
+  refundRequest?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutInvoiceInput
 }
 
 export type SubscriptionInvoiceUncheckedCreateWithoutPlanInput = {
@@ -709,6 +736,7 @@ export type SubscriptionInvoiceUncheckedCreateWithoutPlanInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   transactions?: Prisma.PlatformPaymentTransactionUncheckedCreateNestedManyWithoutMatchedInvoiceInput
+  refundRequest?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutInvoiceInput
 }
 
 export type SubscriptionInvoiceCreateOrConnectWithoutPlanInput = {
@@ -772,6 +800,7 @@ export type SubscriptionInvoiceCreateWithoutTenantInput = {
   updatedAt?: Date | string
   plan: Prisma.PlanCreateNestedOneWithoutInvoicesInput
   transactions?: Prisma.PlatformPaymentTransactionCreateNestedManyWithoutMatchedInvoiceInput
+  refundRequest?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutInvoiceInput
 }
 
 export type SubscriptionInvoiceUncheckedCreateWithoutTenantInput = {
@@ -789,6 +818,7 @@ export type SubscriptionInvoiceUncheckedCreateWithoutTenantInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   transactions?: Prisma.PlatformPaymentTransactionUncheckedCreateNestedManyWithoutMatchedInvoiceInput
+  refundRequest?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutInvoiceInput
 }
 
 export type SubscriptionInvoiceCreateOrConnectWithoutTenantInput = {
@@ -817,6 +847,94 @@ export type SubscriptionInvoiceUpdateManyWithWhereWithoutTenantInput = {
   data: Prisma.XOR<Prisma.SubscriptionInvoiceUpdateManyMutationInput, Prisma.SubscriptionInvoiceUncheckedUpdateManyWithoutTenantInput>
 }
 
+export type SubscriptionInvoiceCreateWithoutRefundRequestInput = {
+  id?: string
+  code: string
+  provider: $Enums.PaymentProviderId
+  status?: $Enums.SubscriptionInvoiceStatus
+  amountVnd: number
+  periodStart: Date | string
+  periodEnd: Date | string
+  dueAt: Date | string
+  paidAt?: Date | string | null
+  checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  tenant: Prisma.TenantCreateNestedOneWithoutSubscriptionInvoicesInput
+  plan: Prisma.PlanCreateNestedOneWithoutInvoicesInput
+  transactions?: Prisma.PlatformPaymentTransactionCreateNestedManyWithoutMatchedInvoiceInput
+}
+
+export type SubscriptionInvoiceUncheckedCreateWithoutRefundRequestInput = {
+  id?: string
+  tenantId: string
+  planId: string
+  code: string
+  provider: $Enums.PaymentProviderId
+  status?: $Enums.SubscriptionInvoiceStatus
+  amountVnd: number
+  periodStart: Date | string
+  periodEnd: Date | string
+  dueAt: Date | string
+  paidAt?: Date | string | null
+  checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  transactions?: Prisma.PlatformPaymentTransactionUncheckedCreateNestedManyWithoutMatchedInvoiceInput
+}
+
+export type SubscriptionInvoiceCreateOrConnectWithoutRefundRequestInput = {
+  where: Prisma.SubscriptionInvoiceWhereUniqueInput
+  create: Prisma.XOR<Prisma.SubscriptionInvoiceCreateWithoutRefundRequestInput, Prisma.SubscriptionInvoiceUncheckedCreateWithoutRefundRequestInput>
+}
+
+export type SubscriptionInvoiceUpsertWithoutRefundRequestInput = {
+  update: Prisma.XOR<Prisma.SubscriptionInvoiceUpdateWithoutRefundRequestInput, Prisma.SubscriptionInvoiceUncheckedUpdateWithoutRefundRequestInput>
+  create: Prisma.XOR<Prisma.SubscriptionInvoiceCreateWithoutRefundRequestInput, Prisma.SubscriptionInvoiceUncheckedCreateWithoutRefundRequestInput>
+  where?: Prisma.SubscriptionInvoiceWhereInput
+}
+
+export type SubscriptionInvoiceUpdateToOneWithWhereWithoutRefundRequestInput = {
+  where?: Prisma.SubscriptionInvoiceWhereInput
+  data: Prisma.XOR<Prisma.SubscriptionInvoiceUpdateWithoutRefundRequestInput, Prisma.SubscriptionInvoiceUncheckedUpdateWithoutRefundRequestInput>
+}
+
+export type SubscriptionInvoiceUpdateWithoutRefundRequestInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  provider?: Prisma.EnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId
+  status?: Prisma.EnumSubscriptionInvoiceStatusFieldUpdateOperationsInput | $Enums.SubscriptionInvoiceStatus
+  amountVnd?: Prisma.IntFieldUpdateOperationsInput | number
+  periodStart?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  periodEnd?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dueAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  tenant?: Prisma.TenantUpdateOneRequiredWithoutSubscriptionInvoicesNestedInput
+  plan?: Prisma.PlanUpdateOneRequiredWithoutInvoicesNestedInput
+  transactions?: Prisma.PlatformPaymentTransactionUpdateManyWithoutMatchedInvoiceNestedInput
+}
+
+export type SubscriptionInvoiceUncheckedUpdateWithoutRefundRequestInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  tenantId?: Prisma.StringFieldUpdateOperationsInput | string
+  planId?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  provider?: Prisma.EnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId
+  status?: Prisma.EnumSubscriptionInvoiceStatusFieldUpdateOperationsInput | $Enums.SubscriptionInvoiceStatus
+  amountVnd?: Prisma.IntFieldUpdateOperationsInput | number
+  periodStart?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  periodEnd?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dueAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  transactions?: Prisma.PlatformPaymentTransactionUncheckedUpdateManyWithoutMatchedInvoiceNestedInput
+}
+
 export type SubscriptionInvoiceCreateWithoutTransactionsInput = {
   id?: string
   code: string
@@ -832,6 +950,7 @@ export type SubscriptionInvoiceCreateWithoutTransactionsInput = {
   updatedAt?: Date | string
   tenant: Prisma.TenantCreateNestedOneWithoutSubscriptionInvoicesInput
   plan: Prisma.PlanCreateNestedOneWithoutInvoicesInput
+  refundRequest?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutInvoiceInput
 }
 
 export type SubscriptionInvoiceUncheckedCreateWithoutTransactionsInput = {
@@ -849,6 +968,7 @@ export type SubscriptionInvoiceUncheckedCreateWithoutTransactionsInput = {
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
+  refundRequest?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutInvoiceInput
 }
 
 export type SubscriptionInvoiceCreateOrConnectWithoutTransactionsInput = {
@@ -882,6 +1002,7 @@ export type SubscriptionInvoiceUpdateWithoutTransactionsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tenant?: Prisma.TenantUpdateOneRequiredWithoutSubscriptionInvoicesNestedInput
   plan?: Prisma.PlanUpdateOneRequiredWithoutInvoicesNestedInput
+  refundRequest?: Prisma.SubscriptionRefundRequestUpdateOneWithoutInvoiceNestedInput
 }
 
 export type SubscriptionInvoiceUncheckedUpdateWithoutTransactionsInput = {
@@ -899,6 +1020,7 @@ export type SubscriptionInvoiceUncheckedUpdateWithoutTransactionsInput = {
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  refundRequest?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutInvoiceNestedInput
 }
 
 export type SubscriptionInvoiceCreateManyPlanInput = {
@@ -932,6 +1054,7 @@ export type SubscriptionInvoiceUpdateWithoutPlanInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tenant?: Prisma.TenantUpdateOneRequiredWithoutSubscriptionInvoicesNestedInput
   transactions?: Prisma.PlatformPaymentTransactionUpdateManyWithoutMatchedInvoiceNestedInput
+  refundRequest?: Prisma.SubscriptionRefundRequestUpdateOneWithoutInvoiceNestedInput
 }
 
 export type SubscriptionInvoiceUncheckedUpdateWithoutPlanInput = {
@@ -949,6 +1072,7 @@ export type SubscriptionInvoiceUncheckedUpdateWithoutPlanInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   transactions?: Prisma.PlatformPaymentTransactionUncheckedUpdateManyWithoutMatchedInvoiceNestedInput
+  refundRequest?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutInvoiceNestedInput
 }
 
 export type SubscriptionInvoiceUncheckedUpdateManyWithoutPlanInput = {
@@ -998,6 +1122,7 @@ export type SubscriptionInvoiceUpdateWithoutTenantInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   plan?: Prisma.PlanUpdateOneRequiredWithoutInvoicesNestedInput
   transactions?: Prisma.PlatformPaymentTransactionUpdateManyWithoutMatchedInvoiceNestedInput
+  refundRequest?: Prisma.SubscriptionRefundRequestUpdateOneWithoutInvoiceNestedInput
 }
 
 export type SubscriptionInvoiceUncheckedUpdateWithoutTenantInput = {
@@ -1015,6 +1140,7 @@ export type SubscriptionInvoiceUncheckedUpdateWithoutTenantInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   transactions?: Prisma.PlatformPaymentTransactionUncheckedUpdateManyWithoutMatchedInvoiceNestedInput
+  refundRequest?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutInvoiceNestedInput
 }
 
 export type SubscriptionInvoiceUncheckedUpdateManyWithoutTenantInput = {
@@ -1082,6 +1208,7 @@ export type SubscriptionInvoiceSelect<ExtArgs extends runtime.Types.Extensions.I
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
   plan?: boolean | Prisma.PlanDefaultArgs<ExtArgs>
   transactions?: boolean | Prisma.SubscriptionInvoice$transactionsArgs<ExtArgs>
+  refundRequest?: boolean | Prisma.SubscriptionInvoice$refundRequestArgs<ExtArgs>
   _count?: boolean | Prisma.SubscriptionInvoiceCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["subscriptionInvoice"]>
 
@@ -1145,6 +1272,7 @@ export type SubscriptionInvoiceInclude<ExtArgs extends runtime.Types.Extensions.
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
   plan?: boolean | Prisma.PlanDefaultArgs<ExtArgs>
   transactions?: boolean | Prisma.SubscriptionInvoice$transactionsArgs<ExtArgs>
+  refundRequest?: boolean | Prisma.SubscriptionInvoice$refundRequestArgs<ExtArgs>
   _count?: boolean | Prisma.SubscriptionInvoiceCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type SubscriptionInvoiceIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1162,6 +1290,7 @@ export type $SubscriptionInvoicePayload<ExtArgs extends runtime.Types.Extensions
     tenant: Prisma.$TenantPayload<ExtArgs>
     plan: Prisma.$PlanPayload<ExtArgs>
     transactions: Prisma.$PlatformPaymentTransactionPayload<ExtArgs>[]
+    refundRequest: Prisma.$SubscriptionRefundRequestPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1581,6 +1710,7 @@ export interface Prisma__SubscriptionInvoiceClient<T, Null = never, ExtArgs exte
   tenant<T extends Prisma.TenantDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.TenantDefaultArgs<ExtArgs>>): Prisma.Prisma__TenantClient<runtime.Types.Result.GetResult<Prisma.$TenantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   plan<T extends Prisma.PlanDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PlanDefaultArgs<ExtArgs>>): Prisma.Prisma__PlanClient<runtime.Types.Result.GetResult<Prisma.$PlanPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   transactions<T extends Prisma.SubscriptionInvoice$transactionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SubscriptionInvoice$transactionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PlatformPaymentTransactionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  refundRequest<T extends Prisma.SubscriptionInvoice$refundRequestArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SubscriptionInvoice$refundRequestArgs<ExtArgs>>): Prisma.Prisma__SubscriptionRefundRequestClient<runtime.Types.Result.GetResult<Prisma.$SubscriptionRefundRequestPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2046,6 +2176,25 @@ export type SubscriptionInvoice$transactionsArgs<ExtArgs extends runtime.Types.E
   take?: number
   skip?: number
   distinct?: Prisma.PlatformPaymentTransactionScalarFieldEnum | Prisma.PlatformPaymentTransactionScalarFieldEnum[]
+}
+
+/**
+ * SubscriptionInvoice.refundRequest
+ */
+export type SubscriptionInvoice$refundRequestArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the SubscriptionRefundRequest
+   */
+  select?: Prisma.SubscriptionRefundRequestSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the SubscriptionRefundRequest
+   */
+  omit?: Prisma.SubscriptionRefundRequestOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SubscriptionRefundRequestInclude<ExtArgs> | null
+  where?: Prisma.SubscriptionRefundRequestWhereInput
 }
 
 /**

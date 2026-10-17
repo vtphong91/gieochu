@@ -4,6 +4,8 @@ import { requireVerifiedAccess } from "../../../lib/page-guards";
 import { listLibraryEntitlements } from "../../../lib/library";
 import { LibraryEntitlementCard } from "./_ui/library-entitlement-card";
 import { LIBRARY_FOCUS } from "./_ui/confirm-dialog";
+import { EmptyState } from "../../admin/_ui/kit";
+import { IconPackage } from "../../admin/_ui/icons";
 
 /** §"M9": entitlements from every tenant, grouped by tenant. ADR-039: thẻ tài liệu bị gỡ do vi phạm có khối lựa chọn. */
 export default async function LibraryPage() {
@@ -15,9 +17,9 @@ export default async function LibraryPage() {
   );
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10 sm:py-16">
+    <div className="mx-auto w-full max-w-3xl">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <h1 className="text-2xl font-bold">Thư viện của bạn</h1>
+        <h1 className="font-[family-name:var(--font-heading)] text-2xl font-bold" style={{ color: brandColors.ink }}>Thư viện của bạn</h1>
         <Link href="/account/orders" className={`inline-flex min-h-11 items-center rounded text-sm text-[var(--color-primary)] underline lg:min-h-0 ${LIBRARY_FOCUS}`}>
           Lịch sử đơn hàng
         </Link>
@@ -31,9 +33,21 @@ export default async function LibraryPage() {
       ) : null}
 
       {groups.length === 0 ? (
-        <div className="mt-6 rounded-2xl border border-dashed px-4 py-12 text-center" style={{ borderColor: "#E5E7EB" }}>
-          <p className="font-semibold">Bạn chưa có tài liệu nào.</p>
-          <p className="mt-1 text-sm text-gray-600">Tài liệu bạn mua sẽ xuất hiện ở đây để tải xuống.</p>
+        <div className="mt-6">
+          <EmptyState
+            icon={<IconPackage className="h-6 w-6" />}
+            title="Bạn chưa có tài liệu nào"
+            description="Tài liệu bạn mua sẽ xuất hiện ở đây để tải xuống."
+            action={
+              <Link
+                href="/cua-hang"
+                className={`inline-flex min-h-11 items-center justify-center rounded-lg px-5 text-sm font-semibold text-white hover:brightness-110 ${LIBRARY_FOCUS}`}
+                style={{ background: brandColors.primary }}
+              >
+                Khám phá tài liệu
+              </Link>
+            }
+          />
         </div>
       ) : (
         groups.map((group) => (
@@ -49,6 +63,6 @@ export default async function LibraryPage() {
           </section>
         ))
       )}
-    </main>
+    </div>
   );
 }

@@ -55,6 +55,7 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: "/admin/cms", label: "Trang CMS", Icon: IconDoc },
       { href: "/admin/cms/shop", label: "Trang Cửa hàng", Icon: IconShoppingBag },
+      { href: "/admin/cms/pricing", label: "Trang Bảng giá", Icon: IconPackage },
       { href: "/admin/categories", label: "Danh mục tài liệu", Icon: IconTag },
     ],
   },
@@ -65,6 +66,7 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: "/admin/billing/payment", label: "Thanh toán nền tảng", Icon: IconCard },
       { href: "/admin/billing/invoices", label: "Hoá đơn", Icon: IconReceipt },
+      { href: "/admin/billing/refunds", label: "Hoàn tiền gói", Icon: IconReceipt },
     ],
   },
   {
@@ -164,6 +166,7 @@ function CountPill({ count, srText }: { count: number; srText: string }) {
 
 const BADGE_TEXT: Record<string, (n: number) => string> = {
   "/admin/reports": (n) => `${n} báo cáo chờ xử lý`,
+  "/admin/billing/refunds": (n) => `${n} yêu cầu hoàn tiền chờ duyệt`,
 };
 
 export function AdminSidebarNav({ badges = {} }: { badges?: Partial<Record<string, number>> }) {

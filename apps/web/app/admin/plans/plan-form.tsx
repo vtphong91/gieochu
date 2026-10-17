@@ -53,10 +53,10 @@ export function PlanForm({
             <option value="YEAR">Năm</option>
           </SelectField>
           <TextField id="plan-intervalCount" label="Số chu kỳ" name="intervalCount" type="number" defaultValue={initial.intervalCount} required />
-          <TextField id="plan-maxProducts" label="Giới hạn sản phẩm" name="maxProducts" type="number" defaultValue={initial.maxProducts} required />
-          <TextField id="plan-storageMb" label="Dung lượng (MB)" name="storageMb" type="number" defaultValue={initial.storageMb} required />
-          <TextField id="plan-maxFileMb" label="Kích thước file tối đa (MB)" name="maxFileMb" type="number" defaultValue={initial.maxFileMb} required />
-          <TextField id="plan-imageStorageMb" label="Dung lượng ảnh (MB)" name="imageStorageMb" type="number" defaultValue={initial.imageStorageMb} required />
+          <TextField id="plan-maxProducts" label="Giới hạn sản phẩm" name="maxProducts" type="number" min={-1} step={1} hint="0 = không được phép · -1 = không giới hạn" defaultValue={initial.maxProducts} required />
+          <TextField id="plan-storageMb" label="Dung lượng (MB)" name="storageMb" type="number" min={-1} step={1} hint="0 = không được phép · -1 = không giới hạn" defaultValue={initial.storageMb} required />
+          <TextField id="plan-maxFileMb" label="Kích thước file tối đa (MB)" name="maxFileMb" type="number" min={-1} step={1} hint="0 = không được phép · -1 = không giới hạn" defaultValue={initial.maxFileMb} required />
+          <TextField id="plan-imageStorageMb" label="Dung lượng ảnh (MB)" name="imageStorageMb" type="number" min={-1} step={1} hint="0 = không được phép · -1 = không giới hạn" defaultValue={initial.imageStorageMb} required />
         </div>
 
         <div className="rounded-lg border bg-gray-50 px-3.5 py-3" style={{ borderColor: "#E5E7EB" }}>

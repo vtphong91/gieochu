@@ -1,78 +1,67 @@
 "use server";
 
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { z } from "zod";
-import { isProfileComplete, signAccessToken } from "@gieochu/auth";
-import { getPrismaClient } from "@gieochu/db";
-import { requireUser } from "../../../lib/session";
-import { getAccessTokenTtlSeconds, getJwtContext } from "../../../lib/jwt-context";
-import { ACCESS_COOKIE_NAME } from "../../../lib/cookies";
-import { toSafeRedirect } from "../../../lib/safe-redirect";
-
-const profileSchema = z.object({
-  fullName: z.string().trim().min(1),
-  phone: z.string().trim().min(1),
-  province: z.string().trim().min(1),
-  next: z.string().optional(),
-});
+import { revalidatePath } from "next/cache";
+import {
+  createAvatarUploadSignature,
+  removeAvatar,
+  saveAvatar,
+  updateProfile,
+  type SaveAvatarState,
+  type UpdateProfileState,
+} from "../../../lib/account-profile";
+import { accountErrorState, type AccountActionState } from "../../../lib/account-state";
+import { signatureError, signatureOk, type CloudinarySignatureResult } from "../../../lib/cloudinary-signature";
+import { requireVerified } from "../../../lib/session";
 
 /**
- * Server Action backing /account/profile — trang cập nhật hồ sơ bình thường,
- * không còn là cổng chặn bắt buộc trước khi dùng hệ thống (đã bỏ "Bạn là"/
- * occupation vì trùng lựa chọn loại tài khoản đã chọn lúc đăng ký, và bỏ
- * redirect ép hoàn thiện hồ sơ — xem lib/page-guards.ts).
+ * ADR-041 C2 — lưu hồ sơ (`useActionState`): `fullName` (1–80, bắt buộc), `phone?`, `province?` (tuỳ chọn).
+ * Lỗi theo ô ở `fieldErrors`; giá trị đã gõ ở `values` khi lỗi.
  */
-export async function completeProfileAction(formData: FormData): Promise<void> {
-  const currentUser = await requireUser();
-  const parsed = profileSchema.safeParse({
-    fullName: formData.get("fullName"),
-    phone: formData.get("phone"),
-    province: formData.get("province"),
-    next: formData.get("next") ?? undefined,
-  });
-
-  if (!parsed.success) {
-    redirect("/account/profile?error=1");
+export async function updateProfileAction(_prev: UpdateProfileState, formData: FormData): Promise<UpdateProfileState> {
+  try {
+    const user = await requireVerified();
+    const state = await updateProfile(user, formData);
+    if (state?.ok) revalidatePath("/account", "layout");
+    return state;
+  } catch (error) {
+    return accountErrorState(error, "updateProfileAction");
   }
+}
 
-  const { next, ...profileData } = parsed.data;
-  const prisma = getPrismaClient();
-  const now = new Date();
+/**
+ * ADR-041 C6 — chữ ký upload ảnh đại diện (Cloudinary hệ thống, `users/<userId>/avatar/<hex>`, png/jpeg/webp,
+ * incoming `c_limit,w_1024,h_1024`). Cùng contract `CloudinarySignatureResult` với `ImageUploadField`
+ * (`errorCode`: `CLOUDINARY_NOT_CONFIGURED` | `RATE_LIMITED` | `UNAUTHORIZED` | `FORBIDDEN`). Không tính hạn mức gói.
+ */
+export async function getAvatarUploadSignatureAction(): Promise<CloudinarySignatureResult> {
+  try {
+    const user = await requireVerified();
+    return signatureOk(await createAvatarUploadSignature(user.userId));
+  } catch (error) {
+    return signatureError(error);
+  }
+}
 
-  const updatedProfile = await prisma.userProfile.update({
-    where: { userId: currentUser.userId },
-    data: profileData,
-  });
+/** ADR-041 C6 — ghi nhận ảnh vừa upload (`publicId` từ chữ ký) → `{ ok, message, avatarUrl }`. */
+export async function saveAvatarAction(publicId: string): Promise<SaveAvatarState> {
+  try {
+    const user = await requireVerified();
+    const state = await saveAvatar(user.userId, publicId);
+    if (state?.ok) revalidatePath("/", "layout");
+    return state;
+  } catch (error) {
+    return accountErrorState(error, "saveAvatarAction");
+  }
+}
 
-  const complete = isProfileComplete(updatedProfile);
-  const user = await prisma.user.update({
-    where: { id: currentUser.userId },
-    data: complete ? { profileCompletedAt: now } : {},
-  });
-
-  // Re-issue the access token so its `pc` claim reflects the update immediately.
-  const accessTtl = await getAccessTokenTtlSeconds();
-  const accessToken = await signAccessToken(
-    {
-      sub: user.id,
-      sid: currentUser.familyId,
-      role: user.systemRole,
-      ver: Boolean(user.emailVerifiedAt),
-      pc: complete,
-    },
-    getJwtContext(),
-    accessTtl,
-  );
-
-  const store = await cookies();
-  store.set(ACCESS_COOKIE_NAME, accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: accessTtl,
-  });
-
-  redirect(toSafeRedirect(next, "/account/profile"));
+/** ADR-041 C6 — gỡ ảnh đại diện (`avatarKey = null`). */
+export async function removeAvatarAction(): Promise<AccountActionState> {
+  try {
+    const user = await requireVerified();
+    const state = await removeAvatar(user.userId);
+    revalidatePath("/", "layout");
+    return state;
+  } catch (error) {
+    return accountErrorState(error, "removeAvatarAction");
+  }
 }

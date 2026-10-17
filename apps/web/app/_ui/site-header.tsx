@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { brandColors } from "@gieochu/config/theme";
-import { getPrismaClient } from "@gieochu/db";
 import { getEffectiveBrand, getEffectiveLogos } from "../../lib/branding";
 import { getCurrentUser } from "../../lib/session";
 import { resolveLandingPath } from "../../lib/landing-path";
+import { getAccountHeaderData } from "../../lib/account-profile";
 import { AccountMenu } from "./account-menu";
 import { BrandMark } from "./brand-mark";
 import { MobileNav, type MobileNavItem } from "./mobile-nav";
@@ -45,17 +45,19 @@ export async function SiteHeader({ current }: { current?: SiteNavKey } = {}) {
   // Center/Studio) — khách hàng thường thì landingPath rơi về "/", không cần
   // mục riêng vì 3 mục /account/* trong AccountMenu đã đủ.
   let accountDisplayName: string | null = null;
+  let accountEmail: string | null = null;
+  let accountAvatarUrl: string | null = null;
   let primaryHref: string | null = null;
   let primaryLabel: string | null = null;
   if (currentUser) {
     const [landingPath, account] = await Promise.all([
       resolveLandingPath(currentUser),
-      getPrismaClient().user.findUnique({
-        where: { id: currentUser.userId },
-        select: { email: true, profile: { select: { fullName: true } } },
-      }),
+      // ADR-041 C7: họ tên + ảnh đại diện (96px) cho AccountMenu.
+      getAccountHeaderData(currentUser.userId),
     ]);
-    accountDisplayName = account?.profile?.fullName || account?.email || "Tài khoản của tôi";
+    accountDisplayName = account?.fullName || account?.email || "Tài khoản của tôi";
+    accountEmail = account?.email ?? null;
+    accountAvatarUrl = account?.avatarUrl ?? null;
     if (landingPath === "/admin") {
       primaryHref = "/admin";
       primaryLabel = "Trang quản trị hệ thống";
@@ -104,7 +106,13 @@ export async function SiteHeader({ current }: { current?: SiteNavKey } = {}) {
         </nav>
         <div className="flex items-center gap-3 sm:gap-5">
           {accountDisplayName ? (
-            <AccountMenu displayName={accountDisplayName} primaryHref={primaryHref} primaryLabel={primaryLabel} />
+            <AccountMenu
+              displayName={accountDisplayName}
+              email={accountEmail}
+              avatarUrl={accountAvatarUrl}
+              primaryHref={primaryHref}
+              primaryLabel={primaryLabel}
+            />
           ) : (
             <>
               <Link href="/login" className="hidden min-h-11 items-center text-[15px] font-semibold sm:inline-flex">

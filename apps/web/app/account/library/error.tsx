@@ -1,10 +1,12 @@
 "use client";
 
+import { brandColors } from "@gieochu/config/theme";
+
 /** Lỗi khi tải Thư viện — thông điệp tiếng Việt + nút thử lại (không lộ chi tiết lỗi kỹ thuật). */
 export default function LibraryError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10 sm:py-16">
-      <h1 className="text-2xl font-bold">Thư viện của bạn</h1>
+    <div className="mx-auto w-full max-w-3xl">
+      <h1 className="font-[family-name:var(--font-heading)] text-2xl font-bold" style={{ color: brandColors.ink }}>Thư viện của bạn</h1>
       <div role="alert" className="mt-6 rounded-xl border border-l-4 p-4 text-sm leading-relaxed" style={{ borderColor: "#B91C1C", background: "#FEF2F2" }}>
         <p className="font-semibold">Không tải được thư viện.</p>
         <p className="mt-1">Đã có lỗi khi đọc danh sách tài liệu của bạn. Vui lòng thử lại sau ít phút.</p>
@@ -16,6 +18,6 @@ export default function LibraryError({ reset }: { error: Error & { digest?: stri
       >
         Thử lại
       </button>
-    </main>
+    </div>
   );
 }

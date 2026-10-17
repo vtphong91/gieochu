@@ -1,3 +1,5 @@
+import { PLAN_LIMIT_UNLIMITED } from "../billing/plan-limits";
+
 export interface PlanInput {
   interval: "MONTH" | "YEAR";
   intervalCount: number;
@@ -16,16 +18,21 @@ function isNonNegativeInt(value: number): boolean {
   return Number.isInteger(value) && value >= 0;
 }
 
-/** §"M2"/"M3 v2": CRUD gói — chu kỳ hợp lệ, mọi giới hạn/giá không âm, features toàn cờ boolean. */
+/** ADR-041 A4: hạn mức là số nguyên ≥ 0 (0 = không được phép) hoặc đúng -1 (= không giới hạn). */
+function isValidLimit(value: number): boolean {
+  return isNonNegativeInt(value) || value === PLAN_LIMIT_UNLIMITED;
+}
+
+/** §"M2"/"M3 v2": CRUD gói — chu kỳ hợp lệ, giá không âm, hạn mức ≥ 0 hoặc -1 (không giới hạn), features toàn cờ boolean. */
 export function isValidPlanInput(input: PlanInput): boolean {
   if (input.interval !== "MONTH" && input.interval !== "YEAR") return false;
   if (!Number.isInteger(input.intervalCount) || input.intervalCount <= 0) return false;
   if (input.features && Object.values(input.features).some((v) => typeof v !== "boolean")) return false;
   return (
     isNonNegativeInt(input.priceVnd) &&
-    isNonNegativeInt(input.maxProducts) &&
-    isNonNegativeInt(input.storageMb) &&
-    isNonNegativeInt(input.maxFileMb) &&
-    (input.imageStorageMb === undefined || isNonNegativeInt(input.imageStorageMb))
+    isValidLimit(input.maxProducts) &&
+    isValidLimit(input.storageMb) &&
+    isValidLimit(input.maxFileMb) &&
+    (input.imageStorageMb === undefined || isValidLimit(input.imageStorageMb))
   );
 }
