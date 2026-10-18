@@ -7,7 +7,7 @@ tags:
   - database
   - status/living
 date: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-18
 author: Long
 ---
 
@@ -29,7 +29,8 @@ author: Long
 - Bảng L1 `tenant_daily_stats` — số liệu tổng hợp theo tenant + ngày giờ Việt Nam ✅.
 - Job `stats.aggregate` trong cron `/api/cron/daily` (ADR-036) ✅.
 - Section "Hoạt động bán tài liệu (30 ngày)" trên dashboard System Admin `/admin` ✅.
-- **Không** thuộc M12b: thống kê cho tenant xem trong Studio; báo cáo vi phạm (M12c); số liệu theo giờ (đặc tả gốc ghi "mỗi giờ" —
+- **Không** thuộc M12b: thống kê cho tenant xem trong Studio (làm sau ở ADR-043, **không** đọc bảng này — xem §9 và
+  [[02-System-Specs/Studio-Dashboard-Specs|Studio-Dashboard-Specs]]); báo cáo vi phạm (M12c); số liệu theo giờ (đặc tả gốc ghi "mỗi giờ" —
   ADR-037 mục 5 đổi thành hằng ngày).
 
 ---
@@ -168,8 +169,26 @@ cuối …. GMV là tổng tiền khách trả (gộp, chưa trừ hoàn tiền)
 
 ---
 
-## 9. Liên kết
+## 9. Chênh lệch với dashboard Tổng quan gian hàng (ADR-043) ✅ (đối chiếu code 2026-10-18)
 
+Dashboard Studio `/studio/{slug}` ([[02-System-Specs/Studio-Dashboard-Specs|Studio-Dashboard-Specs]]) tính **realtime từ bảng L2 qua
+`withTenant`**, không đọc `tenant_daily_stats`. Hai nơi có thể hiện số khác nhau cho cùng gian hàng — **đúng thiết kế**:
+
+| Chỉ số | System Center (`tenant_daily_stats`, M12b) | Studio Tổng quan (ADR-043) |
+| :-- | :-- | :-- |
+| Cửa sổ | 30 ngày lịch VN **kết thúc hôm qua**, cập nhật bởi cron 03:00 | Kỳ chọn `?ky=` (mặc định 30 ngày **gồm hôm nay**, tới thời điểm mở trang) |
+| Doanh thu / GMV | Σ `totalVnd` theo `paidAt`, gồm đơn sau này hoàn — **gộp** | "Doanh thu (gộp)" cùng định nghĩa (đơn 0đ cộng 0 nên tổng tiền không đổi) + thêm "Doanh thu thực nhận" = gộp − đơn hiện `REFUNDED` (theo ngày trả) |
+| Đơn đã thanh toán | `ordersPaid` đếm **mọi** đơn có `paidAt`, **kể cả đơn 0đ** (`lib/tenant-stats.ts` không lọc `totalVnd`) | `paidOrders` **chỉ đơn > 0đ**; đơn 0đ đếm riêng ở "Lượt nhận tài liệu miễn phí" (Bổ sung ADR-043) |
+| Khách mới | `tenant_customers.firstOrderAt` | Cùng định nghĩa (gồm khách chỉ nhận miễn phí) |
+| Lượt tải | `download_events.createdAt` | Cùng định nghĩa |
+
+→ Cùng khoảng ngày, **tiền gộp và khách mới khớp nhau**, **số đơn lệch đúng bằng số đơn 0đ**. Không phải lỗi; ghi để không "sửa" nhầm.
+
+---
+
+## 10. Liên kết
+
+* [[02-System-Specs/Studio-Dashboard-Specs|Studio-Dashboard-Specs]] — dashboard Studio ADR-043, §9 ([Studio-Dashboard-Specs.md](./Studio-Dashboard-Specs.md))
 * [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]] — M12a cùng ADR-037 ([Audit-Log-Specs.md](./Audit-Log-Specs.md))
 * [[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]] §5 — cron hằng ngày ([Background-Jobs-Specs.md](./Background-Jobs-Specs.md))
 * [[02-System-Specs/User-Management-System-Center-Specs|User-Management-System-Center-Specs]] — System Center, ranh giới §7.9 ([User-Management-System-Center-Specs.md](./User-Management-System-Center-Specs.md))

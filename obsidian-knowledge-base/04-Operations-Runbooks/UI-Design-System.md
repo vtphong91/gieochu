@@ -5,7 +5,7 @@ tags:
   - design-system
   - status/living
 date: 2026-05-24
-updated: 2026-10-17
+updated: 2026-10-18
 author: System Architect
 ---
 
@@ -288,7 +288,7 @@ thật, đăng xuất thật, trình đọc màn hình ❓.
 
 ## 6. Bộ Icon Dùng Chung (`apps/web/app/admin/_ui/icons.tsx`)
 
-**46** icon SVG dạng component (đếm lại `export function Icon` 2026-10-17 ✅; danh sách dưới là mốc 42 của 2026-09-28, các icon thêm sau — `IconMenu`, `IconClose`, `IconShoppingBag`… — ghi ở §14.6 và các mục tương ứng) (`IconProps = { className?: string }`; mốc 2026-09-28 sau M10b — thêm
+**50** icon SVG dạng component (đếm lại `export function Icon` 2026-10-18 ✅ — ADR-043 thêm `IconArrowUp`/`IconArrowDown` (mũi tên xu hướng trong `ChangeLine`), `IconStarSolid` (điểm đánh giá, top đánh giá), `IconGift` (thẻ "Lượt nhận tài liệu miễn phí"), §19; danh sách dưới là mốc 42 của 2026-09-28, các icon thêm sau — `IconMenu`, `IconClose`, `IconShoppingBag`… — ghi ở §14.6 và các mục tương ứng) (`IconProps = { className?: string }`; mốc 2026-09-28 sau M10b — thêm
 `IconNewspaper` (mục "Bài viết" sidebar Studio, key `posts`; icon trạng thái rỗng) và `IconPin` (ghim bài), ADR-029 M10b), dùng chung cho cả System Center và
 Studio, cùng vị trí `_ui` với `kit.tsx`:
 
@@ -304,7 +304,7 @@ liệt kê 35 tên — số đúng trước đợt này là 35 ✅ `git show HEA
 Dùng làm `icon` prop cho `ConfigCard`/`TableCard`/`EmptyState`, hoặc độc lập trong nút/menu hành động
 (`RowActionButton`, kebab menu).
 
-**A11y mặc định (2026-10-15 ✅):** cả 42 `<svg>` trong `icons.tsx` đều có `aria-hidden="true"` — icon là trang trí; nút/link chỉ
+**A11y mặc định (2026-10-15 ✅; đếm lại 2026-10-18: 50/50):** mọi `<svg>` trong `icons.tsx` đều có `aria-hidden="true"` — icon là trang trí; nút/link chỉ
 có icon phải tự có tên truy cập (`aria-label` hoặc chữ `sr-only`).
 
 ---
@@ -1172,6 +1172,7 @@ kiểm tay riêng ❓.
 | File | Vai trò |
 | :-- | :-- |
 | `admin/_ui/sales-stats.tsx` | Chỉ trình bày, **Server Component** (không hook): `SalesStatsSection({ overview, metric })`, `SalesStatsSkeleton()`, `parseSalesChartMetric(raw)`, kiểu `SalesChartMetric = "gmv" \| "don"`, `AdminStatsOverviewView`. Nhận kết quả `getAdminStatsOverview()` qua prop — **không tự truy vấn** |
+| `admin/_ui/stats-chart.tsx` (từ ADR-043, 2026-10-18) | Khối con dùng chung với Studio Tổng quan: `KpiCard`, `ChangeLine`, `computeChange`, `TrendChart`, định dạng VND — `sales-stats.tsx` đã refactor để import thay cho các hàm nội bộ cũ (`KpiCard`, `DailyChart`, `computeChange`, `formatVndCompact`). Nhãn trục X `/admin` vẫn neo ngày cuối, lùi 7 ngày (truyền `showTick` riêng). **Chưa kiểm lại `/admin` trên trình duyệt sau refactor** ❓. API: §19.4 |
 | `admin/page.tsx` | Component async `SalesStats` gọi `getAdminStatsOverview({ days: 30 })`, bọc `<Suspense fallback={<SalesStatsSkeleton />}>` riêng — phần còn lại dashboard không phải chờ. Đặt sau khối thanh toán gói gần đây, trước "Thao tác nhanh" |
 
 Section có `id="hoat-dong-ban-tai-lieu"` + `scroll-mt-20`, `aria-labelledby` trỏ tiêu đề `h2`.
@@ -1223,8 +1224,9 @@ Section có `id="hoat-dong-ban-tai-lieu"` + `scroll-mt-20`, `aria-labelledby` tr
 
 ### 16.7. Việc còn mở (liên quan UI)
 
-* ⚠️ Hex hard-code trong `sales-stats.tsx` chưa có token: `#E5E7EB` (viền, cột rỗng), `#6B7280` (chữ phụ), `#D1D5DB` (đường đáy biểu đồ);
-  màu xu hướng dùng class Tailwind `text-green-700`/`text-red-700` ✅ đọc code.
+* ⚠️ Hex hard-code trong `sales-stats.tsx` chưa có token: còn `LINE = "#E5E7EB"` (viền khung/bảng) ✅ đọc code 2026-10-18 — `#6B7280` (chữ
+  phụ) và `#D1D5DB` (đường đáy) đã bỏ khi refactor sang `stats-chart.tsx` (chữ phụ nay `brandColors.inkSoft`, lưới dùng thang xám Tailwind).
+  Màu xu hướng vẫn `text-green-700`/`text-red-700`, luôn kèm mũi tên + chữ "Tăng/Giảm".
 
 ---
 
@@ -1411,7 +1413,86 @@ tác đọc qua **một** vùng `role="status"` ẩn, không dời focus; thêm 
 
 ---
 
-## 19. Tài Liệu Tham Chiếu & Liên Kết
+## 19. Dashboard Tổng Quan Gian Hàng `/studio/{slug}` (ADR-043) ✅
+
+Quyết định: [[01-Architecture-Decisions/ADR-029-Studio-Dashboard-Period-Gross-Net-Revenue|ADR-029 (≙ ADR-043)]]; định nghĩa số liệu:
+[[02-System-Specs/Studio-Dashboard-Specs|Studio-Dashboard-Specs]]; contract: [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §22. Phong
+làm UI theo brief của Quốc, Long đọc code 2026-10-18 (working tree, chưa commit). Kiểm: lint/typecheck/build đạt (Quốc chạy lại 2026-10-18) 🟡,
+xem trước dữ liệu giả 360/768/1280 🟡. **Chưa** kiểm phiên OWNER thật, bàn phím/trình đọc màn hình ❓.
+
+### 19.1. File
+
+| File | Vai trò |
+| :-- | :-- |
+| `studio/[tenantSlug]/(tong-quan)/page.tsx` | Server Component: guard OWNER → `resolveDashboardRange` → `getTenantDashboard` → `StudioDashboardView`. Route group `(tong-quan)` (URL không đổi) để `loading.tsx`/`error.tsx` **chỉ** áp cho Tổng quan, không phủ các trang con Studio (`git status`: `page.tsx` cũ đổi tên vào đây) |
+| `(tong-quan)/loading.tsx` + `_ui/dashboard-skeleton.tsx` | `StudioDashboardSkeleton` — `aria-busy`, `role="status"` ẩn, `animate-pulse motion-reduce:animate-none`; cũng hiện khi đổi kỳ (đổi searchParams = điều hướng mới) |
+| `(tong-quan)/error.tsx` | Client; `role="alert"`, tiêu đề "Không tải được số liệu Tổng quan", hiện `digest` (không `error.message`), nút "Thử lại" (`retry()` — "Next 16.3" theo comment code 🟡) + link "Xem đơn hàng"; nằm trong app shell nên sidebar vẫn dùng được |
+| `(tong-quan)/_ui/dashboard.tsx` | `StudioDashboardView({ tenant, data, metric })` — chỉ trình bày, nhận `TenantDashboard` qua prop |
+| `(tong-quan)/_ui/dashboard-format.ts` | Thuần: `parseStudioChartMetric` (`gop` mặc định \| `thuc-nhan`), `dashboardHref` (bỏ giá trị mặc định khỏi query), định dạng ngày giờ VN, `GRANULARITY_UNIT`, `formatRating`, `formatPercent` |
+| `admin/_ui/stats-chart.tsx` | Component thống kê dùng chung `/admin` + Studio (§19.4) |
+
+### 19.2. Thứ tự khối
+
+1. **Header** `AdminPageHeader`: tên gian hàng, phụ đề `/{slug} · trạng thái: {status}` (giá trị enum thô — nhãn tiếng Việt ở BACKLOG), "Cập nhật
+   lúc … giờ Việt Nam".
+2. **Việc cần xử lý** (chỉ hiện khi có): khối yêu cầu hoàn tiền ADR-039 (giữ), rồi danh sách đánh giá chưa trả lời (→ `/reviews?status=VISIBLE`),
+   tài liệu bị khoá kiểm duyệt (→ `/products`), đơn chờ thanh toán (→ `/orders?status=PENDING`).
+3. **Gian hàng chưa có đơn nào** (`latestOrders` rỗng) → thay mục 4–8 bằng **checklist 3 bước** (khung nét đứt): Thêm tài liệu đầu tiên (xong khi
+   có ≥ 1 tài liệu) · Xuất bản tài liệu (xong khi có tài liệu Công khai) · Chia sẻ trang bán hàng (link `/{slug}` tab mới, có chữ ẩn "(mở tab
+   mới)").
+4. **Kỳ thống kê**: `h2` "Kỳ thống kê: {label}" + "So với {prevLabel} (cùng độ dài)"; `<nav aria-label="Chọn kỳ thống kê">` 8 chip link
+   (`aria-current="page"` ở kỳ đang chọn; chip active nền primary chữ trắng; `min-h-11`, `lg:min-h-9`); `<details>` "Tuỳ chọn: chọn khoảng ngày"
+   (mở sẵn khi đang xem tuỳ chọn hoặc URL sai) chứa `next/form` GET 2 ô `type="date"` có `<label>`, `max` = hôm nay, gợi ý "Tối đa 366 ngày…"
+   (`aria-describedby`); URL sai → `Notice tone="warning"` báo đang hiện kỳ mặc định.
+5. **Bán hàng**: ghi chú "Đơn có thời điểm khách trả tiền trong kỳ. Không tính tài liệu miễn phí (đơn 0 đ)…"; lưới 4 `KpiCard` có icon tròn —
+   **Doanh thu (gộp)** (note "Tính cả đơn sau này hoàn tiền — cùng cách tính của System Center."), **Doanh thu thực nhận**, **Đơn đã thanh toán**,
+   **Giá trị đơn trung bình**; dải 3 chỉ số phụ: **Đã hoàn tiền** (xu hướng đảo màu — `higherIsBetter=false`), **Tài liệu khác nhau đã bán**, **Lượt
+   nhận tài liệu miễn phí** (`IconGift`).
+6. **Biểu đồ** (`id="bieu-do-doanh-thu"`, `xl:col-span-2`): tiêu đề "{Doanh thu gộp|thực nhận} theo {giờ|ngày|tuần|tháng}"; công tắc link GET
+   `?chi-so=gop|thuc-nhan` (`aria-current`, `scroll={false}` + neo); `TrendChart` **cột** doanh thu, rồi `TrendChart` **đường** màu accent cho số đơn
+   (`h-28`); cột tương lai để trống + chú thích; `<details>` "Xem bảng số liệu theo …" — bảng 4 cột (Thời gian, Doanh thu gộp, Thực nhận, Đơn),
+   mới → cũ, bỏ bucket tương lai, `caption` ẩn, `th scope`, khung `relative max-h-96 overflow-auto` (`min-w-[28rem]`, trang không cuộn ngang).
+   **Top 5 bán chạy** cạnh biểu đồ: phụ đề "{kỳ} · theo số đơn, không tính đơn đã hoàn tiền, gồm lượt nhận miễn phí"; mỗi dòng link tới trang
+   tài liệu trong Studio, chữ ẩn "Hạng n", "{n} đơn · {doanh thu} · đã bán từ trước tới nay {soldCount}"; rỗng → "Chưa có tài liệu nào được mua
+   trong kỳ này."
+7. **10 đơn hàng mới nhất**: `DataTable` 4 cột **Mã đơn** (link chi tiết đơn) · **Khách hàng** (họ tên hoặc "Khách") · **Đơn giá** (ẩn dưới `sm`) ·
+   **Thành tiền**; link "Xem tất cả đơn". **Không có email** (ADR-043 mục 3).
+8. **Ba thẻ nhóm** (`md` 2 cột, `xl` 3 cột), mỗi thẻ có link tới trang quản lý tương ứng: **Khách hàng** (khách mới + xu hướng, người mua trong kỳ,
+   tỷ lệ quay lại) · **Đánh giá** (điểm TB `IconStarSolid`, phân bố 1–5 sao `<ul aria-label>`, đánh giá mới, chưa trả lời/đang ẩn "hiện tại", bị
+   ẩn trong kỳ, bị khoá nếu > 0) · **Tài liệu** (4 ô trạng thái Công khai/Nháp/Lưu trữ/Bị khoá kiểm duyệt — ô khoá cảnh báo khi > 0, lượt tải
+   trong kỳ, top đánh giá).
+
+### 19.3. A11y / responsive (theo code)
+
+- Mọi `section` có `aria-labelledby` → tiêu đề; biểu đồ `role="img"` + `aria-label` tóm tắt (khoảng thời gian, giá trị cao nhất) + bảng thay thế;
+  % thay đổi luôn có mũi tên + chữ "Tăng/Giảm" (không chỉ màu); chỉ số ảnh chụp ghi "hiện tại", luỹ kế ghi "từ trước tới nay".
+- Vùng chạm `min-h-11` dưới `lg`; focus `focus-visible:outline-2` màu primary; không cần JS cho kỳ/chỉ số (link + form GET).
+- App shell fluid theo sidebar (ADR-024/042), padding `px-5 lg:px-8`.
+
+### 19.4. `admin/_ui/stats-chart.tsx` — API dùng chung
+
+Server Component thuần (không hook), không tự truy vấn. Màu từ `brandColors` + thang xám Tailwind.
+
+| Export | Ghi chú |
+| :-- | :-- |
+| `STAT_INK`, `STAT_INK_SOFT`, `STAT_CARD_CLASS` | Màu chữ + class khung thẻ (`min-w-0 rounded-2xl border border-gray-200 bg-white`) |
+| `MoneyLike = bigint \| number \| string`, `toBigIntSafe`, `formatCount`, `formatVndFull` ("1.234.567 đ"), `formatVndCompact` ("12,5 triệu đ") | Định dạng không qua float |
+| `computeChange(cur, prev) → Change` | BigInt, 1 chữ số thập phân; `prev` = 0 hoặc `null` → `{ kind: "none" }` |
+| `ChangeLine({ change, compareLabel, higherIsBetter? })` | "— chưa có số liệu kỳ trước…" / "Không đổi so với …" / mũi tên + "Tăng/Giảm x%" + "so với …"; `higherIsBetter=false` đảo màu |
+| `StatIcon({ icon, tone?, size? })` | Icon tròn `aria-hidden`, tone `primary`/`accent`/`secondary` |
+| `KpiCard({ label, value, detail?, note?, change?, compareLabel?, higherIsBetter?, icon?, iconTone? })` | `compareLabel` mặc định "30 ngày trước"; không có `change` → không dòng xu hướng |
+| `TrendPoint { key, tick, label, value: bigint, future? }`, `TrendChart({ points, variant?: "bar" \| "line", metricName, formatAxis, formatFull, emptyText, color?, heightClass?, integerScale?, showTick? })` | Cột HTML hoặc đường SVG trong khung `aria-hidden`; khối `role="img"` có tóm tắt; nhãn trục X thưa mặc định ~5 nhãn neo điểm đầu |
+| `RatioBar({ ratio, color?, label? })` | Thanh tỉ lệ `aria-hidden` (phân bố sao) |
+
+### 19.5. Việc còn mở (BACKLOG)
+
+* Nhãn tiếng Việt cho `tenant.status` ở phụ đề header.
+* Trang Đánh giá chưa có bộ lọc "chưa trả lời" (link từ "Việc cần xử lý" chỉ lọc `VISIBLE`).
+* Chưa kiểm phiên OWNER thật, `/admin` sau refactor, bàn phím/trình đọc màn hình ❓.
+
+---
+
+## 20. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * `apps/web/app/admin/_ui/kit.tsx`, `apps/web/app/admin/_ui/kit-interactive.tsx`, `apps/web/app/admin/_ui/icons.tsx`
@@ -1433,8 +1514,9 @@ tác đọc qua **một** vùng `role="status"` ẩn, không dời focus; thêm 
 * `apps/web/app/admin/cms/shop/{page,loading}.tsx`, `apps/web/app/admin/cms/shop/_ui/{shop-sections-editor,shop-fields,shop-validation}.ts(x)`, `apps/web/app/admin/_ui/kit.tsx` (`Notice`) (§13) · [[02-System-Specs/Shop-Marketplace-Specs|Shop-Marketplace-Specs]] ([Shop-Marketplace-Specs.md](../02-System-Specs/Shop-Marketplace-Specs.md)) · [[01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First|ADR-021 (≙ ADR-035)]]
 * `apps/web/app/_ui/{catalog-parts,document-card,tenant-card,product-shelf,category-grid,shop-hero,shelf-skeleton,shop-cta,mobile-nav}.tsx`, `apps/web/app/cua-hang/{layout,page,loading,error}.tsx`, `apps/web/app/cua-hang/tai-lieu/{page,loading}.tsx`, `apps/web/app/cua-hang/_ui/search-parts.tsx` (§14)
 * `apps/web/app/admin/_ui/{audit-log,link-pagination,audit-log-skeleton}.tsx`, `apps/web/app/admin/audit/*`, `apps/web/app/studio/[tenantSlug]/activity/*` (§15) · [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]] ([Audit-Log-Specs.md](../02-System-Specs/Audit-Log-Specs.md))
-* `apps/web/app/admin/_ui/sales-stats.tsx`, `apps/web/app/admin/page.tsx` (§16) · [[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]] ([Tenant-Stats-Specs.md](../02-System-Specs/Tenant-Stats-Specs.md))
+* `apps/web/app/admin/_ui/{sales-stats,stats-chart}.tsx`, `apps/web/app/admin/page.tsx` (§16) · [[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]] ([Tenant-Stats-Specs.md](../02-System-Specs/Tenant-Stats-Specs.md))
 * `apps/web/app/admin/cms/_ui/sortable-list-editor.tsx`, `apps/web/app/admin/cms/pricing/*`, `apps/web/app/pricing/*`, `apps/web/app/_ui/pricing/*`, `apps/web/app/account/**`, `apps/web/app/_ui/{account-menu,account-avatar}.tsx`, `apps/web/app/admin/billing/refunds/*`, `apps/web/app/studio/[tenantSlug]/billing/refund-request-form.tsx` (§18) · [[02-System-Specs/Pricing-Page-Specs|Pricing-Page-Specs]] ([Pricing-Page-Specs.md](../02-System-Specs/Pricing-Page-Specs.md)) · [[02-System-Specs/Account-Profile-Specs|Account-Profile-Specs]] ([Account-Profile-Specs.md](../02-System-Specs/Account-Profile-Specs.md)) · [[01-Architecture-Decisions/ADR-027-Account-Upgrade-Pricing-Profile-Refund|ADR-027 (≙ ADR-041)]]
+* `apps/web/app/studio/[tenantSlug]/(tong-quan)/**`, `apps/web/app/admin/_ui/stats-chart.tsx` (§19) · [[02-System-Specs/Studio-Dashboard-Specs|Studio-Dashboard-Specs]] ([Studio-Dashboard-Specs.md](../02-System-Specs/Studio-Dashboard-Specs.md)) · [[01-Architecture-Decisions/ADR-029-Studio-Dashboard-Period-Gross-Net-Revenue|ADR-029 (≙ ADR-043)]]
 * [[04-Operations-Runbooks/README|Quay lại danh mục Operations Runbooks]]
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

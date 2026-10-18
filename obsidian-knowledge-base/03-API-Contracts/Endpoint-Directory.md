@@ -5,7 +5,7 @@ tags:
   - endpoint
   - status/living
 date: 2026-06-15
-updated: 2026-10-17
+updated: 2026-10-18
 author: System Architect
 ---
 
@@ -40,7 +40,8 @@ author: System Architect
 > `route.ts`** (đếm lại 2026-10-17: vẫn 22 dưới `/api`, 23 toàn app ✅) — đổi điều kiện ở `POST /api/share-links/[token]/download` (§7,
 > 410 `SHARE_LINK_TENANT_LOCKED` khi tenant không `ACTIVE`), `POST /api/reports` (§20.1, 404 khi tenant không `ACTIVE`) và thêm mã
 > `TENANT_NOT_ACTIVE` cho action đánh giá (§12). Đợt ADR-041 (2026-10-17, **chưa commit/deploy**) **không thêm `route.ts`** (đếm lại
-> 2026-10-17: vẫn 22 dưới `/api`, 23 toàn app ✅) — trang + Server Action Bảng giá CMS, hoàn tiền gói, Hồ sơ/Bảo mật/đổi email ở §21.
+> 2026-10-17: vẫn 22 dưới `/api`, 23 toàn app ✅) — trang + Server Action Bảng giá CMS, hoàn tiền gói, Hồ sơ/Bảo mật/đổi email ở §21. Đợt ADR-043 (2026-10-18, **chưa commit/deploy**) **không thêm `route.ts`** (đếm lại 2026-10-18: vẫn
+> 22 dưới `/api`, 23 toàn app ✅) — loader dashboard Studio + subpath `@gieochu/core/dashboard-range` ở §22.
 
 ## 1. Quy Ước Chung
 
@@ -841,7 +842,80 @@ Trang `/account/email/xac-nhan?token=…` — GET chỉ đọc (`previewEmailCha
 
 ---
 
-## 22. Tài Liệu Tham Chiếu & Liên Kết
+## 22. Dashboard Tổng quan gian hàng — loader + kỳ thống kê (ADR-043) ✅
+
+Đối chiếu working tree 2026-10-18 (**chưa commit/deploy**). **Không có `route.ts`/Server Action mới** — trang `/studio/{tenantSlug}` (route
+group `studio/[tenantSlug]/(tong-quan)/`) là Server Component gọi loader trực tiếp. Nghiệp vụ:
+[[02-System-Specs/Studio-Dashboard-Specs|Studio-Dashboard-Specs]].
+
+### 22.1. Subpath `@gieochu/core/dashboard-range` (cũng re-export ở `@gieochu/core`)
+
+| Export | Ghi chú |
+| :-- | :-- |
+| `resolveDashboardRange(input?: DashboardRangeInput) → DashboardRange` | `input = { ky?, tu?, den?, now? }` — giá trị thô từ `searchParams` (`string \| string[] \| undefined`, lấy phần tử đầu). Hàm thuần, không ném; sai → `30-ngay` + `invalid: true` |
+| `listDashboardBuckets(range) → DashboardBucket[]` | Trục đủ điểm cũ → mới; `DashboardBucket = { key, start: Date, label, future }` (`key` = giờ VN `YYYY-MM-DDTHH:MM`) |
+| `DASHBOARD_PRESETS` | `hom-nay`, `hom-qua`, `7-ngay`, `30-ngay`, `tuan-nay`, `thang-nay`, `quy-nay`, `nam-nay`, `tuy-chon` |
+| `DEFAULT_DASHBOARD_PRESET` = `"30-ngay"`, `DASHBOARD_CUSTOM_MAX_DAYS` = `366`, `DASHBOARD_PRESET_LABELS` | Hằng |
+| Kiểu `DashboardPreset`, `DashboardGranularity` (`hour`/`day`/`week`/`month`), `DashboardRangeInput`, `DashboardRange`, `DashboardBucket` | |
+
+```ts
+interface DashboardRange {
+  key: DashboardPreset; label: string; prevLabel: string;     // "30 ngày qua" / "30 ngày trước đó"
+  start: Date; end: Date;                                    // UTC, [start, end)
+  prevStart: Date; prevEnd: Date;                            // UTC, cùng độ dài, không vượt start
+  periodEnd: Date;                                           // cuối danh nghĩa của kỳ (dựng trục biểu đồ)
+  granularity: DashboardGranularity;
+  customFrom: string | null; customTo: string | null;        // YYYY-MM-DD khi tuy-chon hợp lệ
+  invalid: boolean;
+}
+```
+
+### 22.2. `apps/web/lib/tenant-dashboard.ts`
+
+`getTenantDashboard({ tenantId, range, now? }) → Promise<TenantDashboard>` — **không tự kiểm quyền**: nơi gọi phải `requireTenantMember(slug)`
+(OWNER; trang dùng `requireTenantMemberPage`) và truyền `tenant.id` từ guard. 3 truy vấn trong một `withTenant`; không cache. Vượt số nguyên an
+toàn → `AppError INTERNAL_ERROR` (500).
+
+```ts
+interface DashboardCompared<T = number> { current: T; previous: T }
+interface TenantDashboard {
+  range: TenantDashboardRangeView;   // như DashboardRange nhưng thời điểm là chuỗi ISO UTC, không có periodEnd
+  generatedAt: string;               // ISO UTC — "Cập nhật lúc"
+  sales: {
+    grossRevenueVnd, netRevenueVnd, refundedVnd, refundedOrders, paidOrders,
+    distinctProductsSold, freeClaims: DashboardCompared;
+    avgOrderVnd: DashboardCompared<number | null>;
+    pendingOrders: number;                                   // ảnh chụp
+    refundRequests: { pending: number; overdue: number };    // ảnh chụp (ADR-039)
+  };
+  customers: { newCustomers, buyers, returningCustomers: DashboardCompared;
+               returningCustomerRate: DashboardCompared<number | null> };   // 0–1
+  reviews: { newReviews, hiddenInPeriod: DashboardCompared; avgRating: DashboardCompared<number | null>;
+             distribution: [number, number, number, number, number];       // index 0 = 1 sao
+             unanswered: number; hiddenTotal: number; moderationLocked: number };
+  products: { published: number; draft: number; archived: number; moderationLocked: number;
+              downloads: DashboardCompared;
+              topSelling: Array<{ productId; title; orders; revenueVnd; soldAllTime }>;   // ≤ 5
+              topRated: Array<{ productId; title; avgRating; reviewCount }> };          // ≤ 5, ≥ 3 đánh giá
+  series: Array<{ key; start; label; future; grossRevenueVnd; netRevenueVnd; paidOrders }>;
+  latestOrders: Array<{ id; code; customerFullName; unitPriceVnd; totalVnd }>;          // ≤ 10, KHÔNG email
+}
+```
+
+Tiền là `number` nguyên VND (khác `admin-stats.ts` trả chuỗi BIGINT). Hằng export: `TOP_SELLING_LIMIT = 5`, `TOP_RATED_LIMIT = 5`,
+`TOP_RATED_MIN_REVIEWS = 3`, `LATEST_ORDERS_LIMIT = 10`, `ANONYMOUS_CUSTOMER_LABEL = "Khách"`.
+
+### 22.3. Trang
+
+| Trang | Guard | Query string | Ghi chú |
+| :-- | :-- | :-- | :-- |
+| `/studio/{tenantSlug}` | `requireTenantMemberPage` (OWNER) | `ky` (§22.1), `tu`/`den` khi `ky=tuy-chon`, `chi-so` = `gop` (mặc định, mọi giá trị khác) \| `thuc-nhan` — `parseStudioChartMetric` (`_ui/dashboard-format.ts`) | `loading.tsx`/`error.tsx` riêng trong route group. Bố cục: [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §19 |
+
+`apps/web/lib/order.ts` `getOrderDashboardStats` (thẻ "Doanh thu 30 ngày" cũ) **không còn nơi gọi** ✅ grep — chưa xoá (BACKLOG).
+
+---
+
+## 23. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * [[Database-Schema-Reference]] — Lược đồ dữ liệu ([Database-Schema-Reference.md](./Database-Schema-Reference.md))
@@ -856,6 +930,7 @@ Trang `/account/email/xac-nhan?token=…` — GET chỉ đọc (`previewEmailCha
 * [[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]] — job nền, `after()`, cron hằng ngày (ADR-036) ([Background-Jobs-Specs.md](../02-System-Specs/Background-Jobs-Specs.md))
 * [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]] — audit log M12a (ADR-037) ([Audit-Log-Specs.md](../02-System-Specs/Audit-Log-Specs.md))
 * [[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]] — thống kê hằng ngày M12b (ADR-037) ([Tenant-Stats-Specs.md](../02-System-Specs/Tenant-Stats-Specs.md))
+* [[02-System-Specs/Studio-Dashboard-Specs|Studio-Dashboard-Specs]] — dashboard Tổng quan gian hàng (ADR-043) ([Studio-Dashboard-Specs.md](../02-System-Specs/Studio-Dashboard-Specs.md)) · [[01-Architecture-Decisions/ADR-029-Studio-Dashboard-Period-Gross-Net-Revenue|ADR-029 (≙ ADR-043)]]
 * [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]] — báo cáo vi phạm M12c + quyền lợi người mua (ADR-038/039) ([Abuse-Reports-Specs.md](../02-System-Specs/Abuse-Reports-Specs.md))
 * [[02-System-Specs/Pricing-Page-Specs|Pricing-Page-Specs]] ([Pricing-Page-Specs.md](../02-System-Specs/Pricing-Page-Specs.md)) · [[02-System-Specs/Account-Profile-Specs|Account-Profile-Specs]] ([Account-Profile-Specs.md](../02-System-Specs/Account-Profile-Specs.md)) · [[01-Architecture-Decisions/ADR-027-Account-Upgrade-Pricing-Profile-Refund|ADR-027 (≙ ADR-041)]] ([ADR-027-Account-Upgrade-Pricing-Profile-Refund.md](../01-Architecture-Decisions/ADR-027-Account-Upgrade-Pricing-Profile-Refund.md))
 * [[02-System-Specs/Shop-Marketplace-Specs|Shop-Marketplace-Specs]] ([Shop-Marketplace-Specs.md](../02-System-Specs/Shop-Marketplace-Specs.md)) · [[01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First|ADR-021 (≙ ADR-035)]] ([ADR-021-Shop-Marketplace-Cms-First.md](../01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First.md))

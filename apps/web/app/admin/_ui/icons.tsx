@@ -429,3 +429,41 @@ export function IconFlag({ className }: IconProps) {
   );
 }
 
+
+/** Mũi tên lên (xu hướng tăng trên thẻ KPI — dashboard /admin và Studio, ADR-037/043). */
+export function IconArrowUp({ className }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 19V5M6 11l6-6 6 6" />
+    </svg>
+  );
+}
+
+/** Mũi tên xuống (xu hướng giảm trên thẻ KPI). */
+export function IconArrowDown({ className }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 5v14M6 13l6 6 6-6" />
+    </svg>
+  );
+}
+
+/** Ngôi sao đặc (điểm đánh giá trung bình — dashboard Studio, ADR-043). Chỉ trang trí, luôn kèm số. */
+export function IconStarSolid({ className }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="currentColor">
+      <path d="m12 3 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8l-5.4 2.9 1.1-6.1L3.2 9.4l6.1-.8L12 3Z" />
+    </svg>
+  );
+}
+
+/** Quà tặng (lượt nhận tài liệu miễn phí — dashboard Studio, ADR-043). */
+export function IconGift({ className }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 9.5h16v3H4z" />
+      <path d="M5.5 12.5v7h13v-7M12 9.5v10" />
+      <path d="M12 9.5c-1.2-2.8-4.5-3.6-5-1.8-.4 1.5 2 1.8 5 1.8Zm0 0c1.2-2.8 4.5-3.6 5-1.8.4 1.5-2 1.8-5 1.8Z" />
+    </svg>
+  );
+}

@@ -26,7 +26,8 @@
     "./audit": "./src/audit/audit.ts",
     "./abuse-report": "./src/report/abuse-report.ts",
     "./entitlement-remedy": "./src/download/entitlement-remedy.ts",
-    "./account-profile": "./src/account/profile.ts"
+    "./account-profile": "./src/account/profile.ts",
+    "./dashboard-range": "./src/stats/dashboard-range.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

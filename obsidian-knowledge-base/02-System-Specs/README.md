@@ -3,7 +3,7 @@ tags:
   - meta
   - spec
 date: 2026-09-26
-updated: 2026-10-17
+updated: 2026-10-18
 ---
 
 # 📐 System Specifications (Living Specs)
@@ -78,6 +78,10 @@ bộ nội dung được viết lại từ nguồn thật: `CLAUDE.md`, `docs/AR
   áp DB**. Tổng quan + app shell + sidebar 3 nhóm, hồ sơ (SĐT/Tỉnh tuỳ chọn, 34 tỉnh), ảnh đại diện Cloudinary riêng tư ≤2MB, đổi mật khẩu
   (giữ phiên hiện tại, thu hồi phiên khác), đổi email qua token `EMAIL_CHANGE`, menu tài khoản disclosure, 4 email
   ([Account-Profile-Specs.md](./Account-Profile-Specs.md)).
+- `[[Studio-Dashboard-Specs]]`: Dashboard Tổng quan gian hàng `/studio/{slug}` (ADR-043) — **xong code (2026-10-18), chưa commit/deploy; không
+  migration**. Kỳ `?ky=` (giờ VN, tuần bắt đầu Thứ Hai, mặc định 30 ngày, tuỳ chọn ≤ 366 ngày, so kỳ trước cùng độ dài); doanh thu gộp + thực
+  nhận, chỉ đơn > 0đ (đơn 0đ = lượt nhận miễn phí); khách mới/người mua/quay lại; đánh giá; tài liệu; top 5 bán chạy (loại đơn hoàn); 10 đơn
+  mới không email; tính realtime qua `withTenant`, chỉ OWNER ([Studio-Dashboard-Specs.md](./Studio-Dashboard-Specs.md)).
 
 ## Ghi chú lịch sử
 

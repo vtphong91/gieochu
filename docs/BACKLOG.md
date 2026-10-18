@@ -769,3 +769,26 @@ nhiều trang; nhánh SEO từ CMS đã xuất bản (`seoTitle`/`seoDescription
 - **Skip-link "Bỏ qua tới nội dung"** cho shell System Center và Studio (`/account` đã có, `#noi-dung`).
 - **Cân nhắc chuyển `LogoutButton`** từ `apps/web/app/account/_ui/` về `apps/web/app/_ui/` — đang được `admin/_ui/app-sidebar.tsx` import chéo.
 - **Chưa kiểm thật:** phiên đăng nhập thật, đăng xuất thật (về `/login`), trình đọc màn hình với drawer/accordion — mới kiểm bằng dữ liệu giả.
+
+## Phát sinh trong đợt ADR-043 (dashboard Tổng quan gian hàng `/studio/{slug}`)
+
+**Dọn code**
+- **Xoá `getOrderDashboardStats`** (`apps/web/lib/order.ts`) — thẻ "Doanh thu 30 ngày" cũ đã thay bằng `getTenantDashboard`, hàm không còn nơi gọi.
+
+**Giao diện**
+- **Nhãn tiếng Việt cho `tenant.status`** ở phụ đề header Tổng quan (đang hiện enum thô `ACTIVE`/`READ_ONLY`…).
+- **Bộ lọc "chưa trả lời" ở trang Đánh giá Studio** — link "Trả lời đánh giá" trong khối "Việc cần xử lý" hiện chỉ lọc `?status=VISIBLE`.
+- **Chưa kiểm thật:** phiên OWNER thật, trang `/admin` sau khi refactor `sales-stats.tsx` sang `stats-chart.tsx`, bàn phím/trình đọc màn hình — mới
+  xem trước bằng dữ liệu giả 360/768/1280.
+
+**Dữ liệu / hiệu năng**
+- **Index khi gian hàng lớn** (migration expand-only, Quốc duyệt, chủ dự án chạy — ADR-034): `orders(tenantId, paidAt)`, `orders(tenantId,
+  createdAt)`, `download_events(tenantId, createdAt)`. Chưa đo `EXPLAIN` kỳ "Năm nay"/tuỳ chọn 366 ngày trên DB thật.
+
+**Để sau theo ADR-043 mục 7**
+- **Xuất CSV** số liệu/đơn trong kỳ (CSV chứa dữ liệu khách = dữ liệu cá nhân — cần quyết riêng).
+- **Biểu đồ doanh thu theo danh mục (donut)** — theo danh mục hiện tại của sản phẩm.
+
+**Test (trần đã chạm 94/55 — test mới cần chủ dự án duyệt nâng trần)**
+- **Test cô lập tenant chéo** cho `getTenantDashboard` (tenant B không thấy số của tenant A) — `studio-dashboard.test.ts` chỉ dùng 1 tenant; hết ngân
+  sách test.

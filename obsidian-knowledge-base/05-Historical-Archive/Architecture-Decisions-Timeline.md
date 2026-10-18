@@ -5,16 +5,16 @@ tags:
   - adr
   - history
 date: 2026-09-26
-updated: 2026-10-17
+updated: 2026-10-18
 ---
 
 # Architecture Decisions Timeline — Gieo Chữ
 
-Mục lục đầy đủ theo trình tự đánh số của **42 ADR thật** (ADR-001…ADR-042), nguồn duy nhất: [`docs/DECISIONS.md`](../../docs/DECISIONS.md).
+Mục lục đầy đủ theo trình tự đánh số của **43 ADR thật** (ADR-001…ADR-043), nguồn duy nhất: [`docs/DECISIONS.md`](../../docs/DECISIONS.md).
 Đây chỉ là "mục lục theo thời gian" (một dòng mỗi ADR) — không lặp lại toàn văn Bối cảnh/Quyết định/Lý do.
 
 Xem [[01-Architecture-Decisions/README|01-Architecture-Decisions]] để có nội dung đầy đủ của các ADR quan
-trọng nhất; trang này chỉ là mốc thời gian đầy đủ 29 quyết định.
+trọng nhất; trang này chỉ là mốc thời gian đầy đủ 43 quyết định.
 
 | # | Tiêu đề | Tóm tắt một câu |
 |---|---|---|
@@ -60,5 +60,6 @@ trọng nhất; trang này chỉ là mốc thời gian đầy đủ 29 quyết �
 | ADR-040 | Chỉ gian hàng ACTIVE hiển thị tài liệu; READ_ONLY = trang "tạm ngưng" không có tài liệu | Chủ dự án chốt 2026-10-17: `LOCKED` giữ nguyên (khách 404); `READ_ONLY` — khách chỉ thấy trang "Gian hàng đang tạm ngưng hoạt động", không tài liệu/bài viết/đánh giá, trang tài liệu và bài viết 404, chủ vẫn xem kèm thông báo; Cửa hàng/trang chủ vốn chỉ lấy tenant `ACTIVE`; chặn thanh toán đơn `PENDING` khi tenant không `ACTIVE` (chốt ADR-039 (g)), khách đã mua vẫn tải từ Thư viện. Thay đổi so với §4.4 đặc tả gốc. |
 | ADR-041 | Nâng cấp tài khoản (Bảng giá CMS) + Hồ sơ tài khoản; gói năm; hoàn tiền gói 7 ngày | 2026-10-17: trang `/pricing` đọc CMS `pricing` (giá/hạn mức chỉ từ `Plan`), gói năm giảm theo % tính từ giá thật, chỉ quảng cáo tính năng có thật, hạn mức `0` = không được phép; hoàn tiền gói trong 7 ngày, 100%, chỉ lần thanh toán đầu, admin chuyển khoản tay, về Free ngay; `/account` một hồ sơ cho mọi user, SĐT/Tỉnh tuỳ chọn (bổ sung ADR-008), đổi mật khẩu/email bảo mật chặt, ảnh đại diện Cloudinary riêng tư. Bổ sung: thông tin nhận tiền mã hoá AES-256-GCM, chỉ admin xem, tự xoá; cờ "đã triển khai" là hằng trong `packages/core`. Bổ sung lần 2: có hoá đơn gói PAID thứ hai thì mất quyền hoàn tiền; "không giới hạn" = `-1`; xem thông tin nhận tiền ghi audit. Không thêm test. Bổ sung lần 3 (Quốc, đính chính theo code): đổi email thu hồi mọi phiên kể cả phiên hiện tại; giao diện admin xem SĐT/Tỉnh để BACKLOG; DB không gói nào dùng hạn mức `0`; ADR-008 "hồ sơ bắt buộc 4 trường" đã được thay bởi C.1. |
 | ADR-042 | Một sidebar dùng chung cho System Center và Studio; Đăng xuất ở đáy sidebar; drawer mobile | Chủ dự án yêu cầu 2026-10-17: một component `SidebarNav` + `AppSidebarPanel` (`apps/web/app/admin/_ui/`) cho `/admin` và `/studio`, Studio chia Tổng quan + 3 nhóm accordion (Bán hàng / Nội dung / Gian hàng), badge `{count, srText, urgent}`, xoá sidebar riêng Studio; Đăng xuất cố định đáy sidebar + trong menu tài khoản, app shell đăng xuất về `/login` (trang công khai và `/account` giữ `/`); dưới `lg` nút ☰ mở drawer `<dialog>` chứa cùng sidebar. Hoàn tất GĐ2b ADR-041. Không migration, không thêm test. |
+| ADR-043 | Dashboard Tổng quan gian hàng (`/studio/{slug}`): chỉ số theo kỳ, doanh thu gộp + thực nhận | Chủ dự án chốt 2026-10-18 theo kế hoạch `docs/ke-hoach-dashboard-tong-quan-gian-hang-2026-10-17.md`: doanh thu gộp = tổng `totalVnd` đơn có `paidAt` trong kỳ kể cả đơn sau này hoàn (cùng GMV ADR-037) + thẻ doanh thu thực nhận (trừ đơn đã hoàn, tính theo ngày khách trả); chỉ OWNER; bảng 10 đơn mới nhất không lọc kỳ, chỉ mã đơn/họ tên/đơn giá/thành tiền, không email; khách quay lại = ≥ 2 đơn đã thanh toán; điểm TB chỉ đánh giá đang hiển thị; kỳ `?ky=` (tuần bắt đầu Thứ Hai, mặc định 30 ngày, tuỳ chọn ≤ 366 ngày, giờ VN, so kỳ trước cùng độ dài); tính từ bảng L2 qua `withTenant`, không đọc `tenant_daily_stats`; CSV và donut danh mục để sau; dùng 1 unit + 1 integration còn trống (không nâng trần). Bổ sung (2026-10-18): số liệu tiền chỉ tính đơn > 0đ, đơn 0đ thành thẻ "Lượt nhận tài liệu miễn phí"; top 5 bán chạy không tính đơn đã hoàn tiền. Không migration. |
 
 *Quay lại: [[05-Historical-Archive/README|05-Historical-Archive]] · [[MOC-Home]] (../00-Index/MOC-Home.md)*

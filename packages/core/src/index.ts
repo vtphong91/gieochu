@@ -312,6 +312,21 @@ export type {
   PricingSectionType,
   PricingSeoInput,
 } from "./admin/pricing-sections";
+export {
+  DASHBOARD_CUSTOM_MAX_DAYS,
+  DASHBOARD_PRESET_LABELS,
+  DASHBOARD_PRESETS,
+  DEFAULT_DASHBOARD_PRESET,
+  listDashboardBuckets,
+  resolveDashboardRange,
+} from "./stats/dashboard-range";
+export type {
+  DashboardBucket,
+  DashboardGranularity,
+  DashboardPreset,
+  DashboardRange,
+  DashboardRangeInput,
+} from "./stats/dashboard-range";
 export { buildAdminDashboardSummary } from "./admin/dashboard-summary";
 export type { AdminDashboardCounts, AdminDashboardSummary } from "./admin/dashboard-summary";
 

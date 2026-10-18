@@ -6,7 +6,7 @@ tags:
   - rollback
   - status/living
 date: 2026-07-02
-updated: 2026-10-17
+updated: 2026-10-18
 author: System Architect
 ---
 
@@ -74,9 +74,10 @@ pnpm test:count        # đối chiếu số test case: trần gốc mục 9 là
 pnpm build            # build tất cả package/app qua Turborepo
 ```
 
-**Số test (chạy `pnpm test:count` 2026-10-16, sau M12b — ADR-037) ✅:** thực **93 / 94 unit**, **54 / 55 integration**. Trần
+**Số test (chạy `pnpm test:count` 2026-10-18, sau ADR-043) ✅:** thực **94 / 94 unit**, **55 / 55 integration** — **chạm trần**. Trần
 gốc ở đặc tả mục 9 là 91/50, nâng lên 94/53 theo ADR-026; ADR-027…036 không nâng trần; ADR-037 mục 6 nâng trần integration 53 → **55**
-cho đúng 2 test M12 (M12a — `audit.test.ts`; M12b — `stats.test.ts`; đã dùng đủ 2, còn 1 chỗ trống tới trần 55 chưa gán). Lưu ý: dòng `audit_logs` do integration test tạo không xoá
+cho đúng 2 test M12 (M12a — `audit.test.ts`; M12b — `stats.test.ts`). ADR-043 dùng nốt 1 unit (`dashboard-range.test.ts`) + 1 integration
+(`studio-dashboard.test.ts`) còn trống, không nâng trần — test mới từ nay cần chủ dự án duyệt nâng trần. Lưu ý: dòng `audit_logs` do integration test tạo không xoá
 được (12 tháng) — xem [[04-Operations-Runbooks/Deploy-Vercel-Runbook|Deploy-Vercel-Runbook]] §9.6. Script
 `scripts/count-tests.mjs` báo lỗi khi vượt trần. Không tự thêm/bớt test case khi chưa hỏi chủ dự án.
 

@@ -4,7 +4,7 @@ tags:
   - index
   - moc
 date: 2026-09-26
-updated: 2026-10-17
+updated: 2026-10-18
 author: System Architect
 ---
 
@@ -75,8 +75,9 @@ chỉ gian hàng `ACTIVE` hiển thị tài liệu — `READ_ONLY` là trang "t�
 [[01-Architecture-Decisions/ADR-026-Only-Active-Tenant-Shows-Documents|ADR-026 KB]]), nâng cấp tài khoản + hồ sơ — Bảng giá CMS `pricing`, gói năm,
 hạn mức `0`/`-1`, hoàn tiền gói 7 ngày, hồ sơ/đổi mật khẩu/đổi email (ADR-041, [[01-Architecture-Decisions/ADR-027-Account-Upgrade-Pricing-Profile-Refund|ADR-027 KB]]),
 một sidebar dùng chung System Center + Studio, Đăng xuất ở đáy sidebar, drawer mobile (ADR-042,
-[[01-Architecture-Decisions/ADR-028-Shared-App-Sidebar-Logout-Mobile-Drawer|ADR-028 KB]]).
-Tổng cộng 42 ADR gốc.
+[[01-Architecture-Decisions/ADR-028-Shared-App-Sidebar-Logout-Mobile-Drawer|ADR-028 KB]]), dashboard Tổng quan gian hàng — chỉ số theo kỳ, doanh thu
+gộp + thực nhận, chỉ đơn > 0đ, 10 đơn mới không email (ADR-043, [[01-Architecture-Decisions/ADR-029-Studio-Dashboard-Period-Gross-Net-Revenue|ADR-029 KB]]).
+Tổng cộng 43 ADR gốc.
 ([Đường dẫn](../01-Architecture-Decisions/README.md))
 
 ### 2. [[02-System-Specs/README|02-System-Specs]] — Đặc tả Hệ thống Sống (Living Specs)
@@ -88,7 +89,7 @@ tải xuống/share link, storefront CMS + form liên hệ (ADR-023,
 ngoài + trang Xem trước + URL tài liệu `/{tenantSlug}/{productSlug}` và slug dành riêng (ADR-026/027/030,
 [[02-System-Specs/Product-Editor-And-Publishing-Specs|Product-Editor-And-Publishing-Specs]]), ảnh Cloudinary hệ thống + hạn mức ảnh
 (ADR-028, [[02-System-Specs/File-Storage-And-Downloads-Specs|File-Storage-And-Downloads-Specs]] §7), đánh giá sản phẩm M10a
-(ADR-029, [[02-System-Specs/Reviews-Specs|Reviews-Specs]]), bài viết tối giản M10b (ADR-029, [[02-System-Specs/Posts-Specs|Posts-Specs]]), trang Cửa hàng — GĐ1 CMS `shop` + GĐ2 trang công khai `/cua-hang`, `/cua-hang/tai-lieu` xong code, chưa commit/deploy (ADR-035, [[02-System-Specs/Shop-Marketplace-Specs|Shop-Marketplace-Specs]]), job nền M11 — `after()` + cron `/api/cron/daily`, trạng thái đơn hiệu lực `effectiveOrderStatus` (ADR-036, xong code, chưa commit/deploy, [[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]]), audit log M12a — bảng `audit_logs` chỉ-INSERT, 27 action, trang `/admin/audit` + Studio → Hoạt động, purge 12 tháng trong cron (ADR-037, xong code chưa commit/deploy, migration đã áp DB, [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]]), thống kê hằng ngày M12b — bảng L1 `tenant_daily_stats` (GMV gộp theo `paidAt`, khách mới theo `firstOrderAt`, lượt tải), bước cron `stats.aggregate`, section "Hoạt động bán tài liệu (30 ngày)" trên `/admin` (ADR-037, xong code chưa commit/deploy, migration đã áp DB, [[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]]), báo cáo vi phạm M12c + quyền lợi người mua — `POST /api/reports`, `/admin/reports`, khoá kiểm duyệt, cam kết bản quyền, tải lần cuối / yêu cầu hoàn tiền, sửa lỗi email đơn hàng không gửi do RLS (ADR-038/039, xong code chưa commit/deploy, 2 migration đã áp DB — phải áp trước code, [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]]), trang Bảng giá `/pricing` + CMS `pricing` (ADR-041 A, xong code chưa commit/deploy, [[02-System-Specs/Pricing-Page-Specs|Pricing-Page-Specs]]), hạn mức `0`/`-1` + hoàn tiền gói 7 ngày (ADR-041 B, [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5A–§5B), khu vực tài khoản `/account` — hồ sơ, đổi mật khẩu, đổi email, ảnh đại diện (ADR-041 C, 2 migration đã áp DB, [[02-System-Specs/Account-Profile-Specs|Account-Profile-Specs]]), cùng ranh giới RLS theo layer L1/L2/L3 (tách policy đọc/ghi từ ADR-029).
+(ADR-029, [[02-System-Specs/Reviews-Specs|Reviews-Specs]]), bài viết tối giản M10b (ADR-029, [[02-System-Specs/Posts-Specs|Posts-Specs]]), trang Cửa hàng — GĐ1 CMS `shop` + GĐ2 trang công khai `/cua-hang`, `/cua-hang/tai-lieu` xong code, chưa commit/deploy (ADR-035, [[02-System-Specs/Shop-Marketplace-Specs|Shop-Marketplace-Specs]]), job nền M11 — `after()` + cron `/api/cron/daily`, trạng thái đơn hiệu lực `effectiveOrderStatus` (ADR-036, xong code, chưa commit/deploy, [[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]]), audit log M12a — bảng `audit_logs` chỉ-INSERT, 27 action, trang `/admin/audit` + Studio → Hoạt động, purge 12 tháng trong cron (ADR-037, xong code chưa commit/deploy, migration đã áp DB, [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]]), thống kê hằng ngày M12b — bảng L1 `tenant_daily_stats` (GMV gộp theo `paidAt`, khách mới theo `firstOrderAt`, lượt tải), bước cron `stats.aggregate`, section "Hoạt động bán tài liệu (30 ngày)" trên `/admin` (ADR-037, xong code chưa commit/deploy, migration đã áp DB, [[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]]), báo cáo vi phạm M12c + quyền lợi người mua — `POST /api/reports`, `/admin/reports`, khoá kiểm duyệt, cam kết bản quyền, tải lần cuối / yêu cầu hoàn tiền, sửa lỗi email đơn hàng không gửi do RLS (ADR-038/039, xong code chưa commit/deploy, 2 migration đã áp DB — phải áp trước code, [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]]), trang Bảng giá `/pricing` + CMS `pricing` (ADR-041 A, xong code chưa commit/deploy, [[02-System-Specs/Pricing-Page-Specs|Pricing-Page-Specs]]), hạn mức `0`/`-1` + hoàn tiền gói 7 ngày (ADR-041 B, [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5A–§5B), khu vực tài khoản `/account` — hồ sơ, đổi mật khẩu, đổi email, ảnh đại diện (ADR-041 C, 2 migration đã áp DB, [[02-System-Specs/Account-Profile-Specs|Account-Profile-Specs]]), dashboard Tổng quan gian hàng `/studio/{slug}` — kỳ `?ky=` giờ VN, doanh thu gộp + thực nhận, đơn 0đ tách riêng, tính realtime qua `withTenant` (ADR-043, xong code chưa commit/deploy, không migration, [[02-System-Specs/Studio-Dashboard-Specs|Studio-Dashboard-Specs]]; chênh lệch với số System Center ở [[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]] §9), cùng ranh giới RLS theo layer L1/L2/L3 (tách policy đọc/ghi từ ADR-029).
 ([Đường dẫn](../02-System-Specs/README.md))
 
 ### 3. [[03-API-Contracts/README|03-API-Contracts]] — Chuẩn Giao tiếp & Data Models
@@ -97,7 +98,7 @@ lược đồ Prisma (`packages/db/prisma/schema.prisma`) theo layer, và mẫu 
 `{ error: { code, message, requestId } }`; kèm contract Server Action của editor sản phẩm Studio
 (`ProductActionState`, [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §10) và action ảnh Cloudinary tenant
 (`CloudinarySignatureResult`, `registerTenantImageAction`, §11) và action/hàm đánh giá M10a (§12), action/hàm bài viết M10b (§13), cấu hình hệ thống + CMS trang chủ (§14), action/hàm CMS Cửa hàng + subpath `@gieochu/core/shop-sections` (§15), trang công khai Cửa hàng + loader `lib/shop.ts` +
-subpath `@gieochu/core/product-type` (§16), route cron `GET /api/cron/daily` (§17, ADR-036; bước `audit.purge` từ M12a), trang + loader audit log và chữ ký hàm lib thêm `actorId` (§18, ADR-037), job + loader thống kê `getAdminStatsOverview` và bước cron `stats.aggregate` (§19, M12b), route mới `POST /api/reports` + action `/admin/reports` + action thư viện chọn quyền lợi + bước cron `abuse_report.ip_purge` (§20, M12c/ADR-039), action/loader Bảng giá CMS + hoàn tiền gói + Hồ sơ/Bảo mật/đổi email (§21, ADR-041); lược đồ ghi thêm migration ADR-035 (extension `unaccent`, hàm `gieochu_unaccent`), M12a (`audit_logs`, `AuditScope`, trigger chỉ-INSERT), M12b (`tenant_daily_stats`), M12c (`abuse_reports`, khoá kiểm duyệt) và ADR-039 (`entitlements.remedy*`), ADR-041 (`EMAIL_CHANGE`/`newEmail`, `REFUNDED`, `subscription_refund_requests`).
+subpath `@gieochu/core/product-type` (§16), route cron `GET /api/cron/daily` (§17, ADR-036; bước `audit.purge` từ M12a), trang + loader audit log và chữ ký hàm lib thêm `actorId` (§18, ADR-037), job + loader thống kê `getAdminStatsOverview` và bước cron `stats.aggregate` (§19, M12b), route mới `POST /api/reports` + action `/admin/reports` + action thư viện chọn quyền lợi + bước cron `abuse_report.ip_purge` (§20, M12c/ADR-039), action/loader Bảng giá CMS + hoàn tiền gói + Hồ sơ/Bảo mật/đổi email (§21, ADR-041), loader dashboard Studio `getTenantDashboard` + subpath `@gieochu/core/dashboard-range` (§22, ADR-043 — không thêm `route.ts`); lược đồ ghi thêm migration ADR-035 (extension `unaccent`, hàm `gieochu_unaccent`), M12a (`audit_logs`, `AuditScope`, trigger chỉ-INSERT), M12b (`tenant_daily_stats`), M12c (`abuse_reports`, khoá kiểm duyệt) và ADR-039 (`entitlements.remedy*`), ADR-041 (`EMAIL_CHANGE`/`newEmail`, `REFUNDED`, `subscription_refund_requests`).
 ([Đường dẫn](../03-API-Contracts/README.md))
 
 ### 4. [[04-Operations-Runbooks/README|04-Operations-Runbooks]] — Vận hành, Kiểm thử & Triển khai
@@ -106,7 +107,7 @@ lưu trữ qua System Admin (`/admin/settings/storage`, `/admin/billing/payment`
 công đã dùng để bắt lỗi thật (ví dụ lỗi CSP chặn hydrate React, seed thiếu `UserProfile`) trong các module
 trước.
 Hệ thống thiết kế UI (token, chuẩn độ rộng layout 1280px theo ADR-024, kit component, app shell System Center + Studio — sidebar dùng chung `SidebarNav`/`AppSidebarPanel`, Đăng xuất đáy sidebar, drawer `SidebarDrawer` dưới `lg` §5.1 — ADR-042, editor sản phẩm 2 cột + card xuất bản
-đầu sidebar (không dính khi cuộn — ADR-030) + trang Xem trước theo ADR-026/027, TiptapEditor upload ảnh theo ADR-028, giao diện đánh giá M10a §10, giao diện bài viết M10b §11, trang chủ dữ liệu thật + PinPicker + form "Cấu hình chung" §12 — ADR-032/033, editor CMS Cửa hàng + kit `Notice` §13 — ADR-035, trang Cửa hàng công khai + component catalog dùng chung `DocumentCard`/`ProductShelf`/`ShopHero`/`MobileNav` §14 — ADR-035 GĐ2, trang nhật ký `/admin/audit` + Studio → Hoạt động + `LinkPagination` §15 — ADR-037, section "Hoạt động bán tài liệu (30 ngày)" trên dashboard `/admin` §16 — M12b, nút/hộp thoại báo cáo vi phạm + khoá kiểm duyệt + `/admin/reports` + Thư viện chọn quyền lợi + Studio yêu cầu hoàn tiền §17 — M12c/ADR-039, Bảng giá CMS + `/account` + hoàn tiền gói + kit 44px/`PasswordField`/`SortableListEditor` §18 — ADR-041) ở
+đầu sidebar (không dính khi cuộn — ADR-030) + trang Xem trước theo ADR-026/027, TiptapEditor upload ảnh theo ADR-028, giao diện đánh giá M10a §10, giao diện bài viết M10b §11, trang chủ dữ liệu thật + PinPicker + form "Cấu hình chung" §12 — ADR-032/033, editor CMS Cửa hàng + kit `Notice` §13 — ADR-035, trang Cửa hàng công khai + component catalog dùng chung `DocumentCard`/`ProductShelf`/`ShopHero`/`MobileNav` §14 — ADR-035 GĐ2, trang nhật ký `/admin/audit` + Studio → Hoạt động + `LinkPagination` §15 — ADR-037, section "Hoạt động bán tài liệu (30 ngày)" trên dashboard `/admin` §16 — M12b, nút/hộp thoại báo cáo vi phạm + khoá kiểm duyệt + `/admin/reports` + Thư viện chọn quyền lợi + Studio yêu cầu hoàn tiền §17 — M12c/ADR-039, Bảng giá CMS + `/account` + hoàn tiền gói + kit 44px/`PasswordField`/`SortableListEditor` §18 — ADR-041, dashboard Tổng quan gian hàng + component thống kê dùng chung `stats-chart.tsx` §19 — ADR-043) ở
 [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] ([UI-Design-System.md](../04-Operations-Runbooks/UI-Design-System.md)).
 Deploy lên Vercel (ADR-031/032: cấu hình project, 8 biến env runtime + biến cần xoá, chuẩn bị DB prod, job nền trong app + Vercel Cron
 `/api/cron/daily` + env tuỳ chọn `CRON_SECRET` + SQL dọn job pg-boss (ADR-036, §6), sự cố đã gặp, **quy trình migration expand → contract + kỷ luật một DB duy nhất (ADR-034) sau sự cố 2026-10-15**, migration
@@ -119,7 +120,7 @@ Script dữ liệu demo **chỉ cho dev** (`demo:seed`/`demo:clean`, đánh giá
 ### 5. [[05-Historical-Archive/README|05-Historical-Archive]] — Lịch sử thật, không bịa (Cold Storage)
 Gieo Chữ còn ở giai đoạn rất sớm (18 commit git, 2026-09-17 → 2026-09-20) nên thư mục này **nhỏ và có chủ
 đích** — chỉ 3 trang dựng từ nguồn thật: [[Module-Build-History]] (đối chiếu `docs/PLAN.md` với git log thật),
-[[Architecture-Decisions-Timeline]] (mục lục đủ 42 ADR, ADR-001…ADR-042), [[Known-Gaps-And-Backlog]] (từ `docs/BACKLOG.md`).
+[[Architecture-Decisions-Timeline]] (mục lục đủ 43 ADR, ADR-001…ADR-043), [[Known-Gaps-And-Backlog]] (từ `docs/BACKLOG.md`).
 Không có báo cáo/sprint log giả lập nào được tạo thêm cho khớp quy mô một dự án lâu năm.
 ([Đường dẫn](../05-Historical-Archive/README.md))
 
@@ -150,6 +151,8 @@ mục kiểm `PLAN_CHECK` trong mẫu brief) — cùng 2 file mẫu dùng chung 
   `/cua-hang` + `/cua-hang/tai-lieu`, tìm không dấu, phân việc Hiếu/Phong, 10 câu hỏi mở (2026-10-15 — GĐ1 + GĐ2 xong code, chưa commit/deploy; §5 bước 1–15 xong) ([ke-hoach-cua-hang-marketplace-2026-10-15.md](../../docs/ke-hoach-cua-hang-marketplace-2026-10-15.md))
 - Kế hoạch Nâng cấp tài khoản (`/pricing` + CMS) và Hồ sơ (`/account`) theo ADR-041 — luồng UX theo vai, mô hình dữ liệu, các bước GĐ1/GĐ2/GĐ2b,
   bảng quyết định đã chốt (2026-10-17 — GĐ1 + GĐ2 + GĐ2b xong code, chưa commit/deploy; GĐ2b làm theo ADR-042) ([ke-hoach-nang-cap-tai-khoan-va-ho-so-2026-10-17.md](../../docs/ke-hoach-nang-cap-tai-khoan-va-ho-so-2026-10-17.md))
+- Kế hoạch Dashboard Tổng quan gian hàng `/studio/{slug}` — hiện trạng, danh mục chỉ số khả thi, bộ lọc kỳ, nguồn tính, bố cục UX, 16 câu hỏi
+  (2026-10-17 — chủ dự án chốt 2026-10-18 thành ADR-043; GĐ1 dữ liệu + GĐ2 UI xong code, chưa commit/deploy) ([ke-hoach-dashboard-tong-quan-gian-hang-2026-10-17.md](../../docs/ke-hoach-dashboard-tong-quan-gian-hang-2026-10-17.md))
 
 ---
 
@@ -163,7 +166,8 @@ mục kiểm `PLAN_CHECK` trong mẫu brief) — cùng 2 file mẫu dùng chung 
    quyền lợi người mua (ADR-039) xong code, chưa commit/deploy, 2 migration đã áp DB — M12 xong code cả 3 đợt; tại 2026-10-17: ADR-040 — chỉ gian hàng `ACTIVE`
    hiển thị tài liệu — xong code, chưa commit/deploy, không migration; ADR-041 — Bảng giá CMS + hoàn tiền gói + Hồ sơ — GĐ1 + GĐ2 xong code, chưa
    commit/deploy, 2 migration đã áp DB; ADR-042 — sidebar dùng chung System Center + Studio, Đăng xuất đáy sidebar, drawer mobile (hoàn tất
-   GĐ2b ADR-041) — xong code, chưa commit/deploy, không migration).
+   GĐ2b ADR-041) — xong code, chưa commit/deploy, không migration; tại 2026-10-18: ADR-043 — dashboard Tổng quan gian hàng — xong code, chưa
+   commit/deploy, không migration; `pnpm test:count` = 94/94 unit, 55/55 integration — **chạm trần**, test mới cần chủ dự án duyệt).
 2. **Quy tắc bất biến:** luôn đối chiếu với `01-Architecture-Decisions/` trước khi đề xuất bất kỳ thay đổi
    kiến trúc nào — đặc biệt ranh giới layer và RLS.
 3. **Độ tin cậy:** khi spec trong KB và code/`docs/*.md` gốc xung đột — **code và `docs/*.md` gốc luôn là

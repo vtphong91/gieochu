@@ -27,7 +27,7 @@ BACKLOG) → M12 → hoàn thiện M2.
 | M10 | Social Feed và Đánh giá (tách theo ADR-029) | 🟡 **GĐ1 hoàn tất code** (nợ test): **M10a Đánh giá: xong code** (verify thủ công) · **M10b Bài viết tối giản: xong code** (verify thủ công) · M10c (bình luận/thả tim/theo dõi): chuyển `docs/BACKLOG.md` | M10a: `apps/web/lib/review.ts`, `packages/core/src/review`, `apps/web/app/studio/[tenantSlug]/reviews`; M10b: `apps/web/lib/post.ts`, `packages/core/src/content/post.ts`, `apps/web/app/studio/[tenantSlug]/posts`, `apps/web/app/[tenantSlug]/posts` | 4 / 3 (ngân sách gốc — chưa dùng, ADR-029 chọn chưa thêm test) |
 | M11 | Email và Background Jobs | 🟡 Email gửi đồng bộ (`sendEmailNow`); **job nền theo ADR-036: xong code, chưa commit/deploy** — `after()` drain hàng đợi trong route + Vercel Cron hằng ngày `GET /api/cron/daily`, `worker.ts` chỉ còn cho local | `packages/jobs`, `packages/email`, `apps/web/lib/{jobs,job-handlers,job-runner}.ts`, `apps/web/app/api/cron/daily`, `apps/web/worker.ts` | 0 / 0 (tính trong module khác) |
 | M12 | Audit Log, Thống kê, Báo cáo vi phạm (chia 3 đợt theo ADR-037) | 🟡 **Xong code cả 3 đợt — chờ commit/deploy** (M12a Audit log, M12b Thống kê, M12c Báo cáo vi phạm + quyền lợi người mua ADR-038/039; 4 migration đã áp DB 2026-10-16 — M12c/ADR-039 phải áp **trước** khi deploy code) | M12a: `packages/core/src/audit`, `apps/web/lib/{audit,audit-query}.ts`, `apps/web/app/admin/audit`, `apps/web/app/studio/[tenantSlug]/activity`; M12b: `apps/web/lib/{tenant-stats,admin-stats}.ts`, `apps/web/app/admin/_ui/sales-stats.tsx`, `apps/web/app/admin/page.tsx`; M12c: `packages/core/src/report`, `packages/core/src/download/entitlement-remedy.ts`, `apps/web/lib/{abuse-report,entitlement-remedy,moderation,tenant-lock,origin-guard}.ts`, `apps/web/app/api/reports`, `apps/web/app/admin/reports`, `apps/web/app/account/library` | 2 / 2 (M12a `audit.test.ts`, M12b `stats.test.ts`) |
-| | **Tổng** | | | Trần gốc mục 9: **91 / 50** · trần hiện **94 / 55** (ADR-026 + ADR-037 mục 6) · thực **93 / 54** (`pnpm test:count` 2026-10-17). Cộng cột theo module ra 92 / 51 — cột là ngân sách gốc từng module, không phải số thực |
+| | **Tổng** | | | Trần gốc mục 9: **91 / 50** · trần hiện **94 / 55** (ADR-026 + ADR-037 mục 6) · thực **94 / 55** — chạm trần (`pnpm test:count` 2026-10-18, sau ADR-043 +1/+1). Cộng cột theo module ra 92 / 51 — cột là ngân sách gốc từng module, không phải số thực |
 
 ## M0 — Việc đã làm (bản đầu, xem docs/modules/M0.md để có sơ đồ)
 
@@ -841,6 +841,35 @@ Chủ dự án yêu cầu: sidebar Studio cùng style System Center; dashboard a
 **Số test:** `pnpm test:count` = **93/94 unit, 54/55 integration** (Long chạy 2026-10-17, chỉ đếm). KB:
 `04-Operations-Runbooks/UI-Design-System.md` §5.1/§11.1/§12.6/§18.5, `02-System-Specs/User-Management-System-Center-Specs.md` §2,
 `02-System-Specs/Account-Profile-Specs.md` §5, bản trích `01-Architecture-Decisions/ADR-028` (≙ ADR-042), `00-Index/KB-Audit-2026-09-26.md` §22.
+
+## Dashboard Tổng quan gian hàng (ADR-043) — xong code, chưa commit/deploy — 2026-10-18
+
+Chủ dự án chốt §9 kế hoạch [ke-hoach-dashboard-tong-quan-gian-hang-2026-10-17.md](ke-hoach-dashboard-tong-quan-gian-hang-2026-10-17.md) ngày
+2026-10-18 → **ADR-043** + "Bổ sung ADR-043" (`docs/DECISIONS.md`). Dữ liệu nghiệp vụ, không có GĐ CMS. Không migration, không route HTTP mới.
+
+- **GĐ1 — dữ liệu (Hiếu):** `packages/core/src/stats/dashboard-range.ts` (subpath `@gieochu/core/dashboard-range`) — `resolveDashboardRange`,
+  `listDashboardBuckets`, 9 kỳ `?ky=` (mặc định 30 ngày, tuần bắt đầu Thứ Hai, giờ VN, tuỳ chọn `tu`–`den` ≤ 366 ngày, so kỳ trước cùng độ dài,
+  đầu vào sai → 30 ngày + cờ `invalid`). `apps/web/lib/tenant-dashboard.ts` — `getTenantDashboard`: 3 truy vấn trong một `withTenant` + điều
+  kiện `tenantId` tường minh, không đọc `tenant_daily_stats`, không cache, tiền số nguyên an toàn. Định nghĩa: chỉ đơn > 0đ cho doanh thu
+  gộp/thực nhận/đã hoàn, số đơn, giá trị TB, tài liệu khác nhau, người mua, khách quay lại, biểu đồ; đơn 0đ → `freeClaims`; thực nhận = gộp −
+  đơn REFUNDED theo `paidAt`; khách quay lại = ≥ 2 đơn > 0đ tính tới hết kỳ; khách mới theo `firstOrderAt` (gồm khách chỉ nhận miễn phí — khớp
+  System Center); top 5 bán chạy loại đơn REFUNDED, gồm đơn 0đ; điểm TB chỉ đánh giá VISIBLE; top đánh giá ≥ 3 đánh giá; 10 đơn mới nhất mọi
+  trạng thái, không lọc kỳ, chỉ mã/họ tên/đơn giá/thành tiền — không email.
+- **GĐ2 — UI (Phong):** trang chuyển vào route group `apps/web/app/studio/[tenantSlug]/(tong-quan)/` (`page.tsx`, `loading.tsx`, `error.tsx` —
+  không phủ trang con), `_ui/dashboard.tsx`, `_ui/dashboard-format.ts`, `_ui/dashboard-skeleton.tsx`. Component chung mới
+  `apps/web/app/admin/_ui/stats-chart.tsx` (`KpiCard`, `ChangeLine`, `computeChange` BigInt, `TrendChart`, `RatioBar`, `StatIcon`) —
+  `sales-stats.tsx` (`/admin`) refactor dùng chung; icon `IconArrowUp/Down`, `IconStarSolid`, `IconGift`. Khối: Việc cần xử lý → chip kỳ + tuỳ
+  chọn → KPI bán hàng + phụ → biểu đồ (gộp/thực nhận `?chi-so=`, đường số đơn) + top 5 → 10 đơn mới → Khách / Đánh giá / Tài liệu; chưa có đơn →
+  checklist 3 bước.
+- **Kiểm:** lint/typecheck/build đạt (Quốc chạy lại 2026-10-18); integration `studio-dashboard.test.ts` chạy thật đạt, dọn dữ liệu; xem trước
+  dữ liệu giả 360/768/1280. **Chưa** kiểm phiên OWNER thật, `/admin` sau refactor, bàn phím/trình đọc màn hình. Việc còn lại: `docs/BACKLOG.md`
+  mục "Phát sinh trong đợt ADR-043".
+
+**Số test:** +1 unit (`packages/core/src/stats/dashboard-range.test.ts`) +1 integration (`apps/web/tests/integration/studio-dashboard.test.ts`),
+không nâng trần — `pnpm test:count` = **94/94 unit, 55/55 integration** (Long chạy 2026-10-18, chỉ đếm) — **chạm trần**; test mới cần chủ dự án
+duyệt nâng trần. KB: `02-System-Specs/Studio-Dashboard-Specs.md` (mới), `02-System-Specs/Tenant-Stats-Specs.md` §9,
+`03-API-Contracts/Endpoint-Directory.md` §22, `04-Operations-Runbooks/UI-Design-System.md` §6/§16/§19, bản trích
+`01-Architecture-Decisions/ADR-029` (≙ ADR-043), `00-Index/KB-Audit-2026-09-26.md` §23.
 
 ## Câu hỏi còn mở (đã chọn phương án an toàn, xem ADR tương ứng)
 

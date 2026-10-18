@@ -1016,3 +1016,27 @@
   2. **Đăng xuất** cố định ở đáy sidebar (tách khỏi điều hướng) + trong `AccountMenu` header; ở app shell
      (admin/Studio) đăng xuất xong về `/login`; trang công khai và `/account` giữ về `/`.
   3. Dưới `lg`: nút ☰ mở drawer `<dialog>` chứa cùng sidebar (focus trap, Esc/nền/đổi trang đóng, reduced-motion).
+
+## ADR-043 — Dashboard Tổng quan gian hàng (`/studio/{slug}`): chỉ số theo kỳ, doanh thu gộp + thực nhận
+
+- **Bối cảnh (2026-10-18):** kế hoạch `docs/ke-hoach-dashboard-tong-quan-gian-hang-2026-10-17.md`. Chủ dự án chốt §9.
+  Dữ liệu nghiệp vụ, không phải nội dung → không có GĐ CMS (PLAN_CHECK). Không cần migration.
+- **Quyết định:**
+  1. **Doanh thu (gộp)** = tổng `totalVnd` đơn có `paidAt` trong kỳ, **tính cả đơn sau này hoàn tiền** — cùng định nghĩa
+     GMV System Center (ADR-037). Thêm thẻ **Doanh thu thực nhận** = doanh thu gộp − đơn đã hoàn tiền; khoản hoàn tính
+     theo **ngày khách trả tiền** của đơn (không cần cột mới). Giao diện ghi rõ định nghĩa hai thẻ.
+  2. Chỉ **chủ gian hàng (OWNER)** vào trang (giữ nguyên).
+  3. **Bảng 10 đơn mới nhất** (không lọc theo kỳ): chỉ hiện **mã đơn, họ tên khách, đơn giá, thành tiền** (không email);
+     link tới chi tiết đơn.
+  4. **Khách quay lại** = khách có ≥2 đơn đã thanh toán tại gian hàng. **Điểm đánh giá TB** chỉ tính đánh giá đang hiển thị.
+  5. **Kỳ** `?ky=`: hôm nay, hôm qua, tuần này (**bắt đầu Thứ Hai**), tháng, quý, năm, 7 ngày, 30 ngày (mặc định), tuỳ
+     chọn `tu`–`den` **tối đa 366 ngày**; ranh giới theo giờ VN; so sánh % với kỳ trước cùng độ dài.
+  6. Tính trực tiếp từ bảng L2 qua `withTenant` (không đọc `tenant_daily_stats` L1).
+  7. Để sau: xuất CSV, biểu đồ doanh thu theo danh mục (donut). Test: dùng 1 unit + 1 integration còn trống trong trần
+     94/55 (không nâng trần).
+- **Bổ sung ADR-043 (2026-10-18, chủ dự án chốt):** số liệu tiền (doanh thu gộp/thực nhận, số đơn đã thanh toán, giá trị
+  đơn TB, khách quay lại) **chỉ tính đơn > 0đ**; đơn 0đ (tài liệu miễn phí) tách thành thẻ phụ "Lượt nhận tài liệu miễn
+  phí". **Top 5 bán chạy không tính đơn đã hoàn tiền.**
+- **Bổ sung ADR-043 lần 2 (2026-10-18, Quốc):** Top 5 bán chạy tính theo số đơn **gồm cả lượt nhận miễn phí** (phản
+  ánh mức phổ biến; cột doanh thu cạnh đó cho thấy tài liệu miễn phí = 0đ). "Khách quay lại" đếm cả đơn > 0đ đã hoàn
+  tiền vào điều kiện ≥2 đơn (khách đã mua 2 lần). `ordersPaid` System Center gồm đơn 0đ, Studio không — có chủ đích.

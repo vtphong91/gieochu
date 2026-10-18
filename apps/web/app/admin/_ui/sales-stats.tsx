@@ -3,6 +3,16 @@ import { brandColors } from "@gieochu/config/theme";
 import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 import { EmptyState, Notice } from "./kit";
 import { IconAlertTriangle, IconExternalLink, IconShoppingBag } from "./icons";
+import {
+  KpiCard,
+  STAT_INK,
+  STAT_INK_SOFT,
+  TrendChart,
+  computeChange,
+  formatVndCompact,
+  formatVndFull,
+  toBigIntSafe,
+} from "./stats-chart";
 import type { AdminStatsOverview, AdminStatsTotals } from "../../../lib/admin-stats";
 
 /**
@@ -21,45 +31,11 @@ export function parseSalesChartMetric(raw: string | string[] | undefined): Sales
 }
 
 const LINE = "#E5E7EB";
-const INK = brandColors.ink;
-const INK_SOFT = "#6B7280";
-const BAR_EMPTY = "#E5E7EB";
+const INK = STAT_INK;
+const INK_SOFT = STAT_INK_SOFT;
 const SECTION_ID = "hoat-dong-ban-tai-lieu";
 
 const vnInt = new Intl.NumberFormat("vi-VN");
-
-/** Chuỗi BigInt → "1.234.567 đ" (không qua float). */
-function formatVndFull(raw: string): string {
-  return `${vnInt.format(toBigInt(raw))} đ`;
-}
-
-function toBigInt(raw: string): bigint {
-  try {
-    return BigInt(raw);
-  } catch {
-    return BigInt(0);
-  }
-}
-
-/**
- * Rút gọn tiền cho thẻ KPI/trục: "12,5 triệu đ", "1,2 tỷ đ". Phần nguyên + 1 chữ số thập phân tính bằng BigInt rồi
- * mới đổi sang number (giá trị đã nhỏ, an toàn) — không mất chính xác với số rất lớn.
- */
-function formatVndCompact(raw: string): string {
-  const v = toBigInt(raw);
-  const units: Array<[bigint, string]> = [
-    [BigInt(1_000_000_000), "tỷ"],
-    [BigInt(1_000_000), "triệu"],
-    [BigInt(1_000), "nghìn"],
-  ];
-  for (const [base, label] of units) {
-    if (v >= base) {
-      const tenths = Number((v * BigInt(10)) / base) / 10;
-      return `${tenths.toLocaleString("vi-VN", { maximumFractionDigits: 1 })} ${label} đ`;
-    }
-  }
-  return `${vnInt.format(v)} đ`;
-}
 
 /** "2026-09-17" → "17/09" (cắt chuỗi, không qua Date để khỏi lệch múi giờ). */
 function shortDate(isoDate: string): string {
@@ -84,83 +60,6 @@ function formatAggregatedAt(iso: string | null): string {
     month: "2-digit",
     year: "numeric",
   });
-}
-
-type Change = { kind: "none" } | { kind: "up" | "down" | "flat"; pctText: string };
-
-/** % thay đổi so với kỳ trước; kỳ trước = 0 → không so sánh được ("—"). Tính bằng BigInt cho GMV. */
-function computeChange(current: bigint, previous: bigint): Change {
-  if (previous === BigInt(0)) return { kind: "none" };
-  const diff = current - previous;
-  // Phần nghìn để có 1 chữ số thập phân, làm tròn về 0 (đủ cho hiển thị).
-  const permille = Number((diff * BigInt(1000)) / previous);
-  const pct = permille / 10;
-  const pctText = `${Math.abs(pct).toLocaleString("vi-VN", { maximumFractionDigits: 1 })}%`;
-  if (permille === 0) return { kind: "flat", pctText: "0%" };
-  return { kind: diff > BigInt(0) ? "up" : "down", pctText };
-}
-
-function ArrowUp({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 19V5M6 11l6-6 6 6" />
-    </svg>
-  );
-}
-
-function ArrowDown({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 5v14M6 13l6 6 6-6" />
-    </svg>
-  );
-}
-
-function ChangeLine({ change }: { change: Change }) {
-  if (change.kind === "none") {
-    return (
-      <p className="mt-2 text-xs" style={{ color: INK_SOFT }}>
-        <span aria-hidden="true">—</span>
-        <span className="ml-1">chưa có số liệu kỳ trước</span>
-      </p>
-    );
-  }
-  if (change.kind === "flat") {
-    return (
-      <p className="mt-2 text-xs" style={{ color: INK_SOFT }}>
-        Không đổi so với 30 ngày trước
-      </p>
-    );
-  }
-  const up = change.kind === "up";
-  return (
-    <p className={`mt-2 flex flex-wrap items-center gap-x-1 text-xs ${up ? "text-green-700" : "text-red-700"}`}>
-      <span className="inline-flex items-center gap-0.5 font-semibold">
-        {up ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}
-        {up ? "Tăng" : "Giảm"} {change.pctText}
-      </span>
-      <span style={{ color: INK_SOFT }}>so với 30 ngày trước</span>
-    </p>
-  );
-}
-
-function KpiCard({ label, value, detail, change }: { label: string; value: string; detail?: string; change: Change }) {
-  return (
-    <div className="min-w-0 rounded-2xl border bg-white p-5" style={{ borderColor: LINE }}>
-      <p className="text-sm font-medium" style={{ color: INK_SOFT }}>
-        {label}
-      </p>
-      <p className="mt-1 text-2xl font-bold tabular-nums [overflow-wrap:anywhere]" style={{ color: INK }}>
-        {value}
-      </p>
-      {detail ? (
-        <p className="mt-0.5 text-xs tabular-nums [overflow-wrap:anywhere]" style={{ color: INK_SOFT }}>
-          {detail}
-        </p>
-      ) : null}
-      <ChangeLine change={change} />
-    </div>
-  );
 }
 
 function SectionHeader({ lastAggregatedAt }: { lastAggregatedAt?: string | null }) {
@@ -209,83 +108,23 @@ type SeriesPoint = Extract<AdminStatsOverviewView, { status: "ok" }>["series"][n
 
 function DailyChart({ series, metric }: { series: SeriesPoint[]; metric: SalesChartMetric }) {
   const isGmv = metric === "gmv";
-  const values = series.map((p) => (isGmv ? toBigInt(p.gmvVnd) : BigInt(p.ordersPaid)));
-  const max = values.reduce((m, v) => (v > m ? v : m), BigInt(0));
-  const formatValue = (v: bigint) => (isGmv ? formatVndCompact(v.toString()) : `${vnInt.format(v)} đơn`);
-  const formatFull = (v: bigint) => (isGmv ? formatVndFull(v.toString()) : `${vnInt.format(v)} đơn`);
-  const metricName = isGmv ? "GMV" : "Đơn đã thanh toán";
-
-  const first = series[0];
-  const last = series[series.length - 1];
-  const peakIndex = values.findIndex((v) => v === max);
-  const peak = series[peakIndex];
-
-  if (!first || !last || max === BigInt(0) || !peak) {
-    return (
-      <p className="flex h-48 items-center justify-center rounded-xl border border-dashed text-sm" style={{ borderColor: LINE, color: INK_SOFT }}>
-        Không có {isGmv ? "doanh thu" : "đơn đã thanh toán"} nào trong 30 ngày.
-      </p>
-    );
-  }
-
-  const summary = `Biểu đồ cột ${metricName} theo ngày, từ ${longDate(first.date)} đến ${longDate(last.date)}. Cao nhất ${formatFull(max)} vào ngày ${longDate(peak.date)}. Bảng số liệu chi tiết ở ngay dưới biểu đồ.`;
-  const half = max / BigInt(2);
-  // Nhãn trục X thưa: neo vào ngày cuối, lùi mỗi 7 ngày — không chồng chữ ở 360px.
   const lastIndex = series.length - 1;
-  const showTick = (i: number) => (lastIndex - i) % 7 === 0;
-
   return (
-    <div>
-      <div role="img" aria-label={summary} className="flex gap-2">
-        {/* Trục Y */}
-        <div className="flex h-48 w-16 shrink-0 flex-col justify-between text-right text-[11px] tabular-nums sm:w-20" style={{ color: INK_SOFT }} aria-hidden="true">
-          <span className="-mt-1.5">{formatValue(max)}</span>
-          <span>{formatValue(half)}</span>
-          <span className="-mb-1.5">0</span>
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="relative h-48">
-            {/* Lưới ngang mờ */}
-            <div className="pointer-events-none absolute inset-0 flex flex-col justify-between" aria-hidden="true">
-              <div className="border-t border-dashed" style={{ borderColor: LINE }} />
-              <div className="border-t border-dashed" style={{ borderColor: LINE }} />
-              <div className="border-t" style={{ borderColor: "#D1D5DB" }} />
-            </div>
-            <div className="relative flex h-full items-end gap-px sm:gap-0.5" aria-hidden="true">
-              {series.map((p, i) => {
-                const v = values[i] ?? BigInt(0);
-                const pct = Number((v * BigInt(1000)) / max) / 10;
-                return (
-                  <div
-                    key={p.date}
-                    className="flex-1 rounded-t-sm transition-opacity hover:opacity-80 motion-reduce:transition-none"
-                    style={{ height: v > BigInt(0) ? `${Math.max(2, pct)}%` : "2px", background: v > BigInt(0) ? brandColors.primary : BAR_EMPTY }}
-                    title={`${longDate(p.date)}: ${formatFull(v)}`}
-                  />
-                );
-              })}
-            </div>
-          </div>
-          {/* Trục X */}
-          <div className="relative mt-1.5 flex h-4 gap-px sm:gap-0.5 text-[11px] tabular-nums" style={{ color: INK_SOFT }} aria-hidden="true">
-            {series.map((p, i) => (
-              <div key={p.date} className="relative flex-1">
-                {showTick(i) ? (
-                  <span
-                    className={`absolute top-0 whitespace-nowrap ${i === 0 ? "left-0" : i === lastIndex ? "right-0" : "left-1/2 -translate-x-1/2"}`}
-                  >
-                    {shortDate(p.date)}
-                  </span>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-      <p className="mt-3 text-xs" style={{ color: INK_SOFT }}>
-        Cao nhất: <span className="font-semibold tabular-nums" style={{ color: INK }}>{formatFull(max)}</span> ngày {longDate(peak.date)}
-      </p>
-    </div>
+    <TrendChart
+      points={series.map((p) => ({
+        key: p.date,
+        tick: shortDate(p.date),
+        label: `ngày ${longDate(p.date)}`,
+        value: isGmv ? toBigIntSafe(p.gmvVnd) : BigInt(p.ordersPaid),
+      }))}
+      metricName={isGmv ? "GMV theo ngày" : "Đơn đã thanh toán theo ngày"}
+      formatAxis={(v) => (isGmv ? formatVndCompact(v) : `${vnInt.format(v)} đơn`)}
+      formatFull={(v) => (isGmv ? formatVndFull(v) : `${vnInt.format(v)} đơn`)}
+      emptyText={`Không có ${isGmv ? "doanh thu" : "đơn đã thanh toán"} nào trong 30 ngày.`}
+      integerScale={!isGmv}
+      // Nhãn trục X thưa: neo vào ngày cuối, lùi mỗi 7 ngày — không chồng chữ ở 360px.
+      showTick={(i) => (lastIndex - i) % 7 === 0}
+    />
   );
 }
 
@@ -388,7 +227,7 @@ function TopTenants({ tenants }: { tenants: TopTenant[] }) {
 }
 
 function isAllZero(t: StatsTotals): boolean {
-  return toBigInt(t.gmvVnd) === BigInt(0) && t.ordersPaid === 0 && t.newCustomers === 0 && t.downloads === 0;
+  return toBigIntSafe(t.gmvVnd) === BigInt(0) && t.ordersPaid === 0 && t.newCustomers === 0 && t.downloads === 0;
 }
 
 export function SalesStatsSection({ overview, metric }: { overview: AdminStatsOverviewView; metric: SalesChartMetric }) {
@@ -428,22 +267,22 @@ export function SalesStatsSection({ overview, metric }: { overview: AdminStatsOv
           label="GMV"
           value={formatVndCompact(totals.gmvVnd)}
           detail={formatVndFull(totals.gmvVnd)}
-          change={computeChange(toBigInt(totals.gmvVnd), toBigInt(prevTotals.gmvVnd))}
+          change={computeChange(totals.gmvVnd, prevTotals.gmvVnd)}
         />
         <KpiCard
           label="Đơn đã thanh toán"
           value={vnInt.format(totals.ordersPaid)}
-          change={computeChange(BigInt(totals.ordersPaid), BigInt(prevTotals.ordersPaid))}
+          change={computeChange(totals.ordersPaid, prevTotals.ordersPaid)}
         />
         <KpiCard
           label="Khách mới"
           value={vnInt.format(totals.newCustomers)}
-          change={computeChange(BigInt(totals.newCustomers), BigInt(prevTotals.newCustomers))}
+          change={computeChange(totals.newCustomers, prevTotals.newCustomers)}
         />
         <KpiCard
           label="Lượt tải"
           value={vnInt.format(totals.downloads)}
-          change={computeChange(BigInt(totals.downloads), BigInt(prevTotals.downloads))}
+          change={computeChange(totals.downloads, prevTotals.downloads)}
         />
       </div>
 

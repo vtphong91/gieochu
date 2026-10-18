@@ -3,7 +3,7 @@ tags:
   - meta
   - adr
 date: 2026-09-26
-updated: 2026-10-17
+updated: 2026-10-18
 ---
 
 # 🏛️ Architecture Decision Records (ADRs)
@@ -12,7 +12,7 @@ Thư mục này chứa một **bản trích lọc các Quyết định Kiến tr
 những quyết định mà một người mới tham gia dự án cần biết trước khi chạm vào code.
 
 Đây là bản trích lọc — xem [`docs/DECISIONS.md`](../../docs/DECISIONS.md) ở gốc repo để có đầy đủ toàn bộ quyết
-định kiến trúc (hiện có 42 ADR, ADR-001…ADR-042). Số thứ tự `ADR-0XX` trong các file ở thư mục này là số thứ tự **riêng của
+định kiến trúc (hiện có 43 ADR, ADR-001…ADR-043). Số thứ tự `ADR-0XX` trong các file ở thư mục này là số thứ tự **riêng của
 thư mục KB**, đánh lại từ 1 cho phần trích lọc — mỗi file ghi rõ nó tương ứng ADR số mấy trong
 `docs/DECISIONS.md`, để tra ngược lại nguồn gốc khi cần.
 
@@ -45,5 +45,6 @@ thư mục KB**, đánh lại từ 1 cho phần trích lọc — mỗi file ghi 
 - `[[ADR-026-Only-Active-Tenant-Shows-Documents]]`: Chỉ gian hàng `ACTIVE` hiển thị tài liệu — khách của gian hàng `READ_ONLY` chỉ thấy trang "tạm ngưng hoạt động" (không tài liệu/bài viết/đánh giá, `noindex`), trang tài liệu/bài viết 404, share link 410, báo cáo vi phạm 404, gửi/sửa đánh giá 409; chủ gian hàng vẫn xem kèm thông báo; chặn thanh toán đơn `PENDING` (chốt ADR-039 (g)). *(≙ ADR-040)*
 - `[[ADR-027-Account-Upgrade-Pricing-Profile-Refund]]`: Nâng cấp tài khoản + Hồ sơ — trang Bảng giá theo CMS `pricing` (giá/hạn mức chỉ từ `Plan`, gói năm ghép cặp % tính từ giá thật, chỉ quảng cáo tính năng có thật, hạn mức `0` = không được phép / `-1` = không giới hạn); hoàn tiền gói 7 ngày, 100%, chỉ hoá đơn PAID đầu, mất quyền khi có hoá đơn PAID thứ hai, admin chuyển khoản tay, thông tin nhận tiền mã hoá + tự xoá; `/account` một hồ sơ cho mọi user, SĐT/Tỉnh tuỳ chọn, đổi mật khẩu/đổi email bảo mật chặt, ảnh đại diện Cloudinary riêng tư. *(≙ ADR-041, gồm 2 lần "Bổ sung ADR-041"; bổ sung ADR-008 gốc)*
 - `[[ADR-028-Shared-App-Sidebar-Logout-Mobile-Drawer]]`: Một sidebar dùng chung cho System Center và Studio (`SidebarNav` + `AppSidebarPanel`, Studio chia Tổng quan + 3 nhóm accordion Bán hàng/Nội dung/Gian hàng, badge `{count, srText, urgent}`, xoá sidebar riêng Studio); Đăng xuất cố định đáy sidebar + trong menu tài khoản, app shell đăng xuất về `/login`; dưới `lg` drawer `<dialog>` chứa cùng sidebar. Hoàn tất GĐ2b ADR-041. *(≙ ADR-042)*
+- `[[ADR-029-Studio-Dashboard-Period-Gross-Net-Revenue]]`: Dashboard Tổng quan gian hàng `/studio/{slug}` — kỳ `?ky=` (9 lựa chọn, mặc định 30 ngày, tuần bắt đầu Thứ Hai, giờ VN, tuỳ chọn ≤ 366 ngày, so kỳ trước cùng độ dài); doanh thu gộp (cùng định nghĩa GMV System Center) + thực nhận (trừ đơn đã hoàn theo ngày trả); số liệu tiền chỉ tính đơn > 0đ, đơn 0đ thành "Lượt nhận tài liệu miễn phí"; top 5 bán chạy loại đơn hoàn tiền; 10 đơn mới nhất không email; tính realtime từ bảng L2 qua `withTenant`, không đọc `tenant_daily_stats`; chỉ OWNER; trần test chạm 94/55. *(≙ ADR-043, gồm "Bổ sung ADR-043" và "Bổ sung ADR-043 lần 2")*
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

@@ -3,7 +3,7 @@ tags:
   - meta
   - contract
 date: 2026-09-26
-updated: 2026-10-17
+updated: 2026-10-18
 ---
 
 # 🔌 API Contracts & Data Interface
@@ -36,6 +36,9 @@ tenant nơi giáo viên/coach bán tài liệu số cho học viên.
   lỗi 400/403/404/409/429/503), Server Action `/admin/reports` (`resolveReportAction`, `unlockModerationAction`) và thư viện khách
   (`chooseFinalDownloadAction`, `requestRefundAction`), mã lỗi remedy ở `/api/downloads`, `PRODUCT_UNAVAILABLE` ở checkout, bước cron
   `abuse_report.ip_purge` (`results.reportIpPurge`), subpath `@gieochu/core/abuse-report` + `@gieochu/core/entitlement-remedy` — 23 `route.ts` toàn app.
+  §21 ADR-041 (Bảng giá CMS, hoàn tiền gói, Hồ sơ); §22 ADR-043 — loader dashboard Tổng quan gian hàng `getTenantDashboard` (`lib/tenant-dashboard.ts`,
+  contract `TenantDashboard`, không email khách) + subpath `@gieochu/core/dashboard-range` (`resolveDashboardRange`, `listDashboardBuckets`),
+  query `?ky=`/`?tu=`/`?den=`/`?chi-so=` trên `/studio/{slug}` — không thêm `route.ts` (vẫn 23 toàn app).
 - `[[Database-Schema-Reference]]` — Lược đồ 45 model + 30 enum trong `packages/db/prisma/schema.prisma`, phân
   theo layer L1 (System) / L2 (Tenant, RLS) / L3 (góc nhìn Customer trên bảng L2), cùng quy ước cuid2 (ADR-001),
   mã hoá secret AES-256-GCM (§7.3 CLAUDE.md), và bảng RBAC `Role`/`Permission`/`RolePermission` (ADR-022); §7 ghi RLS tách đọc/ghi 7 bảng, quy tắc bảng L2 mới và mẫu
