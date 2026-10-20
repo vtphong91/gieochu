@@ -18,3 +18,4 @@ Thumbs.db
 # Ghi chú nội bộ nhạy cảm — không bao giờ commit (ví dụ: sơ đồ phân quyền chi
 # tiết, thông tin vận hành không dành cho public repo).
 docs/private/
+pnpm-lock.yaml
