@@ -1,11 +1,14 @@
 import { config as loadEnv } from "dotenv";
 import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
+import { resolveRawEnv } from "@gieochu/config";
 
 // Next.js only auto-loads .env files from this app's own directory; the
 // monorepo keeps a single .env at the repo root (see packages/db/prisma.config.ts
 // for the same pattern), so load it explicitly before anything reads process.env.
 loadEnv({ path: fileURLToPath(new URL("../../.env", import.meta.url)) });
+resolveRawEnv(process.env);
+
 
 // §7.8: Content-Security-Policy moved to proxy.ts — it needs a fresh nonce
 // per request (Next's App Router injects its own inline <script> tags for

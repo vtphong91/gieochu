@@ -1,19 +1,23 @@
 import { PrismaNeon } from "@prisma/adapter-neon";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { getEnv } from "@gieochu/config";
 import { PrismaClient } from "./generated/prisma/client";
 
 let client: PrismaClient | undefined;
 
 /**
- * Runtime Prisma client, connected through the Neon serverless driver adapter
- * against the pooled DATABASE_URL (see prisma.config.ts for the CLI-side
- * DIRECT_URL). Lazily created so importing this module has no side effects
- * before env vars are validated.
+ * Runtime Prisma client, connected through either Neon serverless driver adapter
+ * or standard PostgreSQL adapter (@prisma/adapter-pg) depending on DATABASE_URL.
  */
 export function getPrismaClient(): PrismaClient {
   if (!client) {
-    const adapter = new PrismaNeon({ connectionString: getEnv().DATABASE_URL });
-    client = new PrismaClient({ adapter });
+    const dbUrl = getEnv().DATABASE_URL;
+    const isNeon = dbUrl.includes(".neon.tech") || dbUrl.includes(".neon.build");
+    const adapter = isNeon
+      ? new PrismaNeon({ connectionString: dbUrl })
+      : new PrismaPg(dbUrl);
+    client = new PrismaClient({ adapter: adapter as any });
   }
   return client;
 }
+

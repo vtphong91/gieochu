@@ -71,11 +71,70 @@ export class EnvValidationError extends Error {
 }
 
 /**
+ * Tự động tạo APP_URL, DATABASE_URL, DIRECT_URL từ các biến thành phần
+ * (APP_HOST, APP_PORT, APP_PROTOCOL, DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, DB_SSLMODE)
+ * khi người dùng tách nhỏ cấu hình trong .env.
+ */
+export function resolveRawEnv(raw: Record<string, string | undefined>): Record<string, string | undefined> {
+  const resolved = { ...raw };
+
+  // Hỗ trợ DE_ENV hoặc NODE_ENV
+  if (!resolved.NODE_ENV && resolved.DE_ENV) {
+    resolved.NODE_ENV = resolved.DE_ENV;
+  }
+
+  // Tự động ghép APP_URL từ APP_HOST, APP_PORT, APP_PROTOCOL nếu chưa có APP_URL
+  if (!resolved.APP_URL && (resolved.APP_HOST || resolved.APP_PORT)) {
+    const protocol = resolved.APP_PROTOCOL || "http";
+    const host = resolved.APP_HOST || "localhost";
+    const port = resolved.APP_PORT ? `:${resolved.APP_PORT}` : "";
+    resolved.APP_URL = `${protocol}://${host}${port}`;
+  }
+
+  // Tự động gán PORT cho Next.js dev server nếu có APP_PORT
+  if (!resolved.PORT && resolved.APP_PORT) {
+    resolved.PORT = resolved.APP_PORT;
+  }
+
+  // Tự động ghép DATABASE_URL, DIRECT_URL từ DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, DB_SSLMODE
+  if (!resolved.DATABASE_URL && resolved.DB_HOST) {
+    const user = encodeURIComponent(resolved.DB_USER || "postgres");
+    const password = resolved.DB_PASSWORD ? `:${encodeURIComponent(resolved.DB_PASSWORD)}` : "";
+    const host = resolved.DB_HOST;
+    const port = resolved.DB_PORT ? `:${resolved.DB_PORT}` : ":5432";
+    const dbName = resolved.DB_NAME || "postgres";
+    const sslmode = resolved.DB_SSLMODE?.trim();
+    const sslQuery = sslmode ? `?sslmode=${sslmode}` : "";
+    const connStr = `postgresql://${user}${password}@${host}${port}/${dbName}${sslQuery}`;
+    resolved.DATABASE_URL = connStr;
+    if (!resolved.DIRECT_URL) {
+      resolved.DIRECT_URL = connStr;
+    }
+  } else if (resolved.DATABASE_URL && !resolved.DIRECT_URL) {
+    resolved.DIRECT_URL = resolved.DATABASE_URL;
+  }
+
+  // Đồng bộ lại vào process.env để các module khác (Prisma CLI, next dev...) cùng đọc được
+  if (typeof process !== "undefined" && process.env) {
+    const envObj = process.env as Record<string, string | undefined>;
+    if (resolved.NODE_ENV && !envObj.NODE_ENV) envObj.NODE_ENV = resolved.NODE_ENV;
+    if (resolved.APP_URL && !envObj.APP_URL) envObj.APP_URL = resolved.APP_URL;
+    if (resolved.DATABASE_URL && !envObj.DATABASE_URL) envObj.DATABASE_URL = resolved.DATABASE_URL;
+    if (resolved.DIRECT_URL && !envObj.DIRECT_URL) envObj.DIRECT_URL = resolved.DIRECT_URL;
+    if (resolved.PORT && !envObj.PORT) envObj.PORT = resolved.PORT;
+    if (resolved.DATABASE_URL && !envObj.PRISMA_MIGRATE_URL) envObj.PRISMA_MIGRATE_URL = resolved.DATABASE_URL;
+  }
+
+  return resolved;
+}
+
+/**
  * Parses and validates a raw environment record. Fails fast (throws) when a
  * required variable is missing or malformed, per docs/GIEOCHU_PROMPT_MVP_PHASE1.md M0.
  */
 export function parseEnv(raw: Record<string, string | undefined>): Env {
-  const result = envSchema.safeParse(raw);
+  const prepared = resolveRawEnv(raw);
+  const result = envSchema.safeParse(prepared);
   if (!result.success) {
     throw new EnvValidationError(result.error.issues);
   }
