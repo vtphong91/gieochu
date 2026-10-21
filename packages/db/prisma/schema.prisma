@@ -309,6 +309,8 @@ model Tenant {
   orderCodePrefix         String       @unique
   status                  TenantStatus @default(ACTIVE)
   storageUsedBytes        Int          @default(0)
+  storageBucket           String?
+  storageProvider         String?
   createdAt               DateTime     @default(now())
   updatedAt               DateTime     @updatedAt
 
@@ -484,6 +486,8 @@ model ProductFile {
   sourceKind  ProductFileSource      @default(FILE)
   externalUrl String?
   objectKey   String?                @unique
+  storageBucket String?
+  storageProvider String?
   fileName    String
   mimeType    String?
   sizeBytes   Int

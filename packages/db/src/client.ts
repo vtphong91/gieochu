@@ -13,10 +13,9 @@ export function getPrismaClient(): PrismaClient {
   if (!client) {
     const dbUrl = getEnv().DATABASE_URL;
     const isNeon = dbUrl.includes(".neon.tech") || dbUrl.includes(".neon.build");
-    const adapter = isNeon
-      ? new PrismaNeon({ connectionString: dbUrl })
-      : new PrismaPg(dbUrl);
-    client = new PrismaClient({ adapter: adapter as any });
+    client = isNeon
+      ? new PrismaClient({ adapter: new PrismaNeon({ connectionString: dbUrl }) })
+      : new PrismaClient({ adapter: new PrismaPg(dbUrl) });
   }
   return client;
 }

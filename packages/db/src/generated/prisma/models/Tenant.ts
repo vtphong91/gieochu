@@ -48,6 +48,8 @@ export type TenantMinAggregateOutputType = {
   orderCodePrefix: string | null
   status: $Enums.TenantStatus | null
   storageUsedBytes: number | null
+  storageBucket: string | null
+  storageProvider: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -63,6 +65,8 @@ export type TenantMaxAggregateOutputType = {
   orderCodePrefix: string | null
   status: $Enums.TenantStatus | null
   storageUsedBytes: number | null
+  storageBucket: string | null
+  storageProvider: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -81,6 +85,8 @@ export type TenantCountAggregateOutputType = {
   orderCodePrefix: number
   status: number
   storageUsedBytes: number
+  storageBucket: number
+  storageProvider: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -106,6 +112,8 @@ export type TenantMinAggregateInputType = {
   orderCodePrefix?: true
   status?: true
   storageUsedBytes?: true
+  storageBucket?: true
+  storageProvider?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -121,6 +129,8 @@ export type TenantMaxAggregateInputType = {
   orderCodePrefix?: true
   status?: true
   storageUsedBytes?: true
+  storageBucket?: true
+  storageProvider?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -139,6 +149,8 @@ export type TenantCountAggregateInputType = {
   orderCodePrefix?: true
   status?: true
   storageUsedBytes?: true
+  storageBucket?: true
+  storageProvider?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -244,6 +256,8 @@ export type TenantGroupByOutputType = {
   orderCodePrefix: string
   status: $Enums.TenantStatus
   storageUsedBytes: number
+  storageBucket: string | null
+  storageProvider: string | null
   createdAt: Date
   updatedAt: Date
   _count: TenantCountAggregateOutputType | null
@@ -285,6 +299,8 @@ export type TenantWhereInput = {
   orderCodePrefix?: Prisma.StringFilter<"Tenant"> | string
   status?: Prisma.EnumTenantStatusFilter<"Tenant"> | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFilter<"Tenant"> | number
+  storageBucket?: Prisma.StringNullableFilter<"Tenant"> | string | null
+  storageProvider?: Prisma.StringNullableFilter<"Tenant"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Tenant"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Tenant"> | Date | string
   owner?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
@@ -324,6 +340,8 @@ export type TenantOrderByWithRelationInput = {
   orderCodePrefix?: Prisma.SortOrder
   status?: Prisma.SortOrder
   storageUsedBytes?: Prisma.SortOrder
+  storageBucket?: Prisma.SortOrderInput | Prisma.SortOrder
+  storageProvider?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   owner?: Prisma.UserOrderByWithRelationInput
@@ -366,6 +384,8 @@ export type TenantWhereUniqueInput = Prisma.AtLeast<{
   storefrontSectionsDraft?: Prisma.JsonNullableFilter<"Tenant">
   status?: Prisma.EnumTenantStatusFilter<"Tenant"> | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFilter<"Tenant"> | number
+  storageBucket?: Prisma.StringNullableFilter<"Tenant"> | string | null
+  storageProvider?: Prisma.StringNullableFilter<"Tenant"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Tenant"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Tenant"> | Date | string
   owner?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
@@ -405,6 +425,8 @@ export type TenantOrderByWithAggregationInput = {
   orderCodePrefix?: Prisma.SortOrder
   status?: Prisma.SortOrder
   storageUsedBytes?: Prisma.SortOrder
+  storageBucket?: Prisma.SortOrderInput | Prisma.SortOrder
+  storageProvider?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.TenantCountOrderByAggregateInput
@@ -431,6 +453,8 @@ export type TenantScalarWhereWithAggregatesInput = {
   orderCodePrefix?: Prisma.StringWithAggregatesFilter<"Tenant"> | string
   status?: Prisma.EnumTenantStatusWithAggregatesFilter<"Tenant"> | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntWithAggregatesFilter<"Tenant"> | number
+  storageBucket?: Prisma.StringNullableWithAggregatesFilter<"Tenant"> | string | null
+  storageProvider?: Prisma.StringNullableWithAggregatesFilter<"Tenant"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Tenant"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Tenant"> | Date | string
 }
@@ -448,6 +472,8 @@ export type TenantCreateInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   owner: Prisma.UserCreateNestedOneWithoutOwnedTenantInput
@@ -487,6 +513,8 @@ export type TenantUncheckedCreateInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
@@ -524,6 +552,8 @@ export type TenantUpdateInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneRequiredWithoutOwnedTenantNestedInput
@@ -563,6 +593,8 @@ export type TenantUncheckedUpdateInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
@@ -601,6 +633,8 @@ export type TenantCreateManyInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -618,6 +652,8 @@ export type TenantUpdateManyMutationInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -636,6 +672,8 @@ export type TenantUncheckedUpdateManyInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -664,6 +702,8 @@ export type TenantCountOrderByAggregateInput = {
   orderCodePrefix?: Prisma.SortOrder
   status?: Prisma.SortOrder
   storageUsedBytes?: Prisma.SortOrder
+  storageBucket?: Prisma.SortOrder
+  storageProvider?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -683,6 +723,8 @@ export type TenantMaxOrderByAggregateInput = {
   orderCodePrefix?: Prisma.SortOrder
   status?: Prisma.SortOrder
   storageUsedBytes?: Prisma.SortOrder
+  storageBucket?: Prisma.SortOrder
+  storageProvider?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -698,6 +740,8 @@ export type TenantMinOrderByAggregateInput = {
   orderCodePrefix?: Prisma.SortOrder
   status?: Prisma.SortOrder
   storageUsedBytes?: Prisma.SortOrder
+  storageBucket?: Prisma.SortOrder
+  storageProvider?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -1035,6 +1079,8 @@ export type TenantCreateWithoutOwnerInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   members?: Prisma.TenantMemberCreateNestedManyWithoutTenantInput
@@ -1072,6 +1118,8 @@ export type TenantUncheckedCreateWithoutOwnerInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
@@ -1125,6 +1173,8 @@ export type TenantUpdateWithoutOwnerInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.TenantMemberUpdateManyWithoutTenantNestedInput
@@ -1162,6 +1212,8 @@ export type TenantUncheckedUpdateWithoutOwnerInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
@@ -1199,6 +1251,8 @@ export type TenantCreateWithoutSubscriptionInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   owner: Prisma.UserCreateNestedOneWithoutOwnedTenantInput
@@ -1237,6 +1291,8 @@ export type TenantUncheckedCreateWithoutSubscriptionInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
@@ -1289,6 +1345,8 @@ export type TenantUpdateWithoutSubscriptionInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneRequiredWithoutOwnedTenantNestedInput
@@ -1327,6 +1385,8 @@ export type TenantUncheckedUpdateWithoutSubscriptionInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
@@ -1363,6 +1423,8 @@ export type TenantCreateWithoutMembersInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   owner: Prisma.UserCreateNestedOneWithoutOwnedTenantInput
@@ -1401,6 +1463,8 @@ export type TenantUncheckedCreateWithoutMembersInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   slugHistory?: Prisma.TenantSlugHistoryUncheckedCreateNestedManyWithoutTenantInput
@@ -1453,6 +1517,8 @@ export type TenantUpdateWithoutMembersInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneRequiredWithoutOwnedTenantNestedInput
@@ -1491,6 +1557,8 @@ export type TenantUncheckedUpdateWithoutMembersInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   slugHistory?: Prisma.TenantSlugHistoryUncheckedUpdateManyWithoutTenantNestedInput
@@ -1527,6 +1595,8 @@ export type TenantCreateWithoutSlugHistoryInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   owner: Prisma.UserCreateNestedOneWithoutOwnedTenantInput
@@ -1565,6 +1635,8 @@ export type TenantUncheckedCreateWithoutSlugHistoryInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
@@ -1617,6 +1689,8 @@ export type TenantUpdateWithoutSlugHistoryInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneRequiredWithoutOwnedTenantNestedInput
@@ -1655,6 +1729,8 @@ export type TenantUncheckedUpdateWithoutSlugHistoryInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
@@ -1691,6 +1767,8 @@ export type TenantCreateWithoutProductsInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   owner: Prisma.UserCreateNestedOneWithoutOwnedTenantInput
@@ -1729,6 +1807,8 @@ export type TenantUncheckedCreateWithoutProductsInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
@@ -1781,6 +1861,8 @@ export type TenantUpdateWithoutProductsInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneRequiredWithoutOwnedTenantNestedInput
@@ -1819,6 +1901,8 @@ export type TenantUncheckedUpdateWithoutProductsInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
@@ -1855,6 +1939,8 @@ export type TenantCreateWithoutPaymentConfigsInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   owner: Prisma.UserCreateNestedOneWithoutOwnedTenantInput
@@ -1893,6 +1979,8 @@ export type TenantUncheckedCreateWithoutPaymentConfigsInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
@@ -1945,6 +2033,8 @@ export type TenantUpdateWithoutPaymentConfigsInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneRequiredWithoutOwnedTenantNestedInput
@@ -1983,6 +2073,8 @@ export type TenantUncheckedUpdateWithoutPaymentConfigsInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
@@ -2019,6 +2111,8 @@ export type TenantCreateWithoutSubscriptionInvoicesInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   owner: Prisma.UserCreateNestedOneWithoutOwnedTenantInput
@@ -2057,6 +2151,8 @@ export type TenantUncheckedCreateWithoutSubscriptionInvoicesInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
@@ -2109,6 +2205,8 @@ export type TenantUpdateWithoutSubscriptionInvoicesInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneRequiredWithoutOwnedTenantNestedInput
@@ -2147,6 +2245,8 @@ export type TenantUncheckedUpdateWithoutSubscriptionInvoicesInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
@@ -2183,6 +2283,8 @@ export type TenantCreateWithoutSubscriptionRefundInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   owner: Prisma.UserCreateNestedOneWithoutOwnedTenantInput
@@ -2221,6 +2323,8 @@ export type TenantUncheckedCreateWithoutSubscriptionRefundInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
@@ -2273,6 +2377,8 @@ export type TenantUpdateWithoutSubscriptionRefundInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneRequiredWithoutOwnedTenantNestedInput
@@ -2311,6 +2417,8 @@ export type TenantUncheckedUpdateWithoutSubscriptionRefundInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
@@ -2347,6 +2455,8 @@ export type TenantCreateWithoutCouponsInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   owner: Prisma.UserCreateNestedOneWithoutOwnedTenantInput
@@ -2385,6 +2495,8 @@ export type TenantUncheckedCreateWithoutCouponsInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
@@ -2437,6 +2549,8 @@ export type TenantUpdateWithoutCouponsInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneRequiredWithoutOwnedTenantNestedInput
@@ -2475,6 +2589,8 @@ export type TenantUncheckedUpdateWithoutCouponsInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
@@ -2511,6 +2627,8 @@ export type TenantCreateWithoutOrdersInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   owner: Prisma.UserCreateNestedOneWithoutOwnedTenantInput
@@ -2549,6 +2667,8 @@ export type TenantUncheckedCreateWithoutOrdersInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
@@ -2601,6 +2721,8 @@ export type TenantUpdateWithoutOrdersInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneRequiredWithoutOwnedTenantNestedInput
@@ -2639,6 +2761,8 @@ export type TenantUncheckedUpdateWithoutOrdersInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
@@ -2675,6 +2799,8 @@ export type TenantCreateWithoutTransactionsInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   owner: Prisma.UserCreateNestedOneWithoutOwnedTenantInput
@@ -2713,6 +2839,8 @@ export type TenantUncheckedCreateWithoutTransactionsInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
@@ -2765,6 +2893,8 @@ export type TenantUpdateWithoutTransactionsInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneRequiredWithoutOwnedTenantNestedInput
@@ -2803,6 +2933,8 @@ export type TenantUncheckedUpdateWithoutTransactionsInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
@@ -2839,6 +2971,8 @@ export type TenantCreateWithoutCustomersInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   owner: Prisma.UserCreateNestedOneWithoutOwnedTenantInput
@@ -2877,6 +3011,8 @@ export type TenantUncheckedCreateWithoutCustomersInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
@@ -2929,6 +3065,8 @@ export type TenantUpdateWithoutCustomersInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneRequiredWithoutOwnedTenantNestedInput
@@ -2967,6 +3105,8 @@ export type TenantUncheckedUpdateWithoutCustomersInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
@@ -3003,6 +3143,8 @@ export type TenantCreateWithoutEntitlementsInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   owner: Prisma.UserCreateNestedOneWithoutOwnedTenantInput
@@ -3041,6 +3183,8 @@ export type TenantUncheckedCreateWithoutEntitlementsInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
@@ -3093,6 +3237,8 @@ export type TenantUpdateWithoutEntitlementsInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneRequiredWithoutOwnedTenantNestedInput
@@ -3131,6 +3277,8 @@ export type TenantUncheckedUpdateWithoutEntitlementsInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
@@ -3167,6 +3315,8 @@ export type TenantCreateWithoutShareLinksInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   owner: Prisma.UserCreateNestedOneWithoutOwnedTenantInput
@@ -3205,6 +3355,8 @@ export type TenantUncheckedCreateWithoutShareLinksInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
@@ -3257,6 +3409,8 @@ export type TenantUpdateWithoutShareLinksInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneRequiredWithoutOwnedTenantNestedInput
@@ -3295,6 +3449,8 @@ export type TenantUncheckedUpdateWithoutShareLinksInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
@@ -3331,6 +3487,8 @@ export type TenantCreateWithoutDownloadEventsInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   owner: Prisma.UserCreateNestedOneWithoutOwnedTenantInput
@@ -3369,6 +3527,8 @@ export type TenantUncheckedCreateWithoutDownloadEventsInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
@@ -3421,6 +3581,8 @@ export type TenantUpdateWithoutDownloadEventsInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneRequiredWithoutOwnedTenantNestedInput
@@ -3459,6 +3621,8 @@ export type TenantUncheckedUpdateWithoutDownloadEventsInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
@@ -3495,6 +3659,8 @@ export type TenantCreateWithoutStorefrontMessagesInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   owner: Prisma.UserCreateNestedOneWithoutOwnedTenantInput
@@ -3533,6 +3699,8 @@ export type TenantUncheckedCreateWithoutStorefrontMessagesInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
@@ -3585,6 +3753,8 @@ export type TenantUpdateWithoutStorefrontMessagesInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneRequiredWithoutOwnedTenantNestedInput
@@ -3623,6 +3793,8 @@ export type TenantUncheckedUpdateWithoutStorefrontMessagesInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
@@ -3659,6 +3831,8 @@ export type TenantCreateWithoutMediaAssetsInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   owner: Prisma.UserCreateNestedOneWithoutOwnedTenantInput
@@ -3697,6 +3871,8 @@ export type TenantUncheckedCreateWithoutMediaAssetsInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
@@ -3749,6 +3925,8 @@ export type TenantUpdateWithoutMediaAssetsInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneRequiredWithoutOwnedTenantNestedInput
@@ -3787,6 +3965,8 @@ export type TenantUncheckedUpdateWithoutMediaAssetsInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
@@ -3823,6 +4003,8 @@ export type TenantCreateWithoutReviewsInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   owner: Prisma.UserCreateNestedOneWithoutOwnedTenantInput
@@ -3861,6 +4043,8 @@ export type TenantUncheckedCreateWithoutReviewsInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
@@ -3913,6 +4097,8 @@ export type TenantUpdateWithoutReviewsInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneRequiredWithoutOwnedTenantNestedInput
@@ -3951,6 +4137,8 @@ export type TenantUncheckedUpdateWithoutReviewsInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
@@ -3987,6 +4175,8 @@ export type TenantCreateWithoutPostsInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   owner: Prisma.UserCreateNestedOneWithoutOwnedTenantInput
@@ -4025,6 +4215,8 @@ export type TenantUncheckedCreateWithoutPostsInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
@@ -4077,6 +4269,8 @@ export type TenantUpdateWithoutPostsInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneRequiredWithoutOwnedTenantNestedInput
@@ -4115,6 +4309,8 @@ export type TenantUncheckedUpdateWithoutPostsInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
@@ -4151,6 +4347,8 @@ export type TenantCreateWithoutDailyStatsInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   owner: Prisma.UserCreateNestedOneWithoutOwnedTenantInput
@@ -4189,6 +4387,8 @@ export type TenantUncheckedCreateWithoutDailyStatsInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
@@ -4241,6 +4441,8 @@ export type TenantUpdateWithoutDailyStatsInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneRequiredWithoutOwnedTenantNestedInput
@@ -4279,6 +4481,8 @@ export type TenantUncheckedUpdateWithoutDailyStatsInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
@@ -4315,6 +4519,8 @@ export type TenantCreateWithoutAbuseReportsInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   owner: Prisma.UserCreateNestedOneWithoutOwnedTenantInput
@@ -4353,6 +4559,8 @@ export type TenantUncheckedCreateWithoutAbuseReportsInput = {
   orderCodePrefix: string
   status?: $Enums.TenantStatus
   storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
@@ -4405,6 +4613,8 @@ export type TenantUpdateWithoutAbuseReportsInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneRequiredWithoutOwnedTenantNestedInput
@@ -4443,6 +4653,8 @@ export type TenantUncheckedUpdateWithoutAbuseReportsInput = {
   orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
   storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
@@ -4664,6 +4876,8 @@ export type TenantSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   orderCodePrefix?: boolean
   status?: boolean
   storageUsedBytes?: boolean
+  storageBucket?: boolean
+  storageProvider?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   owner?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -4704,6 +4918,8 @@ export type TenantSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   orderCodePrefix?: boolean
   status?: boolean
   storageUsedBytes?: boolean
+  storageBucket?: boolean
+  storageProvider?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   owner?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -4723,6 +4939,8 @@ export type TenantSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   orderCodePrefix?: boolean
   status?: boolean
   storageUsedBytes?: boolean
+  storageBucket?: boolean
+  storageProvider?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   owner?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -4742,11 +4960,13 @@ export type TenantSelectScalar = {
   orderCodePrefix?: boolean
   status?: boolean
   storageUsedBytes?: boolean
+  storageBucket?: boolean
+  storageProvider?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type TenantOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "slug" | "ownerId" | "name" | "bio" | "logoKey" | "coverKey" | "branding" | "storefrontSections" | "storefrontSectionsDraft" | "orderCodePrefix" | "status" | "storageUsedBytes" | "createdAt" | "updatedAt", ExtArgs["result"]["tenant"]>
+export type TenantOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "slug" | "ownerId" | "name" | "bio" | "logoKey" | "coverKey" | "branding" | "storefrontSections" | "storefrontSectionsDraft" | "orderCodePrefix" | "status" | "storageUsedBytes" | "storageBucket" | "storageProvider" | "createdAt" | "updatedAt", ExtArgs["result"]["tenant"]>
 export type TenantInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   owner?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   members?: boolean | Prisma.Tenant$membersArgs<ExtArgs>
@@ -4826,6 +5046,8 @@ export type $TenantPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     orderCodePrefix: string
     status: $Enums.TenantStatus
     storageUsedBytes: number
+    storageBucket: string | null
+    storageProvider: string | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["tenant"]>
@@ -5285,6 +5507,8 @@ export interface TenantFieldRefs {
   readonly orderCodePrefix: Prisma.FieldRef<"Tenant", 'String'>
   readonly status: Prisma.FieldRef<"Tenant", 'TenantStatus'>
   readonly storageUsedBytes: Prisma.FieldRef<"Tenant", 'Int'>
+  readonly storageBucket: Prisma.FieldRef<"Tenant", 'String'>
+  readonly storageProvider: Prisma.FieldRef<"Tenant", 'String'>
   readonly createdAt: Prisma.FieldRef<"Tenant", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Tenant", 'DateTime'>
 }

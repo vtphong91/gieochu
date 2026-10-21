@@ -33,13 +33,24 @@ export async function runFileScan(productFileId: string): Promise<void> {
     logger.warn({ productFileId }, "file.scan: storage not configured, skipping");
     return;
   }
-  const client = createS3Client(storageConfig);
+  let client = createS3Client(storageConfig);
+  const bucket = file.storageBucket || storageConfig.bucketPrivate;
 
-  const { sha256, detectedExt } = await readObjectForScan(client, storageConfig.bucketPrivate, objectKey);
+  if (file.storageProvider && file.storageProvider !== storageConfig.activeProvider) {
+    try {
+      const { createClientForProvider } = await import("./system-storage");
+      const providerClient = await createClientForProvider(file.storageProvider as import("./system-storage").StorageProvider);
+      client = providerClient.client;
+    } catch {
+      // fallback
+    }
+  }
+
+  const { sha256, detectedExt } = await readObjectForScan(client, bucket, objectKey);
   const isValid = matchesDeclaredExtension(file.fileName, detectedExt);
 
   if (!isValid) {
-    await deleteObject(client, storageConfig.bucketPrivate, objectKey);
+    await deleteObject(client, bucket, objectKey);
     await withSystemJob((tx) => tx.productFile.update({ where: { id: productFileId }, data: { scanStatus: "REJECTED" } }));
 
     const tenant = await prisma.tenant.findUniqueOrThrow({ where: { id: file.tenantId } });

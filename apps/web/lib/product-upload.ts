@@ -14,7 +14,8 @@ import {
 } from "@gieochu/storage";
 import { getPrismaClient, withTenant, type ProductFile } from "@gieochu/db";
 import { assertPlanLimit } from "./plan-limits";
-import { getDecryptedSystemStorageConfig } from "./system-storage";
+import { getDecryptedSystemStorageConfig, createClientForProvider, type StorageProvider } from "./system-storage";
+import { getOrCreateTenantBucket } from "./tenant-storage";
 import { getSystemSettings } from "./system-settings";
 import { enqueueFileScan } from "./jobs";
 
@@ -84,10 +85,25 @@ export async function presignProductFileUpload(tenantId: string, productId: stri
   const storageConfig = await requireStorageConfig();
   const settings = await getSystemSettings();
   const objectKey = buildProductFileKey(tenantId, productId, randomUUID(), input.fileName);
-  const client = createS3Client(storageConfig);
+
+  const prisma = getPrismaClient();
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { id: true, storageBucket: true, storageProvider: true },
+  });
+
+  let bucket = storageConfig.bucketPrivate;
+  let client = createS3Client(storageConfig);
+
+  if (storageConfig.activeProvider === "MINIO" || tenant?.storageBucket) {
+    const tenantBucket = await getOrCreateTenantBucket(tenantId);
+    bucket = tenantBucket.bucket;
+    const providerClient = await createClientForProvider(tenantBucket.provider);
+    client = providerClient.client;
+  }
 
   const upload = await createPresignedUpload(client, {
-    bucket: storageConfig.bucketPrivate,
+    bucket,
     key: objectKey,
     sizeBytes: input.sizeBytes,
     mimeType: input.mimeType,
@@ -129,8 +145,23 @@ export async function completeProductFileUpload(tenantId: string, productId: str
   }
 
   const storageConfig = await requireStorageConfig();
-  const client = createS3Client(storageConfig);
-  const bucket = storageConfig.bucketPrivate;
+  const prisma = getPrismaClient();
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { id: true, storageBucket: true, storageProvider: true },
+  });
+
+  let bucket = storageConfig.bucketPrivate;
+  let provider: StorageProvider = "CLOUDFLARE_R2";
+  let client = createS3Client(storageConfig);
+
+  if (storageConfig.activeProvider === "MINIO" || tenant?.storageBucket) {
+    const tenantBucket = await getOrCreateTenantBucket(tenantId);
+    bucket = tenantBucket.bucket;
+    provider = tenantBucket.provider;
+    const providerClient = await createClientForProvider(tenantBucket.provider);
+    client = providerClient.client;
+  }
 
   if (input.uploadId && input.parts) {
     await completeMultipartUpload(client, {
@@ -170,13 +201,14 @@ export async function completeProductFileUpload(tenantId: string, productId: str
         fileName: input.fileName,
         mimeType: input.mimeType,
         sizeBytes: realSizeBytes,
+        storageBucket: bucket,
+        storageProvider: provider,
         isPreview: input.isPreview,
         scanStatus: "PENDING",
       },
     }),
   );
 
-  const prisma = getPrismaClient();
   await prisma.tenant.update({ where: { id: tenantId }, data: { storageUsedBytes: { increment: realSizeBytes } } });
 
   await enqueueFileScan({ productFileId: file.id });

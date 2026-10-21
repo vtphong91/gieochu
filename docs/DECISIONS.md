@@ -1040,3 +1040,34 @@
 - **Bổ sung ADR-043 lần 2 (2026-10-18, Quốc):** Top 5 bán chạy tính theo số đơn **gồm cả lượt nhận miễn phí** (phản
   ánh mức phổ biến; cột doanh thu cạnh đó cho thấy tài liệu miễn phí = 0đ). "Khách quay lại" đếm cả đơn > 0đ đã hoàn
   tiền vào điều kiện ≥2 đơn (khách đã mua 2 lần). `ordersPaid` System Center gồm đơn 0đ, Studio không — có chủ đích.
+
+
+## ADR-044 — Lưu trữ đa nền tảng MinIO song song Cloudflare R2, Dedicated Bucket cho Gian hàng và Công cụ Quản trị Giám sát / Đồng bộ (2026-10-17)
+
+- **Bối cảnh:**
+  1. Ban đầu hệ thống thiết kế lưu trữ tập trung vào 1 tài khoản Cloudflare R2 (hoặc S3 chung) với 2 bucket `bucketPrivate` và `bucketPublic` (ADR-017). Mọi file của tất cả gian hàng dùng chung 1 bucket và phân biệt bằng prefix key `tenants/{tenantId}/...`.
+  2. Chủ dự án yêu cầu:
+     - Bổ sung cấu hình lưu trữ MinIO (hỗ trợ nhập IP/Domain, Port nếu dùng IP, các tham số kết nối, bucket prefix, max upload size...) như một phương án song song, **không bỏ Cloudflare R2**.
+     - Chuyển đổi mô hình: **Mỗi gian hàng (Tenant) khi đăng ký / khởi tạo sẽ sở hữu một bucket riêng biệt**, không quản lý chung trong 1 bucket để tăng tính cô lập dữ liệu và bảo mật.
+     - Cung cấp **Công cụ quản trị đồng bộ dữ liệu (Storage Sync Engine)** cho Quản trị viên để chuyển đổi file giữa 2 nền tảng (R2 ↔ MinIO).
+     - Bổ sung **Màn hình giám sát các bucket của gian hàng** hiển thị dung lượng tổng, dung lượng đã dùng, số file, trạng thái kết nối.
+- **Quyết định Kiến trúc:**
+  1. **Dual Storage Provider trong `SystemStorageConfig`:**
+     - Mở rộng cấu hình hệ thống để lưu độc lập cả 2 cấu hình: `CLOUDFLARE_R2` và `MINIO`.
+     - Cung cấp trường `activeProvider: "CLOUDFLARE_R2" | "MINIO"` để Quản trị viên chỉ định nền tảng lưu trữ chính cho các file mới tải lên.
+     - Tham số MinIO: `host` (IP hoặc Domain), `port` (number, vd 9000), `useSSL` (boolean), `region` (mặc định `us-east-1`), `bucketPrefix` (vd `gc-`), `maxUploadMb` (Int, vd 500), `publicBaseUrl` (tuỳ chọn), `accessKeyId`, `secretAccessKey` (mã hoá AES-256-GCM với `STORAGE_ENCRYPTION_KEY`).
+     - Tương thích ngược: Nếu đọc cấu hình cũ chưa phân tách, tự động coi là `CLOUDFLARE_R2` và khởi tạo cấu hình MinIO mặc định.
+  2. **Dedicated Bucket cho Gian hàng (Tenant):**
+     - Mỗi gian hàng có 1 bucket riêng, sinh theo quy chuẩn S3/MinIO: `${bucketPrefix}tenant-${tenantId}` (chữ thường, số, dấu gạch nối, 3–63 ký tự).
+     - Bucket được khởi tạo tự động khi tạo gian hàng (`createTenantForUser`) hoặc khởi tạo lười (lazy-provision) khi upload file đầu tiên / khi Admin bấm "Khởi tạo bucket".
+     - Bảng `Tenant` bổ sung trường nullable `storageBucket` và `storageProvider` để ghi nhận bucket riêng của gian hàng.
+     - Bảng `ProductFile` bổ sung trường nullable `storageBucket` và `storageProvider` để truy xuất chính xác file dù file nằm ở bucket chung cũ hay bucket riêng mới.
+  3. **Công cụ Quản trị Đồng bộ Dữ liệu (Storage Sync Tool):**
+     - Đặt tại `/admin/settings/storage/sync`. Quản trị viên chọn chiều đồng bộ (`R2 -> MinIO` hoặc `MinIO -> R2`).
+     - Cơ chế Stream Copy: Đọc trực tiếp luồng stream từ S3 Client nguồn đẩy sang S3 Client đích (`GetObjectCommand` → `PutObjectCommand` / `Upload`), không đệm qua đĩa máy chủ web.
+     - Tự động tạo bucket đích cho tenant nếu chưa có (`ensureBucketExists`).
+     - Xác thực toàn vẹn qua byte size / ETag, cập nhật bản ghi `ProductFile.storageBucket`.
+  4. **Màn hình Giám sát Dung lượng & Bucket Gian hàng:**
+     - Đặt tại `/admin/settings/storage/buckets` (và liên kết từ tab Storage Settings).
+     - Hiển thị bảng dữ liệu: Tên gian hàng, Slug, Tên Bucket, Nền tảng (R2/MinIO), Số lượng file, Dung lượng đã dùng (`storageUsedBytes`), Hạn mức gói (`Plan.storageMb`), Tỷ lệ % sử dụng kèm thanh màu cảnh báo trực quan.
+     - Chức năng kiểm tra bucket (`HeadBucket`) và khởi tạo bucket thủ công cho các tenant cũ.

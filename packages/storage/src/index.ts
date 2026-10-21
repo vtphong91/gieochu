@@ -27,6 +27,18 @@ export type {
   PresignedUpload,
 } from "./presign";
 
+export {
+  createBucket,
+  ensureBucketExists,
+  headBucket,
+  isValidBucketName,
+  resolveMinioEndpoint,
+} from "./bucket";
+export type { ResolveMinioEndpointParams } from "./bucket";
+
+export { copyObjectBetweenClients } from "./stream-copy";
+export type { CopyObjectBetweenClientsArgs, CopyObjectBetweenClientsResult } from "./stream-copy";
+
 export { readObjectForScan } from "./scan";
 export type { ScanResult } from "./scan";
 

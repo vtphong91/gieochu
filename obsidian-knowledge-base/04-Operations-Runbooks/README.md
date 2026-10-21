@@ -19,6 +19,10 @@ viên.
   §4.2 extension `unaccent` + hàm `gieochu_unaccent` do migration ADR-035 tạo; §4.3 quyền chỉ-INSERT + 3 trigger của `audit_logs` — M12a,
   ADR-037), sự cố object storage R2/S3-compatible (ADR-017), và quy trình
   rebuild môi trường từ đầu.
+- `[[Minio-Storage-Operations-Runbook]]`: Cẩm nang chuyên sâu về lưu trữ MinIO Self-hosted song song Cloudflare R2
+  (ADR-038 / ADR-013), cấu hình cổng mạng API (9000) & Console (9001), `useSSL` khi dùng IP vs Domain, triển khai Docker Compose
+  và Nginx HTTPS Reverse Proxy, cơ chế Dedicated Bucket cho từng gian hàng (`gc-tenant-{tenantId}`), công cụ đồng bộ dữ liệu
+  Stream Copy (Zero-RAM/Disk) R2 ↔ MinIO, xử lý sự cố kết nối/credentials/firewall, và quy trình sao lưu/phục hồi dữ liệu (`mc mirror`).
 - `[[Publish-And-Rollback-Runbook]]`: Checklist biến môi trường trước deploy, quy trình phát hành thủ công
   (chưa có CD tự động — chỉ có CI kiểm thử qua `.github/workflows/ci.yml`), và quy trình rollback code/DB
   khẩn cấp; §4.2.1 ghi sự cố 2026-10-15 (drop cột trên DB dùng chung) và quy tắc expand → contract.

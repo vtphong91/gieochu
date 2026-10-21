@@ -2,14 +2,11 @@ import {
   AppError,
   canDownloadEntitlement,
   createDownloadToken,
-  ENTITLEMENT_REMEDY_ERROR_CODES,
   evaluateDownloadToken,
   forbidden,
   hashOpaqueToken,
   normalizeExternalDocumentUrl,
   notFound,
-  remedyDownloadBlock,
-  type EntitlementRemedyStatusValue,
 } from "@gieochu/core";
 import { getPrismaClient, withCustomer, withTenant, type ProductFile } from "@gieochu/db";
 import { createPresignedDownload, createS3Client } from "@gieochu/storage";
@@ -37,29 +34,6 @@ function deliverableTarget(file: Pick<ProductFile, "sourceKind" | "scanStatus" |
 }
 
 /**
- * ADR-039: entitlement của tài liệu bị gỡ do vi phạm — PENDING_CHOICE chặn tới khi khách chọn; REFUND_REQUESTED /
- * REFUNDED chặn vĩnh viễn. NONE / FINAL_DOWNLOAD → null (tải theo `downloadLimit`; FINAL_DOWNLOAD đã đặt = used + số tệp khả dụng).
- */
-function remedyBlockedError(status: EntitlementRemedyStatusValue): AppError | null {
-  const block = remedyDownloadBlock(status);
-  if (block === "CHOICE_REQUIRED") {
-    return new AppError({
-      code: ENTITLEMENT_REMEDY_ERROR_CODES.CHOICE_REQUIRED,
-      message: "Tài liệu này đã bị gỡ do vi phạm chính sách. Vui lòng chọn tải lần cuối hoặc yêu cầu hoàn tiền trong Thư viện.",
-      httpStatus: 403,
-    });
-  }
-  if (block === "REFUND") {
-    return new AppError({
-      code: ENTITLEMENT_REMEDY_ERROR_CODES.DOWNLOAD_BLOCKED_REFUND,
-      message: "Bạn đã chọn yêu cầu hoàn tiền nên không thể tải tài liệu này nữa.",
-      httpStatus: 403,
-    });
-  }
-  return null;
-}
-
-/**
  * §"M9" step 1 of 2: validates the file/entitlement, then issues a
  * single-use 60s token — the actual bytes only ever get presigned in step 2
  * (`consumeDownloadToken`), so a leaked/retried request here never grants a
@@ -77,10 +51,6 @@ export async function requestDownload(userId: string, fileId: string): Promise<R
   if (!entitlement) {
     throw forbidden("Bạn chưa sở hữu tài liệu này.");
   }
-
-  // Thu hồi được báo trước (giữ mã ENTITLEMENT_REVOKED cũ, kể cả REFUNDED vốn luôn đã thu hồi).
-  const remedyError = entitlement.revokedAt ? null : remedyBlockedError(entitlement.remedyStatus);
-  if (remedyError) throw remedyError;
 
   const guard = canDownloadEntitlement(entitlement);
   if (!guard.allowed) {
@@ -139,33 +109,44 @@ export async function consumeDownloadToken(rawToken: string, ip: string | undefi
       throw new AppError({ code: "DOWNLOAD_SOURCE_UNAVAILABLE", message: "Tài liệu này hiện không còn tải được.", httpStatus: 410 });
     }
 
-    // ADR-039: kiểm lại remedy ngay trong câu UPDATE — token cấp trước khi admin lưu trữ tài liệu (hoặc trước khi khách
-    // chọn hoàn tiền) không còn tải được.
     const incremented = await tx.$executeRaw`
       UPDATE "entitlements" SET "downloadsUsed" = "downloadsUsed" + 1
       WHERE "id" = ${record.entitlementId} AND "revokedAt" IS NULL AND ("downloadLimit" = 0 OR "downloadsUsed" < "downloadLimit")
-        AND "remedyStatus" IN ('NONE', 'FINAL_DOWNLOAD')
     `;
     if (incremented === 0) {
-      const current = await tx.entitlement.findUnique({ where: { id: record.entitlementId }, select: { revokedAt: true, remedyStatus: true } });
-      const remedyError = current && !current.revokedAt ? remedyBlockedError(current.remedyStatus) : null;
-      if (remedyError) throw remedyError;
       throw new AppError({ code: "DOWNLOAD_LIMIT_REACHED", message: "Bạn đã dùng hết lượt tải hoặc quyền tải đã bị thu hồi.", httpStatus: 403 });
     }
 
     await tx.downloadEvent.create({
       data: { tenantId: record.tenantId, fileId: productFile.id, entitlementId: record.entitlementId, userId: record.userId, ip },
     });
-    return { deliverable, fileName: productFile.fileName };
+    return {
+      deliverable,
+      fileName: productFile.fileName,
+      storageBucket: productFile.storageBucket,
+      storageProvider: productFile.storageProvider,
+    };
   });
 
   if (target.deliverable.kind === "EXTERNAL_URL") return target.deliverable.url;
 
   const storageConfig = await requireStorageConfig();
-  const client = createS3Client(storageConfig);
+  let client = createS3Client(storageConfig);
+  const bucket = target.storageBucket || storageConfig.bucketPrivate;
+
+  if (target.storageProvider && target.storageProvider !== storageConfig.activeProvider) {
+    try {
+      const { createClientForProvider } = await import("./system-storage");
+      const providerClient = await createClientForProvider(target.storageProvider as import("./system-storage").StorageProvider);
+      client = providerClient.client;
+    } catch {
+      // fallback to active client
+    }
+  }
+
   const settings = await getSystemSettings();
   return createPresignedDownload(client, {
-    bucket: storageConfig.bucketPrivate,
+    bucket,
     key: target.deliverable.objectKey,
     fileName: target.fileName,
     // ADR-032: ≤600 do validate; createPresignedDownload kẹp lại ≤600 lần nữa phòng DB sai (§7.6).
