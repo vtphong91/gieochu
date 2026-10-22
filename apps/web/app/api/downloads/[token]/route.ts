@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { consumeDownloadToken } from "../../../../lib/download";
 import { getRequestId, handleApiError } from "../../../../lib/api-response";
+import { toAbsoluteRedirectUrl } from "../../../../lib/storage-gateway";
 
 /**
  * §"M9": step 2 — no login required here (possession of the raw single-use
@@ -13,7 +14,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
     const { token } = await params;
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
     const url = await consumeDownloadToken(token, ip);
-    return NextResponse.redirect(url, 302);
+    // ADR-045: URL gateway `/_s/<vé>` là tương đối — redirect cần URL tuyệt đối (theo APP_URL).
+    return NextResponse.redirect(toAbsoluteRedirectUrl(url), 302);
   } catch (error) {
     return handleApiError(error, requestId);
   }

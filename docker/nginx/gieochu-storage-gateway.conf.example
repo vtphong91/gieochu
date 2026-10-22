@@ -1,0 +1,68 @@
+# ADR-045 Storage Gateway — mẫu nginx cho VPS (Next.js pm2 @127.0.0.1:3000, MinIO @127.0.0.1:9000).
+# Chèn các location dưới đây vào server block HTTPS hiện có của gieochu.net (đặt TRƯỚC `location /`).
+# Yêu cầu: nginx build có module http_auth_request (gói nginx của Ubuntu đã có sẵn).
+
+# 1) Không cho bên ngoài gọi route nội bộ của Next.js.
+location ^~ /api/internal/ {
+    return 404;
+}
+
+# 2) Cổng tải/upload: /_s/<vé> → Next giải vé → proxy tới MinIO nội bộ.
+location ^~ /_s/ {
+    auth_request /_storage_auth;
+    auth_request_set $storage_target $upstream_http_x_storage_target;
+
+    client_max_body_size 60m;              # upload đơn ≤50MB, part multipart 10MB, ảnh bìa ≤5MB
+
+    proxy_pass http://127.0.0.1:9000$storage_target;   # target = path + query đã ký
+    proxy_set_header Host 127.0.0.1:9000;  # PHẢI trùng endpoint MinIO cấu hình trong Admin (host:port lúc ký)
+    proxy_set_header Authorization "";     # không để header client lẫn vào chữ ký query
+    proxy_set_header Cookie "";            # không chuyển cookie phiên sang MinIO
+    proxy_http_version 1.1;
+    proxy_request_buffering off;           # upload stream thẳng
+    proxy_buffering off;                   # download stream thẳng (Range/206 vẫn hoạt động)
+    proxy_max_temp_file_size 0;
+    proxy_read_timeout 300s;
+    proxy_send_timeout 300s;
+
+    proxy_hide_header x-amz-request-id;
+    proxy_hide_header x-amz-id-2;
+    proxy_hide_header x-minio-deployment-id;
+    proxy_hide_header Server;
+    proxy_intercept_errors on;             # không lộ XML lỗi của MinIO
+    error_page 400 403 404 405 500 502 503 504 = @storage_error;
+}
+
+location = /_storage_auth {
+    internal;
+    proxy_method GET;                      # subrequest giữ method gốc (PUT) → ép GET cho route Next
+    proxy_pass http://127.0.0.1:3000/api/internal/storage/ticket;
+    proxy_pass_request_body off;
+    proxy_set_header Content-Length "";
+    proxy_set_header Cookie "";
+    proxy_set_header X-Original-URI $request_uri;
+    proxy_set_header X-Original-Method $request_method;
+    proxy_set_header X-Original-Length $content_length;
+}
+
+location @storage_error {
+    default_type text/plain;
+    return 404 "Không tìm thấy tệp hoặc liên kết đã hết hạn.\n";
+}
+
+# 3) Ảnh công khai (bucket public của MinIO) — đặt publicBaseUrl MinIO = https://gieochu.net/media
+#    Đổi `gc-public` nếu bucketPrefix khác `gc-`.
+location ^~ /media/ {
+    limit_except GET HEAD { deny all; }
+    proxy_pass http://127.0.0.1:9000/gc-public/;
+    proxy_set_header Host 127.0.0.1:9000;
+    proxy_set_header Authorization "";
+    proxy_set_header Cookie "";
+    proxy_hide_header x-amz-request-id;
+    proxy_hide_header x-amz-id-2;
+    proxy_hide_header x-minio-deployment-id;
+    proxy_hide_header Server;
+    proxy_intercept_errors on;
+    error_page 403 404 = @storage_error;
+    expires 7d;
+}

@@ -3,7 +3,7 @@ tags:
   - meta
   - contract
 date: 2026-09-26
-updated: 2026-10-18
+updated: 2026-10-22
 ---
 
 # 🔌 API Contracts & Data Interface
@@ -13,7 +13,7 @@ tenant nơi giáo viên/coach bán tài liệu số cho học viên.
 
 ## Danh mục Hợp đồng
 
-- `[[Endpoint-Directory]]` — Danh bạ 21 route HTTP thật dưới `apps/web/app/api/**` (thêm `GET /api/cron/daily` — ADR-036) + 1 route redirect ngoài `/api` (ADR-030, §5.1) (Auth, tài khoản, storefront
+- `[[Endpoint-Directory]]` — Danh bạ 23 route HTTP thật dưới `apps/web/app/api/**` (thêm `GET /api/cron/daily` — ADR-036, `POST /api/reports` — ADR-038, `GET /api/internal/storage/ticket` — ADR-045; đếm 2026-10-22 ✅) + 1 route redirect ngoài `/api` (ADR-030, §5.1) (Auth, tài khoản, storefront
   công khai, upload Studio, downloads/share links, admin, webhooks) kèm cơ chế xác thực và định dạng phản hồi
   lỗi chuẩn (`{ error: { code, message, requestId } }`); §10 ghi contract Server Action của editor sản phẩm Studio
   (`ProductActionState`, field FormData — ADR-026/027); §11 contract ảnh Cloudinary hệ thống
@@ -39,6 +39,10 @@ tenant nơi giáo viên/coach bán tài liệu số cho học viên.
   §21 ADR-041 (Bảng giá CMS, hoàn tiền gói, Hồ sơ); §22 ADR-043 — loader dashboard Tổng quan gian hàng `getTenantDashboard` (`lib/tenant-dashboard.ts`,
   contract `TenantDashboard`, không email khách) + subpath `@gieochu/core/dashboard-range` (`resolveDashboardRange`, `listDashboardBuckets`),
   query `?ky=`/`?tu=`/`?den=`/`?chi-so=` trên `/studio/{slug}` — không thêm `route.ts` (vẫn 23 toàn app).
+  §23 ADR-045 — **route nội bộ mới `GET /api/internal/storage/ticket`** (chỉ nginx `auth_request` gọi; header `X-Original-URI/Method/Length`;
+  204 + `X-Storage-Target` / 403 `STORAGE_TICKET_REJECTED` / 404 khi gateway tắt) — 23 `route.ts` dưới `/api`, 24 toàn app; ghi chú ở §6, §7:
+  URL trả về của `downloads/[token]` (302), `share-links/[token]/download` (`{url}`), `uploads/presign`, `uploads/cover-presign` có thể là
+  `/_s/<vé>` khi bật Storage Gateway — shape không đổi.
 - `[[Database-Schema-Reference]]` — Lược đồ 45 model + 30 enum trong `packages/db/prisma/schema.prisma`, phân
   theo layer L1 (System) / L2 (Tenant, RLS) / L3 (góc nhìn Customer trên bảng L2), cùng quy ước cuid2 (ADR-001),
   mã hoá secret AES-256-GCM (§7.3 CLAUDE.md), và bảng RBAC `Role`/`Permission`/`RolePermission` (ADR-022); §7 ghi RLS tách đọc/ghi 7 bảng, quy tắc bảng L2 mới và mẫu

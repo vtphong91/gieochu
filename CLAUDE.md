@@ -74,7 +74,8 @@ ràng buộc bằng chỉ dẫn, không phải cơ chế công cụ. **Nguồn s
 | `docker compose -f docker/docker-compose.yml up` | MinIO + Mailpit (+ `--profile local-db` để có Postgres local) |
 
 Trước `pnpm dev`/test lần đầu: copy `.env.example` → `.env`, điền đủ biến (danh sách hiện hành: `packages/config/src/env.ts`
-— runtime chỉ 8 biến hạ tầng + secret theo ADR-032, cộng `CRON_SECRET` tuỳ chọn theo ADR-036 — nếu đặt thì ≥32 ký tự, ngắn hơn làm app fail-fast; mục 11 đặc tả gốc đã cũ). ⚠️ `pnpm db:seed` ghi đè nội dung trang chủ
+— runtime chỉ 8 biến hạ tầng + secret theo ADR-032, cộng `CRON_SECRET` tuỳ chọn theo ADR-036 — nếu đặt thì ≥32 ký tự, ngắn hơn làm app fail-fast; và `STORAGE_GATEWAY_PROVIDERS` tuỳ chọn theo ADR-045 — chỉ đặt
+trên VPS có nginx, xem `docker/nginx/gieochu-storage-gateway.conf.example`; mục 11 đặc tả gốc đã cũ). ⚠️ `pnpm db:seed` ghi đè nội dung trang chủ
 CMS — không chạy khi `.env` còn trỏ DB production. Env thiếu biến bắt buộc sẽ
 làm ứng dụng dừng ngay khi khởi động (`packages/config/src/env.ts`), kể cả khi chỉ mở trang marketing —
 đây là hành vi cố ý (fail-fast).

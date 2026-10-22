@@ -9,9 +9,11 @@ import {
   notFound,
 } from "@gieochu/core";
 import { getPrismaClient, withCustomer, withTenant, type ProductFile } from "@gieochu/db";
-import { createPresignedDownload, createS3Client } from "@gieochu/storage";
+import { clampDownloadTtlSeconds, createPresignedDownload, createS3Client } from "@gieochu/storage";
 import { requireStorageConfig } from "./product-upload";
 import { getSystemSettings } from "./system-settings";
+import { toClientStorageUrl } from "./storage-gateway";
+import type { StorageProvider } from "./system-storage";
 
 export interface RequestDownloadResult {
   token: string;
@@ -132,24 +134,29 @@ export async function consumeDownloadToken(rawToken: string, ip: string | undefi
 
   const storageConfig = await requireStorageConfig();
   let client = createS3Client(storageConfig);
+  // ADR-045: provider của client thực sự ký URL (fallback về active client thì là activeProvider).
+  let signingProvider: StorageProvider = storageConfig.activeProvider;
   const bucket = target.storageBucket || storageConfig.bucketPrivate;
 
   if (target.storageProvider && target.storageProvider !== storageConfig.activeProvider) {
     try {
       const { createClientForProvider } = await import("./system-storage");
-      const providerClient = await createClientForProvider(target.storageProvider as import("./system-storage").StorageProvider);
+      const providerClient = await createClientForProvider(target.storageProvider as StorageProvider);
       client = providerClient.client;
+      signingProvider = target.storageProvider as StorageProvider;
     } catch {
       // fallback to active client
     }
   }
 
   const settings = await getSystemSettings();
-  return createPresignedDownload(client, {
+  // ADR-032: ≤600 do validate; kẹp lại ≤600 lần nữa phòng DB sai (§7.6) — dùng chung cho presign và hạn vé gateway.
+  const ttlSeconds = clampDownloadTtlSeconds(settings.presignDownloadTtlSeconds);
+  const presignedUrl = await createPresignedDownload(client, {
     bucket,
     key: target.deliverable.objectKey,
     fileName: target.fileName,
-    // ADR-032: ≤600 do validate; createPresignedDownload kẹp lại ≤600 lần nữa phòng DB sai (§7.6).
-    ttlSeconds: settings.presignDownloadTtlSeconds,
+    ttlSeconds,
   });
+  return toClientStorageUrl({ presignedUrl, provider: signingProvider, method: "GET", ttlSeconds });
 }

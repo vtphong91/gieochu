@@ -6,7 +6,7 @@ tags:
   - rollback
   - status/living
 date: 2026-07-02
-updated: 2026-10-18
+updated: 2026-10-22
 author: System Architect
 ---
 
@@ -57,6 +57,7 @@ App **dừng ngay khi request đầu tiên gọi `getEnv()`** nếu thiếu bi�
 | Database (CLI) | `PRISMA_MIGRATE_URL` (role owner Neon) | **Chỉ** CLI `prisma migrate`/`studio` + `setup-app-role` trên máy dev/CI; **không** thuộc schema env runtime, **không đặt trên Vercel** (ADR-031). `generate`/`db seed` không cần |
 | Auth | `JWT_ACCESS_SECRET` (≥ 32 ký tự), `JWT_ISSUER`, `JWT_AUDIENCE` | Secret phải khác giữa dev/staging/production |
 | Mã hoá | `PAYMENT_ENCRYPTION_KEY` (32 bytes base64), `STORAGE_ENCRYPTION_KEY` (32 bytes base64, tách riêng theo ADR-017) | Không dùng chung 1 key cho cả 2 miền secret |
+| Tuỳ chọn (hạ tầng) | `CRON_SECRET` (ADR-036, nếu đặt ≥ 32 ký tự); `STORAGE_GATEWAY_PROVIDERS` (ADR-045, `MINIO`/`CLOUDFLARE_R2` — **chỉ** trên máy có nginx Storage Gateway, xem [[04-Operations-Runbooks/Storage-Gateway-VPS-Runbook\|Storage-Gateway-VPS-Runbook]]) | Giá trị sai của cả hai làm app dừng khi khởi động (fail-fast) ✅ `env.ts` |
 | Tuỳ chọn | `CLAMAV_HOST`; email fallback **chỉ dev** (`EMAIL_PROVIDER`, `EMAIL_FROM`, `SMTP_HOST`/`SMTP_PORT`, `RESEND_API_KEY`) | Production gửi email qua `/admin/settings/smtp`; thiếu cả hai nguồn → `EMAIL_NOT_CONFIGURED`, app vẫn chạy |
 | Seed | `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_SUPPORT_EMAIL` | Chỉ dùng khi chạy `pnpm db:seed` |
 

@@ -1071,3 +1071,37 @@
      - Đặt tại `/admin/settings/storage/buckets` (và liên kết từ tab Storage Settings).
      - Hiển thị bảng dữ liệu: Tên gian hàng, Slug, Tên Bucket, Nền tảng (R2/MinIO), Số lượng file, Dung lượng đã dùng (`storageUsedBytes`), Hạn mức gói (`Plan.storageMb`), Tỷ lệ % sử dụng kèm thanh màu cảnh báo trực quan.
      - Chức năng kiểm tra bucket (`HeadBucket`) và khởi tạo bucket thủ công cho các tenant cũ.
+
+## ADR-045 — Storage Gateway: giấu storage tự host sau `gieochu.net` bằng vé mã hoá + nginx `auth_request` (2026-10-22)
+
+- **Bối cảnh:** Production chạy trên VPS Ubuntu (Next.js qua pm2, mọi thứ reverse proxy qua nginx, một domain
+  `gieochu.net`). MinIO tự host trên cùng máy (ADR-044). Presigned URL hiện trả thẳng cho trình duyệt (tải 302,
+  share-link `{url}`, upload PUT) nên làm lộ host/port MinIO, tên bucket `gc-tenant-<tenantId>` và tham số `X-Amz-*`,
+  đồng thời buộc MinIO mở ra internet. Chủ dự án yêu cầu MinIO chỉ nằm ở tầng dưới, **vẫn giữ provider bên thứ ba
+  (R2) hoạt động như cũ**.
+- **Quyết định:**
+  1. **Chế độ giao theo provider, đặt bằng env hạ tầng:** `STORAGE_GATEWAY_PROVIDERS` (tuỳ chọn, danh sách phân tách
+     dấu phẩy, giá trị thuộc `MINIO`, `CLOUDFLARE_R2`). Provider có trong danh sách → giao qua gateway; không có
+     (mặc định, máy dev, Vercel) → presigned URL trực tiếp như trước. Dùng env (không phải DB/System Center) vì đây là
+     **topo hạ tầng của từng process** (có nginx đứng trước hay không), và dev/prod dùng chung DB (ADR-034) — cấu hình
+     trong DB sẽ làm máy dev hỏng theo.
+  2. **Vé storage (storage ticket):** server vẫn ký presigned URL nội bộ (endpoint MinIO `http://127.0.0.1:9000`),
+     rồi mã hoá AES-256-GCM `{ method, target: pathname+search, exp, maxBytes? }` bằng khoá dẫn xuất HKDF từ
+     `STORAGE_ENCRYPTION_KEY` (nhãn riêng, không dùng lại khoá thô). Client nhận URL cùng origin `/_s/<ticket>`.
+     `exp` = thời hạn presign (≤600s tải, theo `presignUploadTtlSeconds` khi upload). Mô hình tin cậy giữ nguyên
+     presigned URL (bearer ngắn hạn); các bước kiểm quyền/lượt tải/token một lần dùng không đổi.
+  3. **nginx `auth_request`:** `location /_s/` gọi nội bộ `GET /api/internal/storage/ticket` (Next.js) kèm
+     `X-Original-URI`, `X-Original-Method`, `X-Original-Length`. Vé hợp lệ → 204 + `X-Storage-Target`; nginx
+     `proxy_pass` tới `127.0.0.1:9000$target` (Host trùng lúc ký, xoá `Authorization`/`Cookie`, ẩn `x-amz-*`/`Server`,
+     không buffer). Byte tải/upload **không đi qua Node**. `/api/internal/` bị nginx chặn với request từ ngoài (404).
+     Áp dụng cho: tải theo token (302 → `/_s/...`), tải qua share-link (`{url:"/_s/..."}`), presign upload file sản phẩm
+     (đơn + từng part multipart), presign ảnh bìa.
+  4. **Ảnh public (bucket `{prefix}public`):** không cần code — đặt `publicBaseUrl` MinIO = `https://gieochu.net/media`,
+     nginx `location /media/` chỉ GET/HEAD proxy tới bucket public.
+  5. Khoá mạng: MinIO bind `127.0.0.1:9000/9001`, Next.js bind `127.0.0.1:3000`, ufw chỉ mở 22/80/443; console MinIO qua
+     SSH tunnel.
+- **Không làm:** chế độ stream qua Node (chưa cần — không có nginx thì quay về presigned trực tiếp); không thêm test case
+  (trần 94/55 đã chạm, mục 9) — chưa có duyệt nâng trần.
+- **Hệ quả:** Bật gateway cho provider nào thì mọi URL mới của provider đó đi qua `/_s/`; URL presigned cũ đã phát ra
+  hết hạn trong ≤10 phút. Chỉ khoá cổng MinIO **sau khi** bật gateway và kiểm tra xong. Đổi `host` MinIO sang
+  `127.0.0.1` thì app phải chạy cùng máy với MinIO (máy dev dùng SSH tunnel `-L 9000:127.0.0.1:9000`).

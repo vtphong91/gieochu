@@ -16,6 +16,8 @@ export type { CreateLoggerOptions } from "./logger";
 
 export { decryptSecret, encryptSecret, maskSecret } from "./crypto/encryption";
 export { generateOpaqueToken, hashOpaqueToken } from "./crypto/random-token";
+export { openStorageTicket, sealStorageTicket } from "./crypto/storage-ticket";
+export type { StorageTicketMethod, StorageTicketPayload } from "./crypto/storage-ticket";
 
 export { isReservedSlug, RESERVED_SLUGS, slugify } from "./tenant/slug";
 export { generateOrderCodePrefix, isValidOrderCodePrefix } from "./tenant/order-code-prefix";

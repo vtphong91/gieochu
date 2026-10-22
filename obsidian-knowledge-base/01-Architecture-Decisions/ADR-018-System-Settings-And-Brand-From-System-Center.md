@@ -8,7 +8,7 @@ tags:
   - database
   - status/accepted
 date: 2026-10-15
-updated: 2026-10-16
+updated: 2026-10-22
 decider: vtphong91
 status: Accepted (Chốt — Áp dụng chính thức)
 ---
@@ -39,6 +39,10 @@ hạn**, và refactor xong mới deploy 🟡.
    `development`) ✅ `packages/config/src/env.ts`. Biến tuỳ chọn còn trong schema: `TEST_DATABASE_URL` (dev/CI),
    `CLAMAV_HOST`, nhóm email fallback dev (`EMAIL_PROVIDER` mặc định `smtp`, `EMAIL_FROM` — chuỗi rỗng coi như chưa đặt,
    `SMTP_HOST`, `SMTP_PORT`, `RESEND_API_KEY`), `MOMO_SANDBOX_ENDPOINT` (dev) ✅.
+   *Cập nhật sau ADR-032:* thêm 2 biến **hạ tầng** tuỳ chọn — `CRON_SECRET` (ADR-036, nếu đặt thì ≥ 32 ký tự) và
+   `STORAGE_GATEWAY_PROVIDERS` (ADR-045, danh sách `MINIO`/`CLOUDFLARE_R2`, giá trị lạ → fail-fast; chỉ đặt trên máy có nginx Storage
+   Gateway) ✅ `packages/config/src/env.ts` 2026-10-22. Cả hai là topo/secret hạ tầng của từng process, không phải cấu hình nghiệp vụ —
+   không trái quy tắc §4.6. Xem [[01-Architecture-Decisions/ADR-030-Storage-Gateway-Encrypted-Ticket-Nginx|ADR-030 (≙ ADR-045)]].
 2. **Thương hiệu:** `APP_NAME/APP_SHORT_NAME/APP_SLOGAN` bỏ khỏi env ✅. Nguồn duy nhất là `SystemBranding` (DB, trang
    `/admin/settings/branding`); fallback là hằng **một chỗ**:
    - `DEFAULT_BRAND` (`name`, `shortName`, `slogan`, đóng băng) + hàm thuần `resolveBrand(stored)` trong
@@ -169,6 +173,7 @@ Theo `docs/DECISIONS.md` (mục "Sự cố 2026-10-15 (ADR-032)") và `CLAUDE.md
 * [[01-Architecture-Decisions/ADR-017-Vercel-Deploy-Build-Without-Env|ADR-017 (≙ ADR-031)]] ([ADR-017-Vercel-Deploy-Build-Without-Env.md](./ADR-017-Vercel-Deploy-Build-Without-Env.md))
 * [[01-Architecture-Decisions/ADR-007-Hybrid-Monetization-Free-Forever|ADR-007 (≙ ADR-021)]] — lý do `trialDays` chưa dùng ([ADR-007-Hybrid-Monetization-Free-Forever.md](./ADR-007-Hybrid-Monetization-Free-Forever.md))
 * [[04-Operations-Runbooks/Deploy-Vercel-Runbook|Deploy-Vercel-Runbook]] ([Deploy-Vercel-Runbook.md](../04-Operations-Runbooks/Deploy-Vercel-Runbook.md))
+* [[01-Architecture-Decisions/ADR-030-Storage-Gateway-Encrypted-Ticket-Nginx|ADR-030 (≙ ADR-045)]] — env tuỳ chọn `STORAGE_GATEWAY_PROVIDERS` ([ADR-030-Storage-Gateway-Encrypted-Ticket-Nginx.md](./ADR-030-Storage-Gateway-Encrypted-Ticket-Nginx.md))
 * [[04-Operations-Runbooks/Publish-And-Rollback-Runbook|Publish-And-Rollback-Runbook]] ([Publish-And-Rollback-Runbook.md](../04-Operations-Runbooks/Publish-And-Rollback-Runbook.md))
 * [[02-System-Specs/User-Management-System-Center-Specs|User-Management-System-Center-Specs]] ([User-Management-System-Center-Specs.md](../02-System-Specs/User-Management-System-Center-Specs.md))
 

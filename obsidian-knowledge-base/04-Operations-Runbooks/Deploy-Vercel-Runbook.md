@@ -7,7 +7,7 @@ tags:
   - jobs
   - status/living
 date: 2026-09-29
-updated: 2026-10-17
+updated: 2026-10-22
 author: Long
 ---
 
@@ -136,7 +136,12 @@ cấu hình dev:
   hơn thì `getEnv()` lỗi và **cả app dừng** (fail-fast), không chỉ route cron. Không đặt → app chạy bình thường nhưng
   `GET /api/cron/daily` trả `503 CRON_NOT_CONFIGURED` → sweep thuê bao/đơn và dọn hàng đợi hằng ngày **không chạy**. Cách đặt: §6.2.
 
-Env runtime hiện hành = **8 biến bắt buộc** (§3.1) + 2 biến tuỳ chọn (`CRON_SECRET`, `CLAMAV_HOST`).
+* **`STORAGE_GATEWAY_PROVIDERS`** (ADR-045, 2026-10-22, chưa commit/deploy) ✅ `packages/config/src/env.ts`: tuỳ chọn; danh sách `MINIO`/
+  `CLOUDFLARE_R2` phân tách dấu phẩy; giá trị lạ → **cả app dừng** (fail-fast). **Không đặt trên Vercel** — chỉ đặt trên máy có nginx cấu hình
+  `location /_s/` + `auth_request` (VPS). Đặt trên Vercel thì URL tải/upload thành `/_s/...` mà không có gì phục vụ → hỏng tải/upload (suy từ
+  code ✅). Quy trình: [[04-Operations-Runbooks/Storage-Gateway-VPS-Runbook|Storage-Gateway-VPS-Runbook]].
+
+Env runtime hiện hành = **8 biến bắt buộc** (§3.1) + 3 biến tuỳ chọn (`CRON_SECRET`, `CLAMAV_HOST`, `STORAGE_GATEWAY_PROVIDERS`).
 
 ### 3.5. KHÔNG đặt trên Vercel
 

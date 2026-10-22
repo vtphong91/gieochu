@@ -7,7 +7,7 @@ tags:
   - payment
   - status/living
 date: 2026-10-16
-updated: 2026-10-17
+updated: 2026-10-22
 author: Long
 ---
 
@@ -168,7 +168,8 @@ File: `apps/web/app/api/cron/daily/route.ts` ✅. Contract đầy đủ: [[03-AP
 (fail-fast, cả app dừng). Thiếu → app vẫn chạy, chỉ route cron trả 503 (sweep + dọn hàng đợi hằng ngày không chạy). Hướng dẫn đặt trên
 Vercel: [[04-Operations-Runbooks/Deploy-Vercel-Runbook|Deploy-Vercel-Runbook]] §3.4, §6.
 
-Danh sách env runtime: **8 biến bắt buộc** (ADR-032) + `CRON_SECRET` tuỳ chọn + `CLAMAV_HOST` tuỳ chọn ✅.
+Danh sách env runtime: **8 biến bắt buộc** (ADR-032) + `CRON_SECRET` tuỳ chọn + `CLAMAV_HOST` tuỳ chọn ✅; từ ADR-045 (2026-10-22) thêm
+`STORAGE_GATEWAY_PROVIDERS` tuỳ chọn ✅ — xem [[02-System-Specs/File-Storage-And-Downloads-Specs|File-Storage-And-Downloads-Specs]] §9.
 
 ---
 

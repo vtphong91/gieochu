@@ -3,7 +3,7 @@ tags:
   - meta
   - spec
 date: 2026-09-26
-updated: 2026-10-18
+updated: 2026-10-22
 ---
 
 # 📐 System Specifications (Living Specs)
@@ -28,7 +28,8 @@ bộ nội dung được viết lại từ nguồn thật: `CLAUDE.md`, `docs/AR
 - `[[File-Storage-And-Downloads-Specs]]`: Lưu trữ file sản phẩm qua S3-compatible (Cloudflare R2), presigned
   URL ≤ 10 phút, `DownloadToken`/`ShareLink`, mật khẩu share link bằng argon2 riêng trong `packages/core`; §7 ảnh
   tenant trên Cloudinary hệ thống — chữ ký `public_id`, giữ chỗ + đối soát hạn mức, `cloudinaryDeliveryUrl`,
-  sanitizer (ADR-028).
+  sanitizer (ADR-028); §9 Storage Gateway (ADR-045) — env `STORAGE_GATEWAY_PROVIDERS`, URL `/_s/<vé>` qua nginx `auth_request`,
+  định dạng vé (HKDF-SHA256 `gieochu:storage-ticket:v1`, AES-256-GCM, base64url, ≤ 8192 ký tự, method GET/PUT, `maxBytes`).
 - `[[User-Management-System-Center-Specs]]`: Console quản trị `/admin/**`, khoá/mở khoá tài khoản, cơ chế
   refresh-token rotation + reuse detection, ranh giới "System Admin không đọc order/customer của tenant".
 - `[[Storefront-CMS-Specs]]`: Storefront tenant theo section CMS (7 loại section — thêm `reviews` và `posts` ở ADR-029, nháp/xuất bản/khôi phục, nội

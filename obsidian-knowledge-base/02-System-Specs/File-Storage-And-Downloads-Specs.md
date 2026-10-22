@@ -6,7 +6,7 @@ tags:
   - security
   - status/living
 date: 2026-09-26
-updated: 2026-10-17
+updated: 2026-10-22
 author: System Architect
 ---
 
@@ -16,6 +16,8 @@ author: System Architect
 > chung: (1) storage S3-compatible (Cloudflare R2) cho **file sản phẩm bán** (bucket private, presigned URL);
 > (2) **Cloudinary hệ thống** cho **ảnh** — ảnh CMS của System Admin, và từ ADR-023/027/028 cả ảnh storefront, ảnh
 > bìa sản phẩm, ảnh trong mô tả của tenant (có hạn mức theo gói). Mục 1–5 nói về (1); mục 6–7 nói về (2).
+> Từ ADR-045 (2026-10-22, chưa commit/deploy): provider liệt kê trong env `STORAGE_GATEWAY_PROVIDERS` không trả presigned URL cho trình duyệt
+> mà trả `/_s/<vé mã hoá>` qua nginx — §9.
 
 ## 1. Mục Tiêu & Kiến Trúc Tổng Thể (File Sản Phẩm)
 
@@ -353,7 +355,79 @@ commit/deploy). Nghiệp vụ đầy đủ: [[02-System-Specs/Abuse-Reports-Spec
 
 ---
 
-## 9. Tài Liệu Tham Chiếu & Liên Kết
+## 9. Storage Gateway — Giao File Qua `/_s/<vé>` (ADR-045) ✅
+
+Đối chiếu `packages/core/src/crypto/storage-ticket.ts`, `apps/web/lib/storage-gateway.ts`, `apps/web/app/api/internal/storage/ticket/route.ts`,
+`packages/config/src/env.ts`, `docker/nginx/gieochu-storage-gateway.conf.example` (working tree 2026-10-22, **chưa commit/deploy**). Quyết định:
+[[01-Architecture-Decisions/ADR-030-Storage-Gateway-Encrypted-Ticket-Nginx|ADR-030 (≙ ADR-045)]].
+
+### 9.1 Khi nào bật
+* Env tuỳ chọn `STORAGE_GATEWAY_PROVIDERS` — danh sách phân tách dấu phẩy, giá trị thuộc `MINIO`, `CLOUDFLARE_R2`; không đặt/rỗng = `[]`
+  (gateway tắt); `trim` + bỏ trùng; giá trị lạ → app **dừng khi khởi động** (zod fail-fast).
+* Quyết định theo **provider của S3 client đã ký URL** (`signingProvider`), không theo `activeProvider`: tải/share-link dùng
+  `ProductFile.storageProvider` nếu khác active và tạo được client, ngược lại `activeProvider`; upload file sản phẩm dùng provider của bucket
+  tenant (`getOrCreateTenantBucket`) khi active là MinIO hoặc tenant đã có bucket riêng; ảnh bìa luôn `activeProvider`.
+* Provider không có trong danh sách → trả presigned URL nguyên vẹn (hành vi trước ADR-045).
+
+### 9.2 Luồng
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor B as Trình duyệt
+    participant N as nginx (gieochu.net)
+    participant W as Next.js (127.0.0.1:3000)
+    participant M as MinIO (127.0.0.1:9000)
+
+    B->>W: (qua nginx) GET /api/downloads/{token} | POST share-link | POST uploads/presign
+    W->>W: Kiểm quyền/lượt như cũ, ký presigned URL nội bộ (endpoint MinIO trong Admin)
+    W->>W: sealStorageTicket({method, target = pathname+search, exp, maxBytes?})
+    W-->>B: URL /_s/<vé> (302 tuyệt đối theo APP_URL, hoặc tương đối trong JSON)
+    B->>N: GET|PUT /_s/<vé>
+    N->>W: auth_request → GET /api/internal/storage/ticket (X-Original-URI/Method/Length)
+    alt vé hợp lệ
+        W-->>N: 204 + X-Storage-Target
+        N->>M: proxy_pass http://127.0.0.1:9000$target (Host 127.0.0.1:9000, bỏ Authorization/Cookie)
+        M-->>N: stream (Range/206 được giữ, không buffer)
+        N-->>B: byte file / kết quả PUT (ẩn x-amz-*, Server)
+    else từ chối
+        W-->>N: 403 STORAGE_TICKET_REJECTED
+        N-->>B: 404 "Không tìm thấy tệp hoặc liên kết đã hết hạn." (error_page — theo file mẫu 🟡)
+    end
+```
+
+Byte tải/upload **không đi qua Node** — Next chỉ giải vé. Contract endpoint nội bộ: [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §23.
+
+### 9.3 Định dạng vé
+| Thành phần | Giá trị |
+| :-- | :-- |
+| Khoá | HKDF-SHA256 từ `STORAGE_ENCRYPTION_KEY` (giải base64), salt rỗng, info **`gieochu:storage-ticket:v1`**, 32 byte — **không** dùng lại khoá thô đang mã hoá credential storage; cache theo giá trị khoá trong process |
+| Mã hoá | AES-256-GCM, IV ngẫu nhiên 12 byte, auth tag 16 byte |
+| Plaintext | JSON `{ method, target, exp, maxBytes? }` |
+| Chuỗi vé | `base64url(iv ‖ tag ‖ ciphertext)` — chỉ `[A-Za-z0-9_-]`, an toàn trong path; dài **≤ 8192** ký tự, dài hơn/ký tự lạ → từ chối |
+| `method` | `"GET"` hoặc `"PUT"` — so **khớp chính xác** với method request gốc (vé GET không dùng cho PUT và ngược lại) |
+| `target` | Chỉ `pathname + search` của presigned URL nội bộ: bắt đầu `/`, **không** bắt đầu `//`, **không** chứa `://`, chỉ ký tự ASCII in được `\x21–\x7E` (chặn CR/LF/khoảng trắng lọt vào header `X-Storage-Target` và `proxy_pass`) |
+| `exp` | Epoch giây UTC = lúc phát + TTL presign; `now ≥ exp` → hết hạn. Tải: `clampDownloadTtlSeconds(presignDownloadTtlSeconds)` (≤ 600s); upload: `presignUploadTtlSeconds` (System Center, 60–3600s) |
+| `maxBytes` | Chỉ vé `PUT`: upload đơn = `sizeBytes` khai báo; từng part multipart = `partSizeBytes` (10 MB). Route kiểm `X-Original-Length` là số và ≤ `maxBytes`, thiếu → từ chối |
+
+`openStorageTicket` **không ném** — sai định dạng, sai tag (bị sửa/khác khoá), JSON không hợp lệ, payload sai kiểu, hết hạn đều trả `null` →
+route trả 403. `sealStorageTicket` ném `Error` nếu payload không hợp lệ (lỗi lập trình, không phải lỗi người dùng).
+
+### 9.4 Hệ quả cho các quy tắc ở trang này
+* Quy tắc "URL tải chỉ là presigned, sống ≤ 10 phút, `attachment`" (§1, §4) giữ nguyên: vé bọc chính presigned URL đó (gồm
+  `response-content-disposition` trong query), hạn vé = hạn presign ✅.
+* Bước `complete` (§2) không đổi — vẫn `HeadObject` kiểm kích thước thật; `maxBytes` ở vé chỉ là chặn sớm ở nginx.
+* Đổi `STORAGE_ENCRYPTION_KEY` làm mọi vé đang lưu hành mất hiệu lực (cùng lúc credential storage không giải mã được) — suy từ cơ chế ✅.
+* Ảnh public (bucket `{prefix}public`, vd `gc-public`): không qua vé — `publicBaseUrl` MinIO = `https://gieochu.net/media`, nginx
+  `location /media/` chỉ GET/HEAD proxy tới bucket 🟡 (cấu hình, không có code).
+
+### 9.5 Chưa verify ❓
+Chạy thật trên VPS: tải 302, share-link, upload đơn + multipart > 50 MB, ảnh bìa, Range 206, `/media/`, `/api/internal/` từ ngoài → 404.
+Quy trình kiểm: [[04-Operations-Runbooks/Storage-Gateway-VPS-Runbook|Storage-Gateway-VPS-Runbook]] §3.
+
+---
+
+## 10. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[Architecture-Overview]] — Tổng quan kiến trúc hệ thống ([Architecture-Overview.md](./Architecture-Overview.md))
 * [[Order-State-Machine]] — `Entitlement` được tạo khi đơn `FULFILLED` ([Order-State-Machine.md](./Order-State-Machine.md))
@@ -364,6 +438,8 @@ commit/deploy). Nghiệp vụ đầy đủ: [[02-System-Specs/Abuse-Reports-Spec
 * [[02-System-Specs/Product-Editor-And-Publishing-Specs|Product-Editor-And-Publishing-Specs]] — ADR-026/027 ([Product-Editor-And-Publishing-Specs.md](./Product-Editor-And-Publishing-Specs.md))
 * [[01-Architecture-Decisions/ADR-014-System-Cloudinary-Image-Quota|ADR-014 (≙ ADR-028)]] — ảnh Cloudinary hệ thống + hạn mức ([ADR-014-System-Cloudinary-Image-Quota.md](../01-Architecture-Decisions/ADR-014-System-Cloudinary-Image-Quota.md))
 * [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]] — ADR-038/039, quyền lợi người mua ([Abuse-Reports-Specs.md](./Abuse-Reports-Specs.md))
-* [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §11 — contract action ảnh ([Endpoint-Directory.md](../03-API-Contracts/Endpoint-Directory.md))
+* [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §11 — contract action ảnh; §23 — endpoint nội bộ Storage Gateway ([Endpoint-Directory.md](../03-API-Contracts/Endpoint-Directory.md))
+* [[01-Architecture-Decisions/ADR-030-Storage-Gateway-Encrypted-Ticket-Nginx|ADR-030 (≙ ADR-045)]] ([ADR-030-Storage-Gateway-Encrypted-Ticket-Nginx.md](../01-Architecture-Decisions/ADR-030-Storage-Gateway-Encrypted-Ticket-Nginx.md)) · [[04-Operations-Runbooks/Storage-Gateway-VPS-Runbook|Storage-Gateway-VPS-Runbook]] ([Storage-Gateway-VPS-Runbook.md](../04-Operations-Runbooks/Storage-Gateway-VPS-Runbook.md))
+* Mã nguồn ADR-045: `packages/core/src/crypto/storage-ticket.ts`, `apps/web/lib/storage-gateway.ts`, `apps/web/app/api/internal/storage/ticket/route.ts`, `docker/nginx/gieochu-storage-gateway.conf.example`
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

@@ -3,7 +3,7 @@ tags:
   - meta
   - runbook
 date: 2026-09-26
-updated: 2026-10-18
+updated: 2026-10-22
 ---
 
 # 🚀 Operations Runbooks & DevOps
@@ -20,9 +20,14 @@ viên.
   ADR-037), sự cố object storage R2/S3-compatible (ADR-017), và quy trình
   rebuild môi trường từ đầu.
 - `[[Minio-Storage-Operations-Runbook]]`: Cẩm nang chuyên sâu về lưu trữ MinIO Self-hosted song song Cloudflare R2
-  (ADR-038 / ADR-013), cấu hình cổng mạng API (9000) & Console (9001), `useSSL` khi dùng IP vs Domain, triển khai Docker Compose
+  (ADR-044 trong `docs/DECISIONS.md`; từ ADR-045 production dùng Storage Gateway — xem dưới), cấu hình cổng mạng API (9000) & Console (9001), `useSSL` khi dùng IP vs Domain, triển khai Docker Compose
   và Nginx HTTPS Reverse Proxy, cơ chế Dedicated Bucket cho từng gian hàng (`gc-tenant-{tenantId}`), công cụ đồng bộ dữ liệu
   Stream Copy (Zero-RAM/Disk) R2 ↔ MinIO, xử lý sự cố kết nối/credentials/firewall, và quy trình sao lưu/phục hồi dữ liệu (`mc mirror`).
+- `[[Storage-Gateway-VPS-Runbook]]`: Bật Storage Gateway trên VPS theo ADR-045 — MinIO và Next.js bind `127.0.0.1`, cấu hình MinIO trong Admin
+  (host `127.0.0.1:9000`, useSSL tắt, `publicBaseUrl` `https://gieochu.net/media`, bắt buộc Test kết nối sau khi đổi host), `mc anonymous set
+  download` bucket public, chèn nginx mẫu `docker/nginx/gieochu-storage-gateway.conf.example`, env `STORAGE_GATEWAY_PROVIDERS=MINIO` + `pm2
+  restart --update-env`, bảng kiểm tra trước khi khoá cổng (Network chỉ `/_s/`, `/api/internal/` từ ngoài 404, multipart > 50 MB, Range 206),
+  ufw, SSH tunnel console, rollback, rủi ro (`proxy_method GET`, Host trùng lúc ký) ([Storage-Gateway-VPS-Runbook.md](./Storage-Gateway-VPS-Runbook.md)).
 - `[[Publish-And-Rollback-Runbook]]`: Checklist biến môi trường trước deploy, quy trình phát hành thủ công
   (chưa có CD tự động — chỉ có CI kiểm thử qua `.github/workflows/ci.yml`), và quy trình rollback code/DB
   khẩn cấp; §4.2.1 ghi sự cố 2026-10-15 (drop cột trên DB dùng chung) và quy tắc expand → contract.

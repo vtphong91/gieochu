@@ -9,13 +9,19 @@ tags:
   - troubleshooting
   - status/living
 date: 2026-10-17
-updated: 2026-10-21
+updated: 2026-10-22
 author: System Architect & DevOps
 ---
 
 # 🗄️ Cẩm Nang Vận Hành MinIO Storage (MinIO Storage Operations Runbook)
 
-> **Phạm vi tài liệu:** Vận hành, triển khai, giám sát, đồng bộ và khắc phục sự cố hệ thống lưu trữ đối tượng **MinIO Self-hosted** trong Gieo Chữ. Hệ thống vận hành theo kiến trúc **Dual Storage Provider** ([[01-Architecture-Decisions/ADR-013-Dual-Storage-MinIO-R2-Dedicated-Buckets|ADR-013 (≙ ADR-038)]]) song song với Cloudflare R2, áp dụng mô hình **Dedicated Bucket cho từng Gian hàng (Tenant)** và công cụ đồng bộ luồng Stream Copy.
+> **Phạm vi tài liệu:** Vận hành, triển khai, giám sát, đồng bộ và khắc phục sự cố hệ thống lưu trữ đối tượng **MinIO Self-hosted** trong Gieo Chữ. Hệ thống vận hành theo kiến trúc **Dual Storage Provider** (**ADR-044** trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md) — chưa có bản trích ở `01-Architecture-Decisions/`) song song với Cloudflare R2, áp dụng mô hình **Dedicated Bucket cho từng Gian hàng (Tenant)** và công cụ đồng bộ luồng Stream Copy.
+
+> [!WARNING] Production `gieochu.net` từ ADR-045 (2026-10-22)
+> Trên VPS, MinIO **không** còn được phơi ra internet qua tên miền riêng như mô hình §2.2 mục 2 / §4 dưới đây: MinIO bind `127.0.0.1`, host trong
+> Admin là `127.0.0.1:9000` (useSSL tắt), trình duyệt chỉ thấy `/_s/<vé>` và `/media/` qua nginx của `gieochu.net`. Làm theo
+> [[04-Operations-Runbooks/Storage-Gateway-VPS-Runbook|Storage-Gateway-VPS-Runbook]]. §2.2 mục 2 và §4 chỉ còn áp dụng khi **không** bật Storage
+> Gateway. (Ghi chú của Long 2026-10-22; phần còn lại của trang này chưa được Long đối chiếu lại với code — xem KB-Audit §24.)
 
 ---
 
@@ -297,7 +303,7 @@ sudo ufw status verbose
 
 ## 5. Cơ Chế Dedicated Bucket Cho Gian Hàng (Tenant)
 
-Theo quy định kiến trúc [[01-Architecture-Decisions/ADR-013-Dual-Storage-MinIO-R2-Dedicated-Buckets|ADR-013 (≙ ADR-038)]], Gieo Chữ phân bổ mỗi gian hàng một bucket độc lập.
+Theo quy định kiến trúc **ADR-044** ([`docs/DECISIONS.md`](../../docs/DECISIONS.md)), Gieo Chữ phân bổ mỗi gian hàng một bucket độc lập.
 
 ### 5.1 Quy Tắc Sinh Tên Bucket Chuẩn S3 (`deriveTenantBucketName`)
 
@@ -469,7 +475,8 @@ Khi máy chủ MinIO bị hỏng hoàn toàn:
 ---
 
 ## 9. Tài Liệu Tham Chiếu & Liên Kết
-- [[01-Architecture-Decisions/ADR-013-Dual-Storage-MinIO-R2-Dedicated-Buckets|ADR-013 (≙ ADR-038)]] — Quyết định kiến trúc Dual Storage MinIO & Cloudflare R2, Dedicated Bucket per Tenant.
+- **ADR-044** trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md) — Quyết định kiến trúc Dual Storage MinIO & Cloudflare R2, Dedicated Bucket per Tenant.
+- [[01-Architecture-Decisions/ADR-030-Storage-Gateway-Encrypted-Ticket-Nginx|ADR-030 (≙ ADR-045)]] · [[04-Operations-Runbooks/Storage-Gateway-VPS-Runbook|Storage-Gateway-VPS-Runbook]] — giấu MinIO sau `gieochu.net` bằng vé `/_s/` + nginx `auth_request`.
 - [[01-Architecture-Decisions/ADR-005-Storage-Config-System-Admin|ADR-005 (≙ ADR-017)]] — Quản lý cấu hình Storage qua System Admin và mã hoá an toàn DB.
 - [[02-System-Specs/File-Storage-And-Downloads-Specs|File-Storage-And-Downloads-Specs]] — Đặc tả kỹ thuật chi tiết về lưu trữ file, presigned URL và quét file.
 - [[04-Operations-Runbooks/Disaster-Recovery-Runbook|Disaster-Recovery-Runbook]] — Cẩm nang ứng phó và phục hồi thảm họa toàn hệ thống.

@@ -6,7 +6,11 @@ import { z } from "zod";
  * (+ NODE_ENV do nền tảng đặt). Thương hiệu (SystemBranding) và cấu hình nghiệp vụ/TTL
  * (SystemSettings) quản lý ở System Center, lưu DB — không đặt qua env. Múi giờ hiển thị là hằng
  * `DISPLAY_TIME_ZONE` trong @gieochu/core.
+ * Tuỳ chọn hạ tầng: CRON_SECRET (ADR-036), STORAGE_GATEWAY_PROVIDERS (ADR-045 — topo nginx của từng
+ * process nên đặt bằng env, không qua DB dùng chung).
  */
+const STORAGE_GATEWAY_PROVIDER_VALUES = ["MINIO", "CLOUDFLARE_R2"] as const;
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   APP_URL: z.string().url(),
@@ -35,6 +39,28 @@ const envSchema = z.object({
   CRON_SECRET: z.preprocess(
     (value) => (value === "" ? undefined : value),
     z.string().min(32, "CRON_SECRET phải có ít nhất 32 ký tự").optional(),
+  ),
+
+  /**
+   * ADR-045: provider lưu trữ giao file qua Storage Gateway (`/_s/<vé>` + nginx `auth_request`) thay vì
+   * presigned URL trực tiếp. Danh sách phân tách dấu phẩy, giá trị thuộc MINIO | CLOUDFLARE_R2. Chuỗi
+   * rỗng/không đặt = [] (mặc định, máy dev/Vercel — presigned trực tiếp như cũ). Giá trị lạ → fail-fast.
+   */
+  STORAGE_GATEWAY_PROVIDERS: z.preprocess(
+    (value) => {
+      if (value === undefined || value === null) return [];
+      if (typeof value !== "string") return value;
+      const items = value
+        .split(",")
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0);
+      return [...new Set(items)];
+    },
+    z.array(
+      z.enum(STORAGE_GATEWAY_PROVIDER_VALUES, {
+        message: `STORAGE_GATEWAY_PROVIDERS chỉ nhận ${STORAGE_GATEWAY_PROVIDER_VALUES.join(", ")} (phân tách bằng dấu phẩy)`,
+      }),
+    ),
   ),
 
   /** Tuỳ chọn — không đặt thì bỏ qua quét virus (apps/web/lib/file-scan.ts). */

@@ -18,6 +18,7 @@ import { getDecryptedSystemStorageConfig, createClientForProvider, type StorageP
 import { getOrCreateTenantBucket } from "./tenant-storage";
 import { getSystemSettings } from "./system-settings";
 import { enqueueFileScan } from "./jobs";
+import { toClientUpload } from "./storage-gateway";
 
 export async function requireStorageConfig() {
   const config = await getDecryptedSystemStorageConfig();
@@ -94,23 +95,27 @@ export async function presignProductFileUpload(tenantId: string, productId: stri
 
   let bucket = storageConfig.bucketPrivate;
   let client = createS3Client(storageConfig);
+  // ADR-045: provider của client ký URL — quyết định có bọc qua Storage Gateway hay không.
+  let signingProvider: StorageProvider = storageConfig.activeProvider;
 
   if (storageConfig.activeProvider === "MINIO" || tenant?.storageBucket) {
     const tenantBucket = await getOrCreateTenantBucket(tenantId);
     bucket = tenantBucket.bucket;
     const providerClient = await createClientForProvider(tenantBucket.provider);
     client = providerClient.client;
+    signingProvider = tenantBucket.provider;
   }
 
+  const ttlSeconds = settings.presignUploadTtlSeconds;
   const upload = await createPresignedUpload(client, {
     bucket,
     key: objectKey,
     sizeBytes: input.sizeBytes,
     mimeType: input.mimeType,
-    ttlSeconds: settings.presignUploadTtlSeconds,
+    ttlSeconds,
   });
 
-  return { objectKey, upload };
+  return { objectKey, upload: toClientUpload(upload, signingProvider, ttlSeconds, input.sizeBytes) };
 }
 
 export interface CompleteUploadInput {
@@ -250,15 +255,17 @@ export async function presignCoverImageUpload(tenantId: string, productId: strin
   const objectKey = buildProductFileKey(tenantId, productId, "cover", input.fileName);
   const client = createS3Client(storageConfig);
 
+  const ttlSeconds = settings.presignUploadTtlSeconds;
   const upload = await createPresignedUpload(client, {
     bucket: storageConfig.bucketPublic,
     key: objectKey,
     sizeBytes: input.sizeBytes,
     mimeType: input.mimeType,
-    ttlSeconds: settings.presignUploadTtlSeconds,
+    ttlSeconds,
   });
 
-  return { objectKey, upload };
+  // ADR-045: client ở trên dựng từ cấu hình active → provider ký là activeProvider.
+  return { objectKey, upload: toClientUpload(upload, storageConfig.activeProvider, ttlSeconds, input.sizeBytes) };
 }
 
 export async function completeCoverImageUpload(tenantId: string, productId: string, objectKey: string): Promise<void> {

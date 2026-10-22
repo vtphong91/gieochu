@@ -5,7 +5,7 @@ tags:
   - endpoint
   - status/living
 date: 2026-06-15
-updated: 2026-10-18
+updated: 2026-10-22
 author: System Architect
 ---
 
@@ -41,7 +41,10 @@ author: System Architect
 > 410 `SHARE_LINK_TENANT_LOCKED` khi tenant không `ACTIVE`), `POST /api/reports` (§20.1, 404 khi tenant không `ACTIVE`) và thêm mã
 > `TENANT_NOT_ACTIVE` cho action đánh giá (§12). Đợt ADR-041 (2026-10-17, **chưa commit/deploy**) **không thêm `route.ts`** (đếm lại
 > 2026-10-17: vẫn 22 dưới `/api`, 23 toàn app ✅) — trang + Server Action Bảng giá CMS, hoàn tiền gói, Hồ sơ/Bảo mật/đổi email ở §21. Đợt ADR-043 (2026-10-18, **chưa commit/deploy**) **không thêm `route.ts`** (đếm lại 2026-10-18: vẫn
-> 22 dưới `/api`, 23 toàn app ✅) — loader dashboard Studio + subpath `@gieochu/core/dashboard-range` ở §22.
+> 22 dưới `/api`, 23 toàn app ✅) — loader dashboard Studio + subpath `@gieochu/core/dashboard-range` ở §22. Đợt ADR-045 Storage Gateway
+> (2026-10-22, **chưa commit/deploy**) **thêm 1 `route.ts` nội bộ**: `GET /api/internal/storage/ticket` (§23) — đếm lại 2026-10-22:
+> **23 dưới `/api`, 24 toàn app** ✅; URL trả về ở §6 (`presign`, `cover-presign`) và §7 (`downloads/[token]`, `share-links/[token]/download`)
+> có thể là `/_s/<vé>` khi bật gateway — **shape JSON không đổi**.
 
 ## 1. Quy Ước Chung
 
@@ -134,6 +137,13 @@ trong path — MVP chưa có `STAFF` được cấp quyền upload).
 | `POST` | `/api/studio/[tenantSlug]/uploads/cover-presign` | `requireTenantMember` | Cấp URL presigned PUT cho ảnh bìa sản phẩm (bucket **public** R2, PNG/JPG/JPEG ≤ 5 MB theo khai báo). **Luồng cũ** — từ ADR-027 editor dùng ảnh bìa Cloudinary (§10); route giữ tới khi dọn (BACKLOG). |
 | `POST` | `/api/studio/[tenantSlug]/uploads/cover-complete` | `requireTenantMember` | Xác nhận ảnh bìa R2, ghi `Product.coverImageKey`. ADR-026 ✅: kiểm `objectKey` khớp `tenants/<tenantId>/products/<productId>/cover/<tên>` (`isProductObjectKeyFor`, kind `cover`) + đuôi png/jpg/jpeg trước khi gọi storage → sai `400 INVALID_OBJECT_KEY`. Chưa kiểm dung lượng thật của ảnh (BACKLOG). |
 
+**Storage Gateway (ADR-045)** ✅ đọc `apps/web/lib/{product-upload,storage-gateway}.ts` 2026-10-22: `presign` và `cover-presign` trả **đúng shape
+cũ** `{ objectKey, upload }` (`PresignedUpload`: `{ mode: "single", url }` hoặc `{ mode: "multipart", uploadId, partSizeBytes, parts[] }`). Khi
+provider đã ký URL nằm trong env `STORAGE_GATEWAY_PROVIDERS`, **`upload.url` và từng `parts[].url` là đường dẫn tương đối `/_s/<vé>`** (cùng
+origin) thay vì presigned URL storage; client vẫn `PUT` thẳng vào URL đó (nginx chuyển tiếp, không qua Node). Vé PUT giới hạn `Content-Length`:
+đơn ≤ `sizeBytes` khai báo, mỗi part ≤ `partSizeBytes`. Provider: file sản phẩm = provider của bucket tenant (MinIO/bucket riêng) hoặc
+`activeProvider`; ảnh bìa = `activeProvider`. Hạn vé = `presignUploadTtlSeconds`. `complete`/`cover-complete` không đổi.
+
 ## 7. Downloads & Share Links (khách hàng, L3) — 3 route
 
 | Method | Endpoint | Truy cập | Mô tả |
@@ -141,6 +151,15 @@ trong path — MVP chưa có `STAFF` được cấp quyền upload).
 | `POST` | `/api/downloads` | `requireUser()` | Bước 1 của luồng tải file (M9): kiểm `Entitlement` còn hạn (`downloadsUsed < downloadLimit`, chưa `revokedAt`), phát `DownloadToken` một-lần, TTL 60s. Rate-limit 20 lần/10 phút theo `userId`. Trả `{ url: "/api/downloads/{token}", expiresAt }`, không trả URL bucket thật. ADR-026 ✅: `fileId` có thể là dòng **link ngoài** (`sourceKind = EXTERNAL_URL`) — cùng luồng entitlement/`downloadLimit`/token; dòng không giao được (file chưa `CLEAN`, link không còn qua allowlist, đã gỡ) → `404`. ADR-039 ✅: entitlement chưa thu hồi có `remedyStatus = PENDING_CHOICE` → `403 REMEDY_CHOICE_REQUIRED`; `REFUND_REQUESTED`/`REFUNDED` → `403 DOWNLOAD_BLOCKED_REFUND` (đã thu hồi vẫn báo `ENTITLEMENT_REVOKED`). |
 | `GET` | `/api/downloads/[token]` | Public (token = credential một-lần) | Bước 2: tiêu thụ `DownloadToken` (so khớp `tokenHash`; không có/hết hạn/đã dùng → `410 TOKEN_INVALID`), **kiểm lại nguồn giao hàng trước khi trừ lượt** — không còn giao được → `410 DOWNLOAD_SOURCE_UNAVAILABLE` (ADR-026; token lúc này đã bị đánh dấu dùng nhưng lượt tải **không** bị trừ ✅), tăng `Entitlement.downloadsUsed` (hết lượt/thu hồi → `403 DOWNLOAD_LIMIT_REACHED`; ADR-039: UPDATE chỉ khi `remedyStatus ∈ {NONE, FINAL_DOWNLOAD}` — không khớp do remedy → `403 REMEDY_CHOICE_REQUIRED` / `403 DOWNLOAD_BLOCKED_REFUND`), ghi `DownloadEvent`, rồi `302` sang: URL presigned GET (FILE — bucket private, `Content-Disposition: attachment`, sống ≤ 10 phút — CLAUDE.md §7.6) **hoặc** chính URL link ngoài đã chuẩn hoá lại qua allowlist (EXTERNAL_URL). |
 | `POST` | `/api/share-links/[token]/download` | Public (mật khẩu tuỳ chọn theo `ShareLink.passwordHash`) | Kiểm mật khẩu (nếu `ShareLink` có đặt), kiểm `fileId` thuộc `fileIds` cho phép, tăng `usedCount` một cách atomic (không vượt `maxUses`), ghi `DownloadEvent`, trả URL presigned GET. Rate-limit 20 lần/10 phút theo **token** (không theo IP — chống brute-force mật khẩu qua proxy). ADR-026 ✅: **không bao giờ giao link ngoài** — chỉ nhận dòng `sourceKind = FILE`, không preview, `CLEAN`, chưa gỡ (`apps/web/lib/share-link.ts`). ADR-040 ✅: tenant không `ACTIVE` (`READ_ONLY`/`LOCKED`) → `410 SHARE_LINK_TENANT_LOCKED` (kiểm sau hạn/lượt/thu hồi, trước mật khẩu). Trang `/s/[token]` (`resolveShareLink`) cùng điều kiện — hiển thị "Link không còn hiệu lực." (trang render thông báo, không đặt HTTP 410). |
+
+**Storage Gateway (ADR-045)** ✅ đọc `apps/web/lib/{download,share-link,storage-gateway}.ts` + `api/downloads/[token]/route.ts` 2026-10-22 — chỉ
+áp dụng khi provider **đã ký URL** (provider lưu ở `ProductFile.storageProvider`, fallback `activeProvider`) nằm trong `STORAGE_GATEWAY_PROVIDERS`:
+* `GET /api/downloads/[token]` (FILE): `302` tới **`{APP_URL}/_s/<vé>`** (URL tuyệt đối dựng bằng `toAbsoluteRedirectUrl`) thay vì presigned URL
+  storage. EXTERNAL_URL không đổi.
+* `POST /api/share-links/[token]/download`: vẫn `200 { url }`, nhưng `url` có thể là **đường dẫn tương đối `/_s/<vé>`** (client
+  `app/s/[token]/download-panel.tsx` gán `window.location.href = url` ✅ — URL tương đối tự resolve theo origin hiện tại).
+* Hạn vé = `clampDownloadTtlSeconds(presignDownloadTtlSeconds)` (≤ 600s), vé chỉ hợp lệ với method `GET`. Các bước kiểm quyền/lượt/token
+  một lần không đổi. Env trống (mặc định) → hành vi cũ, URL presigned trực tiếp.
 
 ## 8. Admin (System Center) — 1 route
 
@@ -915,7 +934,34 @@ Tiền là `number` nguyên VND (khác `admin-stats.ts` trả chuỗi BIGINT). H
 
 ---
 
-## 23. Tài Liệu Tham Chiếu & Liên Kết
+## 23. Nội bộ (`/api/internal`) — 1 route (ADR-045 Storage Gateway) ✅
+
+Đối chiếu `apps/web/app/api/internal/storage/ticket/route.ts` + `docker/nginx/gieochu-storage-gateway.conf.example` working tree 2026-10-22
+(**chưa commit/deploy**). Định dạng vé: [[02-System-Specs/File-Storage-And-Downloads-Specs|File-Storage-And-Downloads-Specs]] §9; vận hành:
+[[04-Operations-Runbooks/Storage-Gateway-VPS-Runbook|Storage-Gateway-VPS-Runbook]].
+
+| Method | Endpoint | Truy cập | Mô tả |
+| :-- | :-- | :-- | :-- |
+| `GET` | `/api/internal/storage/ticket` | **Chỉ nginx gọi** qua subrequest `auth_request` của `location /_s/`. Không `requireUser` — vé mã hoá chính là credential (cùng mô hình bearer ngắn hạn với presigned URL). nginx chặn `location ^~ /api/internal/` từ ngoài → `404` (theo file mẫu) | Giải vé ở `X-Original-URI`, so method + `Content-Length`, trả đích nội bộ cho nginx `proxy_pass`. `dynamic = "force-dynamic"`. |
+
+**Header vào** (nginx đặt): `X-Original-URI` = `$request_uri` (phần trước `?` phải bắt đầu `/_s/`, phần sau `/_s/` là vé), `X-Original-Method` =
+`$request_method` (so khớp không phân biệt hoa thường với `method` trong vé), `X-Original-Length` = `$content_length` (chỉ kiểm khi vé `PUT` có
+`maxBytes`: phải là chuỗi số, ≤ `maxBytes`). Subrequest luôn là `GET` (`proxy_method GET` ở `location = /_storage_auth`).
+
+**Response:**
+
+| HTTP | Thân / header | Khi nào |
+| :-: | :-- | :-- |
+| `204` | Không thân; `X-Storage-Target: <pathname+search của presigned URL nội bộ>`, `Cache-Control: no-store` | Vé hợp lệ, chưa hết hạn, đúng method, độ dài hợp lệ |
+| `403` | `{ error: { code: "STORAGE_TICKET_REJECTED", message: "Không có quyền truy cập tệp.", requestId } }`, `Cache-Control: no-store` | Mọi lý do từ chối — `BAD_URI`, `INVALID_TICKET` (sai định dạng/tag/hết hạn), `METHOD_MISMATCH`, `LENGTH_MISSING`, `LENGTH_EXCEEDED`. Lý do chỉ ghi log (`logger.warn`, không log vé/target). Gộp một mã vì nginx `auth_request` chỉ hiểu 2xx / 401 / 403 |
+| `404` | `{ error: { code: "NOT_FOUND", … } }` | `STORAGE_GATEWAY_PROVIDERS` rỗng (gateway tắt trên process này) |
+
+Trình duyệt **không** thấy các response này trực tiếp: theo file mẫu, từ chối ở `auth_request` và lỗi upstream MinIO (400/403/404/405/5xx) đều được
+`error_page` chuyển thành `404` văn bản "Không tìm thấy tệp hoặc liên kết đã hết hạn." 🟡 (suy từ cấu hình mẫu, chưa chạy thật ❓).
+
+---
+
+## 24. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * [[Database-Schema-Reference]] — Lược đồ dữ liệu ([Database-Schema-Reference.md](./Database-Schema-Reference.md))
@@ -934,5 +980,6 @@ Tiền là `number` nguyên VND (khác `admin-stats.ts` trả chuỗi BIGINT). H
 * [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]] — báo cáo vi phạm M12c + quyền lợi người mua (ADR-038/039) ([Abuse-Reports-Specs.md](../02-System-Specs/Abuse-Reports-Specs.md))
 * [[02-System-Specs/Pricing-Page-Specs|Pricing-Page-Specs]] ([Pricing-Page-Specs.md](../02-System-Specs/Pricing-Page-Specs.md)) · [[02-System-Specs/Account-Profile-Specs|Account-Profile-Specs]] ([Account-Profile-Specs.md](../02-System-Specs/Account-Profile-Specs.md)) · [[01-Architecture-Decisions/ADR-027-Account-Upgrade-Pricing-Profile-Refund|ADR-027 (≙ ADR-041)]] ([ADR-027-Account-Upgrade-Pricing-Profile-Refund.md](../01-Architecture-Decisions/ADR-027-Account-Upgrade-Pricing-Profile-Refund.md))
 * [[02-System-Specs/Shop-Marketplace-Specs|Shop-Marketplace-Specs]] ([Shop-Marketplace-Specs.md](../02-System-Specs/Shop-Marketplace-Specs.md)) · [[01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First|ADR-021 (≙ ADR-035)]] ([ADR-021-Shop-Marketplace-Cms-First.md](../01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First.md))
+* [[01-Architecture-Decisions/ADR-030-Storage-Gateway-Encrypted-Ticket-Nginx|ADR-030 (≙ ADR-045)]] — Storage Gateway ([ADR-030-Storage-Gateway-Encrypted-Ticket-Nginx.md](../01-Architecture-Decisions/ADR-030-Storage-Gateway-Encrypted-Ticket-Nginx.md)) · [[04-Operations-Runbooks/Storage-Gateway-VPS-Runbook|Storage-Gateway-VPS-Runbook]] ([Storage-Gateway-VPS-Runbook.md](../04-Operations-Runbooks/Storage-Gateway-VPS-Runbook.md))
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*
