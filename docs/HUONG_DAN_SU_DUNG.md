@@ -164,7 +164,7 @@ Truy cập `/admin/settings/storage`: Hệ thống hỗ trợ song song hai nhà
 - **Bảo mật tuyệt đối:** Toàn bộ `Access Key ID` và `Secret Access Key` được mã hóa AES-256-GCM trong cơ sở dữ liệu bằng khóa riêng `STORAGE_ENCRYPTION_KEY`. Nút **"Kiểm tra kết nối"** thực hiện lệnh `HeadBucket` thực tế để xác thực kết nối trước khi lưu.
 
 #### 4.6.2. Quản lý & Giám sát Bucket Riêng của Gian hàng (`/admin/settings/storage/buckets`)
-Hệ thống áp dụng mô hình **Dedicated Bucket** — mỗi gian hàng (Tenant) sở hữu một bucket độc lập dạng `gc-tenant-{tenantId}`:
+Hệ thống áp dụng mô hình **Dedicated Bucket** — mỗi gian hàng (Tenant) sở hữu một bucket độc lập dạng `gc-{12 ký tự đầu tenantId}`:
 - **Theo dõi thời gian thực:**
   + Tên gian hàng, mã định danh (Slug) và trạng thái hoạt động.
   + Tên Bucket riêng và Nhà cung cấp đang lưu trữ (`CLOUDFLARE_R2` hoặc `MINIO`).

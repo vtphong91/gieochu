@@ -398,7 +398,10 @@ export function StorageForm({ initial }: { initial: StorageFormInitial }) {
               name="minioBucketPrefix"
               defaultValue={minioBucketPrefix}
               placeholder="gc-"
-              hint="Tiền tố đặt trước tên bucket riêng, vd: gc-tenant-xxx (ADR-038)."
+              maxLength={20}
+              pattern="[a-z0-9][a-z0-9\-]{0,19}"
+              title="Chữ thường, số, dấu gạch ngang; bắt đầu bằng chữ/số; tối đa 20 ký tự"
+              hint="Tối đa 20 ký tự, chỉ chữ thường/số/dấu gạch ngang. Bucket gian hàng có dạng gc-k3j9x0a2m7qd (ADR-038)."
             />
             <TextField
               id="minio-maxUploadMb"

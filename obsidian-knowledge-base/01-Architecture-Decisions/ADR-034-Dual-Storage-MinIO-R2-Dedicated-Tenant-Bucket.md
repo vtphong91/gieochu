@@ -32,8 +32,11 @@ dữ liệu; công cụ đồng bộ file R2 ↔ MinIO cho quản trị viên; m
 1. **Hai provider trong `SystemStorageConfig`:** lưu độc lập cấu hình `CLOUDFLARE_R2` và `MINIO`; `activeProvider` chọn nền tảng cho file mới.
    Tham số MinIO: `host`, `port`, `useSSL`, `region`, `bucketPrefix` (mặc định `gc-`), `maxUploadMb`, `publicBaseUrl`, khoá truy cập (mã hoá
    AES-256-GCM bằng `STORAGE_ENCRYPTION_KEY`). Cấu hình cũ chưa tách → coi là `CLOUDFLARE_R2` ✅ `lib/system-storage.ts`.
-2. **Bucket riêng cho gian hàng:** tên `{prefix}tenant-{tenantId}` (chữ thường, số, gạch nối, 3–63 ký tự) ✅ `deriveTenantBucketName`
-   (`lib/tenant-storage.ts`). Cột nullable mới `storageBucket`, `storageProvider` ở `tenants` và `product_files` ✅ schema + SQL.
+2. **Bucket riêng cho gian hàng:** tên `{prefix}tenant-{tenantId}` (chữ thường, số, gạch nối, 3–63 ký tự) theo `docs/DECISIONS.md`.
+   **Code đã đổi ngày 2026-10-23 (lệch so với ADR gốc, chờ Quốc ghi ADR):** tên mới `{prefix}{12 ký tự đầu tenantId}` (vd `gc-k3j9x0a2m7qd`),
+   prefix tối đa 20 ký tự `[a-z0-9-]`, trùng tên thì dùng 16 ký tự (vẫn trùng → `STORAGE_BUCKET_NAME_CONFLICT` 409), tên sai → `STORAGE_BUCKET_NAME_INVALID`;
+   gian hàng đã có bucket giữ tên cũ ✅ `deriveTenantBucketName`/`getOrCreateTenantBucket` (`lib/tenant-storage.ts`), chi tiết:
+   [[04-Operations-Runbooks/Minio-Storage-Operations-Runbook|Minio-Storage-Operations-Runbook]] §5.1. Cột nullable mới `storageBucket`, `storageProvider` ở `tenants` và `product_files` ✅ schema + SQL.
 3. **Đồng bộ dữ liệu:** chọn chiều R2 → MinIO hoặc MinIO → R2; stream copy giữa hai S3 client, không đệm ra đĩa; tự tạo bucket đích; kiểm kích
    thước/ETag; cập nhật `ProductFile.storageBucket` 🟡 (code: `lib/storage-sync.ts`, `packages/storage/src/stream-copy.ts`, chưa đối chiếu từng bước).
 4. **Giám sát bucket:** bảng gian hàng · slug · bucket · provider · số file · dung lượng đã dùng · hạn mức gói · %; kiểm `HeadBucket` và nút khởi tạo

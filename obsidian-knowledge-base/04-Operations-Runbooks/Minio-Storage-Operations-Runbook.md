@@ -30,7 +30,7 @@ author: System Architect & DevOps
 Hệ thống Gieo Chữ sử dụng MinIO như một giải pháp lưu trữ đối tượng tương thích chuẩn **S3 API** chạy tự quản (Self-hosted) nhằm mang lại các lợi ích chiến lược:
 1. **Tiết kiệm chi phí băng thông & lưu trữ:** Cho phép tận dụng hạ tầng máy chủ riêng (VPS, On-premise, Dedicated Server) mà không phát sinh chi phí egress hàng tháng.
 2. **Chủ quyền dữ liệu (Data Sovereignty):** Lưu trữ độc lập tại trung tâm dữ liệu nội địa Việt Nam, tăng tốc độ tải file học liệu cho học viên trong nước.
-3. **Mô hình Dedicated Bucket:** Phân bổ mỗi gian hàng sở hữu một bucket riêng biệt (`gc-tenant-{tenantId}`) giúp cô lập hoàn toàn dữ liệu giữa các giáo viên/coach, chống rủi ro lộ lọt chéo và hỗ trợ sao lưu/xóa dữ liệu theo từng tenant riêng lẻ.
+3. **Mô hình Dedicated Bucket:** Phân bổ mỗi gian hàng sở hữu một bucket riêng biệt (`gc-<12 ký tự đầu tenantId>`, xem mục 5.1) giúp cô lập hoàn toàn dữ liệu giữa các giáo viên/coach, chống rủi ro lộ lọt chéo và hỗ trợ sao lưu/xóa dữ liệu theo từng tenant riêng lẻ.
 4. **Quản trị tập trung & Mã hoá an toàn:** Mọi thông số kết nối (Host, Port, Credentials) được quản lý qua giao diện System Center (`/admin/settings/storage`), mật khẩu và Access Key được mã hóa AES-256-GCM với khóa riêng `STORAGE_ENCRYPTION_KEY` (theo [[01-Architecture-Decisions/ADR-005-Storage-Config-System-Admin|ADR-005 (≙ ADR-017)]]).
 
 ```mermaid
@@ -51,8 +51,8 @@ flowchart TD
         subgraph MinioCluster ["MinIO Self-Hosted Instance"]
             F["MinIO API (Port 9000 / Reverse Proxy HTTPS 443)"]
             G["MinIO Console UI (Port 9001 / Admin Only)"]
-            H[("Dedicated Bucket: gc-tenant-abc")]
-            I[("Dedicated Bucket: gc-tenant-xyz")]
+            H[("Dedicated Bucket: gc-k3j9x0a2m7qd")]
+            I[("Dedicated Bucket: gc-p4w8n1c5t0ze")]
             J[("Fallback Bucket: gc-private")]
             F --> H
             F --> I
@@ -178,7 +178,7 @@ docker compose exec minio mc ls local/
 docker compose exec minio mc du local/
 
 # Kiểm tra thông tin chi tiết một bucket gian hàng
-docker compose exec minio mc stat local/gc-tenant-cuid123456
+docker compose exec minio mc stat local/gc-k3j9x0a2m7qd
 ```
 
 ---
@@ -308,20 +308,19 @@ Theo quy định kiến trúc **ADR-044** ([`docs/DECISIONS.md`](../../docs/DECI
 ### 5.1 Quy Tắc Sinh Tên Bucket Chuẩn S3 (`deriveTenantBucketName`)
 
 Tên bucket được tạo tự động bởi hàm `deriveTenantBucketName(tenantId, prefix)` tại `apps/web/lib/tenant-storage.ts`:
-- **Định dạng:** `${bucketPrefix}tenant-${cleanTenantId}`
-- **Ví dụ:** Với `bucketPrefix = "gc-"` và `tenantId = "cm234567890"`, bucket name sẽ là `gc-tenant-cm234567890`.
-- **Ràng buộc chuẩn S3/MinIO:**
-  - Độ dài kẹp nghiêm ngặt từ 3 đến 63 ký tự.
-  - Chỉ bao gồm chữ thường `a-z`, số `0-9` và dấu gạch nối `-`.
-  - Không chứa hai dấu gạch nối liên tiếp (`--`).
-  - Không bắt đầu hoặc kết thúc bằng dấu gạch nối.
+- **Định dạng (đổi ngày 2026-10-23 ✅ code):** `${bucketPrefix}${12 ký tự đầu của tenantId}` — `tenantId` là cuid2 nên chỉ gồm `[a-z0-9]`. Prefix không kết thúc bằng `-` thì hệ thống tự thêm `-`.
+- **Ví dụ:** Với `bucketPrefix = "gc-"` và `tenantId = "k3j9x0a2m7qdz81..."`, bucket name là `gc-k3j9x0a2m7qd`. (Mẫu cũ `gc-tenant-<24 ký tự>` không còn được sinh cho gian hàng mới.)
+- **Ràng buộc `bucketPrefix` (✅ `isValidBucketPrefix`, `BUCKET_PREFIX_MAX_LENGTH` trong `apps/web/lib/system-storage.ts`):** tối đa 20 ký tự, chỉ `[a-z0-9-]`, bắt đầu bằng chữ/số. Được kiểm tra khi lưu cấu hình (`saveSystemStorageConfig`) và khi bấm Test kết nối (`testRawStorageConnection`); sai thì trả `INVALID_STORAGE_CONFIG` (HTTP 400). Prefix cũ đã lưu mà không hợp lệ **không** chặn việc đọc cấu hình, chỉ báo lỗi khi tạo bucket cho gian hàng mới.
+- **Ràng buộc chuẩn S3/MinIO của tên bucket:** 3–63 ký tự, chỉ `a-z`, `0-9`, `-`, không bắt đầu/kết thúc bằng `-`. Tên sinh ra không hợp lệ thì ném `AppError` `STORAGE_BUCKET_NAME_INVALID` (HTTP 500); **không còn** fallback cắt chuỗi hay quay về `gc-tenant-...`.
+- **Kiểm tra trùng tên (✅ `getOrCreateTenantBucket`):** nếu gian hàng khác đã có cùng `storageBucket`, hệ thống dùng 16 ký tự đầu của `tenantId`; vẫn trùng thì ném `STORAGE_BUCKET_NAME_CONFLICT` (HTTP 409). Kiểm tra ở tầng ứng dụng, **không** có unique constraint DB và không có migration.
+- **Gian hàng đã có `storageBucket`:** giữ nguyên tên cũ (kể cả dạng `gc-tenant-...`), không đổi tên, không di chuyển bucket.
 
 ### 5.2 Cơ Chế Cấp Phát Lười (Lazy Provisioning)
 
 Hệ thống hỗ trợ cấp phát linh hoạt và an toàn cho dữ liệu lịch sử:
-1. **Gian hàng mới tạo:** Tự động gán `storageBucket` và `storageProvider` khi đăng ký.
-2. **Khởi tạo lười (Lazy Provisioning):** Với gian hàng cũ chưa có bucket riêng, khi giáo viên thực hiện tải lên tệp đầu tiên (`POST /api/studio/[tenantSlug]/uploads/presign`), hàm `getOrCreateTenantBucket(tenantId)` sẽ:
-   - Tự động sinh tên bucket theo tenantId.
+1. **Gian hàng mới tạo (đính chính 2026-10-23 ✅ code):** `createTenantForUser` (`apps/web/lib/create-tenant.ts`) **không** gán `storageBucket`/`storageProvider` và không gọi MinIO. Ngay sau đó, Server Action `createTenantAction` (`apps/web/app/studio/actions.ts`) gọi `getOrCreateTenantBucket` để tạo bucket thật; lỗi chỉ ghi log (`tenant bucket provisioning failed at creation`), không chặn việc tạo gian hàng — khi đó bucket được cấp lại ở mục 2 hoặc 3. Đường tạo gian hàng khác (không qua `createTenantAction`) vẫn chỉ cấp phát lười.
+2. **Khởi tạo lười (Lazy Provisioning):** Với gian hàng chưa có bucket riêng (gồm gian hàng mới), ở lần presign upload file sản phẩm đầu tiên (`presignProductFileUpload` / `completeProductFileUpload`), hàm `getOrCreateTenantBucket(tenantId)` sẽ:
+   - Sinh tên bucket theo mẫu mục 5.1 (có kiểm tra trùng).
    - Gọi `ensureBucketExists(client, bucketName)` trên MinIO provider.
    - Cập nhật trường `Tenant.storageBucket` và `Tenant.storageProvider` vào cơ sở dữ liệu.
 3. **Khởi tạo chủ động bởi Admin:** Tại màn hình Giám sát Bucket (`/admin/settings/storage/buckets`), Quản trị viên có thể nhấn nút **"Khởi tạo bucket"** thủ công cho các gian hàng mà không cần chờ lượt tải lên.
@@ -397,7 +396,7 @@ sequenceDiagram
 - **Triệu chứng:** Quá trình tạo bucket báo lỗi xung đột tên.
 - **Nguyên nhân & Khắc phục:**
   - Hàm `createBucket` trong `packages/storage/src/bucket.ts` đã chủ động bọc xử lý và bỏ qua lỗi này nếu bucket đã thuộc quyền sở hữu của bạn.
-  - Nếu báo lỗi thuộc sở hữu của tài khoản khác trên cùng cluster, hãy đổi `bucketPrefix` khác biệt trong System Storage Config (ví dụ: `gcprod-`).
+  - Nếu báo lỗi thuộc sở hữu của tài khoản khác trên cùng cluster, hãy đổi `bucketPrefix` khác biệt trong System Storage Config (ví dụ: `gcprod-`; tối đa 20 ký tự, `[a-z0-9-]`, bắt đầu bằng chữ/số). Đổi prefix chỉ ảnh hưởng gian hàng chưa có bucket; gian hàng đã có `storageBucket` giữ tên cũ. Lỗi `STORAGE_BUCKET_NAME_CONFLICT` (409) nghĩa là tên dự kiến đã gán cho gian hàng khác, cần điều tra thủ công.
 
 ### 7.4 Lỗi Mixed Content Hoặc Lỗi Chứng Chỉ SSL/TLS
 - **Triệu chứng:** Người dùng bấm "Tải xuống" nhưng trình duyệt chặn không cho tải, hoặc báo lỗi `ERR_SSL_PROTOCOL_ERROR`.

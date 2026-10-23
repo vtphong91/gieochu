@@ -3,39 +3,46 @@ import { ensureBucketExists, isValidBucketName } from "@gieochu/storage";
 import { getPrismaClient } from "@gieochu/db";
 import {
   createClientForProvider,
+  BUCKET_PREFIX_MAX_LENGTH,
   getDecryptedSystemStorageConfig,
+  isValidBucketPrefix,
   type StorageProvider,
 } from "./system-storage";
 
+const DEFAULT_BUCKET_ID_LENGTH = 12;
+const EXTENDED_BUCKET_ID_LENGTH = 16;
+
 /**
- * Derives a valid S3 / MinIO bucket name for a specific tenant.
- * Conforms to S3 naming constraints: 3-63 lowercase alphanumeric characters and hyphens.
+ * Derives a valid S3 / MinIO bucket name for a specific tenant: `${prefix}${first N chars of tenantId}`.
+ * Never truncates silently — throws AppError when the prefix or resulting name is invalid.
  */
-export function deriveTenantBucketName(tenantId: string, prefix = "gc-"): string {
-  const cleanPrefix = prefix
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, "")
-    .replace(/^-+|-+$/g, "");
+export function deriveTenantBucketName(
+  tenantId: string,
+  prefix = "gc-",
+  idLength = DEFAULT_BUCKET_ID_LENGTH,
+): string {
+  const lowerPrefix = prefix.trim().toLowerCase();
+  if (!isValidBucketPrefix(lowerPrefix)) {
+    throw new AppError({
+      code: "INVALID_STORAGE_CONFIG",
+      message: `Tiền tố bucket đang cấu hình không hợp lệ (chỉ gồm chữ thường, số, dấu gạch ngang; bắt đầu bằng chữ/số; tối đa ${BUCKET_PREFIX_MAX_LENGTH} ký tự). Vui lòng sửa trong Cài đặt lưu trữ.`,
+      httpStatus: 400,
+    });
+  }
+  const cleanPrefix = lowerPrefix.endsWith("-") ? lowerPrefix : `${lowerPrefix}-`;
 
   const cleanTenantId = tenantId
     .toLowerCase()
-    .replace(/[^a-z0-9-]/g, "")
-    .slice(0, 40);
+    .replace(/[^a-z0-9]/g, "")
+    .slice(0, idLength);
 
-  const prefixPart = cleanPrefix ? `${cleanPrefix}-` : "";
-  let bucketName = `${prefixPart}tenant-${cleanTenantId}`.toLowerCase();
-
-  // Strip consecutive hyphens
-  bucketName = bucketName.replace(/-+/g, "-");
-
-  // Ensure length between 3 and 63
-  if (bucketName.length > 63) {
-    bucketName = bucketName.slice(0, 63).replace(/-+$/, "");
-  }
-
+  const bucketName = `${cleanPrefix}${cleanTenantId}`;
   if (!isValidBucketName(bucketName)) {
-    // Fallback safe name
-    bucketName = `gc-tenant-${cleanTenantId.slice(0, 30)}`;
+    throw new AppError({
+      code: "STORAGE_BUCKET_NAME_INVALID",
+      message: "Không thể sinh tên bucket hợp lệ cho gian hàng.",
+      httpStatus: 500,
+    });
   }
 
   return bucketName;
@@ -86,7 +93,25 @@ export async function getOrCreateTenantBucket(tenantId: string): Promise<TenantB
   // Provision new dedicated bucket on the active provider
   const activeProvider = sysConfig.activeProvider;
   const prefix = activeProvider === "MINIO" ? (sysConfig.minio.bucketPrefix ?? "gc-") : "gc-";
-  const bucketName = deriveTenantBucketName(tenant.id, prefix);
+  let bucketName = deriveTenantBucketName(tenant.id, prefix);
+
+  // Tránh hai gian hàng dùng chung bucket: nếu trùng tên thì dùng 16 ký tự đầu của tenantId.
+  const isTaken = async (name: string): Promise<boolean> =>
+    (await prisma.tenant.findFirst({
+      where: { id: { not: tenant.id }, storageBucket: name },
+      select: { id: true },
+    })) !== null;
+
+  if (await isTaken(bucketName)) {
+    bucketName = deriveTenantBucketName(tenant.id, prefix, EXTENDED_BUCKET_ID_LENGTH);
+    if (await isTaken(bucketName)) {
+      throw new AppError({
+        code: "STORAGE_BUCKET_NAME_CONFLICT",
+        message: "Tên bucket dự kiến đã được gian hàng khác sử dụng. Vui lòng liên hệ quản trị kỹ thuật.",
+        httpStatus: 409,
+      });
+    }
+  }
 
   const { client } = await createClientForProvider(activeProvider);
   await ensureBucketExists(client, bucketName);

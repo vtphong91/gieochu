@@ -104,6 +104,25 @@ export interface DecryptedSystemStorageConfig {
   secretAccessKey: string;
 }
 
+/** Tiền tố bucket gian hàng: tối đa 20 ký tự, chỉ [a-z0-9-], bắt đầu bằng chữ/số. */
+export const BUCKET_PREFIX_MAX_LENGTH = 20;
+export const BUCKET_PREFIX_PATTERN = "[a-z0-9][a-z0-9\\-]{0,19}";
+const BUCKET_PREFIX_REGEX = new RegExp(`^${BUCKET_PREFIX_PATTERN}$`);
+
+export function isValidBucketPrefix(prefix: string): boolean {
+  return BUCKET_PREFIX_REGEX.test(prefix);
+}
+
+function assertValidBucketPrefix(prefix: string): void {
+  if (!isValidBucketPrefix(prefix)) {
+    throw new AppError({
+      code: "INVALID_STORAGE_CONFIG",
+      message: `Tiền tố bucket không hợp lệ: chỉ gồm chữ thường, số, dấu gạch ngang; bắt đầu bằng chữ/số; tối đa ${BUCKET_PREFIX_MAX_LENGTH} ký tự.`,
+      httpStatus: 400,
+    });
+  }
+}
+
 function normalizeMinioEndpoint(minio: MinioConfig): string {
   if (minio.endpoint?.trim()) return minio.endpoint.trim();
   if (minio.host?.trim()) {
@@ -277,6 +296,11 @@ export async function saveSystemStorageConfig(input: SaveSystemStorageConfigInpu
       publicBaseUrl: input.minio?.publicBaseUrl ?? legacyFlat.publicBaseUrl ?? existingPublicConfig?.minio.publicBaseUrl,
     },
   };
+
+  // Chỉ kiểm tra giá trị người dùng vừa nhập; dữ liệu cũ không hợp lệ không chặn việc đọc cấu hình
+  // (sẽ báo lỗi khi tạo bucket gian hàng mới).
+  const submittedPrefix = input.minio?.bucketPrefix ?? legacyFlat.bucketPrefix;
+  if (submittedPrefix !== undefined) assertValidBucketPrefix(submittedPrefix.trim());
 
   const normalizedPublic = normalizePublicStorageConfig(mergedRaw);
 
@@ -626,6 +650,12 @@ export async function testRawStorageConnection(
       input.minioUseSSL !== undefined ? input.minioUseSSL : (existingPublic?.minio.useSSL ?? false);
     const region = (input.minioRegion || existingPublic?.minio.region || "us-east-1").trim();
     const prefix = (input.minioBucketPrefix || existingPublic?.minio.bucketPrefix || "gc-").trim();
+    if (!isValidBucketPrefix(prefix)) {
+      return {
+        ok: false,
+        message: `Tiền tố bucket không hợp lệ: chỉ gồm chữ thường, số, dấu gạch ngang; bắt đầu bằng chữ/số; tối đa ${BUCKET_PREFIX_MAX_LENGTH} ký tự.`,
+      };
+    }
 
     const accessKeyId = (
       input.minioAccessKeyId ||

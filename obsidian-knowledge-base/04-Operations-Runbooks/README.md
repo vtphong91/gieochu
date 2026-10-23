@@ -21,7 +21,7 @@ viên.
   rebuild môi trường từ đầu.
 - `[[Minio-Storage-Operations-Runbook]]`: Cẩm nang chuyên sâu về lưu trữ MinIO Self-hosted song song Cloudflare R2
   (ADR-044 trong `docs/DECISIONS.md`; từ ADR-045 production dùng Storage Gateway — xem dưới), cấu hình cổng mạng API (9000) & Console (9001), `useSSL` khi dùng IP vs Domain, triển khai Docker Compose
-  và Nginx HTTPS Reverse Proxy, cơ chế Dedicated Bucket cho từng gian hàng (`gc-tenant-{tenantId}`), công cụ đồng bộ dữ liệu
+  và Nginx HTTPS Reverse Proxy, cơ chế Dedicated Bucket cho từng gian hàng (`gc-<12 ký tự đầu tenantId>`), công cụ đồng bộ dữ liệu
   Stream Copy (Zero-RAM/Disk) R2 ↔ MinIO, xử lý sự cố kết nối/credentials/firewall, và quy trình sao lưu/phục hồi dữ liệu (`mc mirror`).
 - `[[Storage-Gateway-VPS-Runbook]]`: Bật Storage Gateway trên VPS theo ADR-045 — MinIO và Next.js bind `127.0.0.1`, cấu hình MinIO trong Admin
   (host `127.0.0.1:9000`, useSSL tắt, `publicBaseUrl` `https://gieochu.net/media`, bắt buộc Test kết nối sau khi đổi host), `mc anonymous set

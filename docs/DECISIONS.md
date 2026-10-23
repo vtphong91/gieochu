@@ -1069,8 +1069,8 @@
      - Tham số MinIO: `host` (IP hoặc Domain), `port` (number, vd 9000), `useSSL` (boolean), `region` (mặc định `us-east-1`), `bucketPrefix` (vd `gc-`), `maxUploadMb` (Int, vd 500), `publicBaseUrl` (tuỳ chọn), `accessKeyId`, `secretAccessKey` (mã hoá AES-256-GCM với `STORAGE_ENCRYPTION_KEY`).
      - Tương thích ngược: Nếu đọc cấu hình cũ chưa phân tách, tự động coi là `CLOUDFLARE_R2` và khởi tạo cấu hình MinIO mặc định.
   2. **Dedicated Bucket cho Gian hàng (Tenant):**
-     - Mỗi gian hàng có 1 bucket riêng, sinh theo quy chuẩn S3/MinIO: `${bucketPrefix}tenant-${tenantId}` (chữ thường, số, dấu gạch nối, 3–63 ký tự).
-     - Bucket được khởi tạo tự động khi tạo gian hàng (`createTenantForUser`) hoặc khởi tạo lười (lazy-provision) khi upload file đầu tiên / khi Admin bấm "Khởi tạo bucket".
+     - Mỗi gian hàng có 1 bucket riêng, sinh theo quy chuẩn S3/MinIO: `${bucketPrefix}${12 ký tự đầu của tenantId}` (chữ thường, số, dấu gạch nối, 3–63 ký tự), ví dụ `gc-k3j9x0a2m7qd`. *(Mẫu gốc `${bucketPrefix}tenant-${tenantId}` — 34 ký tự — đã thay ngày 2026-10-23, xem "Điều chỉnh 2026-10-23" bên dưới.)*
+     - Bucket được khởi tạo ngay sau khi tạo gian hàng (`createTenantAction` gọi `getOrCreateTenantBucket`, lỗi chỉ ghi log, không chặn việc tạo; `createTenantForUser` bản thân không gọi storage) hoặc khởi tạo lười (lazy-provision) khi upload file đầu tiên / khi Admin bấm "Khởi tạo bucket".
      - Bảng `Tenant` bổ sung trường nullable `storageBucket` và `storageProvider` để ghi nhận bucket riêng của gian hàng.
      - Bảng `ProductFile` bổ sung trường nullable `storageBucket` và `storageProvider` để truy xuất chính xác file dù file nằm ở bucket chung cũ hay bucket riêng mới.
   3. **Công cụ Quản trị Đồng bộ Dữ liệu (Storage Sync Tool):**
@@ -1082,12 +1082,17 @@
      - Đặt tại `/admin/settings/storage/buckets` (và liên kết từ tab Storage Settings).
      - Hiển thị bảng dữ liệu: Tên gian hàng, Slug, Tên Bucket, Nền tảng (R2/MinIO), Số lượng file, Dung lượng đã dùng (`storageUsedBytes`), Hạn mức gói (`Plan.storageMb`), Tỷ lệ % sử dụng kèm thanh màu cảnh báo trực quan.
      - Chức năng kiểm tra bucket (`HeadBucket`) và khởi tạo bucket thủ công cho các tenant cũ.
+- **Điều chỉnh 2026-10-23 (Quốc, chủ dự án duyệt):** tên bucket gian hàng quá dài và dư (`tenant-` cố định, đủ 24 ký tự cuid2).
+  1. Mẫu mới `${bucketPrefix}${12 ký tự đầu tenantId}`; tiền tố thiếu `-` cuối thì tự thêm. Tenant đã có `storageBucket` giữ tên cũ (không đổi tên/migrate).
+  2. `bucketPrefix` ≤20 ký tự, `[a-z0-9-]`, bắt đầu bằng chữ/số; kiểm khi lưu cấu hình và khi Test kết nối (`INVALID_STORAGE_CONFIG`, 400). Prefix cũ sai không chặn đọc cấu hình, chỉ báo lỗi khi tạo bucket mới.
+  3. Bỏ nhánh fallback/cắt chuỗi (trước đây cắt vào tenantId, có thể trùng tên): tên không hợp lệ -> `STORAGE_BUCKET_NAME_INVALID` (500).
+  4. Chống trùng tên: nếu tenant khác đã dùng cùng `storageBucket` thì dùng 16 ký tự đầu; vẫn trùng -> `STORAGE_BUCKET_NAME_CONFLICT` (409). Không thêm unique constraint/migration (ADR-034); race hai request đồng thời được chấp nhận vì 12 ký tự cuid2 ngẫu nhiên.
 
 ## ADR-045 — Storage Gateway: giấu storage tự host sau `gieochu.net` bằng vé mã hoá + nginx `auth_request` (2026-10-22)
 
 - **Bối cảnh:** Production chạy trên VPS Ubuntu (Next.js qua pm2, mọi thứ reverse proxy qua nginx, một domain
   `gieochu.net`). MinIO tự host trên cùng máy (ADR-044). Presigned URL hiện trả thẳng cho trình duyệt (tải 302,
-  share-link `{url}`, upload PUT) nên làm lộ host/port MinIO, tên bucket `gc-tenant-<tenantId>` và tham số `X-Amz-*`,
+  share-link `{url}`, upload PUT) nên làm lộ host/port MinIO, tên bucket `gc-tenant-<tenantId>` (mẫu lúc quyết định; từ 2026-10-23 là `gc-<12 ký tự>`) và tham số `X-Amz-*`,
   đồng thời buộc MinIO mở ra internet. Chủ dự án yêu cầu MinIO chỉ nằm ở tầng dưới, **vẫn giữ provider bên thứ ba
   (R2) hoạt động như cũ**.
 - **Quyết định:**

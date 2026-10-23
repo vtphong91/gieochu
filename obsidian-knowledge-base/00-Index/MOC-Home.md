@@ -78,7 +78,7 @@ một sidebar dùng chung System Center + Studio, Đăng xuất ở đáy sideba
 [[01-Architecture-Decisions/ADR-028-Shared-App-Sidebar-Logout-Mobile-Drawer|ADR-028 KB]]), dashboard Tổng quan gian hàng — chỉ số theo kỳ, doanh thu
 gộp + thực nhận, chỉ đơn > 0đ, 10 đơn mới không email; bổ sung lần 3: date range picker 12 mốc, 3 mốc "… trước" so trọn kỳ, số đầy đủ (ADR-043, [[01-Architecture-Decisions/ADR-029-Studio-Dashboard-Period-Gross-Net-Revenue|ADR-029 KB]]),
 Storage Gateway — giấu MinIO sau `gieochu.net` bằng vé mã hoá `/_s/<vé>` + nginx `auth_request`, env `STORAGE_GATEWAY_PROVIDERS` (ADR-045,
-[[01-Architecture-Decisions/ADR-030-Storage-Gateway-Encrypted-Ticket-Nginx|ADR-030 KB]]); MinIO song song R2, bucket riêng `{prefix}tenant-{id}` cho mỗi gian hàng, công cụ đồng bộ + giám sát bucket — migration chưa áp DB (ADR-044, [[01-Architecture-Decisions/ADR-034-Dual-Storage-MinIO-R2-Dedicated-Tenant-Bucket|ADR-034 KB]]);
+[[01-Architecture-Decisions/ADR-030-Storage-Gateway-Encrypted-Ticket-Nginx|ADR-030 KB]]); MinIO song song R2, bucket riêng `{prefix}{12 ký tự đầu tenantId}` cho mỗi gian hàng (đổi mẫu 2026-10-23), công cụ đồng bộ + giám sát bucket — migration chưa áp DB (ADR-044, [[01-Architecture-Decisions/ADR-034-Dual-Storage-MinIO-R2-Dedicated-Tenant-Bucket|ADR-034 KB]]);
 nâng cấp trang Đơn hàng Studio — danh sách lọc/tìm/sắp xếp/phân trang server, chi tiết 2 cột kiểu WooCommerce, khách chỉ họ tên + email, không
 migration (ADR-046, [[01-Architecture-Decisions/ADR-031-Studio-Orders-List-Detail-Upgrade|ADR-031 KB]]), Đơn hàng Studio — tìm không dấu, ghi chú nội bộ
 `order_notes` (bảng L2 mới, chỉ tác giả xoá), không thao tác hàng loạt / xuất CSV (ADR-047, [[01-Architecture-Decisions/ADR-032-Studio-Orders-Unaccent-Search-Internal-Notes|ADR-032 KB]]).

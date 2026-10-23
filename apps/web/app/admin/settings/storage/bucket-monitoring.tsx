@@ -113,7 +113,7 @@ export function BucketMonitoring({ initialTenants = [] }: { initialTenants?: Buc
             t.id === tenantId
               ? {
                   ...t,
-                  storageBucket: t.storageBucket ?? `gc-tenant-${t.id.slice(0, 12)}`,
+                  storageBucket: t.storageBucket ?? result.bucketName ?? null,
                   storageProvider: t.storageProvider ?? "CLOUDFLARE_R2",
                 }
               : t

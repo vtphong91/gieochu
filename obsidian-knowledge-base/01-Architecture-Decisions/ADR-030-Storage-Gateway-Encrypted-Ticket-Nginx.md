@@ -27,7 +27,7 @@ Mức xác minh: ✅ Long đã đối chiếu code working tree (2026-10-22) · 
 ## 2. Bối Cảnh (Context) 🟡
 Theo ADR-045: production chạy trên **VPS Ubuntu** (Next.js qua pm2, nginx reverse proxy, một domain `gieochu.net`), MinIO tự host cùng máy
 (ADR-044). Presigned URL trả thẳng cho trình duyệt (302 tải, `{url}` share-link, PUT upload) làm lộ host/port MinIO, tên bucket
-`gc-tenant-<tenantId>`, tham số `X-Amz-*`, và buộc MinIO mở ra internet. Chủ dự án yêu cầu MinIO chỉ ở tầng dưới, **R2 vẫn hoạt động như cũ**.
+`gc-tenant-<tenantId>` (mẫu tên lúc ra quyết định; từ 2026-10-23 gian hàng mới dùng `gc-<12 ký tự đầu tenantId>`), tham số `X-Amz-*`, và buộc MinIO mở ra internet. Chủ dự án yêu cầu MinIO chỉ ở tầng dưới, **R2 vẫn hoạt động như cũ**.
 
 > ❓ Mô tả "production chạy trên VPS" khác với phần KB còn lại (Vercel — [[01-Architecture-Decisions/ADR-017-Vercel-Deploy-Build-Without-Env|ADR-017 (≙ ADR-031)]],
 > [[01-Architecture-Decisions/ADR-022-Background-Jobs-After-And-Daily-Cron|ADR-022 (≙ ADR-036)]] Vercel Cron). Đã ghi câu hỏi cho Quốc trong

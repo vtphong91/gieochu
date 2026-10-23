@@ -2,9 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { AppError } from "@gieochu/core";
+import { AppError, logger } from "@gieochu/core";
 import { requireVerified } from "../../lib/session";
 import { createTenantForUser } from "../../lib/create-tenant";
+import { getOrCreateTenantBucket } from "../../lib/tenant-storage";
 
 const createTenantSchema = z.object({
   name: z.string().trim().min(1, "Vui lòng nhập tên trang."),
@@ -39,6 +40,14 @@ export async function createTenantAction(
       return { error: error.message };
     }
     throw error;
+  }
+
+  // Tạo bucket thật trên nhà cung cấp lưu trữ đang dùng. Không chặn việc tạo gian hàng khi lỗi:
+  // bucket sẽ được cấp lại (idempotent) ở lần upload đầu hoặc qua nút "Khởi tạo" của admin.
+  try {
+    await getOrCreateTenantBucket(tenant.id);
+  } catch (error) {
+    logger.warn({ err: error, tenantId: tenant.id }, "tenant bucket provisioning failed at creation");
   }
 
   redirect(`/studio/${tenant.slug}`);
