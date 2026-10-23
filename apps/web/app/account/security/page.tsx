@@ -4,6 +4,7 @@ import { brandColors } from "@gieochu/config/theme";
 import { getPrismaClient } from "@gieochu/db";
 import { requireVerifiedAccess } from "../../../lib/page-guards";
 import { findPendingEmailChange } from "../../../lib/account-profile";
+import { AdminPageHeader } from "../../admin/_ui/kit";
 import { IconLock, IconMail, IconShield } from "../../admin/_ui/icons";
 import { ChangePasswordForm, EmailChangeSection, LogoutAllDevices } from "./security-forms";
 
@@ -25,33 +26,31 @@ export default async function SecurityPage() {
   ]);
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-6">
-      <div>
-        <h1 className="font-[family-name:var(--font-heading)] text-2xl font-bold" style={{ color: INK }}>
-          Bảo mật
-        </h1>
-        <p className="mt-1.5 text-sm" style={{ color: INK_SOFT }}>
-          Mật khẩu, email đăng nhập và các phiên đăng nhập của tài khoản.
-        </p>
+    <div>
+      <AdminPageHeader title="Bảo mật" subtitle="Mật khẩu, email đăng nhập và các phiên đăng nhập của tài khoản." />
+
+      {/* Từ xl: Đổi mật khẩu | Email đăng nhập (2 cột, cùng chiều cao); Phiên đăng nhập (khối nguy hiểm) trải hết hàng
+          dưới — tách khỏi form thường (`destructive-emphasis`). Thứ tự DOM = thứ tự đọc. */}
+      <div className="mt-6 grid gap-6 xl:grid-cols-2">
+        <SecurityCard id="mat-khau" icon={<IconLock className="h-5 w-5" />} title="Đổi mật khẩu" description="Sau khi đổi, các thiết bị khác sẽ bị đăng xuất; thiết bị này vẫn đăng nhập.">
+          <ChangePasswordForm />
+        </SecurityCard>
+
+        <SecurityCard id="email" icon={<IconMail className="h-5 w-5" />} title="Email đăng nhập" description="Đổi email cần xác minh qua link gửi tới email mới.">
+          <EmailChangeSection currentEmail={dbUser.email} pendingEmail={pendingEmail} />
+        </SecurityCard>
+
+        <SecurityCard
+          id="phien"
+          icon={<IconShield className="h-5 w-5" />}
+          title="Phiên đăng nhập"
+          description="Nếu nghi ngờ ai đó đang dùng tài khoản của bạn, hãy đổi mật khẩu rồi đăng xuất khỏi mọi thiết bị."
+          danger
+          className="xl:col-span-2"
+        >
+          <LogoutAllDevices />
+        </SecurityCard>
       </div>
-
-      <SecurityCard id="mat-khau" icon={<IconLock className="h-5 w-5" />} title="Đổi mật khẩu" description="Sau khi đổi, các thiết bị khác sẽ bị đăng xuất; thiết bị này vẫn đăng nhập.">
-        <ChangePasswordForm />
-      </SecurityCard>
-
-      <SecurityCard id="email" icon={<IconMail className="h-5 w-5" />} title="Email đăng nhập" description="Đổi email cần xác minh qua link gửi tới email mới.">
-        <EmailChangeSection currentEmail={dbUser.email} pendingEmail={pendingEmail} />
-      </SecurityCard>
-
-      <SecurityCard
-        id="phien"
-        icon={<IconShield className="h-5 w-5" />}
-        title="Phiên đăng nhập"
-        description="Nếu nghi ngờ ai đó đang dùng tài khoản của bạn, hãy đổi mật khẩu rồi đăng xuất khỏi mọi thiết bị."
-        danger
-      >
-        <LogoutAllDevices />
-      </SecurityCard>
     </div>
   );
 }
@@ -62,6 +61,7 @@ function SecurityCard({
   title,
   description,
   danger = false,
+  className = "",
   children,
 }: {
   id: string;
@@ -69,10 +69,12 @@ function SecurityCard({
   title: string;
   description: string;
   danger?: boolean;
+  /** Vị trí trong lưới trang (vd `xl:col-span-2`). */
+  className?: string;
   children: ReactNode;
 }) {
   return (
-    <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-24 rounded-2xl border bg-white p-5 sm:p-6" style={{ borderColor: danger ? "#FCA5A5" : LINE }}>
+    <section id={id} aria-labelledby={`${id}-title`} className={`min-w-0 scroll-mt-24 rounded-2xl border bg-white p-5 sm:p-6 ${className}`} style={{ borderColor: danger ? "#FCA5A5" : LINE }}>
       <div className="flex items-start gap-3">
         <span
           aria-hidden="true"
@@ -90,7 +92,8 @@ function SecurityCard({
           </p>
         </div>
       </div>
-      <div className="mt-5">{children}</div>
+      {/* Card fluid → giới hạn chiều rộng *nội dung form*, không giới hạn khung trang. */}
+      <div className="mt-5 max-w-3xl">{children}</div>
     </section>
   );
 }

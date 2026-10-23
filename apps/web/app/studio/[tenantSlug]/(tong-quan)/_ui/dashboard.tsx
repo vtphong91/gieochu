@@ -8,6 +8,7 @@ import { AdminPageHeader, DataTable, Notice, Td, Tr } from "../../../../admin/_u
 import {
   IconAlertTriangle,
   IconCheckCircle,
+  IconChevronDown,
   IconExternalLink,
   IconGift,
   IconLock,
@@ -34,7 +35,6 @@ import {
   TrendChart,
   computeChange,
   formatCount,
-  formatVndAxis,
   formatVndFull,
   type TrendPoint,
 } from "../../../../admin/_ui/stats-chart";
@@ -42,7 +42,6 @@ import {
   CHART_SECTION_ID,
   GRANULARITY_UNIT,
   bucketFullLabel,
-  dashboardHref,
   formatPercent,
   formatRating,
   formatVnDateTime,
@@ -50,6 +49,7 @@ import {
   type StudioChartMetric,
 } from "./dashboard-format";
 import { StudioDashboardRangePicker } from "./dashboard-range-picker";
+import { RevenueChartSwitcher, type RevenueChartPoint } from "./revenue-chart-switcher";
 
 /**
  * ADR-043 — giao diện dashboard Tổng quan gian hàng (`/studio/{slug}`). Chỉ trình bày: nhận `TenantDashboard` đã tính
@@ -90,10 +90,10 @@ export function StudioDashboardView({ tenant, data, metric }: { tenant: StudioDa
         <Onboarding slug={tenant.slug} products={data.products} />
       ) : (
         <>
-          <RangeBar slug={tenant.slug} data={data} metric={metric} />
+          <RangeBar slug={tenant.slug} data={data} />
           <SalesSection data={data} />
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-            <SalesChartCard slug={tenant.slug} data={data} metric={metric} />
+            <SalesChartCard data={data} metric={metric} />
             <TopSellingCard slug={tenant.slug} data={data} />
           </div>
           <LatestOrdersSection slug={tenant.slug} orders={data.latestOrders} />
@@ -111,7 +111,7 @@ export function StudioDashboardView({ tenant, data, metric }: { tenant: StudioDa
 /* ------------------------------------------------------------------ Thanh chọn kỳ */
 
 /** ADR-043 lần 3: tiêu đề kỳ + ô `dd/mm/yyyy - dd/mm/yyyy` mở date range picker (client `dashboard-range-picker.tsx` bọc `admin/_ui/date-range-picker.tsx`). */
-function RangeBar({ slug, data, metric }: { slug: string; data: TenantDashboard; metric: StudioChartMetric }) {
+function RangeBar({ slug, data }: { slug: string; data: TenantDashboard }) {
   const { range } = data;
   return (
     <section aria-labelledby="ky-thong-ke-title" className="space-y-3">
@@ -126,7 +126,6 @@ function RangeBar({ slug, data, metric }: { slug: string; data: TenantDashboard;
         </div>
         <StudioDashboardRangePicker
           slug={slug}
-          metric={metric}
           activeKey={range.key}
           displayFrom={range.displayFrom}
           displayTo={range.displayTo}
@@ -344,22 +343,17 @@ function SecondaryStat({ icon, label, value, detail, change }: { icon: ReactNode
 
 /* ------------------------------------------------------------------ Biểu đồ */
 
-const METRIC_OPTIONS: Array<{ key: StudioChartMetric; label: string }> = [
-  { key: "gop", label: "Gộp" },
-  { key: "thuc-nhan", label: "Thực nhận" },
-];
-
-function SalesChartCard({ slug, data, metric }: { slug: string; data: TenantDashboard; metric: StudioChartMetric }) {
+function SalesChartCard({ data, metric }: { data: TenantDashboard; metric: StudioChartMetric }) {
   const { range, series } = data;
   const unit = GRANULARITY_UNIT[range.granularity];
-  const isNet = metric === "thuc-nhan";
   const labels = series.map((p) => bucketFullLabel(p.start, range.granularity));
-  const revenuePoints: TrendPoint[] = series.map((p, i) => ({
+  const revenuePoints: RevenueChartPoint[] = series.map((p, i) => ({
     key: p.key,
     tick: p.label,
     label: labels[i] ?? p.label,
     future: p.future,
-    value: BigInt(isNet ? p.netRevenueVnd : p.grossRevenueVnd),
+    grossVnd: p.grossRevenueVnd,
+    netVnd: p.netRevenueVnd,
   }));
   const orderPoints: TrendPoint[] = series.map((p, i) => ({
     key: p.key,
@@ -369,44 +363,16 @@ function SalesChartCard({ slug, data, metric }: { slug: string; data: TenantDash
     value: BigInt(p.paidOrders),
   }));
   const hasFuture = series.some((p) => p.future);
-  const revenueName = isNet ? "Doanh thu thực nhận" : "Doanh thu gộp";
 
   return (
     <section id={CHART_SECTION_ID} aria-labelledby={`${CHART_SECTION_ID}-title`} className={`${STAT_CARD_CLASS} scroll-mt-20 p-5 sm:p-6 xl:col-span-2`}>
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 id={`${CHART_SECTION_ID}-title`} className="font-[family-name:var(--font-heading)] text-base font-bold" style={{ color: INK }}>
-            {revenueName} theo {unit}
-          </h2>
-          <p className="mt-0.5 text-xs" style={{ color: INK_SOFT }}>
-            Đơn vị: đồng (VND) · mỗi cột là 1 {unit} (giờ Việt Nam){hasFuture ? ` · cột trống ở cuối là thời gian chưa tới` : ""}
-          </p>
-        </div>
-        <nav aria-label="Chọn cách tính doanh thu trên biểu đồ" className="inline-flex rounded-lg border border-gray-200 p-0.5">
-          {METRIC_OPTIONS.map((o) => {
-            const active = o.key === metric;
-            return (
-              <Link
-                key={o.key}
-                href={dashboardHref(slug, { ky: range.key, tu: range.customFrom, den: range.customTo, chiSo: o.key }, CHART_SECTION_ID)}
-                scroll={false}
-                aria-current={active ? "true" : undefined}
-                className={`inline-flex min-h-11 min-w-14 items-center justify-center rounded-md px-3 text-sm font-semibold transition-colors motion-reduce:transition-none lg:min-h-9 ${FOCUS}`}
-                style={active ? { background: brandColors.primary, color: "#FFFFFF" } : { color: INK }}
-              >
-                {o.label}
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
-
-      <TrendChart
+      {/* Gộp / Thực nhận đổi tức thì ở client (`replaceState` giữ `?chi-so=`) — không render lại trang ở server. */}
+      <RevenueChartSwitcher
+        titleId={`${CHART_SECTION_ID}-title`}
+        unit={unit}
+        hasFuture={hasFuture}
+        initialMetric={metric}
         points={revenuePoints}
-        metricName={`${revenueName} theo ${unit}`}
-        formatAxis={(v) => formatVndAxis(v)}
-        formatFull={(v) => formatVndFull(v)}
-        emptyText="Không có đơn đã thanh toán trong kỳ này."
       />
 
       <h3 className="mt-8 font-[family-name:var(--font-heading)] text-sm font-bold" style={{ color: INK }}>
@@ -427,9 +393,13 @@ function SalesChartCard({ slug, data, metric }: { slug: string; data: TenantDash
         emptyText="Không có đơn đã thanh toán trong kỳ này."
       />
 
-      <details className="mt-5 rounded-xl border border-gray-200">
-        <summary className={`flex min-h-11 cursor-pointer items-center rounded-xl px-4 text-sm font-semibold ${FOCUS}`} style={{ color: brandColors.primary }}>
+      <details className="group mt-5 rounded-xl border border-gray-200">
+        <summary
+          className={`flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-4 text-sm font-semibold [&::-webkit-details-marker]:hidden ${FOCUS}`}
+          style={{ color: brandColors.primary }}
+        >
           Xem bảng số liệu theo {unit}
+          <IconChevronDown className="h-4 w-4 shrink-0 group-open:rotate-180 motion-safe:transition-transform" />
         </summary>
         {/* Bảng 4 cột có thể rộng hơn 360px → cuộn trong khung riêng (relative để thead sticky đúng chỗ), trang không cuộn ngang. */}
         <div className="relative max-h-96 overflow-auto border-t border-gray-200">
@@ -577,7 +547,7 @@ function LatestOrdersSection({ slug, orders }: { slug: string; orders: TenantDas
             </Td>
             <Td className="text-right tabular-nums">
               <span className="inline-flex min-h-11 items-center font-semibold whitespace-nowrap lg:min-h-0" style={{ color: INK }}>
-                {o.totalVnd === 0 ? "Miễn phí" : formatVndFull(o.totalVnd)}
+                {formatVndFull(o.totalVnd)}
               </span>
             </Td>
           </Tr>

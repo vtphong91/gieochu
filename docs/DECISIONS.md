@@ -1048,7 +1048,10 @@
   (Quốc) Ba mốc đã kết thúc (`tuan-truoc`, `thang-truoc`, `quy-truoc`) so với **trọn** kỳ liền trước (vd tháng 9 so
   với cả tháng 8), không cắt theo độ dài — ngoại lệ có chủ đích của ADR-043 mục 5. Range có thêm `displayFrom`/`displayTo`
   (ngày VN, gồm ngày cuối) cho ô hiển thị.
-
+- **Bổ sung ADR-043 lần 4 (2026-10-23, chủ dự án yêu cầu):** **trục Y** biểu đồ tiền cũng hiển thị **số đầy đủ**
+  (`993.000 đ`, bỏ rút gọn "nghìn/tr/tỷ") — Studio + System Center. Nút **Gộp/Thực nhận** (và GMV/Đơn ở System Center)
+  chuyển **tức thì phía client** (dữ liệu cả hai chuỗi đã có), URL cập nhật bằng `history.replaceState` giữ `?chi-so=`
+  — không còn link GET render lại trang. Bảng "10 đơn mới nhất" của dashboard hiện "0 đ" (trang Đơn hàng vẫn "Miễn phí").
 
 ## ADR-044 — Lưu trữ đa nền tảng MinIO song song Cloudflare R2, Dedicated Bucket cho Gian hàng và Công cụ Quản trị Giám sát / Đồng bộ (2026-10-17)
 

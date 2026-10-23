@@ -55,7 +55,7 @@ export function AvatarCard({
   }
 
   return (
-    <section aria-labelledby="avatar-title" className="rounded-2xl border bg-white p-5 sm:p-6" style={{ borderColor: "#E5E7EB" }}>
+    <section aria-labelledby="avatar-title" className="min-w-0 rounded-2xl border bg-white p-5 sm:p-6" style={{ borderColor: "#E5E7EB" }}>
       <div className="flex items-center gap-4">
         <AccountAvatar url={url || null} name={displayName} size={64} />
         <div className="min-w-0">

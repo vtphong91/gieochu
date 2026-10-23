@@ -842,7 +842,7 @@ Chủ dự án yêu cầu: sidebar Studio cùng style System Center; dashboard a
 `04-Operations-Runbooks/UI-Design-System.md` §5.1/§11.1/§12.6/§18.5, `02-System-Specs/User-Management-System-Center-Specs.md` §2,
 `02-System-Specs/Account-Profile-Specs.md` §5, bản trích `01-Architecture-Decisions/ADR-028` (≙ ADR-042), `00-Index/KB-Audit-2026-09-26.md` §22.
 
-## Dashboard Tổng quan gian hàng (ADR-043) — đã commit (`e5d63d0`), deploy ❓ chờ chủ dự án; "Bổ sung lần 3" xong code, chưa commit — 2026-10-18
+## Dashboard Tổng quan gian hàng (ADR-043) — đã commit (`e5d63d0`; "Bổ sung lần 3" trong `dd349b9`), deploy ❓ chờ chủ dự án; "Bổ sung lần 4" xong code, chưa commit — 2026-10-18 → 2026-10-23
 
 Chủ dự án chốt §9 kế hoạch [ke-hoach-dashboard-tong-quan-gian-hang-2026-10-17.md](ke-hoach-dashboard-tong-quan-gian-hang-2026-10-17.md) ngày
 2026-10-18 → **ADR-043** + "Bổ sung ADR-043" (`docs/DECISIONS.md`). Dữ liệu nghiệp vụ, không có GĐ CMS. Không migration, không route HTTP mới.
@@ -864,7 +864,7 @@ Chủ dự án chốt §9 kế hoạch [ke-hoach-dashboard-tong-quan-gian-hang-2
 - **Kiểm:** lint/typecheck/build đạt (Quốc chạy lại 2026-10-18); integration `studio-dashboard.test.ts` chạy thật đạt, dọn dữ liệu; xem trước
   dữ liệu giả 360/768/1280. **Chưa** kiểm phiên OWNER thật, `/admin` sau refactor, bàn phím/trình đọc màn hình. Việc còn lại: `docs/BACKLOG.md`
   mục "Phát sinh trong đợt ADR-043".
-- **"Bổ sung ADR-043 lần 3" (2026-10-18, chủ dự án yêu cầu; working tree, chưa commit):**
+- **"Bổ sung ADR-043 lần 3" (2026-10-18, chủ dự án yêu cầu; đã commit trong `dd349b9` — `git log`, Long đối chiếu 2026-10-23):**
   - *Dữ liệu (Hiếu):* `dashboard-range.ts` thêm `tuan-truoc` (Thứ Hai–Chủ nhật tuần trước, theo ngày), `thang-truoc` (theo ngày), `quy-truoc`
     (theo tuần) → 12 mốc, thứ tự = danh sách mốc picker; ba mốc đã kết thúc so với **trọn** kỳ liền trước (ngoại lệ có chủ đích của mục 5);
     `DashboardRange.displayFrom/displayTo` (`YYYY-MM-DD` giờ VN, gồm ngày cuối), cũng có trong `TenantDashboardRangeView`.
@@ -875,6 +875,19 @@ Chủ dự án chốt §9 kế hoạch [ke-hoach-dashboard-tong-quan-gian-hang-2
     (`sales-stats.tsx`, thẻ "Doanh thu gói dịch vụ"). `IconCalendar`, CSS `.range-picker`.
   - *Kiểm (báo cáo):* lint/typecheck/build đạt, Playwright kiểm bàn phím, 360/1100/1440 không cuộn ngang; chưa kiểm phiên OWNER thật. Test chỉ thêm
     assertion — vẫn **94/94 unit, 55/55 integration** (Long chạy `pnpm test:count` 2026-10-18).
+- **"Bổ sung ADR-043 lần 4" (2026-10-23, chủ dự án yêu cầu; cuối mục ADR-043 `docs/DECISIONS.md`; working tree, chưa commit):** chỉ lớp trình bày, không
+  đổi loader/contract, không migration.
+  - Trục Y biểu đồ tiền (Studio + System Center) hiện **số đầy đủ** `formatVndFull`; **xoá** `formatVndAxis` (`admin/_ui/stats-chart.tsx`); cột nhãn
+    co theo nhãn dài nhất, dưới `sm` `max-w-[5.5rem]` xuống dòng trước "đ".
+  - Toggle chỉ số **phía client**: `admin/_ui/metric-toggle.tsx` (`useUrlMetric` — state + `window.history.replaceState` giữ `?chi-so=`, đồng bộ
+    ngược qua `useSearchParams`; `MetricToggle` 2 nút `aria-pressed` trong `role="group"`); System Center `admin/_ui/sales-daily-chart.tsx`
+    (GMV/Đơn, GMV từ chuỗi BigInt) + `admin/_ui/sales-chart-metric.ts` (type + `parseSalesChartMetric` thuần); Studio
+    `(tong-quan)/_ui/revenue-chart-switcher.tsx` (Gộp/Thực nhận). Bỏ link GET `?chi-so=`; date range picker dashboard đọc `chi-so` bằng
+    `useSearchParams` (bỏ prop `metric`).
+  - `<details>` "Xem bảng số liệu theo …" có chevron `IconChevronDown` bên phải (`group-open:rotate-180 motion-safe:transition-transform`, ẩn marker);
+    bảng "10 đơn mới nhất" dashboard hiện "0 đ" (trang Đơn hàng vẫn "Miễn phí").
+  - *Kiểm (Quốc báo):* tsc/eslint/build đạt; **chưa kiểm trình duyệt**. Không có file test trong thay đổi (`git status`) — số test không đổi.
+    KB: `UI-Design-System.md` §16, §19 (§19.6, §19.8 mới), `Studio-Dashboard-Specs.md` đầu trang/§4.6/§4.7/§6, bản trích `01-Architecture-Decisions/ADR-029`.
 
 **Số test:** +1 unit (`packages/core/src/stats/dashboard-range.test.ts`) +1 integration (`apps/web/tests/integration/studio-dashboard.test.ts`),
 không nâng trần — `pnpm test:count` = **94/94 unit, 55/55 integration** (Long chạy 2026-10-18, chỉ đếm) — **chạm trần**; test mới cần chủ dự án
@@ -882,7 +895,7 @@ duyệt nâng trần. KB: `02-System-Specs/Studio-Dashboard-Specs.md` (mới), `
 `03-API-Contracts/Endpoint-Directory.md` §22, `04-Operations-Runbooks/UI-Design-System.md` §6/§16/§19 (lần 3: §19.5 date range picker, §19.6
 quy tắc số), bản trích `01-Architecture-Decisions/ADR-029` (≙ ADR-043), `00-Index/KB-Audit-2026-09-26.md` §23, §24 (lần 3).
 
-## Nâng cấp trang Đơn hàng Studio — danh sách + chi tiết (ADR-046) — xong code, chưa commit — 2026-10-18
+## Nâng cấp trang Đơn hàng Studio — danh sách + chi tiết (ADR-046) — đã commit `dd349b9`, deploy ❓ — 2026-10-18
 
 Chủ dự án yêu cầu 2026-10-18 (tham khảo WooCommerce) → **ADR-046** (`docs/DECISIONS.md`). Dữ liệu nghiệp vụ, không có GĐ CMS. **Không migration,
 không `route.ts`/Server Action mới**; `orders/[orderId]/actions.ts` không đổi (luật các thao tác tiền giữ nguyên).
@@ -921,7 +934,7 @@ cũ không còn nơi gọi (BACKLOG dọn). KB: `02-System-Specs/Studio-Orders-S
 `02-System-Specs/Order-State-Machine.md`, `03-API-Contracts/Endpoint-Directory.md` §23, `04-Operations-Runbooks/UI-Design-System.md` §20, bản trích
 `01-Architecture-Decisions/ADR-031` (≙ ADR-046), `00-Index/KB-Audit-2026-09-26.md` §25.
 
-## Đơn hàng Studio — tìm không dấu, ghi chú nội bộ (ADR-047) — xong code, chưa commit; migration đã áp — 2026-10-18
+## Đơn hàng Studio — tìm không dấu, ghi chú nội bộ (ADR-047) — đã commit `dd349b9`, deploy ❓; migration đã áp — 2026-10-18
 
 Chủ dự án chốt 2026-10-18 → **ADR-047** (`docs/DECISIONS.md`). Dữ liệu nghiệp vụ, không có GĐ CMS. Không `route.ts` mới.
 
@@ -947,7 +960,7 @@ Chủ dự án chốt 2026-10-18 → **ADR-047** (`docs/DECISIONS.md`). Dữ li�
 §3.2/§7, `04-Operations-Runbooks/UI-Design-System.md` §20.8, `04-Operations-Runbooks/Deploy-Vercel-Runbook.md` §9.10, bản trích
 `01-Architecture-Decisions/ADR-032` (≙ ADR-047), `00-Index/KB-Audit-2026-09-26.md` §26.
 
-## Danh sách Khách hàng Studio (ADR-048) — xong code, chưa commit; không migration — 2026-10-19
+## Danh sách Khách hàng Studio (ADR-048) — đã commit `dd349b9`, deploy ❓; không migration — 2026-10-19
 
 Chủ dự án chốt 2026-10-18 → **ADR-048** (`docs/DECISIONS.md`). Dữ liệu nghiệp vụ, không có GĐ CMS. Chỉ nâng cấp danh sách (không trang chi tiết khách).
 Không `route.ts` mới, không migration (dùng cột có sẵn `tenant_customers.note`).

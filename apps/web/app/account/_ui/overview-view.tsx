@@ -2,7 +2,7 @@ import type { AccountOverview } from "../../../lib/account-profile";
 import Link from "next/link";
 import { brandColors } from "@gieochu/config/theme";
 import { AccountAvatar } from "../../_ui/account-avatar";
-import { Badge, Notice } from "../../admin/_ui/kit";
+import { AdminPageHeader, Badge, Notice } from "../../admin/_ui/kit";
 import { IconCheckCircle, IconChevronRight, IconMail, IconPackage, IconReceipt } from "../../admin/_ui/icons";
 import { buildAccountNav } from "./account-nav";
 import { AccountNavList } from "./account-nav-list";
@@ -29,10 +29,8 @@ export function AccountOverviewView({ overview }: { overview: AccountOverview })
   });
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6">
-      <h1 className="font-[family-name:var(--font-heading)] text-2xl font-bold" style={{ color: INK }}>
-        Tài khoản của bạn
-      </h1>
+    <div className="space-y-6">
+      <AdminPageHeader title="Tài khoản của bạn" />
 
       <section aria-labelledby="profile-summary" className="flex flex-col gap-4 rounded-2xl border bg-white p-5 sm:flex-row sm:items-center sm:p-6" style={{ borderColor: LINE }}>
         <AccountAvatar url={overview.avatarUrl} name={name || overview.email} size={56} />
@@ -74,28 +72,31 @@ export function AccountOverviewView({ overview }: { overview: AccountOverview })
         <AccountNavList groups={groups} />
       </div>
 
-      {tenant ? <OwnedTenantCard tenant={tenant} /> : <OpenStoreCard />}
+      {/* Từ xl: thẻ gian hàng (cột rộng) + lối tắt Mua sắm (cột hẹp, xếp dọc) — tận dụng chiều rộng vùng main. */}
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        {tenant ? <OwnedTenantCard tenant={tenant} /> : <OpenStoreCard />}
 
-      <section aria-labelledby="shortcuts-title" className="hidden lg:block">
-        <h2 id="shortcuts-title" className="font-[family-name:var(--font-heading)] text-lg font-semibold" style={{ color: INK }}>
-          Mua sắm
-        </h2>
-        <ul className="mt-3 grid gap-4 sm:grid-cols-2">
-          <ShortcutCard
-            href="/account/library"
-            icon={<IconPackage className="h-5 w-5" />}
-            title="Thư viện tài liệu"
-            value={overview.libraryCount > 0 ? `${overview.libraryCount.toLocaleString("vi-VN")} tài liệu` : "Chưa có tài liệu"}
-          />
-          <ShortcutCard
-            href="/account/orders"
-            icon={<IconReceipt className="h-5 w-5" />}
-            title="Đơn hàng"
-            value={overview.pendingOrderCount > 0 ? `${overview.pendingOrderCount.toLocaleString("vi-VN")} đơn chờ thanh toán` : "Không có đơn chờ thanh toán"}
-            attention={overview.pendingOrderCount > 0}
-          />
-        </ul>
-      </section>
+        <section aria-labelledby="shortcuts-title" className="hidden min-w-0 lg:block">
+          <h2 id="shortcuts-title" className="font-[family-name:var(--font-heading)] text-lg font-semibold" style={{ color: INK }}>
+            Mua sắm
+          </h2>
+          <ul className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+            <ShortcutCard
+              href="/account/library"
+              icon={<IconPackage className="h-5 w-5" />}
+              title="Thư viện tài liệu"
+              value={overview.libraryCount > 0 ? `${overview.libraryCount.toLocaleString("vi-VN")} tài liệu` : "Chưa có tài liệu"}
+            />
+            <ShortcutCard
+              href="/account/orders"
+              icon={<IconReceipt className="h-5 w-5" />}
+              title="Đơn hàng"
+              value={overview.pendingOrderCount > 0 ? `${overview.pendingOrderCount.toLocaleString("vi-VN")} đơn chờ thanh toán` : "Không có đơn chờ thanh toán"}
+              attention={overview.pendingOrderCount > 0}
+            />
+          </ul>
+        </section>
+      </div>
     </div>
   );
 }

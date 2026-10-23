@@ -19,7 +19,7 @@ status: Accepted (Chốt — Áp dụng chính thức)
 **ĐÃ PHÊ DUYỆT (Accepted)** — tương ứng **ADR-046** (gồm **"Bổ sung ADR-046"** — Quốc đính chính theo code) trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md). Bản trích ghi vào thư mục này theo duyệt
 của Quốc (brief 2026-10-18).
 
-Tiến độ (2026-10-18): dữ liệu (Hiếu) + UI (Phong) xong code ở working tree, **chưa commit** ✅ `git status`; deploy ❓. **Không migration, không
+Tiến độ (2026-10-18): dữ liệu (Hiếu) + UI (Phong) xong code ở working tree, nay **đã commit** `dd349b9` ✅ `git log` (cập nhật 2026-10-23, trước ghi "chưa commit"); deploy ❓. **Không migration, không
 `route.ts`/Server Action mới.** Test không đổi: `pnpm test:count` = **94/94 unit, 55/55 integration** ✅ (Long chạy 2026-10-18, chỉ đếm).
 
 Mức xác minh: ✅ Long đã đối chiếu code working tree (2026-10-18) · 🟡 theo `docs/DECISIONS.md`/báo cáo của Quốc · ❓ cần môi trường thật.

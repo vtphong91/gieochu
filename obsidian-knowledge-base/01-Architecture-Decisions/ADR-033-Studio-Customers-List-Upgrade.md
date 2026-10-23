@@ -20,7 +20,7 @@ status: Accepted (Chốt — Áp dụng chính thức)
 vào thư mục này theo duyệt của Quốc (brief 2026-10-19). Nối tiếp [[01-Architecture-Decisions/ADR-032-Studio-Orders-Unaccent-Search-Internal-Notes|ADR-032 KB (≙ ADR-047)]]
 (dẫn lại mục 3 "không xuất CSV") và [[01-Architecture-Decisions/ADR-029-Studio-Dashboard-Period-Gross-Net-Revenue|ADR-029 KB (≙ ADR-043)]] (định nghĩa số liệu).
 
-Tiến độ (2026-10-19): code xong ở working tree, **chưa commit** ✅ `git status`; **không migration**; deploy ❓. `pnpm test:count` = **94/94 unit,
+Tiến độ (2026-10-19): code xong ở working tree, nay **đã commit** `dd349b9` ✅ `git log` (cập nhật 2026-10-23, trước ghi "chưa commit"); **không migration**; deploy ❓. `pnpm test:count` = **94/94 unit,
 55/55 integration** ✅ (Long chạy, chỉ đếm) — không thêm case.
 
 Mức xác minh: ✅ Long đã đối chiếu code working tree · 🟡 theo `docs/DECISIONS.md`/báo cáo của Quốc · ❓ cần môi trường thật.

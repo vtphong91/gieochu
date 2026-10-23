@@ -14,15 +14,18 @@ author: Long
 # 📐 Đặc Tả: Dashboard Tổng Quan Gian Hàng (`/studio/{slug}` — ADR-043)
 
 > Quyết định gốc: **ADR-043** + **"Bổ sung ADR-043"** + **"Bổ sung ADR-043 lần 2"** (Quốc) + **"Bổ sung ADR-043 lần 3"** (chủ dự án yêu cầu,
-> Quốc bổ sung quy tắc so sánh trọn kỳ) — tất cả 2026-10-18 — trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md). Bản trích KB:
+> Quốc bổ sung quy tắc so sánh trọn kỳ) — 2026-10-18 — và **"Bổ sung ADR-043 lần 4"** (2026-10-23, chủ dự án yêu cầu; cuối mục ADR-043, trước
+> ADR-044) — trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md). Bản trích KB:
 > [[01-Architecture-Decisions/ADR-029-Studio-Dashboard-Period-Gross-Net-Revenue|ADR-029 (≙ ADR-043)]]. Kế hoạch (đã chốt):
 > [`docs/ke-hoach-dashboard-tong-quan-gian-hang-2026-10-17.md`](../../docs/ke-hoach-dashboard-tong-quan-gian-hang-2026-10-17.md). ADR liên quan:
 > ADR-010 (role `gieochu_app`, RLS), ADR-033 (`soldCount`), ADR-036 (đơn PENDING hiệu lực), ADR-037 (GMV gộp, `tenant_daily_stats`),
 > ADR-039 (yêu cầu hoàn tiền), ADR-042 (app shell Studio).
 >
 > Mức xác minh: ✅ Long đã đối chiếu code 2026-10-18 · 🟡 theo brief/báo cáo của Quốc · ❓ cần môi trường thật. Không migration.
-> Trạng thái code: ADR-043 + bổ sung lần 1–2 **đã commit** (`e5d63d0`, 2026-10-18 ✅ `git show --stat`), đã deploy hay chưa ❓; **"Bổ sung
-> ADR-043 lần 3" (date range picker, 3 mốc "… trước", số đầy đủ) còn ở working tree, chưa commit** ✅ `git status`.
+> Trạng thái code: ADR-043 + bổ sung lần 1–2 **đã commit** (`e5d63d0`, 2026-10-18 ✅ `git show --stat`), đã deploy hay chưa ❓; "Bổ sung
+> ADR-043 lần 3" (date range picker, 3 mốc "… trước", số đầy đủ) **đã commit** trong `dd349b9` ✅ `git log` (Long đối chiếu 2026-10-23 — trang này
+> trước ghi "chưa commit"); **"Bổ sung ADR-043 lần 4"** (trục Y số đầy đủ, toggle chỉ số phía client, bảng 10 đơn "0 đ") **còn ở working tree,
+> chưa commit** ✅ `git status` 2026-10-23 — Quốc báo tsc/eslint/build đạt 🟡, chưa kiểm trình duyệt ❓.
 
 ---
 
@@ -149,13 +152,16 @@ trên 0đ, theo `paidAt` của kỳ hiện tại; bucket không có đơn = 0. T
 
 10 đơn mới nhất theo `createdAt` (rồi `id`) giảm dần, **mọi trạng thái** (kể cả PENDING/EXPIRED/CANCELED), **không lọc theo kỳ**. Mỗi dòng
 **chỉ** `id`, `code`, `customerFullName` (`user_profiles.fullName`, không có hồ sơ → "Khách"), `unitPriceVnd` (đơn giá dòng đầu của đơn),
-`totalVnd`. **Không email** (ADR-043 mục 3) — integration test kiểm chuỗi JSON không chứa email nào ✅.
+`totalVnd`. **Không email** (ADR-043 mục 3) — integration test kiểm chuỗi JSON không chứa email nào ✅. Hiển thị (lần 4): đơn 0 đ ghi **"0 đ"** ở
+cả Đơn giá lẫn Thành tiền (`formatVndFull`; trước lần 4 cột Thành tiền ghi "Miễn phí") — chỉ đổi hiển thị, loader không đổi ✅ `git diff`. Trang
+Đơn hàng Studio vẫn ghi "Miễn phí" cho đơn 0 đ (`orders/_ui/order-format.ts`) ✅.
 
 ### 4.7. Tiền tệ
 
 SUM trong SQL là `BIGINT` → chuỗi → `number` nguyên VND qua `toInt`; vượt `Number.MAX_SAFE_INTEGER` (≈ 9 triệu tỷ đồng/kỳ/gian hàng) → ném
 `AppError INTERNAL_ERROR` thay vì trả số sai. UI định dạng bằng BigInt (`stats-chart.tsx`). Từ "Bổ sung ADR-043 lần 3": thẻ thống kê, dòng
-phụ, top 5, bảng, tooltip hiển thị **số đầy đủ** `vi-VN` (vd `993.000 đ`), **không rút gọn**; chỉ nhãn trục Y biểu đồ còn rút gọn ✅ — chi tiết
+phụ, top 5, bảng, tooltip hiển thị **số đầy đủ** `vi-VN` (vd `993.000 đ`), **không rút gọn**. Từ "Bổ sung ADR-043 lần 4": **nhãn trục Y** cũng số
+đầy đủ, `formatVndAxis` đã xoá — mọi số tiền trên dashboard Studio + System Center dùng `formatVndFull` ✅ `git diff` — chi tiết
 [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §19.6.
 
 ---
@@ -187,8 +193,14 @@ trên DB thật ❓ — `orders` chỉ có index `(tenantId)`, `(customerId)`; �
 - **Chọn kỳ (từ "Bổ sung ADR-043 lần 3")**: ô `dd/mm/yyyy - dd/mm/yyyy` mở popup **date range picker** (danh sách 11 mốc bên trái + "Tuỳ chọn",
   lịch có số tuần, Thứ Hai đầu tuần, ngày tương lai vô hiệu) — **thay** dãy chip kỳ + form "Tuỳ chọn" (`next/form`, 2 ô `type="date"`) cũ ✅.
   Chọn mốc → `?ky=<key>`; chọn khoảng + "Áp dụng" → `?ky=tuy-chon&tu=…&den=…`; giữ `?chi-so=`. Server vẫn kiểm lại mọi đầu vào (§3).
-- **Picker cần JS** để mở (client component, `<dialog>`); URL `?ky=`/`?tu=`/`?den=` gõ tay vẫn dùng được không cần JS. Công tắc `?chi-so=` vẫn là
-  link GET. Giá trị mặc định (30 ngày, gộp) bỏ khỏi URL.
+- **Picker cần JS** để mở (client component, `<dialog>`); URL `?ky=`/`?tu=`/`?den=` gõ tay vẫn dùng được không cần JS. Giá trị mặc định (30 ngày,
+  gộp) bỏ khỏi URL.
+- **Công tắc Gộp / Thực nhận (từ "Bổ sung ADR-043 lần 4")** ✅ `git diff`: đổi **tức thì phía client** (`(tong-quan)/_ui/revenue-chart-switcher.tsx`
+  + `admin/_ui/metric-toggle.tsx`) — server gửi sẵn cả hai chuỗi `grossRevenueVnd`/`netRevenueVnd` của `series` (đã có trong loader từ trước, **loader
+  không đổi**), client chỉ chọn chuỗi để vẽ; URL cập nhật `?chi-so=` bằng `history.replaceState` (không render lại trang, không gọi lại loader).
+  Giá trị đầu vẫn do server đọc `?chi-so=` (`parseStudioChartMetric`). Date range picker đọc `chi-so` từ URL hiện tại (`useSearchParams`) để giữ đúng
+  chỉ số khi đổi kỳ. *Trước lần 4:* link GET render lại trang. Hệ quả: đổi chỉ số **cần JS**. Pattern:
+  [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §19.8. Chưa kiểm trình duyệt ❓.
 
 ---
 
@@ -231,7 +243,7 @@ trên DB thật ❓ — `orders` chỉ có index `(tenantId)`, `(customerId)`; �
 * [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §22 — contract loader ([Endpoint-Directory.md](../03-API-Contracts/Endpoint-Directory.md))
 * [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §19 ([UI-Design-System.md](../04-Operations-Runbooks/UI-Design-System.md))
 * Mã nguồn: `packages/core/src/stats/dashboard-range{,.test}.ts`, `apps/web/lib/tenant-dashboard.ts`,
-  `apps/web/app/studio/[tenantSlug]/(tong-quan)/**` (gồm `_ui/dashboard-range-picker.tsx`; picker dùng chung `apps/web/app/admin/_ui/date-range-picker.tsx` — lần 3, chuyển chỗ theo "Bổ sung ADR-046"), `apps/web/app/admin/_ui/stats-chart.tsx`,
+  `apps/web/app/studio/[tenantSlug]/(tong-quan)/**` (gồm `_ui/dashboard-range-picker.tsx`, `_ui/revenue-chart-switcher.tsx` — lần 4; picker dùng chung `apps/web/app/admin/_ui/date-range-picker.tsx` — lần 3, chuyển chỗ theo "Bổ sung ADR-046"), `apps/web/app/admin/_ui/stats-chart.tsx`, `apps/web/app/admin/_ui/metric-toggle.tsx` (lần 4),
   `apps/web/tests/integration/studio-dashboard.test.ts`
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

@@ -4,7 +4,7 @@ import { IconArrowDown, IconArrowUp } from "./icons";
 
 /**
  * Khối trình bày thống kê dùng chung cho dashboard System Center (`/admin`, M12b — ADR-037) và Studio Tổng quan
- * (`/studio/{slug}`, ADR-043). Server Component thuần (không hook): định dạng tiền VND bằng BigInt, % so kỳ trước,
+ * (`/studio/{slug}`, ADR-043). Không hook — dùng được ở Server lẫn Client Component (biểu đồ có nút chuyển chỉ số): định dạng tiền VND bằng BigInt, % so kỳ trước,
  * thẻ KPI, biểu đồ cột/đường HTML có `role="img"` + tóm tắt. Không tự truy vấn — nơi gọi chuẩn hoá dữ liệu.
  *
  * Màu: token `brandColors` (primary/accent/ink/inkSoft/surface) + thang xám Tailwind (`gray-200/300`) cho viền/lưới;
@@ -36,30 +36,12 @@ export function formatCount(raw: MoneyLike): string {
   return vnInt.format(toBigIntSafe(raw));
 }
 
-/** "1.234.567 đ" — không qua float. */
+/**
+ * "1.234.567 đ" — không qua float. Dùng cho **mọi** số tiền trên dashboard System Center + Studio, kể cả nhãn trục Y
+ * biểu đồ (không rút gọn "nghìn/triệu/tỷ").
+ */
 export function formatVndFull(raw: MoneyLike): string {
   return `${vnInt.format(toBigIntSafe(raw))} đ`;
-}
-
-/**
- * Rút gọn tiền **chỉ cho nhãn trục Y** của biểu đồ (cột nhãn hẹp 64–80px): "12,5 triệu đ", "1,2 tỷ đ". ADR-043 lần 3:
- * thẻ KPI, dòng phụ, top 5, bảng, tooltip và dòng "Cao nhất" luôn dùng {@link formatVndFull} (số đầy đủ, không rút gọn).
- * Phần nguyên + 1 chữ số thập phân tính bằng BigInt rồi mới đổi sang number — không mất chính xác với số rất lớn.
- */
-export function formatVndAxis(raw: MoneyLike): string {
-  const v = toBigIntSafe(raw);
-  const units: Array<[bigint, string]> = [
-    [BigInt(1_000_000_000), "tỷ"],
-    [BigInt(1_000_000), "triệu"],
-    [BigInt(1_000), "nghìn"],
-  ];
-  for (const [base, label] of units) {
-    if (v >= base) {
-      const tenths = Number((v * BigInt(10)) / base) / 10;
-      return `${tenths.toLocaleString("vi-VN", { maximumFractionDigits: 1 })} ${label} đ`;
-    }
-  }
-  return `${vnInt.format(v)} đ`;
 }
 
 export type Change = { kind: "none" } | { kind: "up" | "down" | "flat"; pctText: string };
@@ -280,9 +262,9 @@ export function TrendChart({
   return (
     <div>
       <div role="img" aria-label={summary} className="flex gap-2">
-        {/* Trục Y */}
+        {/* Trục Y: số đầy đủ, cột co theo nhãn dài nhất. Dưới `sm` giới hạn 5.5rem — số rất lớn xuống dòng ở khoảng trắng trước "đ". */}
         <div
-          className={`flex ${heightClass} w-16 shrink-0 flex-col justify-between text-right text-[11px] tabular-nums sm:w-20`}
+          className={`flex ${heightClass} max-w-[5.5rem] min-w-8 shrink-0 flex-col justify-between text-right text-[11px] leading-tight tabular-nums sm:max-w-none sm:whitespace-nowrap`}
           style={{ color: STAT_INK_SOFT }}
           aria-hidden="true"
         >

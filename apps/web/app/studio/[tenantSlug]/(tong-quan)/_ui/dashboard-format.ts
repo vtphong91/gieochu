@@ -3,7 +3,7 @@ import type { DashboardGranularity, DashboardPreset } from "@gieochu/core/dashbo
 
 /** ADR-043 — tiện ích định dạng/URL thuần cho dashboard Tổng quan gian hàng (không I/O). */
 
-/** Chỉ số biểu đồ doanh thu — `?chi-so=` (link GET, không cần JS). Mặc định: gộp. */
+/** Chỉ số biểu đồ doanh thu — `?chi-so=` (giá trị đầu đọc ở server, đổi tức thì ở client bằng `replaceState`). Mặc định: gộp. */
 export type StudioChartMetric = "gop" | "thuc-nhan";
 
 export function parseStudioChartMetric(raw: string | string[] | undefined): StudioChartMetric {

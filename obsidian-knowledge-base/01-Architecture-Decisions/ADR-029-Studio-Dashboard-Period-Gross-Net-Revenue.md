@@ -7,6 +7,7 @@ tags:
   - ui-ux
   - status/accepted
 date: 2026-10-18
+updated: 2026-10-23
 decider: vtphong91
 status: Accepted (Chốt — Áp dụng chính thức)
 ---
@@ -14,11 +15,12 @@ status: Accepted (Chốt — Áp dụng chính thức)
 # 🏛️ ADR-029: Dashboard Tổng quan gian hàng (`/studio/{slug}`) — chỉ số theo kỳ, doanh thu gộp + thực nhận
 
 ## 1. Trạng Thái (Status)
-**ĐÃ PHÊ DUYỆT (Accepted)** — tương ứng **ADR-043** (gồm **"Bổ sung ADR-043"**, **"Bổ sung ADR-043 lần 2"** và **"Bổ sung ADR-043 lần 3"**) trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md).
-Bản trích ghi vào thư mục này theo duyệt của Quốc (brief 2026-10-18; phần lần 3 theo brief cùng ngày).
+**ĐÃ PHÊ DUYỆT (Accepted)** — tương ứng **ADR-043** (gồm **"Bổ sung ADR-043"**, **"Bổ sung ADR-043 lần 2"**, **"Bổ sung ADR-043 lần 3"** và **"Bổ sung ADR-043 lần 4"**) trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md) (lần 4 ở cuối mục ADR-043).
+Bản trích ghi vào thư mục này theo duyệt của Quốc (brief 2026-10-18; phần lần 3 theo brief cùng ngày; phần lần 4 theo brief 2026-10-23).
 
 Tiến độ (2026-10-18): GĐ1 (dữ liệu, Hiếu) + GĐ2 (UI, Phong) **đã commit** `e5d63d0` ✅ `git show --stat`, deploy ❓; **lần 3** (date range picker,
-3 mốc "… trước", số đầy đủ) xong code ở working tree, **chưa commit** ✅ `git status`. Không migration, không route HTTP mới.
+3 mốc "… trước", số đầy đủ) **đã commit** trong `dd349b9` ✅ `git log` (đối chiếu lại 2026-10-23; trước đây trang ghi "chưa commit"); **lần 4**
+(2026-10-23) xong code ở working tree, **chưa commit** ✅ `git status`. Không migration, không route HTTP mới.
 Test: +1 unit +1 integration → `pnpm test:count` = **94/94 unit, 55/55 integration** ✅ (Long chạy lại 2026-10-18 sau lần 3, chỉ đếm) — **chạm
 trần**; lần 3 chỉ thêm assertion vào case có sẵn.
 
@@ -62,6 +64,11 @@ này, **Tháng trước**, Quý này, **Quý trước**, Năm nay, 7 ngày qua, 
 *(Quốc)* Ba mốc đã kết thúc so với **trọn** kỳ liền trước (vd tháng 9 so với cả tháng 8), không cắt theo độ dài — **ngoại lệ có chủ đích của
 mục 5**. Range có thêm `displayFrom`/`displayTo` (ngày VN, gồm ngày cuối) cho ô hiển thị.
 
+**Bổ sung ADR-043 lần 4 (2026-10-23, chủ dự án yêu cầu):** **trục Y** biểu đồ tiền cũng hiển thị **số đầy đủ** (`993.000 đ`, bỏ rút gọn
+"nghìn/tr/tỷ") — Studio + System Center. Nút **Gộp/Thực nhận** (và GMV/Đơn ở System Center) chuyển **tức thì phía client** (dữ liệu cả hai chuỗi
+đã có), URL cập nhật bằng `history.replaceState` giữ `?chi-so=` — không còn link GET render lại trang. Bảng "10 đơn mới nhất" của dashboard hiện
+"0 đ" (trang Đơn hàng vẫn "Miễn phí").
+
 ---
 
 ## 4. Triển Khai (theo code, 2026-10-18)
@@ -76,6 +83,11 @@ mục 5**. Range có thêm `displayFrom`/`displayTo` (ngày VN, gồm ngày cu�
 | *(lần 3)* `dashboard-range.ts` | `DASHBOARD_PRESETS` lên **12** (thêm `tuan-truoc` độ chia ngày, `thang-truoc` ngày, `quy-truoc` tuần; thứ tự = danh sách mốc picker); 3 mốc này `end` cố định, `prevEnd = start` (trọn kỳ trước); `DashboardRange.displayFrom/displayTo`, cũng có trong `TenantDashboardRangeView` (`lib/tenant-dashboard.ts`) | ✅ |
 | *(lần 3)* `(tong-quan)/_ui/date-range-picker.tsx` (mới; **từ "Bổ sung ADR-046" chuyển sang `admin/_ui/date-range-picker.tsx` dùng chung**, dashboard dùng wrapper `(tong-quan)/_ui/dashboard-range-picker.tsx`) + `dashboard.tsx` | `DashboardDateRangePicker` thay chip kỳ + form "Tuỳ chọn" cũ; `<dialog>` `showModal`, ≥ xl 2 tháng, 768–1279px 1 tháng, < 768px sheet đáy; cần JS | ✅ |
 | *(lần 3)* `stats-chart.tsx`, `sales-stats.tsx`, `admin/page.tsx`, `icons.tsx`, `globals.css` | `formatVndFull` cho mọi số hiển thị, `formatVndAxis` (đổi tên từ `formatVndCompact`) chỉ trục Y, `statValueSizeClass`; `IconCalendar`; CSS `.range-picker` | ✅ |
+| *(lần 4)* `stats-chart.tsx` | **Xoá** `formatVndAxis`; trục Y dùng `formatVndFull`; cột nhãn trục Y co theo nhãn dài nhất (dưới `sm` `max-w-[5.5rem]`, xuống dòng trước "đ"; từ `sm` `whitespace-nowrap`) | ✅ `git diff` |
+| *(lần 4, mới)* `admin/_ui/metric-toggle.tsx` | Client: `useUrlMetric` (state + `window.history.replaceState` giữ `?chi-so=`, bỏ giá trị mặc định khỏi query, đồng bộ ngược qua `useSearchParams`) + `MetricToggle` (nút `aria-pressed` trong `role="group"`) | ✅ đọc code |
+| *(lần 4, mới)* `admin/_ui/sales-chart-metric.ts`, `admin/_ui/sales-daily-chart.tsx`; `sales-stats.tsx` | System Center: type + `parseSalesChartMetric` thuần (dùng cả server/client); `SalesDailyChart` client toggle GMV/Đơn (GMV nhận chuỗi, đổi BigInt); `sales-stats.tsx` bỏ `MetricSwitch` link GET, re-export parse/type | ✅ `git diff` |
+| *(lần 4, mới)* `(tong-quan)/_ui/revenue-chart-switcher.tsx`; `dashboard.tsx`, `dashboard-range-picker.tsx` | Studio: `RevenueChartSwitcher` toggle Gộp/Thực nhận (nhận cả `grossVnd`/`netVnd`); `dashboard.tsx` bỏ `<nav>` link GET, bảng 10 đơn hiện "0 đ" thay "Miễn phí"; wrapper picker **bỏ prop `metric`**, đọc `chi-so` bằng `useSearchParams` | ✅ `git diff` |
+| *(lần 4)* `sales-stats.tsx`, `dashboard.tsx` | `<details>` bảng số liệu: `IconChevronDown` bên phải, `group-open:rotate-180 motion-safe:transition-transform`, ẩn marker mặc định | ✅ `git diff` |
 
 Đặc tả đầy đủ: [[02-System-Specs/Studio-Dashboard-Specs|Studio-Dashboard-Specs]]. Giao diện: [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §19.
 Contract loader: [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §22.
@@ -83,6 +95,7 @@ Contract loader: [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §22
 **Kiểm:** lint/typecheck/build đạt (Quốc chạy lại 2026-10-18) 🟡; integration `studio-dashboard.test.ts` chạy thật đạt, dọn dữ liệu 🟡 (báo
 cáo); xem trước dữ liệu giả 360/768/1280 🟡. **Chưa** kiểm phiên OWNER thật, `/admin` sau refactor `sales-stats`, bàn phím/trình đọc màn hình ❓.
 Lần 3 (Phong báo): lint/typecheck/build đạt, Playwright kiểm bàn phím picker, 360/1100/1440 không cuộn ngang 🟡; chưa kiểm phiên OWNER thật ❓.
+Lần 4 (Quốc báo): tsc/eslint/build đạt 🟡; **chưa kiểm trình duyệt** ❓ (toggle + `replaceState`, back/forward, trục Y số dài ở 360px).
 
 ---
 
@@ -99,6 +112,9 @@ Lần 3 (Phong báo): lint/typecheck/build đạt, Playwright kiểm bàn phím 
   có chủ đích; nhãn "So với …" trên UI đã bỏ chữ "(cùng độ dài)".
 - (Lần 3) Chọn kỳ trên UI **cần JS** — mất phương án form GET không-JS của bản đầu; URL vẫn dùng được. Quốc chấp nhận 2026-10-18 (app shell vốn
   cần JS).
+- (Lần 4) Đổi chỉ số `?chi-so=` cũng **cần JS** (trước là link GET); bù lại không render lại trang/gọi lại loader. Hai chuỗi tiền luôn được gửi
+  xuống client (loader vốn đã trả cả hai — không đổi contract). Thành phần khác dựng link giữ `chi-so` phải đọc URL hiện tại, không dùng prop server.
+- (Lần 4) Trục Y số đầy đủ làm cột nhãn rộng hơn khi số lớn — vùng vẽ biểu đồ hẹp lại tương ứng; dưới `sm` nhãn xuống dòng trước "đ".
 - Thêm route tĩnh dưới `app/[tenantSlug]/` **không** liên quan (route group nằm dưới `studio/`, không đụng `RESERVED_PRODUCT_SLUGS`).
 
 ---

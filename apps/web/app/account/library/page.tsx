@@ -4,7 +4,7 @@ import { requireVerifiedAccess } from "../../../lib/page-guards";
 import { listLibraryEntitlements } from "../../../lib/library";
 import { LibraryEntitlementCard } from "./_ui/library-entitlement-card";
 import { LIBRARY_FOCUS } from "./_ui/confirm-dialog";
-import { EmptyState } from "../../admin/_ui/kit";
+import { AdminPageHeader, EmptyState } from "../../admin/_ui/kit";
 import { IconPackage } from "../../admin/_ui/icons";
 
 /** §"M9": entitlements from every tenant, grouped by tenant. ADR-039: thẻ tài liệu bị gỡ do vi phạm có khối lựa chọn. */
@@ -17,13 +17,16 @@ export default async function LibraryPage() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-3xl">
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <h1 className="font-[family-name:var(--font-heading)] text-2xl font-bold" style={{ color: brandColors.ink }}>Thư viện của bạn</h1>
-        <Link href="/account/orders" className={`inline-flex min-h-11 items-center rounded text-sm text-[var(--color-primary)] underline lg:min-h-0 ${LIBRARY_FOCUS}`}>
-          Lịch sử đơn hàng
-        </Link>
-      </div>
+    <div>
+      <AdminPageHeader
+        title="Thư viện của bạn"
+        subtitle="Tài liệu đã mua ở mọi gian hàng, nhóm theo gian hàng — tải xuống bất cứ lúc nào."
+        action={
+          <Link href="/account/orders" className={`inline-flex min-h-11 items-center rounded text-sm text-[var(--color-primary)] underline lg:min-h-0 ${LIBRARY_FOCUS}`}>
+            Lịch sử đơn hàng
+          </Link>
+        }
+      />
 
       {pendingChoices > 0 ? (
         <p className="mt-4 rounded-xl border border-l-4 p-4 text-sm leading-relaxed" style={{ borderColor: brandColors.accent, background: brandColors.accentSoft, color: brandColors.ink }}>
@@ -55,7 +58,8 @@ export default async function LibraryPage() {
             <h2 id={`library-tenant-${group.tenantId}`} className="text-lg font-semibold [overflow-wrap:anywhere]">
               {group.tenantName}
             </h2>
-            <ul className="mt-3 space-y-3">
+            {/* Từ xl: 2 cột thẻ (thẻ cùng hàng kéo bằng chiều cao) — tận dụng chiều rộng vùng main. */}
+            <ul className="mt-3 grid gap-3 xl:grid-cols-2">
               {group.entitlements.map((entitlement) => (
                 <LibraryEntitlementCard key={entitlement.entitlementId} entitlement={entitlement} tenantName={group.tenantName} tenantSlug={group.tenantSlug} />
               ))}

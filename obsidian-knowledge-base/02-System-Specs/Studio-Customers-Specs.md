@@ -19,7 +19,7 @@ author: Long
 > ADR-041 (khách chỉ họ tên + email), ADR-043 (định nghĩa "chỉ đơn > 0đ", date range picker), ADR-046/045 (trang Đơn hàng, tìm không dấu, không xuất CSV).
 >
 > Mức xác minh: ✅ Long đã đối chiếu code working tree 2026-10-19 · 🟡 theo brief/báo cáo của Quốc · ❓ cần môi trường thật.
-> Trạng thái code: **working tree, chưa commit** ✅ `git status`. **Không migration** (dùng cột có sẵn `tenant_customers.note`), **không `route.ts` mới**;
+> Trạng thái code: **đã commit** `dd349b9` (deploy ❓) ✅ `git log` (trước ghi "working tree, chưa commit"). **Không migration** (dùng cột có sẵn `tenant_customers.note`), **không `route.ts` mới**;
 > thêm 1 Server Action (`saveCustomerNoteAction`) và 1 audit action (`CUSTOMER_NOTE_UPDATED`).
 
 ---

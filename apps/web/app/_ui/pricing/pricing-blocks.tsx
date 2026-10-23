@@ -312,13 +312,21 @@ export function PricingComparison({
 
 // ───────────── Vì sao chọn ─────────────
 
+/** Số cột từ `lg` theo số thẻ để hàng cuối không bị lẻ (4 → 4 cột, 2/1 → 2/1 cột, còn lại 3 cột). */
+function whyUsDesktopCols(count: number): string {
+  if (count === 1) return "sm:max-w-xl sm:mx-auto";
+  if (count === 2) return "sm:grid-cols-2";
+  if (count % 4 === 0) return "sm:grid-cols-2 xl:grid-cols-4";
+  return "sm:grid-cols-2 lg:grid-cols-3";
+}
+
 export function PricingWhyUs({ data }: { data: PricingWhyUsData }) {
   if (data.items.length === 0) return null;
   return (
     <section aria-labelledby="pricing-why-title" className={SECTION_Y}>
       <div className="container-page">
         <SectionHeading id="pricing-why-title" title={data.title} subtitle={data.subtitle} />
-        <ul className="mt-8 grid gap-4 sm:mt-10 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+        <ul className={`mt-8 grid gap-4 sm:mt-10 sm:gap-5 ${whyUsDesktopCols(data.items.length)}`}>
           {data.items.map((item, i) => {
             const Icon = pricingWhyUsIcon(item.icon);
             return (

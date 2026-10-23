@@ -19,6 +19,8 @@ const SHELL_BG = "#F5F6F8";
 /**
  * Khung app shell `/account/**` (trình bày thuần, nhận dữ liệu qua props): skip-link, header hệ thống gọn 64px (logo →
  * trang chủ, nhãn "Tài khoản", menu tài khoản hoặc "Đăng nhập"), sidebar từ `lg` khi có `groups`, vùng nội dung fluid.
+ * Padding `<main>` = khung trang Studio (`px-5 py-8 lg:px-8`) — trang con KHÔNG tự đặt padding/`max-w-*`/`mx-auto` cho
+ * khung trang (ADR-024 §4.4); muốn giới hạn thì giới hạn ô nhập/lưới bên trong thẻ.
  */
 export function AccountShell({
   brandName,
@@ -47,7 +49,7 @@ export function AccountShell({
         Bỏ qua tới nội dung chính
       </a>
       <header className="sticky top-0 z-20 border-b bg-white" style={{ borderColor: LINE }}>
-        <div className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between gap-3 px-4 sm:px-5 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <Link href="/" className="flex min-h-11 shrink-0 items-center gap-2.5 rounded-lg outline-offset-2 focus-visible:outline-2" style={{ outlineColor: BLUE }}>
               <BrandMark url={logoUrl} brandName={brandName} size={32} fallbackBg={BLUE} />
@@ -75,14 +77,14 @@ export function AccountShell({
 
       <div className="flex min-w-0 flex-1">
         {groups ? (
-          <aside className="hidden w-[264px] shrink-0 flex-col border-r bg-white lg:flex" style={{ borderColor: LINE }}>
+          <aside className="hidden w-[288px] shrink-0 flex-col border-r bg-white lg:flex" style={{ borderColor: LINE }}>
             <AccountSidebarNav groups={groups} />
             <div className="mt-auto border-t px-3 py-3" style={{ borderColor: LINE }}>
               <LogoutButton className="min-h-10 w-full rounded-lg px-3 py-2 text-sm" />
             </div>
           </aside>
         ) : null}
-        <main id="noi-dung" tabIndex={-1} className="min-w-0 flex-1 px-4 py-6 outline-none sm:px-6 sm:py-8 lg:px-10 lg:py-10">
+        <main id="noi-dung" tabIndex={-1} className="min-w-0 flex-1 px-5 py-8 outline-none lg:px-8">
           {groups ? <AccountBackLink /> : null}
           {children}
         </main>

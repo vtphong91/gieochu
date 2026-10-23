@@ -49,11 +49,13 @@ export function ProfileForm({ saved }: { saved: ProfileValues }) {
   const formKey = `${active?.ok ? "saved" : failed ? "failed" : "idle"}-${resetCount}-${saved.fullName}|${saved.phone}|${saved.province}`;
 
   return (
+    // Card fluid theo lưới trang → giới hạn chiều rộng *form* (max-w-3xl), không giới hạn khung trang. `@container`:
+    // SĐT + Tỉnh/Thành chia 2 cột theo bề rộng thật của form (cột lưới/sidebar), không theo viewport.
     <form
       ref={formRef}
       action={formAction}
       noValidate
-      className="space-y-5"
+      className="@container max-w-3xl space-y-5"
     >
       <ResultBanner state={active} bannerRef={bannerRef} />
       <ProfileFields key={formKey} initial={initial} saved={saved} errors={errors} pending={pending} onUndo={() => {
@@ -104,33 +106,35 @@ function ProfileFields({
         hint="Tên hiển thị trong tài khoản và email gửi cho bạn."
         error={errors.fullName}
       />
-      <TextField
-        id="phone"
-        name="phone"
-        type="tel"
-        inputMode="tel"
-        autoComplete="tel"
-        label="Số điện thoại (tuỳ chọn)"
-        defaultValue={initial.phone}
-        hint="10 số, bắt đầu bằng 0 hoặc +84. Chỉ bạn và quản trị hệ thống thấy — gian hàng không thấy."
-        error={errors.phone}
-      />
-      <SelectField
-        id="province"
-        name="province"
-        label="Tỉnh / Thành phố (tuỳ chọn)"
-        defaultValue={initial.province}
-        hint="Chỉ bạn và quản trị hệ thống thấy."
-        error={errors.province}
-      >
-        <option value="">— Chưa chọn —</option>
-        {legacyProvince ? <option value={legacyProvince}>{legacyProvince} (đã lưu trước đây)</option> : null}
-        {VN_PROVINCES.map((province) => (
-          <option key={province} value={province}>
-            {province}
-          </option>
-        ))}
-      </SelectField>
+      <div className="grid gap-5 @xl:grid-cols-2">
+        <TextField
+          id="phone"
+          name="phone"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          label="Số điện thoại (tuỳ chọn)"
+          defaultValue={initial.phone}
+          hint="10 số, bắt đầu bằng 0 hoặc +84. Chỉ bạn và quản trị hệ thống thấy — gian hàng không thấy."
+          error={errors.phone}
+        />
+        <SelectField
+          id="province"
+          name="province"
+          label="Tỉnh / Thành phố (tuỳ chọn)"
+          defaultValue={initial.province}
+          hint="Chỉ bạn và quản trị hệ thống thấy."
+          error={errors.province}
+        >
+          <option value="">— Chưa chọn —</option>
+          {legacyProvince ? <option value={legacyProvince}>{legacyProvince} (đã lưu trước đây)</option> : null}
+          {VN_PROVINCES.map((province) => (
+            <option key={province} value={province}>
+              {province}
+            </option>
+          ))}
+        </SelectField>
+      </div>
 
       <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end" style={{ borderColor: "#E5E7EB" }}>
         <GhostButton type="button" onClick={onUndo} disabled={!dirty || pending}>

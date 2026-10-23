@@ -24,7 +24,7 @@ author: Long
 > picker, định nghĩa "chỉ đơn > 0đ").
 >
 > Mức xác minh: ✅ Long đã đối chiếu code working tree 2026-10-18 · 🟡 theo brief/báo cáo của Quốc · ❓ cần môi trường thật.
-> Trạng thái code: **working tree, chưa commit** ✅ `git status`. Không `route.ts` mới. ADR-046 không migration; **ADR-047** thêm 1 migration
+> Trạng thái code: **đã commit** `dd349b9` (deploy ❓) ✅ `git log` (trước ghi "working tree, chưa commit"). Không `route.ts` mới. ADR-046 không migration; **ADR-047** thêm 1 migration
 > (`20261018090000_adr045_order_notes` — tên thư mục giữ số cũ ADR-045, quyết định nay là ADR-047; bảng L2 `order_notes` — đã áp DB dùng chung 2026-10-18 🟡 Quốc báo) và 2 Server Action ghi chú; các action
 > tiền **không đổi luật** ✅ `git diff actions.ts` (chỉ thêm import + 2 action mới).
 

@@ -21,7 +21,7 @@ status: Accepted (Chốt — Áp dụng chính thức)
 vào thư mục này theo duyệt của Quốc (brief 2026-10-18). Nối tiếp [[01-Architecture-Decisions/ADR-031-Studio-Orders-List-Detail-Upgrade|ADR-031 KB (≙ ADR-046)]]
 — thay mục 3 của ADR-046 ("không ghi chú nội bộ, để sau") và mục "tìm không dấu → BACKLOG" của "Bổ sung ADR-046".
 
-Tiến độ (2026-10-18): code xong ở working tree, **chưa commit** ✅ `git status`; migration `20261018090000_adr045_order_notes` **đã áp DB dùng chung
+Tiến độ (2026-10-18): code xong ở working tree, nay **đã commit** `dd349b9` ✅ `git log` (cập nhật 2026-10-23, trước ghi "chưa commit"); migration `20261018090000_adr045_order_notes` **đã áp DB dùng chung
 2026-10-18** 🟡 (Quốc báo); deploy ❓. `pnpm test:count` = **94/94 unit, 55/55 integration** ✅ (Long chạy, chỉ đếm) — không thêm case.
 
 Mức xác minh: ✅ Long đã đối chiếu code working tree / SQL migration · 🟡 theo `docs/DECISIONS.md`/báo cáo của Quốc · ❓ cần môi trường thật.

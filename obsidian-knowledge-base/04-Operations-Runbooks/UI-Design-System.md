@@ -184,7 +184,10 @@ Mẫu trên phản ánh cách `apps/web/app/_home-sections.tsx` đang viết (se
 
 Khu vực `/admin/*`, `/studio/*`, `/account/*` **không** dùng `container-page` ở mức trang: vùng làm việc fluid theo
 sidebar. Nội dung dạng đọc/form bên trong vẫn có thể dùng `container-prose`/`container-narrow` hoặc `max-w-*` của
-kit admin (§5). Nguồn: ADR-024.
+kit admin (§5). Nguồn: ADR-024. Ba shell cùng sidebar 288px và khung nội dung `px-5 py-8 lg:px-8` ✅ — khác chỗ đặt: Studio/System
+Center đặt padding này ở **từng trang** (`<main>` của layout không padding), còn `/account` đặt ngay trên `<main>` của
+`AccountShell` nên trang con không tự đặt. `/account` đồng bộ 2026-10-23 và có mẫu "form trong trang fluid" bằng container
+query — xem §18.5.
 
 ### 4.5. Độ rộng thực tế của `container-page` theo viewport
 
@@ -1171,8 +1174,10 @@ kiểm tay riêng ❓.
 
 | File | Vai trò |
 | :-- | :-- |
-| `admin/_ui/sales-stats.tsx` | Chỉ trình bày, **Server Component** (không hook): `SalesStatsSection({ overview, metric })`, `SalesStatsSkeleton()`, `parseSalesChartMetric(raw)`, kiểu `SalesChartMetric = "gmv" \| "don"`, `AdminStatsOverviewView`. Nhận kết quả `getAdminStatsOverview()` qua prop — **không tự truy vấn** |
-| `admin/_ui/stats-chart.tsx` (từ ADR-043, 2026-10-18) | Khối con dùng chung với Studio Tổng quan: `KpiCard`, `ChangeLine`, `computeChange`, `TrendChart`, định dạng VND — `sales-stats.tsx` đã refactor để import thay cho các hàm nội bộ cũ (`KpiCard`, `DailyChart`, `computeChange`, `formatVndCompact`). Nhãn trục X `/admin` vẫn neo ngày cuối, lùi 7 ngày (truyền `showTick` riêng). Từ "Bổ sung ADR-043 lần 3": số đầy đủ, chỉ trục Y rút gọn (`formatVndAxis`) — §19.6. **Chưa kiểm lại `/admin` trên trình duyệt sau refactor/đổi số** ❓. API: §19.4 |
+| `admin/_ui/sales-stats.tsx` | Chỉ trình bày, **Server Component** (không hook): `SalesStatsSection({ overview, metric })`, `SalesStatsSkeleton()`, `AdminStatsOverviewView`; re-export `parseSalesChartMetric`/`SalesChartMetric` từ `sales-chart-metric.ts` (lần 4). Nhận kết quả `getAdminStatsOverview()` qua prop — **không tự truy vấn**. `metric` nay chỉ là giá trị đầu cho biểu đồ client |
+| `admin/_ui/sales-chart-metric.ts` ("Bổ sung ADR-043 lần 4", 2026-10-23, chưa commit) | Module thuần (không `"use client"`, không I/O): kiểu `SalesChartMetric = "gmv" \| "don"` + `parseSalesChartMetric(raw)` (mảng → lấy phần tử đầu; khác `don` → `gmv`) — dùng ở cả server (`page.tsx`) lẫn client |
+| `admin/_ui/sales-daily-chart.tsx` (lần 4, chưa commit) | **Client**: `SalesDailyChart({ initialMetric, points })` — đầu thẻ (tiêu đề + đơn vị) + `MetricToggle` "GMV/Đơn" + `TrendChart`. `points` = `SalesDailyPoint { key, tick, label, gmvVnd: string, ordersPaid: number }` — GMV là **chuỗi** BigInt (không qua float) đổi bằng `toBigIntSafe`. Pattern toggle §19.8 |
+| `admin/_ui/stats-chart.tsx` (từ ADR-043, 2026-10-18) | Khối con dùng chung với Studio Tổng quan: `KpiCard`, `ChangeLine`, `computeChange`, `TrendChart`, định dạng VND — `sales-stats.tsx` đã refactor để import thay cho các hàm nội bộ cũ (`KpiCard`, `DailyChart`, `computeChange`, `formatVndCompact`). Nhãn trục X `/admin` vẫn neo ngày cuối, lùi 7 ngày (truyền `showTick` riêng). Từ "Bổ sung ADR-043 lần 3": số đầy đủ; từ **lần 4** cả trục Y cũng số đầy đủ, `formatVndAxis` **đã xoá** — §19.6. **Chưa kiểm lại `/admin` trên trình duyệt sau refactor/đổi số** ❓. API: §19.4 |
 | `admin/page.tsx` | Component async `SalesStats` gọi `getAdminStatsOverview({ days: 30 })`, bọc `<Suspense fallback={<SalesStatsSkeleton />}>` riêng — phần còn lại dashboard không phải chờ. Đặt sau khối thanh toán gói gần đây, trước "Thao tác nhanh" |
 
 Section có `id="hoat-dong-ban-tai-lieu"` + `scroll-mt-20`, `aria-labelledby` trỏ tiêu đề `h2`.
@@ -1198,14 +1203,18 @@ Section có `id="hoat-dong-ban-tai-lieu"` + `scroll-mt-20`, `aria-labelledby` tr
 ### 16.4. Biểu đồ cột theo ngày
 
 * Thẻ `xl:col-span-2`; tiêu đề "GMV theo ngày" / "Đơn đã thanh toán theo ngày" + đơn vị + "mỗi cột là 1 ngày (giờ Việt Nam)".
-* **Chọn chỉ số bằng link GET** `?chi-so=gmv|don` (không cần JS): `<nav aria-label="Chọn chỉ số biểu đồ">` 2 link "GMV"/"Đơn",
-  `aria-current` ở mục đang chọn, `scroll={false}` + neo `#hoat-dong-ban-tai-lieu`; giá trị lạ → `gmv`. Target `min-h-11` dưới `lg`.
+* **Chọn chỉ số `?chi-so=gmv|don`** — từ "Bổ sung ADR-043 lần 4" (2026-10-23, working tree chưa commit ✅ `git diff`) đổi **tức thì phía
+  client** bằng `MetricToggle` trong `role="group"` `aria-label="Chọn chỉ số biểu đồ"`, 2 nút "GMV"/"Đơn" `aria-pressed`; URL cập nhật bằng
+  `history.replaceState` (giá trị mặc định `gmv` bỏ khỏi query), không gọi lại server — pattern §19.8. Giá trị đầu vẫn đọc ở server; giá trị lạ →
+  `gmv`. Target `min-h-11` dưới `lg`. *Trước lần 4:* `<nav>` 2 link GET `aria-current`, `scroll={false}` + neo `#hoat-dong-ban-tai-lieu` (không cần
+  JS) — **đã bỏ**; nay **đổi chỉ số cần JS** (không JS thì gõ URL `?chi-so=don`).
 * Biểu đồ **HTML thuần** (không thư viện chart, không SVG): khối `role="img"` có `aria-label` tóm tắt (khoảng ngày, giá trị cao nhất + ngày);
   cột/trục bên trong `aria-hidden`. Cao `h-48`; trục Y 3 mốc (max, max/2, 0); lưới ngang nét đứt; cột màu `brandColors.primary`, ngày bằng 0
   là vạch xám 2px; `title` mỗi cột = ngày + giá trị đầy đủ; nhãn trục X thưa — neo ngày cuối, lùi mỗi 7 ngày (không chồng chữ ở 360px).
+  Nhãn trục Y GMV từ lần 4 là **số đầy đủ** (`formatVndFull`), cột nhãn co theo nhãn dài nhất (§19.6).
   Dòng "Cao nhất: … ngày …" dưới biểu đồ.
 * Cả 30 ngày = 0 cho chỉ số đang chọn → khung nét đứt "Không có doanh thu/đơn đã thanh toán nào trong 30 ngày."
-* **Bảng số liệu thay thế** trong `<details>` "Xem bảng số liệu theo ngày": `<table>` có `caption` ẩn, `th scope="col"`/`scope="row"`, 5 cột
+* **Bảng số liệu thay thế** trong `<details>` "Xem bảng số liệu theo ngày" (từ lần 4 có chevron bên phải — mẫu §19.6): `<table>` có `caption` ẩn, `th scope="col"`/`scope="row"`, 5 cột
   (Ngày, GMV, Đơn, Khách mới, Lượt tải), mới → cũ, khung `max-h-96 overflow-auto` (cuộn ngang trong khung, trang không cuộn ngang).
 
 ### 16.5. Top 5 gian hàng theo GMV
@@ -1363,14 +1372,49 @@ tác đọc qua **một** vùng `role="status"` ẩn, không dời focus; thêm 
 * **Bảng so sánh** (`pricing-blocks.tsx`): bảng thật trong vùng cuộn ngang **riêng** (`role="region"` + `aria-labelledby` + `tabIndex=0` để
   cuộn bằng phím), cột nhãn `sticky left-0`. ⚠️ Vùng cuộn **phải có `relative`** — thiếu nó, các span `sr-only` (absolute) trong bảng kéo rộng
   cả trang ở màn hẹp (trang cuộn ngang). Dưới màn hẹp có dòng gợi ý "Vuốt ngang trong bảng để xem đủ các gói".
+* **"Vì sao chọn"** (`PricingWhyUs`, hàm `whyUsDesktopCols(count)` trong `pricing-blocks.tsx`) ✅ đọc code 2026-10-23 (working tree, chưa
+  commit): dưới `sm` luôn 1 cột; mọi class `sm:`/`lg:`/`xl:` của lưới nằm **trong hàm**, số cột **theo số thẻ** —
+
+  | Số thẻ | Từ `sm` | Từ `lg` | Từ `xl` |
+  | :--- | :--- | :--- | :--- |
+  | 1 | 1 cột, thẻ giữa (`sm:max-w-xl sm:mx-auto`) | như `sm` | như `sm` |
+  | 2 | 2 cột | 2 cột | 2 cột |
+  | 4 (nhánh `count % 4 === 0`) | 2 cột | 2 cột | 4 cột |
+  | 3, 5, 6 (mọi trường hợp còn lại) | 2 cột | 3 cột | 3 cột |
+
+  Tối đa **6 thẻ** (`PRICING_WHY_US_MAX = 6`, `packages/core/src/admin/pricing-sections.ts`) ✅, nên nhánh "bội 4" thực tế chỉ gặp 4 thẻ.
+  Sửa lỗi cũ: 4 thẻ hiện 3 cột → thẻ thứ 4 lẻ hàng dưới; 1 thẻ chỉ chiếm nửa hàng ở khoảng `sm`–`lg`. 5 thẻ ra hàng 3 + 2 ở `lg` — đã
+  chấp nhận (Quốc chốt 2026-10-23). Chưa kiểm trình duyệt ❓.
 * **FAQ** bằng `<details>` (không JS). Section rỗng tự ẩn; số liệu = 0 ẩn.
 * Xem nháp (`?xem-truoc=nhap`, chỉ admin): dải "Đang xem bản nháp" + `noindex`.
 
 ### 18.5. Khu vực `/account`
 
 * **App shell fluid** (`_ui/account-shell.tsx`; ADR-024 §4.4 — không `container-page`): skip-link, header hệ thống gọn **64px** (logo → trang
-  chủ, nhãn "Tài khoản", menu tài khoản) — giống Studio.
-* **Sidebar** (`_ui/account-sidebar-nav.tsx`, chỉ từ `lg`): 3 nhóm "Tài khoản của bạn" · "Mua sắm" · "Gian hàng của bạn" (chỉ chủ gian hàng),
+  chủ, nhãn "Tài khoản", menu tài khoản) — giống Studio. Header `px-4 sm:px-5 lg:px-8`.
+* **Đồng bộ độ rộng với Studio/System Center** ✅ đọc code 2026-10-23 (working tree, chưa commit): `<main>` padding `px-5 py-8 lg:px-8` (bằng
+  khung trang Studio — Studio đặt ở từng trang, `/account` đặt ở shell); sidebar **288px** (trước 264px, nay bằng Studio/System Center). Trang con **không** tự đặt `mx-auto`/`max-w-*`/padding cho khung
+  trang — muốn giới hạn thì giới hạn ô nhập/đoạn văn **bên trong** thẻ. Ngoại lệ duy nhất: `/account/email/xac-nhan` (form đơn lẻ) dùng
+  `mx-auto max-w-md` ≈ `container-narrow`. Tiêu đề mọi trang con dùng `AdminPageHeader` (kit §5).
+* **Mẫu "form trong trang fluid"** (pattern mới, lần đầu repo dùng container query Tailwind v4) ✅ đọc code: thẻ trải hết chiều rộng cột lưới;
+  nội dung form bọc `@container max-w-3xl`; chia cột ô nhập theo **độ rộng thẻ** chứ không theo viewport — `@xl:grid-cols-2` (vd
+  `profile/profile-form.tsx`). Dùng khi cùng một form nằm trong cột lưới có bề rộng thay đổi theo breakpoint; ô nhập không giãn quá
+  `max-w-3xl` trên màn rộng.
+* **Lưới từng trang** ✅ đọc code:
+
+  | Trang | File | Lưới |
+  | :--- | :--- | :--- |
+  | Tổng quan `/account` | `_ui/overview-view.tsx` | `xl:grid-cols-[3fr_2fr]` (`minmax(0,…)`) |
+  | Hồ sơ | `profile/_ui/profile-view.tsx` | `xl:grid-cols-[2fr_3fr]` → `2xl:grid-cols-[1fr_2fr]` (`minmax(0,…)`); thẻ Email `xl:col-span-2` |
+  | Bảo mật | `security/page.tsx` | `xl:grid-cols-2` (Đổi mật khẩu · Email đăng nhập); khối "Phiên đăng nhập" (viền nguy hiểm) `xl:col-span-2` trải hết hàng dưới; nội dung thẻ `max-w-3xl` |
+  | Thư viện | `library/page.tsx` | thẻ tài liệu `xl:grid-cols-2`; link "Lịch sử đơn hàng" đặt ở `action` của `AdminPageHeader` |
+  | Đơn hàng | `orders/page.tsx` | từ `xl`: `DataTable` cột Mã đơn · Ngày tạo · Tài liệu · Gian hàng (gian hàng ở dòng phụ) · Trạng thái · Tổng tiền · Thao tác (tiêu đề `sr-only`); dưới `xl`: thẻ, `md:grid-cols-2` |
+
+  `loading.tsx`/`error.tsx` theo lưới mới: `account/loading.tsx` skeleton `xl:grid-cols-2` + `xl:col-span-2`, `library/loading.tsx`
+  `xl:grid-cols-2`; `account/error.tsx` thẻ trải hết vùng main (chỉ đoạn văn `max-w-md`); `library/error.tsx` có `AdminPageHeader`, khối lỗi
+  `max-w-3xl`. 🟡 Theo báo cáo: build/tsc/eslint đạt, đã xem preview 360/768/1280/1920 cho Hồ sơ và Tổng quan; Bảo mật/Thư viện/Đơn hàng
+  **chỉ kiểm code**, chưa xem trình duyệt ❓.
+* **Sidebar** (`_ui/account-sidebar-nav.tsx`, chỉ từ `lg`, rộng 288px): 3 nhóm "Tài khoản của bạn" · "Mua sắm" · "Gian hàng của bạn" (chỉ chủ gian hàng),
   nút Đăng xuất tách riêng (`_ui/logout-button.tsx`, đặt trong shell và danh sách mobile). Chữ phụ (tên gói, số đơn chờ) luôn là chữ; `metaTone="warning"` khi cần chú ý; mục
   sang khu vực khác (Studio) có icon + chữ ẩn cho trình đọc màn hình. Icon truyền bằng **key chuỗi** (§8.5).
 * **Mobile (< `lg`)**: `/account` là danh sách mục kiểu cài đặt (`_ui/account-nav-list.tsx`); trang con có link "← Tài khoản"
@@ -1410,7 +1454,8 @@ tác đọc qua **một** vùng `role="status"` ẩn, không dời focus; thêm 
 * Editor CMS **Cửa hàng**: cột aside thiếu `min-w-0` (nội dung dài có thể tràn).
 * Hex cứng còn ở `owned-tenant-card.tsx` (`#E5E7EB`, `#B91C1C`), thanh 80% Billing (`#F3F4F6`) — thay bằng token khi có token màu danger/line.
 * Ghi chú tương phản khi admin đổi màu thương hiệu (đề xuất Phong) — chưa có cơ chế kiểm.
-* Chưa kiểm thực tế qua trình duyệt có đăng nhập: 360/375px, bàn phím, trình đọc màn hình ❓.
+* Chưa kiểm thực tế qua trình duyệt có đăng nhập: 360/375px, bàn phím, trình đọc màn hình ❓. Riêng lưới mới 2026-10-23: Bảo mật,
+  Thư viện, Đơn hàng (bảng `xl` / thẻ `md`) chưa xem preview ❓.
 
 ---
 
@@ -1421,10 +1466,15 @@ Quyết định: [[01-Architecture-Decisions/ADR-029-Studio-Dashboard-Period-Gro
 làm UI theo brief của Quốc, Long đọc code 2026-10-18 (working tree, chưa commit). Kiểm: lint/typecheck/build đạt (Quốc chạy lại 2026-10-18) 🟡,
 xem trước dữ liệu giả 360/768/1280 🟡. **Chưa** kiểm phiên OWNER thật, bàn phím/trình đọc màn hình ❓.
 
-**"Bổ sung ADR-043 lần 3"** (2026-10-18, chủ dự án yêu cầu; working tree **chưa commit** ✅ `git status` — phần ADR-043 gốc đã commit `e5d63d0`):
+**"Bổ sung ADR-043 lần 3"** (2026-10-18, chủ dự án yêu cầu; **đã commit** trong `dd349b9` ✅ `git log` 2026-10-23 — trước đây trang ghi "chưa commit"; phần ADR-043 gốc commit `e5d63d0`):
 bộ chọn kỳ đổi sang **date range picker** (§19.5), thẻ thống kê hiện **số đầy đủ** — chỉ trục Y rút gọn (§19.6), áp cho cả `/admin`. Phong báo:
 lint/typecheck/build đạt, Playwright kiểm bàn phím, 360/1100/1440 không cuộn ngang 🟡; **chưa** kiểm phiên OWNER thật ❓; thẻ "Doanh thu gói dịch
 vụ" `/admin` đã xong (Phong báo, Long đọc lại `git diff` ✅).
+
+**"Bổ sung ADR-043 lần 4"** (2026-10-23, chủ dự án yêu cầu; working tree **chưa commit** ✅ `git diff`/`git status`, Long đọc code 2026-10-23):
+**trục Y** cũng số đầy đủ, `formatVndAxis` đã xoá (§19.6); nút **Gộp/Thực nhận** (Studio) và **GMV/Đơn** (`/admin`) đổi **tức thì phía client**,
+URL giữ `?chi-so=` bằng `history.replaceState` (§19.8); `<details>` bảng số liệu có chevron; bảng "10 đơn mới nhất" hiện "0 đ". Quốc báo: tsc/eslint/build
+đạt 🟡; **chưa kiểm trình duyệt** ❓.
 
 ### 19.1. File
 
@@ -1433,9 +1483,10 @@ vụ" `/admin` đã xong (Phong báo, Long đọc lại `git diff` ✅).
 | `studio/[tenantSlug]/(tong-quan)/page.tsx` | Server Component: guard OWNER → `resolveDashboardRange` → `getTenantDashboard` → `StudioDashboardView`. Route group `(tong-quan)` (URL không đổi) để `loading.tsx`/`error.tsx` **chỉ** áp cho Tổng quan, không phủ các trang con Studio (`git status`: `page.tsx` cũ đổi tên vào đây) |
 | `(tong-quan)/loading.tsx` + `_ui/dashboard-skeleton.tsx` | `StudioDashboardSkeleton` — `aria-busy`, `role="status"` ẩn, `animate-pulse motion-reduce:animate-none`; cũng hiện khi đổi kỳ (đổi searchParams = điều hướng mới) |
 | `(tong-quan)/error.tsx` | Client; `role="alert"`, tiêu đề "Không tải được số liệu Tổng quan", hiện `digest` (không `error.message`), nút "Thử lại" (`retry()` — "Next 16.3" theo comment code 🟡) + link "Xem đơn hàng"; nằm trong app shell nên sidebar vẫn dùng được |
-| `(tong-quan)/_ui/dashboard.tsx` | `StudioDashboardView({ tenant, data, metric })` — chỉ trình bày, nhận `TenantDashboard` qua prop |
+| `(tong-quan)/_ui/dashboard.tsx` | `StudioDashboardView({ tenant, data, metric })` — chỉ trình bày, nhận `TenantDashboard` qua prop; từ lần 4 `metric` chỉ truyền xuống làm giá trị đầu cho `RevenueChartSwitcher` (`RangeBar` không còn nhận `metric`) |
+| `(tong-quan)/_ui/revenue-chart-switcher.tsx` (lần 4, chưa commit) | **Client**: `RevenueChartSwitcher({ titleId, unit, hasFuture, initialMetric, points })` — tiêu đề `h2` + đơn vị + `MetricToggle` "Gộp/Thực nhận" + `TrendChart` cột. `points` = `RevenueChartPoint { key, tick, label, future?, grossVnd: number, netVnd: number }` — cả hai chuỗi gửi sẵn, client chỉ chọn. Pattern §19.8 |
 | `(tong-quan)/_ui/dashboard-format.ts` | Thuần: `parseStudioChartMetric` (`gop` mặc định \| `thuc-nhan`), `dashboardHref` (bỏ giá trị mặc định khỏi query), định dạng ngày giờ VN, `GRANULARITY_UNIT`, `formatRating`, `formatPercent` |
-| `admin/_ui/date-range-picker.tsx` (chuyển từ `(tong-quan)/_ui/` theo "Bổ sung ADR-046", chưa commit) + wrapper `(tong-quan)/_ui/dashboard-range-picker.tsx` | Client: `DashboardDateRangePicker({ activeKey, displayFrom, displayTo, today, hrefForPreset?, hrefForCustom?, formMode? })` dùng chung; dashboard gọi `StudioDashboardRangePicker({ slug, metric, … })` dựng link bằng `dashboardHref` (giữ `?chi-so=`) — §19.5 |
+| `admin/_ui/date-range-picker.tsx` (chuyển từ `(tong-quan)/_ui/` theo "Bổ sung ADR-046"; file đã có trong commit `dd349b9` ✅ `git log`) + wrapper `(tong-quan)/_ui/dashboard-range-picker.tsx` | Client: `DashboardDateRangePicker({ activeKey, displayFrom, displayTo, today, hrefForPreset?, hrefForCustom?, formMode? })` dùng chung; dashboard gọi `StudioDashboardRangePicker({ slug, … })` dựng link bằng `dashboardHref` (giữ `?chi-so=`) — §19.5. Từ lần 4 **bỏ prop `metric`**: wrapper đọc `chi-so` từ URL hiện tại bằng `useSearchParams` (vì toggle đổi URL ở client, giá trị server render có thể đã cũ) |
 | `admin/_ui/stats-chart.tsx` | Component thống kê dùng chung `/admin` + Studio (§19.4) |
 
 ### 19.2. Thứ tự khối
@@ -1454,15 +1505,17 @@ vụ" `/admin` đã xong (Phong báo, Long đọc lại `git diff` ✅).
    **Doanh thu (gộp)** (note "Tính cả đơn sau này hoàn tiền — cùng cách tính của System Center."), **Doanh thu thực nhận**, **Đơn đã thanh toán**,
    **Giá trị đơn trung bình**; dải 3 chỉ số phụ: **Đã hoàn tiền** (xu hướng đảo màu — `higherIsBetter=false`), **Tài liệu khác nhau đã bán**, **Lượt
    nhận tài liệu miễn phí** (`IconGift`).
-6. **Biểu đồ** (`id="bieu-do-doanh-thu"`, `xl:col-span-2`): tiêu đề "{Doanh thu gộp|thực nhận} theo {giờ|ngày|tuần|tháng}"; công tắc link GET
-   `?chi-so=gop|thuc-nhan` (`aria-current`, `scroll={false}` + neo); `TrendChart` **cột** doanh thu, rồi `TrendChart` **đường** màu accent cho số đơn
-   (`h-28`); cột tương lai để trống + chú thích; `<details>` "Xem bảng số liệu theo …" — bảng 4 cột (Thời gian, Doanh thu gộp, Thực nhận, Đơn),
+6. **Biểu đồ** (`id="bieu-do-doanh-thu"`, `xl:col-span-2`): tiêu đề "{Doanh thu gộp|thực nhận} theo {giờ|ngày|tuần|tháng}"; công tắc
+   `?chi-so=gop|thuc-nhan` — từ lần 4 là `MetricToggle` client (`role="group"` "Chọn cách tính doanh thu trên biểu đồ", nút `aria-pressed`, đổi tức
+   thì, §19.8; *trước:* link GET `aria-current` + `scroll={false}` + neo — đã bỏ); `TrendChart` **cột** doanh thu, rồi `TrendChart` **đường** màu accent cho số đơn
+   (`h-28`) — biểu đồ đường **không** đổi theo toggle; cột tương lai để trống + chú thích; `<details>` "Xem bảng số liệu theo …" (chevron từ lần 4, §19.6) — bảng 4 cột (Thời gian, Doanh thu gộp, Thực nhận, Đơn),
    mới → cũ, bỏ bucket tương lai, `caption` ẩn, `th scope`, khung `relative max-h-96 overflow-auto` (`min-w-[28rem]`, trang không cuộn ngang).
    **Top 5 bán chạy** cạnh biểu đồ: phụ đề "{kỳ} · theo số đơn, không tính đơn đã hoàn tiền, gồm lượt nhận miễn phí"; mỗi dòng link tới trang
    tài liệu trong Studio, chữ ẩn "Hạng n", "{n} đơn · {doanh thu} · đã bán từ trước tới nay {soldCount}"; rỗng → "Chưa có tài liệu nào được mua
    trong kỳ này."
 7. **10 đơn hàng mới nhất**: `DataTable` 4 cột **Mã đơn** (link chi tiết đơn) · **Khách hàng** (họ tên hoặc "Khách") · **Đơn giá** (ẩn dưới `sm`) ·
-   **Thành tiền**; link "Xem tất cả đơn". **Không có email** (ADR-043 mục 3).
+   **Thành tiền**; link "Xem tất cả đơn". **Không có email** (ADR-043 mục 3). Từ lần 4 cột Thành tiền của đơn 0 đ hiện **"0 đ"** (`formatVndFull`; trước
+   là "Miễn phí"; cột Đơn giá vốn đã là số) — trang Đơn hàng Studio (§20) vẫn ghi "Miễn phí".
 8. **Ba thẻ nhóm** (`md` 2 cột, `xl` 3 cột), mỗi thẻ có link tới trang quản lý tương ứng: **Khách hàng** (khách mới + xu hướng, người mua trong kỳ,
    tỷ lệ quay lại) · **Đánh giá** (điểm TB `IconStarSolid`, phân bố 1–5 sao `<ul aria-label>`, đánh giá mới, chưa trả lời/đang ẩn "hiện tại", bị
    ẩn trong kỳ, bị khoá nếu > 0) · **Tài liệu** (4 ô trạng thái Công khai/Nháp/Lưu trữ/Bị khoá kiểm duyệt — ô khoá cảnh báo khi > 0, lượt tải
@@ -1472,24 +1525,25 @@ vụ" `/admin` đã xong (Phong báo, Long đọc lại `git diff` ✅).
 
 - Mọi `section` có `aria-labelledby` → tiêu đề; biểu đồ `role="img"` + `aria-label` tóm tắt (khoảng thời gian, giá trị cao nhất) + bảng thay thế;
   % thay đổi luôn có mũi tên + chữ "Tăng/Giảm" (không chỉ màu); chỉ số ảnh chụp ghi "hiện tại", luỹ kế ghi "từ trước tới nay".
-- Vùng chạm `min-h-11` dưới `lg`; focus `focus-visible:outline-2` màu primary; công tắc chỉ số `?chi-so=` là link GET (không cần JS). Từ lần 3
-  **chọn kỳ cần JS** (picker client); không JS thì chỉ đổi kỳ được bằng cách gõ URL `?ky=`/`?tu=`/`?den=`.
+- Vùng chạm `min-h-11` dưới `lg`; focus `focus-visible:outline-2` màu primary. Từ lần 3 **chọn kỳ cần JS** (picker client); từ lần 4 **đổi chỉ số
+  `?chi-so=` cũng cần JS** (nút client — trước là link GET); không JS thì chỉ đổi được bằng cách gõ URL `?ky=`/`?tu=`/`?den=`/`?chi-so=`.
 - App shell fluid theo sidebar (ADR-024/042), padding `px-5 lg:px-8`.
 
 ### 19.4. `admin/_ui/stats-chart.tsx` — API dùng chung
 
-Server Component thuần (không hook), không tự truy vấn. Màu từ `brandColors` + thang xám Tailwind.
+Không hook, không tự truy vấn — từ lần 4 được import cả trong Client Component (`sales-daily-chart.tsx`, `revenue-chart-switcher.tsx`), nên mọi
+export phải giữ "không hook, không I/O" để dùng được hai phía. Màu từ `brandColors` + thang xám Tailwind.
 
 | Export | Ghi chú |
 | :-- | :-- |
 | `STAT_INK`, `STAT_INK_SOFT`, `STAT_CARD_CLASS` | Màu chữ + class khung thẻ (`min-w-0 rounded-2xl border border-gray-200 bg-white`) |
-| `MoneyLike = bigint \| number \| string`, `toBigIntSafe`, `formatCount`, `formatVndFull` ("1.234.567 đ"), `formatVndAxis` ("12,5 triệu đ" — **đổi tên từ `formatVndCompact`** ở lần 3, chỉ cho trục Y) | Định dạng không qua float; quy tắc dùng §19.6 |
+| `MoneyLike = bigint \| number \| string`, `toBigIntSafe`, `formatCount`, `formatVndFull` ("1.234.567 đ") | Định dạng không qua float; quy tắc dùng §19.6. `formatVndAxis` (lần 3, đổi tên từ `formatVndCompact`) **đã xoá ở lần 4** ✅ `grep` không còn chỗ dùng trong `apps/web` |
 | `statValueSizeClass(value, level?: "primary" \| "secondary")` (lần 3) | Class cỡ chữ theo độ dài chuỗi số — §19.6 |
 | `computeChange(cur, prev) → Change` | BigInt, 1 chữ số thập phân; `prev` = 0 hoặc `null` → `{ kind: "none" }` |
 | `ChangeLine({ change, compareLabel, higherIsBetter? })` | "— chưa có số liệu kỳ trước…" / "Không đổi so với …" / mũi tên + "Tăng/Giảm x%" + "so với …"; `higherIsBetter=false` đảo màu |
 | `StatIcon({ icon, tone?, size? })` | Icon tròn `aria-hidden`, tone `primary`/`accent`/`secondary` |
 | `KpiCard({ label, value, detail?, note?, change?, compareLabel?, higherIsBetter?, icon?, iconTone? })` | `compareLabel` mặc định "30 ngày trước"; không có `change` → không dòng xu hướng |
-| `TrendPoint { key, tick, label, value: bigint, future? }`, `TrendChart({ points, variant?: "bar" \| "line", metricName, formatAxis, formatFull, emptyText, color?, heightClass?, integerScale?, showTick? })` | Cột HTML hoặc đường SVG trong khung `aria-hidden`; khối `role="img"` có tóm tắt; nhãn trục X thưa mặc định ~5 nhãn neo điểm đầu |
+| `TrendPoint { key, tick, label, value: bigint, future? }`, `TrendChart({ points, variant?: "bar" \| "line", metricName, formatAxis, formatFull, emptyText, color?, heightClass?, integerScale?, showTick? })` | Cột HTML hoặc đường SVG trong khung `aria-hidden`; khối `role="img"` có tóm tắt; nhãn trục X thưa mặc định ~5 nhãn neo điểm đầu. Cột nhãn trục Y (lần 4): `max-w-[5.5rem] min-w-8 leading-tight` dưới `sm`, `sm:max-w-none sm:whitespace-nowrap` từ `sm` — §19.6 |
 | `RatioBar({ ratio, color?, label? })` | Thanh tỉ lệ `aria-hidden` (phân bố sao) |
 
 ### 19.5. Pattern: Date range picker (`DashboardDateRangePicker`, "Bổ sung ADR-043 lần 3") ✅ đọc code
@@ -1529,13 +1583,20 @@ thống kê khác nếu Quốc giao.
   lên 200ms, tắt dưới `prefers-reduced-motion`.
 * **Cần JS** — không có phương án form GET dự phòng (URL gõ tay vẫn chạy). Quốc chấp nhận 2026-10-18 (app shell vốn cần JS).
 
-### 19.6. Quy tắc hiển thị số tiền/số đếm (lần 3) ✅ đọc code
+### 19.6. Quy tắc hiển thị số tiền/số đếm (lần 3, lần 4) ✅ đọc code
 
 * **Số đầy đủ, không rút gọn** theo `vi-VN` (vd `993.000 đ`) — `formatVndFull` — cho: thẻ KPI, dòng phụ, top 5, bảng số liệu, tooltip/`title` cột,
   dòng "Cao nhất". Áp cho **cả** Studio và `/admin` (component chung `stats-chart.tsx`): `sales-stats.tsx` (thẻ GMV, top 5 gian hàng, bảng) và thẻ
   "Doanh thu gói dịch vụ" 6 tháng trong `admin/page.tsx` (`title` cột + "Tổng 6 tháng"; trước dùng hàm nội bộ `formatVndCompact` kiểu "1,2Tr đ"/"35K đ"
-  — đã xoá) ✅ `git diff` (Long đọc lại sau khi Phong báo xong, 2026-10-18). Thẻ này **không có trục Y** nên không dùng `formatVndAxis`.
-* **Chỉ nhãn trục Y** biểu đồ được rút gọn — `formatVndAxis` ("12,5 triệu đ", "1,2 tỷ đ"; cột nhãn hẹp 64–80px). Không dùng hàm này ở chỗ khác.
+  — đã xoá) ✅ `git diff` (Long đọc lại sau khi Phong báo xong, 2026-10-18). Thẻ này không có trục Y.
+* **Nhãn trục Y** — từ "Bổ sung ADR-043 lần 4" cũng **số đầy đủ** (`formatVndFull`, vd `993.000 đ`), **không** rút gọn "nghìn/triệu/tỷ"; áp Studio
+  + `/admin`. Cột nhãn **co theo nhãn dài nhất** (bỏ độ rộng cố định `w-16 sm:w-20`): dưới `sm` giới hạn `max-w-[5.5rem]` — số rất lớn **xuống dòng ở
+  khoảng trắng trước "đ"** (`leading-tight`); từ `sm` không giới hạn, `whitespace-nowrap`. Trục số đơn vẫn "{n} đơn". *Lần 3:* chỉ trục Y rút gọn
+  bằng `formatVndAxis` (cột 64–80px) — **hàm đã xoá** ✅ `git diff`.
+* **Chevron `<details>` bảng số liệu** (lần 4, Studio + `/admin`): `<details class="group">`, `summary` `list-none` + `[&::-webkit-details-marker]:hidden`
+  (ẩn marker mặc định), `justify-between`; `IconChevronDown` (`h-4 w-4 shrink-0`, `aria-hidden` sẵn) bên phải, xoay `group-open:rotate-180`,
+  hiệu ứng `motion-safe:transition-transform` (không chuyển động khi `prefers-reduced-motion`). Trạng thái mở/đóng vẫn do `<details>` gốc báo cho
+  trình đọc màn hình.
 * Vì đã bỏ rút gọn, thẻ không còn dòng phụ "số đầy đủ" (Studio: Doanh thu gộp/thực nhận/giá trị TB bỏ `detail`; "Đã hoàn tiền" chỉ còn "{n} đơn").
 * **Cỡ chữ theo độ dài** — `statValueSizeClass(value, level)`: `primary` ≤ 12 ký tự `text-2xl`, ≤ 15 `text-xl`, dài hơn `text-lg`; `secondary` ≤ 13
   `text-lg`, dài hơn `text-base`. Nơi gọi vẫn kèm `[overflow-wrap:anywhere]` làm lưới an toàn (khoảng trắng trước "đ" là chỗ xuống dòng ưu
@@ -1546,6 +1607,30 @@ thống kê khác nếu Quốc giao.
 * Nhãn tiếng Việt cho `tenant.status` ở phụ đề header.
 * Trang Đánh giá chưa có bộ lọc "chưa trả lời" (link từ "Việc cần xử lý" chỉ lọc `VISIBLE`).
 * Chưa kiểm phiên OWNER thật, `/admin` sau refactor + đổi số đầy đủ, trình đọc màn hình ❓ (picker: bàn phím đã kiểm bằng Playwright 🟡).
+* Lần 4 chưa kiểm trình duyệt ❓: toggle đổi tức thì + URL `?chi-so=` sau `replaceState`, back/forward, picker giữ đúng `chi-so` sau khi bấm
+  toggle, trục Y số dài ở 360px (xuống dòng trước "đ"), chevron xoay.
+
+### 19.8. Pattern: Toggle chỉ số phía client giữ URL (`useUrlMetric` + `MetricToggle`, "Bổ sung ADR-043 lần 4") ✅ đọc code
+
+File `admin/_ui/metric-toggle.tsx` (**client**, working tree chưa commit). Thay pattern "link GET `?chi-so=`" cũ ở §16.4 và §19.2 mục 6. Dùng khi
+**dữ liệu mọi chỉ số đã có sẵn trong props** (chỉ đổi cách vẽ) — không dùng khi đổi chỉ số cần server tính lại.
+
+* **`useUrlMetric<M>({ param, initial, defaultValue, parse }) → [metric, select]`**:
+  - state khởi tạo bằng `initial` (giá trị server đã đọc từ `searchParams`);
+  - `select(next)` → `setState` + `window.history.replaceState(null, "", url)` với `param` = `next`; `next === defaultValue` thì **xoá** param khỏi
+    query (giữ quy ước bỏ giá trị mặc định). Không điều hướng, không cuộn, không gọi lại server, không thêm mục history;
+  - **đồng bộ ngược:** đọc `useSearchParams().get(param)` qua `parse`; khi khác giá trị đã đồng bộ lần trước (back/forward, điều hướng mềm, hoặc
+    router nhận `replaceState`) thì cập nhật state **ngay trong render** (không `useEffect`). Comment code ghi "Next tích hợp `replaceState` với
+    router" 🟡 — chưa kiểm trình duyệt ❓.
+* **`MetricToggle<M>({ label, options, value, onChange })`**: `div role="group" aria-label={label}` chứa các `<button type="button" aria-pressed>`;
+  Tab đi qua từng nút, Enter/Space chọn; bấm nút đang chọn không làm gì. Nút `min-h-11 min-w-14` dưới `lg` (`lg:min-h-9`), `touch-manipulation`,
+  hover `bg-gray-100` ở nút chưa chọn; nút chọn nền `brandColors.primary` chữ trắng, nút khác chữ `brandColors.ink`; `transition-colors
+  motion-reduce:transition-none`; focus `focus-visible:outline-2` màu primary.
+* **Nơi dùng:** `SalesDailyChart` (`/admin`, `chi-so` = `gmv` mặc định | `don`, §16.4) và `RevenueChartSwitcher` (Studio, `gop` mặc định | `thuc-nhan`,
+  §19.2 mục 6). Thành phần khác dựng link cần biết chỉ số hiện tại phải đọc **URL** (`useSearchParams`), không dùng prop server — vd
+  `StudioDashboardRangePicker` (§19.1).
+* **Đánh đổi:** cần JS (không còn phương án không-JS ngoài gõ URL); dữ liệu mọi chuỗi gửi xuống client (Studio: cả gộp + thực nhận; `/admin`: GMV dạng
+  chuỗi + số đơn).
 
 ---
 
@@ -1553,7 +1638,7 @@ thống kê khác nếu Quốc giao.
 
 Quyết định: [[01-Architecture-Decisions/ADR-031-Studio-Orders-List-Detail-Upgrade|ADR-031 (≙ ADR-046)]], [[01-Architecture-Decisions/ADR-032-Studio-Orders-Unaccent-Search-Internal-Notes|ADR-032 (≙ ADR-047 — ghi chú nội bộ, §20.8)]]; nghiệp vụ:
 [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]]; contract: [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §23. Phong làm UI, Hiếu
-làm dữ liệu theo brief của Quốc; Long đọc code working tree 2026-10-18 (**chưa commit** ✅ `git status`). Kiểm: lint/typecheck/build đạt (Quốc chạy
+làm dữ liệu theo brief của Quốc; Long đọc code working tree 2026-10-18 (nay **đã commit** `dd349b9` (deploy ❓) ✅ `git log`). Kiểm: lint/typecheck/build đạt (Quốc chạy
 2026-10-18) 🟡. **Chưa** xem UI thật với phiên OWNER, chưa trình đọc màn hình ❓.
 
 ### 20.1. File
@@ -1663,7 +1748,7 @@ làm dữ liệu theo brief của Quốc; Long đọc code working tree 2026-10-
 
 Quyết định: [[01-Architecture-Decisions/ADR-033-Studio-Customers-List-Upgrade|ADR-033 (≙ ADR-048)]]; nghiệp vụ:
 [[02-System-Specs/Studio-Customers-Specs|Studio-Customers-Specs]]; contract: [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §24. Phong làm UI, Hiếu
-làm dữ liệu theo brief của Quốc; Long đọc code working tree 2026-10-23 (**chưa commit** ✅ `git status`). Kiểm: lint/typecheck/build đạt (Quốc
+làm dữ liệu theo brief của Quốc; Long đọc code working tree 2026-10-23 (nay **đã commit** `dd349b9` (deploy ❓) ✅ `git log`). Kiểm: lint/typecheck/build đạt (Quốc
 2026-10-19) 🟡. **Chưa** kiểm UI thật với phiên OWNER, chưa trình đọc màn hình ❓.
 
 ### 21.1. Mẫu trang danh sách Studio (dùng chung Đơn hàng §20 ↔ Khách hàng)

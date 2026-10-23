@@ -42,15 +42,15 @@ author: System Architect
 > `TENANT_NOT_ACTIVE` cho action đánh giá (§12). Đợt ADR-041 (2026-10-17, nay đã commit `7f8360b`) **không thêm `route.ts`** (đếm lại
 > 2026-10-17: vẫn 22 dưới `/api`, 23 toàn app ✅) — trang + Server Action Bảng giá CMS, hoàn tiền gói, Hồ sơ/Bảo mật/đổi email ở §21. Đợt ADR-043 (2026-10-18, đã commit `e5d63d0`, deploy ❓) **không thêm `route.ts`** (đếm lại 2026-10-18: vẫn
 > 22 dưới `/api`, 23 toàn app ✅) — loader dashboard Studio + subpath `@gieochu/core/dashboard-range` ở §22. "Bổ sung ADR-043 lần 3"
-> (2026-10-18, **chưa commit**) cũng không thêm `route.ts` (đếm lại sau lần 3: vẫn 22 / 23 ✅) — chỉ thêm 3 key `?ky=` và `displayFrom/To` (§22.1).
-> Đợt ADR-046 (Đơn hàng Studio, 2026-10-18, **chưa commit**) **không thêm `route.ts`, không thêm/đổi Server Action** (đếm lại 2026-10-18: vẫn 22
+> (2026-10-18, đã commit `dd349b9`, deploy ❓) cũng không thêm `route.ts` (đếm lại sau lần 3: vẫn 22 / 23 ✅) — chỉ thêm 3 key `?ky=` và `displayFrom/To` (§22.1).
+> Đợt ADR-046 (Đơn hàng Studio, 2026-10-18, đã commit `dd349b9`, deploy ❓) **không thêm `route.ts`, không thêm/đổi Server Action** (đếm lại 2026-10-18: vẫn 22
 > dưới `/api`, 23 toàn app ✅; `orders/[orderId]/actions.ts` không đổi ✅ `git status`) — loader + tham số URL trang Đơn hàng và quy ước escape
 > Prisma `contains` ở §23.
 > Đợt ADR-045 Storage Gateway
 > (vuong, 2026-10-22, đã commit `4ab5a3b`, deploy ❓) **thêm 1 `route.ts` nội bộ**: `GET /api/internal/storage/ticket` (§25 — trước đây §23 ở nhánh vuong) — đếm lại 2026-10-22:
 > **23 dưới `/api`, 24 toàn app** ✅; URL trả về ở §6 (`presign`, `cover-presign`) và §7 (`downloads/[token]`, `share-links/[token]/download`)
 > có thể là `/_s/<vé>` khi bật gateway — **shape JSON không đổi**.
-> Đợt ADR-048 (Khách hàng Studio, 2026-10-23 đối chiếu, **chưa commit**) **không thêm `route.ts`** (đếm lại 2026-10-23 trên working tree trước khi pull nhánh vuong: vẫn 22 dưới `/api`, 23 toàn
+> Đợt ADR-048 (Khách hàng Studio, 2026-10-23 đối chiếu, đã commit `dd349b9`, deploy ❓) **không thêm `route.ts`** (đếm lại 2026-10-23 trên working tree trước khi pull nhánh vuong: vẫn 22 dưới `/api`, 23 toàn
 > app ✅; sau khi gộp ADR-045 Storage Gateway: **23 dưới `/api`, 24 toàn app** ✅ đếm lại 2026-10-23) — loader + 1 Server Action ghi chú khách + subpath `@gieochu/core/customer-list` ở §24; tham số `?khach=` trang Đơn hàng ở §23.2.
 
 ## 1. Quy Ước Chung
@@ -871,7 +871,7 @@ Trang `/account/email/xac-nhan?token=…` — GET chỉ đọc (`previewEmailCha
 ## 22. Dashboard Tổng quan gian hàng — loader + kỳ thống kê (ADR-043) ✅
 
 Đối chiếu code 2026-10-18: ADR-043 + bổ sung lần 1–2 đã commit (`e5d63d0`), deploy ❓; **"Bổ sung ADR-043 lần 3"** (3 mốc "… trước", so sánh
-trọn kỳ, `displayFrom/To`) còn ở working tree, chưa commit ✅ `git status`. **Không có `route.ts`/Server Action mới** — trang `/studio/{tenantSlug}` (route
+trọn kỳ, `displayFrom/To`) nay **đã commit** `dd349b9` (deploy ❓) ✅ `git log`. "Bổ sung ADR-043 lần 4" (2026-10-23, chỉ lớp trình bày, contract không đổi) còn ở working tree, chưa commit. **Không có `route.ts`/Server Action mới** — trang `/studio/{tenantSlug}` (route
 group `studio/[tenantSlug]/(tong-quan)/`) là Server Component gọi loader trực tiếp. Nghiệp vụ:
 [[02-System-Specs/Studio-Dashboard-Specs|Studio-Dashboard-Specs]].
 
@@ -949,7 +949,7 @@ Tiền là `number` nguyên VND (khác `admin-stats.ts` trả chuỗi BIGINT). H
 
 ## 23. Trang Đơn hàng Studio — loader, tham số URL, quy ước escape, ghi chú nội bộ (ADR-046, ADR-047) ✅
 
-Đối chiếu code working tree 2026-10-18, **chưa commit** ✅ `git status`. **Không có `route.ts` mới** — hai trang là Server Component gọi
+Đối chiếu code working tree 2026-10-18 (nay **đã commit** `dd349b9` (deploy ❓) ✅ `git log`). **Không có `route.ts` mới** — hai trang là Server Component gọi
 loader trực tiếp; thao tác tiền dùng lại action cũ ở `studio/[tenantSlug]/orders/[orderId]/actions.ts` (`confirmOrderManuallyAction`,
 `cancelOrderAction`, `markOrderRefundedAction`, `grantExtraDownloadsAction`, `revokeEntitlementAction` — không đổi). **ADR-047** thêm đúng 2 Server
 Action ghi chú (§23.5). Nghiệp vụ: [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]].
@@ -1061,7 +1061,7 @@ Không có route/đường đọc nào cho khách, public hay System Admin (RLS 
 
 ## 24. Trang Khách hàng Studio — loader, tham số URL, ghi chú khách (ADR-048) ✅
 
-Đối chiếu code working tree 2026-10-23, **chưa commit** ✅ `git status`. **Không `route.ts` mới, không migration.** Trang
+Đối chiếu code working tree 2026-10-23 (nay **đã commit** `dd349b9` (deploy ❓) ✅ `git log`). **Không `route.ts` mới, không migration.** Trang
 `/studio/{tenantSlug}/customers` là Server Component gọi loader trực tiếp. Nghiệp vụ: [[02-System-Specs/Studio-Customers-Specs|Studio-Customers-Specs]].
 
 ### 24.1. `apps/web/lib/customer-list.ts` (mới)

@@ -1,18 +1,17 @@
-import Link from "next/link";
 import { brandColors } from "@gieochu/config/theme";
 import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 import { EmptyState, Notice } from "./kit";
-import { IconAlertTriangle, IconExternalLink, IconShoppingBag } from "./icons";
+import { IconAlertTriangle, IconChevronDown, IconExternalLink, IconShoppingBag } from "./icons";
 import {
   KpiCard,
   STAT_INK,
   STAT_INK_SOFT,
-  TrendChart,
   computeChange,
-  formatVndAxis,
   formatVndFull,
   toBigIntSafe,
 } from "./stats-chart";
+import { SalesDailyChart } from "./sales-daily-chart";
+import type { SalesChartMetric } from "./sales-chart-metric";
 import type { AdminStatsOverview, AdminStatsTotals } from "../../../lib/admin-stats";
 
 /**
@@ -23,12 +22,8 @@ import type { AdminStatsOverview, AdminStatsTotals } from "../../../lib/admin-st
 export type AdminStatsOverviewView = AdminStatsOverview;
 type StatsTotals = AdminStatsTotals;
 
-/** Chỉ số vẽ biểu đồ — đọc từ query `?chi-so=` (link GET, không cần JS). */
-export type SalesChartMetric = "gmv" | "don";
-
-export function parseSalesChartMetric(raw: string | string[] | undefined): SalesChartMetric {
-  return raw === "don" ? "don" : "gmv";
-}
+/** Chỉ số vẽ biểu đồ `?chi-so=` — giá trị đầu đọc ở server, đổi tức thì ở client (`sales-daily-chart.tsx`). */
+export { parseSalesChartMetric, type SalesChartMetric } from "./sales-chart-metric";
 
 const LINE = "#E5E7EB";
 const INK = STAT_INK;
@@ -77,65 +72,17 @@ function SectionHeader({ lastAggregatedAt }: { lastAggregatedAt?: string | null 
   );
 }
 
-const METRIC_OPTIONS: Array<{ key: SalesChartMetric; label: string }> = [
-  { key: "gmv", label: "GMV" },
-  { key: "don", label: "Đơn" },
-];
-
-function MetricSwitch({ metric }: { metric: SalesChartMetric }) {
-  return (
-    <nav aria-label="Chọn chỉ số biểu đồ" className="inline-flex rounded-lg border p-0.5" style={{ borderColor: LINE }}>
-      {METRIC_OPTIONS.map((o) => {
-        const active = o.key === metric;
-        return (
-          <Link
-            key={o.key}
-            href={o.key === "gmv" ? `/admin#${SECTION_ID}` : `/admin?chi-so=${o.key}#${SECTION_ID}`}
-            scroll={false}
-            aria-current={active ? "true" : undefined}
-            className="inline-flex min-h-11 min-w-14 items-center justify-center rounded-md px-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary,#0F3B82)] lg:min-h-9"
-            style={active ? { background: brandColors.primary, color: "#FFFFFF" } : { color: INK }}
-          >
-            {o.label}
-          </Link>
-        );
-      })}
-    </nav>
-  );
-}
-
 type SeriesPoint = Extract<AdminStatsOverviewView, { status: "ok" }>["series"][number];
-
-function DailyChart({ series, metric }: { series: SeriesPoint[]; metric: SalesChartMetric }) {
-  const isGmv = metric === "gmv";
-  const lastIndex = series.length - 1;
-  return (
-    <TrendChart
-      points={series.map((p) => ({
-        key: p.date,
-        tick: shortDate(p.date),
-        label: `ngày ${longDate(p.date)}`,
-        value: isGmv ? toBigIntSafe(p.gmvVnd) : BigInt(p.ordersPaid),
-      }))}
-      metricName={isGmv ? "GMV theo ngày" : "Đơn đã thanh toán theo ngày"}
-      formatAxis={(v) => (isGmv ? formatVndAxis(v) : `${vnInt.format(v)} đơn`)}
-      formatFull={(v) => (isGmv ? formatVndFull(v) : `${vnInt.format(v)} đơn`)}
-      emptyText={`Không có ${isGmv ? "doanh thu" : "đơn đã thanh toán"} nào trong 30 ngày.`}
-      integerScale={!isGmv}
-      // Nhãn trục X thưa: neo vào ngày cuối, lùi mỗi 7 ngày — không chồng chữ ở 360px.
-      showTick={(i) => (lastIndex - i) % 7 === 0}
-    />
-  );
-}
 
 function DailyTable({ series }: { series: SeriesPoint[] }) {
   return (
     <details className="group mt-4 rounded-xl border" style={{ borderColor: LINE }}>
       <summary
-        className="flex min-h-11 cursor-pointer items-center px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary,#0F3B82)]"
+        className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary,#0F3B82)] [&::-webkit-details-marker]:hidden"
         style={{ color: brandColors.primary }}
       >
         Xem bảng số liệu theo ngày
+        <IconChevronDown className="h-4 w-4 shrink-0 group-open:rotate-180 motion-safe:transition-transform" />
       </summary>
       {/* Bảng 5 cột có thể rộng hơn 360px → cuộn ngang trong khung riêng, trang không cuộn ngang. */}
       <div className="max-h-96 overflow-auto border-t" style={{ borderColor: LINE }}>
@@ -290,18 +237,17 @@ export function SalesStatsSection({ overview, metric }: { overview: AdminStatsOv
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div className="min-w-0 rounded-2xl border bg-white p-5 sm:p-6 xl:col-span-2" style={{ borderColor: LINE }}>
-          <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h3 className="font-[family-name:var(--font-heading)] text-base font-bold" style={{ color: INK }}>
-                {metric === "gmv" ? "GMV theo ngày" : "Đơn đã thanh toán theo ngày"}
-              </h3>
-              <p className="mt-0.5 text-xs" style={{ color: INK_SOFT }}>
-                {metric === "gmv" ? "Đơn vị: đồng (VND)" : "Đơn vị: đơn"} · mỗi cột là 1 ngày (giờ Việt Nam)
-              </p>
-            </div>
-            <MetricSwitch metric={metric} />
-          </div>
-          <DailyChart series={series} metric={metric} />
+          {/* GMV / Đơn đổi tức thì ở client (`replaceState` giữ `?chi-so=`) — không render lại `/admin` ở server. */}
+          <SalesDailyChart
+            initialMetric={metric}
+            points={series.map((p) => ({
+              key: p.date,
+              tick: shortDate(p.date),
+              label: `ngày ${longDate(p.date)}`,
+              gmvVnd: p.gmvVnd,
+              ordersPaid: p.ordersPaid,
+            }))}
+          />
           <DailyTable series={series} />
         </div>
         <TopTenants tenants={topTenants} />
