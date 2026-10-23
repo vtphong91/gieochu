@@ -50,20 +50,6 @@ const optionalText = (max: number) => z.string().trim().max(max, `Tối đa ${ma
 const requiredText = (max: number) => z.string().trim().min(1, "Không được để trống.").max(max, `Tối đa ${max} ký tự.`);
 const itemIdSchema = z.string().trim().min(1).max(HOME_ITEM_ID_MAX);
 
-const heroDataSchema = z.object({
-  badge: z.string().min(1),
-  title: z.string().min(1),
-  subtitle: z.string().min(1),
-  primaryCta: ctaSchema,
-  secondaryCta: ctaSchema,
-  /** Trống -> dùng hình minh hoạ mặc định (mock UI dựng bằng CSS); có -> hiển thị ảnh thật đã upload. */
-  imageUrl: z.string().optional(),
-  /** ADR-050: dòng thông điệp dưới CTA; trống = slogan thương hiệu (`getEffectiveBrand().slogan`). */
-  brandMessage: optionalText(HOME_BRAND_MESSAGE_MAX),
-  /** ADR-050: alt của ảnh upload; trống = ảnh trang trí (`alt=""`). */
-  imageAlt: optionalText(HOME_IMAGE_ALT_MAX),
-});
-
 // ───────────── ADR-033: các section lấy dữ liệu thật — CMS chỉ lưu nhãn/cấu hình ─────────────
 
 /** Chỉ số cố định của section "Số liệu nổi bật" (ADR-033 mục 2) — thứ tự hiển thị cũng theo mảng này. */
@@ -76,6 +62,106 @@ export const HOME_STAT_DEFAULT_LABELS: Record<HomeStatKey, string> = {
   sold: "Lượt mua thành công",
   reviews: "Đánh giá từ người mua",
 };
+
+// ───────────── ADR-050 lần 3: thẻ số liệu nổi bật của Hero ─────────────
+
+export const HOME_HERO_STAT_BADGES_MAX = 3;
+export const HOME_HERO_STAT_LABEL_MAX = HOME_SHORT_LABEL_MAX;
+export const HOME_HERO_STAT_MIN_VALUE_DEFAULT = 10;
+
+/** Nhãn mặc định của thẻ Hero (ngắn hơn nhãn section `stats` — thẻ nằm đè mép ảnh). */
+export const HOME_HERO_STAT_DEFAULT_LABELS: Record<HomeStatKey, string> = {
+  tenants: "Gian hàng đang hoạt động",
+  products: "Tài liệu đang bán",
+  sold: "Lượt mua",
+  reviews: HOME_STAT_DEFAULT_LABELS.reviews,
+};
+
+const heroStatBadgeSchema = z.object({
+  id: itemIdSchema,
+  metric: z.enum(HOME_STAT_KEYS),
+  label: requiredText(HOME_HERO_STAT_LABEL_MAX),
+  /** Giá trị thật < ngưỡng → thẻ ẩn. */
+  minValue: z.number().int("Ngưỡng phải là số nguyên.").min(0, "Ngưỡng không được âm."),
+  enabled: z.boolean(),
+});
+export type HomeHeroStatBadge = z.infer<typeof heroStatBadgeSchema>;
+
+/** Mặc định (cũng dùng cho dữ liệu cũ chưa có trường): gian hàng / tài liệu / lượt mua, ngưỡng 10; `reviews` không có. */
+export function defaultHeroStatBadges(): HomeHeroStatBadge[] {
+  return (["tenants", "products", "sold"] as const).map((metric) => ({
+    id: `hero-stat-${metric}`,
+    metric,
+    label: HOME_HERO_STAT_DEFAULT_LABELS[metric],
+    minValue: HOME_HERO_STAT_MIN_VALUE_DEFAULT,
+    enabled: true,
+  }));
+}
+
+const heroStatBadgesSchema = z
+  .array(heroStatBadgeSchema)
+  .max(HOME_HERO_STAT_BADGES_MAX, `Tối đa ${HOME_HERO_STAT_BADGES_MAX} thẻ số liệu.`)
+  .refine((items) => new Set(items.map((item) => item.metric)).size === items.length, "Mỗi số liệu chỉ dùng cho 1 thẻ.")
+  .refine((items) => new Set(items.map((item) => item.id)).size === items.length, "id thẻ số liệu bị trùng.");
+
+/** Bậc làm tròn xuống dùng chung cho chữ hiển thị và câu đọc: < 100 → 1; < 1.000 → 10; < 1.000.000 → 100; còn lại → 100.000. */
+function statRoundingStep(n: number): number {
+  return n < 100 ? 1 : n < 1000 ? 10 : n < 1_000_000 ? 100 : 100_000;
+}
+
+function normalizeStatValue(value: number): number {
+  return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+}
+
+/**
+ * `true` khi `formatCompactStatCount(value)` đã làm tròn xuống (mất phần lẻ) → chữ hiển thị có "+" và câu đọc cho
+ * trình đọc màn hình nên có "Hơn". Số đúng tròn theo bậc (100, 1.200, 1.000.000) → `false`.
+ */
+export function isStatRounded(value: number): boolean {
+  const n = normalizeStatValue(value);
+  return n % statRoundingStep(n) !== 0;
+}
+
+/** Giá trị đã làm tròn xuống theo cùng bậc với `formatCompactStatCount` (vd 1.250 → 1.200). */
+export function floorStatValue(value: number): number {
+  const n = normalizeStatValue(value);
+  const step = statRoundingStep(n);
+  return Math.floor(n / step) * step;
+}
+
+/**
+ * Số làm gọn kiểu vi-VN cho thẻ số liệu — luôn làm tròn XUỐNG để không phóng đại: < 100 → số thật ("87"); từ 100 →
+ * hàng chục ("123" → "120+"); từ 1.000 → "1,2K+"; từ 1.000.000 → "1,2M+". Chỉ thêm "+" khi số đã bị làm tròn
+ * (`isStatRounded`): 100 → "100", 1.200 → "1,2K", 1.000.000 → "1M". Giá trị âm/không hữu hạn → "0".
+ */
+export function formatCompactStatCount(value: number): string {
+  const n = normalizeStatValue(value);
+  const plus = isStatRounded(n) ? "+" : "";
+  if (n < 100) return String(n);
+  if (n < 1000) return `${Math.floor(n / 10) * 10}${plus}`;
+  const [unit, suffix] = n < 1_000_000 ? [1000, "K"] : [1_000_000, "M"];
+  // Sàn 1 chữ số thập phân trên số nguyên (tránh sai số dấu phẩy động), hiển thị dấu phẩy thập phân, bỏ ",0".
+  const tenths = Math.floor((n * 10) / unit);
+  const whole = Math.floor(tenths / 10);
+  const fraction = tenths % 10;
+  return `${new Intl.NumberFormat("vi-VN").format(whole)}${fraction > 0 ? `,${fraction}` : ""}${suffix}${plus}`;
+}
+
+const heroDataSchema = z.object({
+  badge: z.string().min(1),
+  title: z.string().min(1),
+  subtitle: z.string().min(1),
+  primaryCta: ctaSchema,
+  secondaryCta: ctaSchema,
+  /** Trống -> dùng hình minh hoạ mặc định (mock UI dựng bằng CSS); có -> hiển thị ảnh thật đã upload. */
+  imageUrl: z.string().optional(),
+  /** ADR-050 lần 3: dòng thông điệp dưới CTA; trống = không hiển thị (không còn tự lấy slogan). */
+  brandMessage: optionalText(HOME_BRAND_MESSAGE_MAX),
+  /** ADR-050: alt của ảnh upload; trống = ảnh trang trí (`alt=""`). */
+  imageAlt: optionalText(HOME_IMAGE_ALT_MAX),
+  /** ADR-050 lần 3: 0–3 thẻ số liệu thật quanh ảnh; dữ liệu cũ thiếu trường → mặc định 3 thẻ. */
+  statBadges: heroStatBadgesSchema.default(defaultHeroStatBadges),
+});
 
 /** Giới hạn số thẻ của "Giáo viên & Coach nổi bật" / "Tài liệu nổi bật" (ADR-033 mục 4). */
 export const HOME_FEATURED_LIMIT_MIN = 3;
@@ -372,6 +458,8 @@ export function defaultHomeSections(): HomeSection[] {
           "Bạn đã dành thời gian tích lũy kiến thức, biên soạn giáo án và tạo ra những tài liệu hữu ích. {brand} giúp bạn có một nơi để giới thiệu học liệu, xây dựng gian hàng riêng và đưa những điều mình biết đến gần hơn với người cần chúng.",
         primaryCta: { label: "Bắt đầu xây dựng gian hàng", href: REGISTER_PATH },
         secondaryCta: { label: "Khám phá tài liệu", href: DOCUMENTS_PATH },
+        // ADR-050 lần 3: `brandMessage` để trống (không hiển thị dòng thông điệp).
+        statBadges: defaultHeroStatBadges(),
       },
     },
     { id: "stats", type: "stats", visible: false, data: defaultHomeStatsData() },

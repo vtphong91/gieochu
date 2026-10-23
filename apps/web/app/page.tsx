@@ -5,11 +5,13 @@ import { DEFAULT_HOME_SEO, replaceBrandToken, resolveCommunityView, type HomeCom
 import { getEffectiveBrand } from "../lib/branding";
 import { getHomePageContent } from "../lib/home-cms";
 import {
+  buildHeroStatBadges,
   buildHomeStatItems,
   getHomeFeaturedProducts,
   getHomeFeaturedTenants,
   getHomeSearchCategories,
   getHomeStats,
+  type HeroStatBadgeItem,
   type HomeFeaturedProduct,
   type HomeFeaturedTenant,
   type HomeSearchCategory,
@@ -52,7 +54,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /** Section đã kèm dữ liệu thật (ADR-033); `null` = không render (vd số liệu toàn 0, dưới ngưỡng `minToShow`). */
 type LoadedHomeSection =
-  | { section: Exclude<HomeSection, { type: "stats" | "search" | "coaches" | "documents" | "community" }> }
+  | { section: Exclude<HomeSection, { type: "hero" | "stats" | "search" | "coaches" | "documents" | "community" }> }
+  | { section: Extract<HomeSection, { type: "hero" }>; statBadges: HeroStatBadgeItem[] }
   | { section: Extract<HomeSection, { type: "stats" }>; stats: HomeStatItem[] }
   | { section: Extract<HomeSection, { type: "search" }>; categories: HomeSearchCategory[] }
   | { section: Extract<HomeSection, { type: "coaches" }>; tenants: HomeFeaturedTenant[] }
@@ -61,6 +64,12 @@ type LoadedHomeSection =
 
 async function loadSectionData(section: HomeSection, getStats: () => ReturnType<typeof getHomeStats>, getCategories: () => Promise<HomeSearchCategory[]>): Promise<LoadedHomeSection | null> {
   switch (section.type) {
+    case "hero": {
+      // ADR-050 lần 3: thẻ số liệu dùng chung `getHomeStats` với section `stats` (kể cả khi `stats` ẩn); không có thẻ bật
+      // nào thì không truy vấn.
+      const statBadges = section.data.statBadges.some((badge) => badge.enabled) ? buildHeroStatBadges(section.data, await getStats()) : [];
+      return { section, statBadges };
+    }
     case "stats": {
       const stats = buildHomeStatItems(section.data, await getStats());
       return stats.length > 0 ? { section, stats } : null;
@@ -93,6 +102,9 @@ function once<T>(load: () => Promise<T>): () => Promise<T> {
 }
 
 function renderSection(loaded: LoadedHomeSection, slogan: string, isMainHero: boolean) {
+  if ("statBadges" in loaded) {
+    return <HeroSection data={loaded.section.data} statBadges={loaded.statBadges} headingLevel={isMainHero ? "h1" : "h2"} />;
+  }
   if ("stats" in loaded) return <StatsSection items={loaded.stats} />;
   if ("categories" in loaded) return <SearchSection data={loaded.section.data} categories={loaded.categories} />;
   if ("tenants" in loaded) return <CoachesSection data={loaded.section.data} tenants={loaded.tenants} />;
@@ -101,8 +113,6 @@ function renderSection(loaded: LoadedHomeSection, slogan: string, isMainHero: bo
 
   const section = loaded.section;
   switch (section.type) {
-    case "hero":
-      return <HeroSection data={section.data} slogan={slogan} headingLevel={isMainHero ? "h1" : "h2"} />;
     case "benefits":
       return <BenefitsSection data={section.data} />;
     case "becomeSeller":

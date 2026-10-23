@@ -119,7 +119,7 @@ Nguồn: `packages/core/src/admin/home-sections.ts` (subpath `@gieochu/core/home
 
 | Section | Nhãn editor | Đổi ở ADR-050 |
 | :-- | :-- | :-- |
-| `hero` | Hero — Banner chính | Thêm `brandMessage?` ≤ 80 (trống = slogan thương hiệu), `imageAlt?` ≤ 160 (trống = ảnh trang trí `alt=""`) |
+| `hero` | Hero — Banner chính | Thêm `brandMessage?` ≤ 80 (trống = **không hiển thị** — "Bổ sung lần 3", trước đó trống = slogan), `imageAlt?` ≤ 160 (trống = ảnh trang trí `alt=""`), `statBadges` 0–3 thẻ số liệu (lần 3, §3.6) |
 | `stats` | Số liệu nổi bật | Không đổi schema; **mặc định ẩn** (brief §5 không có, §8 yêu cầu xác minh) |
 | `search` | Tìm tài liệu | Thêm `eyebrow?` ≤ 60, `submitLabel` ≤ 20 (mặc định "Tìm tài liệu", trước gõ cứng "Tìm kiếm") |
 | `benefits` | Vì sao chọn chúng tôi | Không đổi schema |
@@ -169,6 +169,70 @@ Cảnh báo mềm brief §8 (§2.3) **không** nằm trong luật này.
 - `coaches`/`documents`: render khi số thẻ thật > 0 **và** ≥ `minToShow` ✅; ghim + tự bù như ADR-033.
 - Section `visible = false` không render; số liệu/giá/sao gõ cứng ("500+", "10.000+", "149.000đ", 5 sao) được gỡ — phần JSX Phong đã làm, xem UI-Design-System §12.9.
 
+### 3.6. Hero — thông điệp và thẻ số liệu nổi bật ("Bổ sung ADR-050 lần 3") ✅ đọc code working tree 2026-10-23 (chưa commit)
+
+Không migration — dữ liệu nằm trong JSON section `hero` của `CmsPage` slug `home`.
+
+**`brandMessage`:** trống → **không render** dòng thông điệp dưới CTA (`HeroSection` không còn nhận prop `slogan`). Nội dung mặc định để trống
+`brandMessage`. Hint editor: "Để trống = không hiển thị dòng này." ✅
+
+**`statBadges`** (`packages/core/src/admin/home-sections.ts`) ✅:
+
+| Trường | Ràng buộc |
+| :-- | :-- |
+| `id` | chuỗi trim, 1–`HOME_ITEM_ID_MAX` |
+| `metric` | ∈ `HOME_STAT_KEYS` = `tenants` / `products` / `sold` / `reviews` |
+| `label` | bắt buộc, ≤ `HOME_HERO_STAT_LABEL_MAX` = 40 (= `HOME_SHORT_LABEL_MAX`) |
+| `minValue` | `Int` ≥ 0 — giá trị thật < ngưỡng → thẻ ẩn; giá trị thật = 0 → thẻ **luôn ẩn** kể cả `minValue` = 0 (lọc ở server, xem dưới) |
+| `enabled` | boolean |
+
+- Mảng 0–`HOME_HERO_STAT_BADGES_MAX` (3) thẻ; **không trùng `metric`** ("Mỗi số liệu chỉ dùng cho 1 thẻ.") và **không trùng `id`**. Mảng rỗng hợp lệ.
+- Mặc định `defaultHeroStatBadges()`: 3 thẻ `tenants`/`products`/`sold` (id `hero-stat-{metric}`), `minValue` = `HOME_HERO_STAT_MIN_VALUE_DEFAULT` (10),
+  bật, nhãn theo `HOME_HERO_STAT_DEFAULT_LABELS` ("Gian hàng đang hoạt động", "Tài liệu đang bán", "Lượt mua"; `reviews` dùng nhãn của section
+  `stats`). **Không** có thẻ `reviews` trong mặc định.
+- Dữ liệu cũ thiếu trường: schema dùng `.default(defaultHeroStatBadges)` → parse ra 3 thẻ mặc định. **Hệ quả:** bản PUBLISHED hiện có trên DB dùng
+  chung sẽ hiện thẻ ngay sau khi code lên (nếu số liệu thật ≥ 10), không cần admin xuất bản lại ✅ unit test.
+
+**Lọc ở server** — `buildHeroStatBadges(data, stats)` (`apps/web/lib/home.ts`) ✅: giữ đúng thứ tự CMS, bỏ thẻ tắt, thẻ có giá trị thật
+**= 0** (luôn ẩn kể cả khi `minValue` = 0 — thống nhất với section `stats`, ADR-033 mục 2; sửa 2026-10-23 theo KB-Audit §32 mục 2) và thẻ có
+`stats[metric] < minValue` (điều kiện giữ: `enabled && value > 0 && value >= minValue`); trả `{ id, metric, label, value, display }`. `app/page.tsx` (nhánh `hero` của `loadSectionData`) chỉ gọi `getHomeStats()` khi có ít nhất 1 thẻ bật,
+dùng chung lần gọi (`once`) với section `stats` — **tính cả khi section `stats` đang ẩn**. `getHomeStats()` đếm qua `withPublic`, tính **mỗi request,
+không cache** (định nghĩa số liệu như ADR-033 mục 2, xem [[01-Architecture-Decisions/ADR-019-Home-Page-Real-Data-Sold-Count|ADR-019 KB]]).
+
+**`formatCompactStatCount(value)`** (`@gieochu/core`, cả subpath `@gieochu/core/home-sections`) — luôn làm tròn **xuống**; dấu **"+" chỉ
+thêm khi số đã bị làm tròn** (mất phần lẻ), số đúng tròn theo bậc không có "+" ✅ unit test (sửa 2026-10-23 theo KB-Audit §32 mục 1):
+
+| Khoảng | Bậc làm tròn | Kết quả | Ví dụ |
+| :-- | :-: | :-- | :-- |
+| < 100 | 1 | số thật, không bao giờ có "+" | 7 → "7", 99 → "99" |
+| 100–999 | 10 | hàng chục; "+" khi lẻ hàng đơn vị | 100 → "100", 120 → "120", 125 → "120+", 999 → "990+" |
+| 1.000–999.999 | 100 | 1 chữ số thập phân dấu phẩy + "K", bỏ ",0"; "+" khi lẻ dưới hàng trăm | 1000 → "1K", 1200 → "1,2K", 1250 → "1,2K+", 999.999 → "999,9K+" |
+| ≥ 1.000.000 | 100.000 | như trên + "M" | 1.000.000 → "1M", 1.250.000 → "1,2M+" |
+
+Âm / không hữu hạn → "0" (chuẩn hoá chung `normalizeStatValue`: `floor`, chặn dưới 0).
+
+**Hai helper đi kèm** (cùng file, export ở `@gieochu/core` và `@gieochu/core/home-sections`) ✅ code — dùng chung bậc làm tròn với
+`formatCompactStatCount` (hàm nội bộ `statRoundingStep`), nên chữ hiển thị và câu đọc luôn khớp nhau:
+
+| Hàm | Trả về | Ví dụ |
+| :-- | :-- | :-- |
+| `isStatRounded(value)` | `true` khi số bị làm tròn xuống (`n % bậc ≠ 0`) — tức chữ hiển thị có "+" | 1250 → `true`; 1200 → `false`; 87 → `false` |
+| `floorStatValue(value)` | giá trị sau khi làm tròn xuống theo cùng bậc | 1250 → 1200; 125 → 120; 87 → 87 |
+
+Câu `sr-only` của thẻ (`spokenCount` trong `app/_ui/hero-stat-badges.tsx`) = `"Hơn " + formatCount(floorStatValue(v))` khi `isStatRounded(v)`,
+ngược lại chỉ `formatCount(floorStatValue(v))` → "1,2K+" đọc "Hơn 1.200", "1,2K" đọc "1.200", "87" đọc "87" ✅ code. Chữ "Hơn" xuất hiện **đúng
+khi** phần hiển thị có "+".
+
+**Editor** (`/admin/cms/home`, khối `HeroStatBadgesEditor` trong `home-sections-editor.tsx`) ✅: trang `[slug]/page.tsx` đọc `getHomeStats()` song song
+với dữ liệu editor và truyền `liveStats` — mỗi lựa chọn số liệu hiện "(hiện tại: N)", ô ngưỡng có hint "Giá trị hiện tại: N — thẻ đang hiện / dưới
+ngưỡng, thẻ đang ẩn / thẻ đang tắt". Thêm thẻ tự chọn số liệu chưa dùng (số liệu đã dùng bị `disabled` trong select); đổi số liệu mà nhãn vẫn là
+nhãn mặc định → nhãn đổi theo. Ô ảnh có hint khung 4:5. Hint trạng thái tính `enabled && current > 0 && current >= minValue` — cùng quy tắc
+với `buildHeroStatBadges`; ghi chú `LiveDataNote` nêu "Thẻ tắt, có giá trị thật bằng 0 hoặc nhỏ hơn ngưỡng sẽ tự ẩn" ✅ code (sửa 2026-10-23, KB-Audit §32 mục 6).
+
+**Khung ảnh:** cố định tỷ lệ **4:5** (`aspect-[4/5]`, `object-cover`) — ảnh khuyến nghị **1200×1500 px**, tỷ lệ khác bị cắt giữa, WebP/JPEG < 300 KB,
+chừa ~15% mỗi góc cho thẻ (hint editor) ✅. Ảnh upload render qua `cloudinaryDeliveryUrl(data.imageUrl, { width: 1200 })` (ADR-028,
+`app/_home-sections.tsx`, `fetchPriority="high"`) — sửa 2026-10-23 theo KB-Audit §32 mục 4 ✅ code. Bố cục thẻ: [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §12.10.
+
 ---
 
 ## 4. SEO trang chủ + bộ giới hạn SEO dùng chung ✅
@@ -207,7 +271,9 @@ cả khi chưa có dòng `home` (lần lưu đầu tạo dòng `DRAFT`, live = n
 
 `packages/core/src/admin/site-menu.test.ts` — **1 unit** (`describe("ADR-050 CMS menu and home sections")`): menu mặc định hợp lệ; link `javascript:`,
 `data:`, `http:`, `*.vercel.app`, `//…`, `/\…`, khoá trang lạ, email `javascript:` bị từ chối; parse phòng thủ (cắt 5 mục, CTA hỏng → mặc định, cột
-chỉ có link hỏng bị bỏ, đầu vào chuỗi → `null`); `testimonials` cũ → `community` consent=false → hiển thị lời mời, `minToShow` mặc định 3, xuất bản bị chặn.
+chỉ có link hỏng bị bỏ, đầu vào chuỗi → `null`); `testimonials` cũ → `community` consent=false → hiển thị lời mời, `minToShow` mặc định 3, xuất bản bị chặn;
+(lần 3, thêm `expect` vào cùng test) hero thiếu `statBadges` → 3 thẻ mặc định ngưỡng 10, `statBadges: []` hợp lệ, trùng `metric` bị từ chối, bảng ví dụ
+`formatCompactStatCount`. `pnpm test:count` = **95/95 unit, 57/57 integration** ✅ (Long chạy 2026-10-23) — không đổi.
 
 ---
 

@@ -15,6 +15,10 @@ import {
   HOME_FAQ_QUESTION_MAX,
   HOME_FEATURED_LIMIT_MAX,
   HOME_FEATURED_LIMIT_MIN,
+  HOME_HERO_STAT_BADGES_MAX,
+  HOME_HERO_STAT_DEFAULT_LABELS,
+  HOME_HERO_STAT_LABEL_MAX,
+  HOME_HERO_STAT_MIN_VALUE_DEFAULT,
   HOME_MIN_TO_SHOW_MIN,
   HOME_PINNED_MAX,
   HOME_SECTION_LABELS,
@@ -24,6 +28,7 @@ import {
   homePublishIssues,
   type HomeCommunityMode,
   type HomeCta,
+  type HomeHeroStatBadge,
   type HomeSection,
   type HomeSectionData,
   type HomeStatKey,
@@ -117,6 +122,92 @@ function LiveDataNote({ children }: { children: React.ReactNode }) {
     <p className="rounded-lg border px-3.5 py-2.5 text-sm" style={{ background: "#E8F1FF", borderColor: "#BFDBFE", color: "#1E3A8A" }}>
       {children}
     </p>
+  );
+}
+
+/** Giá trị thật hiện tại của 4 số liệu (`getHomeStats`) — để admin chọn ngưỡng thẻ Hero. */
+export type HomeEditorLiveStats = Record<HomeStatKey, number>;
+
+const viNumber = new Intl.NumberFormat("vi-VN");
+
+/** ADR-050 lần 3: thẻ số liệu nổi bật của Hero — tối đa 3, mỗi số liệu 1 thẻ, sắp xếp Lên/Xuống. */
+function HeroStatBadgesEditor({ badges, liveStats, onChange }: { badges: HomeHeroStatBadge[]; liveStats: HomeEditorLiveStats; onChange: (badges: HomeHeroStatBadge[]) => void }) {
+  const used = new Set(badges.map((badge) => badge.metric));
+  const firstFree = HOME_STAT_KEYS.find((key) => !used.has(key));
+  return (
+    <div className="space-y-3">
+      <LiveDataNote>
+        Thẻ số liệu nổi bật quanh ảnh hero — con số lấy tự động từ dữ liệu thật (tính cả khi section “Số liệu nổi bật” đang ẩn).
+        Thẻ tắt, có giá trị thật bằng 0 hoặc nhỏ hơn ngưỡng sẽ tự ẩn. Số hiển thị được làm gọn và làm tròn xuống (vd 120+, 1,2K+).
+      </LiveDataNote>
+      <ItemList<HomeHeroStatBadge>
+        label="Thẻ số liệu nổi bật"
+        items={badges}
+        max={Math.min(HOME_HERO_STAT_BADGES_MAX, HOME_STAT_KEYS.length)}
+        itemName="Thẻ"
+        create={() => {
+          const metric = firstFree ?? HOME_STAT_KEYS[0];
+          return { id: newId("hero-stat"), metric, label: HOME_HERO_STAT_DEFAULT_LABELS[metric], minValue: HOME_HERO_STAT_MIN_VALUE_DEFAULT, enabled: true };
+        }}
+        onChange={onChange}
+        render={(badge, _index, update) => {
+          const current = liveStats[badge.metric];
+          const shown = badge.enabled && current > 0 && current >= badge.minValue;
+          const labelError = badge.label.trim() ? undefined : `Nhập nhãn (tối đa ${HOME_HERO_STAT_LABEL_MAX} ký tự).`;
+          return (
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              <SelectField
+                id={`${badge.id}-metric`}
+                label="Số liệu"
+                value={badge.metric}
+                onChange={(e) => {
+                  const metric = e.target.value as HomeStatKey;
+                  // Nhãn còn là mặc định của số liệu cũ → đổi theo số liệu mới; nhãn đã sửa tay thì giữ.
+                  const label = badge.label === HOME_HERO_STAT_DEFAULT_LABELS[badge.metric] ? HOME_HERO_STAT_DEFAULT_LABELS[metric] : badge.label;
+                  update({ ...badge, metric, label });
+                }}
+              >
+                {HOME_STAT_KEYS.map((key) => (
+                  <option key={key} value={key} disabled={key !== badge.metric && used.has(key)}>
+                    {STAT_EDITOR_NAMES[key]} (hiện tại: {viNumber.format(liveStats[key])})
+                  </option>
+                ))}
+              </SelectField>
+              <TextField
+                id={`${badge.id}-label`}
+                label="Nhãn"
+                maxLength={HOME_HERO_STAT_LABEL_MAX}
+                required
+                value={badge.label}
+                error={labelError}
+                onChange={(e) => update({ ...badge, label: e.target.value })}
+              />
+              <TextField
+                id={`${badge.id}-min`}
+                label="Chỉ hiện khi đạt ít nhất"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1}
+                value={badge.minValue}
+                hint={`Giá trị hiện tại: ${viNumber.format(current)} — ${shown ? "thẻ đang hiện" : badge.enabled ? "dưới ngưỡng, thẻ đang ẩn" : "thẻ đang tắt"}.`}
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  update({ ...badge, minValue: Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0 });
+                }}
+              />
+              <div className="flex min-h-11 items-end">
+                <Toggle
+                  checked={badge.enabled}
+                  label="Hiển thị thẻ"
+                  onChange={(e) => update({ ...badge, enabled: e.target.checked })}
+                />
+              </div>
+            </div>
+          );
+        }}
+      />
+    </div>
   );
 }
 
@@ -294,10 +385,12 @@ function FeaturedExtraFields({ prefix, data, onChange }: { prefix: string; data:
 function SectionFields({
   section,
   pinOptions,
+  liveStats,
   onChange,
 }: {
   section: HomeSection;
   pinOptions: HomeEditorPinOptions;
+  liveStats: HomeEditorLiveStats;
   onChange: (data: HomeSection["data"]) => void;
 }) {
   switch (section.type) {
@@ -313,12 +406,17 @@ function SectionFields({
           <TextField
             id="hero-brand-message"
             label="Thông điệp dưới nút (không bắt buộc)"
-            hint="Để trống = dùng slogan thương hiệu."
+            hint="Để trống = không hiển thị dòng này."
             maxLength={80}
             value={d.brandMessage ?? ""}
             onChange={(e) => onChange({ ...d, brandMessage: optional(e.target.value) })}
           />
-          <ImageUploadField label="Ảnh minh hoạ (trống = dùng minh hoạ mặc định)" value={d.imageUrl ?? ""} onChange={(url) => onChange({ ...d, imageUrl: url })} />
+          <ImageUploadField
+            label="Ảnh minh hoạ (trống = dùng minh hoạ mặc định)"
+            hint="Khung ảnh cố định tỷ lệ 4:5 — dùng ảnh 1200×1500 px (ảnh tỷ lệ khác sẽ bị cắt giữa), WebP/JPEG < 300 KB, chừa khoảng 15% mỗi góc cho thẻ số liệu."
+            value={d.imageUrl ?? ""}
+            onChange={(url) => onChange({ ...d, imageUrl: url })}
+          />
           <TextField
             id="hero-image-alt"
             label="Mô tả ảnh (alt, không bắt buộc)"
@@ -327,6 +425,7 @@ function SectionFields({
             value={d.imageAlt ?? ""}
             onChange={(e) => onChange({ ...d, imageAlt: optional(e.target.value) })}
           />
+          <HeroStatBadgesEditor badges={d.statBadges} liveStats={liveStats} onChange={(statBadges) => onChange({ ...d, statBadges })} />
         </div>
       );
     }
@@ -637,6 +736,7 @@ export function HomeSectionsEditor({
   initialStatus,
   initialSeo,
   pinOptions,
+  liveStats,
 }: {
   live: HomeSection[];
   initialSections: HomeSection[];
@@ -644,6 +744,7 @@ export function HomeSectionsEditor({
   initialStatus: Status;
   initialSeo: HomeSeoValue;
   pinOptions: HomeEditorPinOptions;
+  liveStats: HomeEditorLiveStats;
 }) {
   const [sections, setSections] = useState<HomeSection[]>(initialSections);
   const [seo, setSeo] = useState<HomeSeoValue>(initialSeo);
@@ -865,7 +966,7 @@ export function HomeSectionsEditor({
             </div>
           ) : null}
 
-          {selected ? <SectionFields key={selected.id} section={selected} pinOptions={pinOptions} onChange={updateSelectedData} /> : null}
+          {selected ? <SectionFields key={selected.id} section={selected} pinOptions={pinOptions} liveStats={liveStats} onChange={updateSelectedData} /> : null}
         </section>
       </div>
 

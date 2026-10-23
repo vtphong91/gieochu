@@ -6,7 +6,7 @@ tags:
   - security
   - status/living
 date: 2026-09-26
-updated: 2026-10-22
+updated: 2026-10-23
 author: System Architect
 ---
 
@@ -299,15 +299,29 @@ kẹp về [1, 1600] ✅. Chỉ áp cho `https://res.cloudinary.com/<cloud>/imag
 `image/fetch`) trả nguyên. Idempotent (thay `w_` cũ), giữ transformation có sẵn khác, nối bộ tối ưu vào cuối chuỗi
 transformation.
 
+Bảng rà lại theo code 2026-10-23 (grep mọi lời gọi `cloudinaryDeliveryUrl(` trong `apps/` + `packages/`, bỏ `dist/` và test) ✅:
+
 | Ngữ cảnh | `width` | Nơi gọi ✅ |
 |---|---|---|
 | Thẻ tài liệu storefront | 800 | `app/[tenantSlug]/_ui/products.tsx` |
+| Thẻ tài liệu dùng chung (trang chủ, cửa hàng) `DocumentCard` | 640 | `app/_ui/document-card.tsx` |
+| Ảnh bìa tài liệu gắn trong bài viết | 480 | `app/[tenantSlug]/_ui/post-parts.tsx` |
 | Ảnh bìa trang chi tiết | 1200 | `app/[tenantSlug]/_ui/product-detail.tsx` |
-| Ảnh trong mô tả (lúc render) | 1200 | `product-detail.tsx` → `sanitizeRichTextHtml(..., { imageWidth: 1200 })` |
-| Hero storefront | 1000 | `app/[tenantSlug]/_ui/hero.tsx` |
+| Ảnh trong mô tả tài liệu (lúc render) | 1200 | `product-detail.tsx` → `sanitizeRichTextHtml(..., { imageWidth: DESCRIPTION_IMAGE_WIDTH })` (= 1200) |
+| Ảnh trong thân bài viết (lúc render) | 1536 | `lib/post.ts` → `sanitizeRichTextHtml(..., { imageWidth: POST_BODY_IMAGE_WIDTH })` (2 chỗ) |
+| Ảnh đầu bài viết làm thẻ công khai / thumbnail Studio | 640 / 320 | `lib/post.ts` `firstPostImageUrl` (`POST_CARD_IMAGE_WIDTH` / `POST_STUDIO_THUMB_WIDTH`) |
+| Hero storefront | 1000 | `app/[tenantSlug]/_ui/hero.tsx` (ảnh `imageUrl`) |
+| Hero trang Cửa hàng | 1000 | `app/_ui/shop-hero.tsx` |
+| Hero trang chủ hệ thống (khung 4:5, từ 2026-10-23) | 1200 | `app/_home-sections.tsx` (`HeroSection`) |
 | Avatar testimonial / icon dịch vụ | 200 | `testimonials.tsx`, `services.tsx` |
+| Ảnh danh mục (lưới danh mục) | 200 | `app/_ui/category-grid.tsx` |
+| Ảnh đại diện tài khoản | = `sizePx` (mặc định 192, header 96; kẹp 16–512) | `lib/account-profile.ts` `avatarUrlFromKey` (URL đã có `c_fill,g_face,w_N,h_N`, rồi qua `cloudinaryDeliveryUrl`) |
 | Preview trong `ImageUploadField` | 600 | `app/admin/_ui/image-upload-field.tsx` |
-| Logo | không áp | không có lời gọi `cloudinaryDeliveryUrl` cho logo (theo brief: logo giữ nguyên URL) |
+| Logo gian hàng trên thẻ (trang chủ, cửa hàng, `/account`) | 160 | `lib/home.ts` `tenantLogoUrl` — dùng ở `lib/home.ts`, `lib/shop.ts`, `lib/account-profile.ts` |
+| Logo gian hàng trong hero storefront | không áp | `lib/storefront.ts` dựng `logoUrl` bằng `toPublicUrl` (không qua `cloudinaryDeliveryUrl`); comment code ghi "chưa có luồng upload `logoKey` nên thực tế luôn null" |
+
+Ghi chú: trước 2026-10-23 dòng "Logo — không áp" ghi chung cho mọi logo; code thật đã áp width 160 cho logo trên thẻ (`tenantLogoUrl`),
+chỉ logo trong hero storefront là chưa áp (KB-Audit §32 mục 7).
 
 ### 7.5 Sanitizer & kiểm URL ảnh
 

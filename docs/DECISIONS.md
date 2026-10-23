@@ -1232,3 +1232,13 @@
   rộng đọc); không thêm `container-doc`. Lưu trữ bản đang hiệu lực → bản PUBLISHED trước đó (nếu còn) tự hiệu lực lại.
   Ô SEO trang chủ lưu thẳng, không qua nháp (giống Bảng giá) cho tới khi có quyết định khác. Migration ADR-050 đã chạy
   nên không sửa comment trong `migration.sql` (đổi checksum).
+- **Bổ sung ADR-050 lần 3 (2026-10-23, chủ dự án duyệt — Hero):** (1) `hero.brandMessage` trống → **không hiển thị**
+  (bỏ tự lấy slogan). (2) Hero thêm **thẻ số liệu nổi bật** quanh ảnh, tối đa 3 thẻ, mỗi thẻ chọn 1 trong 4 số liệu thật
+  sẵn có của section `stats` (`tenants`, `products`, `sold`, `reviews` — tính từ DB mỗi request qua `getHomeStats()`, chưa có cache), nhãn sửa được, ngưỡng
+  tối thiểu (dưới ngưỡng → ẩn thẻ); mặc định 3 thẻ gian hàng / tài liệu / lượt mua, ngưỡng 10, đánh giá tắt. Số hiển thị
+  làm gọn ("120+", "1,2K+"). Desktop: thẻ phủ mép ảnh ở các góc; mobile: hàng thẻ dưới ảnh. Không có ảnh → giữ minh hoạ
+  CSS. Khung ảnh hero cố định 4:5 (không CLS) — dùng ảnh 1200×1500 px, tỷ lệ khác bị cắt giữa (`object-cover`); WebP/JPEG < 300 KB,
+  chừa ~15% mỗi góc. Không migration.
+  - **Tinh chỉnh lần 3 (2026-10-23, Quốc):** dấu "+" chỉ khi số đã bị làm tròn xuống (`isStatRounded`/`floorStatValue`,
+    sr-only "Hơn" khớp theo); thẻ có giá trị thật **0 luôn ẩn** (kể cả `minValue` = 0, giống ADR-033); ảnh hero trang chủ
+    qua `cloudinaryDeliveryUrl` width 1200 (ADR-028); độ tràn thẻ trái ở `xl` (48px) chấp nhận như code.

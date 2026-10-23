@@ -1,5 +1,6 @@
 import {
   computeRatingAverage,
+  formatCompactStatCount,
   HOME_FEATURED_LIMIT_MAX,
   HOME_FEATURED_LIMIT_MIN,
   HOME_PINNED_MAX,
@@ -67,6 +68,28 @@ export function buildHomeStatItems(data: Extract<HomeSection, { type: "stats" }>
     label: data.metrics[key].label,
     value: stats[key],
   }));
+}
+
+export interface HeroStatBadgeItem {
+  id: string;
+  /** Loại số liệu — UI chọn icon theo loại. */
+  metric: HomeStatKey;
+  label: string;
+  /** Giá trị thật (cùng nguồn `getHomeStats`). */
+  value: number;
+  /** Số làm gọn vi-VN, làm tròn xuống, "+" chỉ khi đã làm tròn ("120", "120+", "1,2K+") — `formatCompactStatCount`. */
+  display: string;
+}
+
+/**
+ * ADR-050 lần 3: thẻ số liệu của Hero — đúng thứ tự CMS, bỏ thẻ tắt, thẻ có giá trị thật bằng 0 (luôn ẩn kể cả
+ * `minValue` = 0, giống section `stats` — ADR-033) và thẻ có giá trị thật < `minValue`. Dùng chung
+ * `getHomeStats()` với section `stats` (tính cả khi section `stats` đang ẩn).
+ */
+export function buildHeroStatBadges(data: Extract<HomeSection, { type: "hero" }>["data"], stats: HomeStats): HeroStatBadgeItem[] {
+  return data.statBadges
+    .filter((badge) => badge.enabled && stats[badge.metric] > 0 && stats[badge.metric] >= badge.minValue)
+    .map((badge) => ({ id: badge.id, metric: badge.metric, label: badge.label, value: stats[badge.metric], display: formatCompactStatCount(stats[badge.metric]) }));
 }
 
 // ───────────────────────── Tìm tài liệu: danh mục ─────────────────────────

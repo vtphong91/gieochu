@@ -1,4 +1,4 @@
-import { homePublishIssues, homeSectionsSchema, parseHomeSections, resolveCommunityView } from "./home-sections";
+import { formatCompactStatCount, homePublishIssues, homeSectionsSchema, parseHomeSections, resolveCommunityView } from "./home-sections";
 import { defaultSiteMenu, parseSiteMenu, siteMenuSchema } from "./site-menu";
 
 describe("ADR-050 CMS menu and home sections", () => {
@@ -56,5 +56,19 @@ describe("ADR-050 CMS menu and home sections", () => {
     expect(coaches.type === "coaches" && coaches.data.minToShow).toBe(3);
     expect(homePublishIssues(home).some((issue) => issue.field === "testimonials.0.consentConfirmed")).toBe(true);
     expect(homeSectionsSchema.safeParse(home).success).toBe(true);
+
+    // Hero (ADR-050 lần 3): dữ liệu cũ thiếu `statBadges` → 3 thẻ mặc định ngưỡng 10; trùng số liệu bị từ chối.
+    const heroData = { badge: "B", title: "T", subtitle: "S", primaryCta: { label: "A", href: "/a" }, secondaryCta: { label: "B", href: "/b" } };
+    const [hero] = parseHomeSections([{ id: "h", type: "hero", visible: true, data: heroData }])!;
+    if (hero?.type !== "hero") throw new Error("expected hero");
+    expect(hero.data.statBadges.map((b) => [b.metric, b.minValue, b.enabled])).toEqual([["tenants", 10, true], ["products", 10, true], ["sold", 10, true]]);
+    const dupBadge = { id: "x", metric: "sold", label: "Lượt mua", minValue: 0, enabled: true };
+    const withBadges = (statBadges: unknown[]) => homeSectionsSchema.safeParse([{ id: "h", type: "hero", visible: true, data: { ...heroData, statBadges } }]).success;
+    expect(withBadges([])).toBe(true);
+    expect(withBadges([dupBadge, { ...dupBadge, id: "y" }])).toBe(false);
+    // Số làm gọn luôn làm tròn xuống; "+" chỉ khi đã bị làm tròn.
+    expect([7, 99, 100, 120, 125, 129, 999, 1000, 1200, 1250, 1299, 999_999, 1_000_000, 1_250_000].map(formatCompactStatCount)).toEqual([
+      "7", "99", "100", "120", "120+", "120+", "990+", "1K", "1,2K", "1,2K+", "1,2K+", "999,9K+", "1M", "1,2M+",
+    ]);
   });
 });

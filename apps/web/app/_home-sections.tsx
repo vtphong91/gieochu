@@ -1,7 +1,8 @@
 import { useId } from "react";
 import Link from "next/link";
+import { cloudinaryDeliveryUrl } from "@gieochu/core/cloudinary-url";
 import type { HomeCommunityView, HomeCta, HomeSection } from "@gieochu/core";
-import type { HomeFeaturedProduct, HomeFeaturedTenant, HomeSearchCategory, HomeStatItem } from "../lib/home";
+import type { HeroStatBadgeItem, HomeFeaturedProduct, HomeFeaturedTenant, HomeSearchCategory, HomeStatItem } from "../lib/home";
 import { SHOP_SEARCH_PATH, SHOP_SEARCH_Q_MAX, shopSearchHref } from "../lib/shop";
 import {
   AMBER,
@@ -22,6 +23,7 @@ import {
   initialsOf,
 } from "./_ui/catalog-parts";
 import { DocumentCard } from "./_ui/document-card";
+import { HeroStatBadges } from "./_ui/hero-stat-badges";
 import { TenantCard } from "./_ui/tenant-card";
 
 function IconSprout({ className }: { className?: string }) {
@@ -133,7 +135,7 @@ type FinalCtaData = Extract<HomeSection, { type: "finalCta" }>["data"];
  * tượng, **không số liệu, không giá, không sao, không chữ gõ cứng**. Toàn bộ là trang trí (`aria-hidden`); màu theo token
  * runtime (`tint()` trên `var(--brand-*)`). Khung cao cố định ở phần tử cha → không CLS.
  */
-function HeroIllustration() {
+function HeroIllustration({ hideFloatingCardOnDesktop = false }: { hideFloatingCardOnDesktop?: boolean }) {
   return (
     <div aria-hidden="true" className="absolute inset-0">
       <div className="absolute top-2 right-4 h-40 w-40 rounded-full sm:h-56 sm:w-56 lg:h-80 lg:w-80" style={{ background: tint(AMBER, 35) }} />
@@ -168,9 +170,9 @@ function HeroIllustration() {
           <div className="h-2 w-[38%] rounded-full" style={{ background: LINE }} />
         </div>
       </div>
-      {/* Thẻ nổi "đã sẵn sàng" — dấu tích, không chữ/số. */}
+      {/* Thẻ nổi "đã sẵn sàng" — dấu tích, không chữ/số. Ẩn ở lg+ khi có thẻ số liệu thật phủ quanh minh hoạ (tránh rối). */}
       <div
-        className="absolute right-2 bottom-3 flex items-center gap-2.5 rounded-2xl bg-white px-3.5 py-3 sm:right-6 sm:bottom-10 lg:right-0 lg:bottom-[54px]"
+        className={`${hideFloatingCardOnDesktop ? "lg:hidden " : ""}absolute right-2 bottom-3 flex items-center gap-2.5 rounded-2xl bg-white px-3.5 py-3 sm:right-6 sm:bottom-10 lg:right-0 lg:bottom-[54px]`}
         style={{ boxShadow: "0 18px 40px rgba(6,12,35,0.3)" }}
       >
         <div className="flex h-8 w-8 items-center justify-center rounded-full text-white" style={{ background: GREEN }}>
@@ -186,15 +188,16 @@ function HeroIllustration() {
 }
 
 /**
- * `slogan` = slogan thương hiệu (dùng khi CMS để trống `brandMessage`). ADR-050: minh hoạ mặc định không còn số liệu gõ cứng.
+ * ADR-050 lần 3: `brandMessage` trống → không render dòng thông điệp (không còn tự lấy slogan). `statBadges` = thẻ số
+ * liệu thật đã lọc sẵn ở server (bật + đạt ngưỡng), đúng thứ tự CMS, `display` đã làm gọn; rỗng → không render.
  * `headingLevel`: hero đầu tiên là H1 duy nhất của trang; page truyền `"h2"` nếu (bất thường) có hero thứ hai.
- * `badge` = eyebrow (đoạn chữ, không phải heading).
+ * `badge` = eyebrow (đoạn chữ, không phải heading). Minh hoạ mặc định không có số liệu gõ cứng.
  */
-export function HeroSection({ data, slogan, headingLevel = "h1" }: { data: HeroData; slogan: string; headingLevel?: "h1" | "h2" }) {
+export function HeroSection({ data, statBadges, headingLevel = "h1" }: { data: HeroData; statBadges: HeroStatBadgeItem[]; headingLevel?: "h1" | "h2" }) {
   const Heading = headingLevel;
-  const message = data.brandMessage || slogan;
+  const message = data.brandMessage;
   return (
-    <section className="py-11 lg:py-24" style={{ background: `linear-gradient(180deg, ${BLUE_DEEP} 0%, color-mix(in srgb, ${BLUE_DEEP} 82%, ${BLUE}) 100%)` }}>
+    <section className="overflow-x-clip py-11 lg:py-24" style={{ background: `linear-gradient(180deg, ${BLUE_DEEP} 0%, color-mix(in srgb, ${BLUE_DEEP} 82%, ${BLUE}) 100%)` }}>
       <div className="container-page flex flex-col items-center gap-10 lg:flex-row lg:items-center lg:justify-between lg:gap-16">
         <div className="flex w-full max-w-[560px] flex-col items-start gap-5 sm:gap-6">
           {data.badge ? (
@@ -225,18 +228,20 @@ export function HeroSection({ data, slogan, headingLevel = "h1" }: { data: HeroD
           ) : null}
         </div>
 
-        <div className="relative h-[220px] w-full max-w-[420px] shrink-0 sm:h-[340px] lg:h-[420px] lg:w-[460px]">
+        {/* Khung media `relative`: thẻ số liệu nằm dưới (mobile) hoặc phủ mép khung (lg+) — xem `HeroStatBadges`. */}
+        <div className={`relative w-full shrink-0 ${data.imageUrl ? "max-w-[320px] sm:max-w-[360px] lg:w-[380px] lg:max-w-none xl:w-[420px]" : "max-w-[420px] lg:w-[460px]"}`}>
           {data.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- ảnh Cloudinary ngoài, không qua next/image optimize
-            <img
-              src={data.imageUrl}
-              alt={data.imageAlt ?? ""}
-              className="h-full w-full rounded-[24px] object-cover"
-              style={{ boxShadow: "0 30px 60px rgba(6,12,35,0.35)" }}
-            />
+            // Khung cố định 4:5 (ảnh khuyến nghị 1200×1500) → giữ chỗ trước khi ảnh tải, không CLS.
+            <div className="aspect-[4/5] w-full overflow-hidden rounded-[24px]" style={{ boxShadow: "0 30px 60px rgba(6,12,35,0.35)" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- ảnh Cloudinary tối ưu bằng cloudinaryDeliveryUrl (ADR-028), không qua next/image */}
+              <img src={cloudinaryDeliveryUrl(data.imageUrl, { width: 1200 })} alt={data.imageAlt ?? ""} fetchPriority="high" className="h-full w-full object-cover" />
+            </div>
           ) : (
-            <HeroIllustration />
+            <div className="relative h-[220px] w-full sm:h-[340px] lg:h-[420px]">
+              <HeroIllustration hideFloatingCardOnDesktop={statBadges.length > 0} />
+            </div>
           )}
+          <HeroStatBadges items={statBadges} />
         </div>
       </div>
     </section>

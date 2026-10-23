@@ -651,8 +651,8 @@ layout gửi **key chuỗi** (`icon: "grid"`), Client Component giữ bảng `NA
 ### 9.8. Ảnh Cloudinary trên trang public — độ rộng theo ngữ cảnh (ADR-028) ✅
 
 - Mọi ảnh Cloudinary hiển thị qua `cloudinaryDeliveryUrl(url, { width })` (`@gieochu/core/cloudinary-url`): thẻ tài liệu
-  storefront **800**, ảnh bìa chi tiết **1200**, ảnh trong mô tả **1200**, hero **1000**, avatar testimonial / icon dịch
-  vụ **200**, preview trong `ImageUploadField` **600**; logo không áp. Bảng đầy đủ:
+  storefront **800**, ảnh bìa chi tiết **1200**, ảnh trong mô tả **1200**, hero storefront **1000**, hero trang chủ hệ thống **1200** (§12.10), avatar testimonial / icon dịch
+  vụ **200**, preview trong `ImageUploadField` **600**; logo gian hàng trên thẻ **160** (`tenantLogoUrl`), logo trong hero storefront chưa áp. Bảng đầy đủ (rà lại 2026-10-23):
   [[02-System-Specs/File-Storage-And-Downloads-Specs|File-Storage-And-Downloads-Specs]] §7.4.
 - Thẻ tài liệu (`[tenantSlug]/_ui/products.tsx`): ảnh `aspect-[4/3]` dưới `lg`, `lg:aspect-[16/10]`; tiêu đề
   `line-clamp-2`; có `summary` → đoạn `line-clamp-2` chữ `text-white/85`. Ảnh bìa theo thứ tự Cloudinary → R2 (`coverUrl`).
@@ -940,11 +940,56 @@ Từ ADR-042 (2026-10-17 ✅): `AdminSidebarNav` là lớp cấu hình trên `Si
   **không sao**, chỉ mục đã xác nhận đồng ý), **nhật ký phát triển** (dòng thời gian, ngày trong `<time>`), **lời mời** (chữ + CTA tuỳ chọn).
 * **FAQ:** `<details>/<summary>` gốc (Enter/Space mở, không cần JS); câu hỏi là H3 trong `<summary>`.
 * **Minh hoạ** Hero (khi chưa có ảnh) và "Kêu gọi mở gian hàng": dựng bằng CSS, `aria-hidden`, **không số liệu, không giá, không sao, không chữ**
-  (đã gỡ "500+", "10.000+", "149.000đ", 5 sao cố định).
+  (đã gỡ "500+", "10.000+", "149.000đ", 5 sao cố định). Số liệu **thật** trên Hero: thẻ số liệu §12.10.
 * **H1 dự phòng:** khi section hero bị ẩn, trang vẫn có `<h1 className="sr-only">` (ẩn thị giác) — trang luôn có đúng một H1.
 * **Tương phản đã sửa:** chữ eyebrow dùng `color-mix(in srgb, <accent> 72%, black)` (hằng `AMBER_TEXT`); chữ trên nút CTA nền cam (`AMBER`) đổi sang
   `#241503`.
 * Skip-link + `<main id="noi-dung">`: §1.1.
+
+### 12.10. Hero — thẻ số liệu nổi bật ("Bổ sung ADR-050 lần 3") ✅ đọc code 2026-10-23 (chưa commit)
+
+> Nguồn: "Bổ sung ADR-050 lần 3" (`docs/DECISIONS.md`) + brief Quốc; Long đối chiếu `app/_ui/hero-stat-badges.tsx`, `app/_home-sections.tsx`
+> (`HeroSection`). Dữ liệu/lọc/định dạng số: [[02-System-Specs/System-Cms-Menu-Home-Seo-Specs|System-Cms-Menu-Home-Seo-Specs]] §3.6.
+
+* **Component:** `HeroStatBadges({ items, groupLabel = "Số liệu nổi bật" })` — `apps/web/app/_ui/hero-stat-badges.tsx` (server-safe). Nhận
+  `HeroStatBadgeItem[]` **đã lọc ở server**; rỗng → `null`; cắt tối đa 3. Đặt **bên trong** khung media `relative` của `HeroSection`, ngay sau ảnh/minh hoạ.
+* **Map số liệu → icon / màu** (`METRIC_VISUAL`, màu là token runtime `var(--brand-*)` từ `catalog-parts`):
+
+  | `metric` | Icon | Màu |
+  | :-- | :-- | :-- |
+  | `tenants` | `IconStorefront` | `BLUE` |
+  | `products` | `IconDocs` | `AMBER` |
+  | `sold` | `IconBag` (khai báo riêng trong file, nét 1.7) | `GREEN` |
+  | `reviews` | `IconStar` | `AMBER` |
+
+  Ô icon nền `color-mix(in srgb, <màu> 14%, white)`; số `font-heading` `text-xl`/`sm:text-2xl` đậm `tabular-nums` màu `INK`; nhãn `text-xs`/`sm:text-[13px]`
+  màu `INK_SOFT`, `overflow-wrap:anywhere`. Thẻ nền trắng `rounded-2xl`, bóng `0 18px 40px rgba(6,12,35,0.28)`.
+* **Một DOM cho hai bố cục:** một `<ul role="list" aria-label>`:
+  * **Dưới `lg`:** lưới ngay dưới ảnh (`mt-5`), số cột = số thẻ (1–3), không phủ ảnh; `sm+` icon nằm ngang cạnh chữ.
+  * **`lg+`:** `ul` thành `block` (cao 0, không nhảy layout), mỗi `<li>` `absolute z-10`, rộng 170–220px, phủ mép khung theo số thẻ — thứ tự trên → dưới
+    khớp thứ tự DOM (= thứ tự CMS):
+
+    | Số thẻ | Vị trí |
+    | :-- | :-- |
+    | 1 | dưới-trái |
+    | 2 | trên-phải, dưới-trái |
+    | 3 | trên-phải, giữa-phải, dưới-trái |
+
+* **Độ tràn ra ngoài khung media:** phía phải `-right-4`/`xl:-right-6` (trên) và `-right-6`/`xl:-right-8` (giữa) → **≤ 24px ở `lg`, ≤ 32px ở `xl`**, nằm
+  trong lề `container-page` 32px; phía trái `-left-8`/`xl:-left-12` (32/48px) tràn vào khoảng cách giữa cột chữ và cột ảnh. Section hero có
+  `overflow-x-clip` làm dự phòng chống cuộn ngang ✅ code. Độ tràn trái 48px ở `xl` (vượt mốc "≤ 24/32px" của brief) được Quốc **chấp nhận như code
+  hiện tại** (2026-10-23, KB-Audit §32 mục 3).
+* **Khung media:** có ảnh → rộng `max-w-[320px]`/`sm:max-w-[360px]`/`lg:w-[380px]`/`xl:w-[420px]`, khung `aspect-[4/5]` `rounded-[24px]`
+  `overflow-hidden`, `<img src={cloudinaryDeliveryUrl(data.imageUrl, { width: 1200 })} fetchPriority="high" object-cover>` (khớp §9.8 từ
+  2026-10-23 ✅ code); không ảnh → minh hoạ CSS cao cố định 220/340/420px như trước.
+* **Chữ số hiển thị:** `display` = `formatCompactStatCount(value)` — làm tròn xuống, dấu **"+" chỉ khi số đã bị làm tròn** (125 → "120+", 1.250 →
+  "1,2K+"); số đúng tròn theo bậc không có "+" (100 → "100", 1.000 → "1K", 1.200 → "1,2K", 1.000.000 → "1M") ✅ code + unit test.
+* **A11y:** phần nhìn thấy (icon, số, nhãn) `aria-hidden`; mỗi thẻ có câu `sr-only` "`<số đọc>` `<nhãn>`" — số đọc (`spokenCount`) dựng từ `value` thật
+  bằng `floorStatValue` + `isStatRounded` (`@gieochu/core/home-sections`), **cùng bậc** với chữ hiển thị: "1,2K+" → "Hơn 1.200 Lượt mua"; "1,2K" →
+  "1.200 Lượt mua"; "87" → "87 Lượt mua". Chữ "Hơn" xuất hiện **đúng khi** phần hiển thị có "+" — hai kênh luôn nói cùng một ý ✅ code. Không có
+  chuyển động → không cần nhánh `prefers-reduced-motion`.
+* **Minh hoạ CSS khi có thẻ thật:** `HeroIllustration hideFloatingCardOnDesktop` — thẻ trang trí "đã sẵn sàng" (dấu tích) bị `lg:hidden` khi có ≥ 1 thẻ
+  số liệu, tránh chồng/rối; dưới `lg` vẫn hiện (thẻ số liệu nằm dưới minh hoạ).
 
 ---
 
@@ -1894,7 +1939,7 @@ Form vẫn nằm ở `orders/_ui/order-filter-form.tsx` (trang Khách hàng impo
 * `apps/web/app/globals.css` — `@utility container-page/prose/narrow` (§4)
 * `docs/DECISIONS.md` ADR-025 (tenant chỉ sở hữu nội dung storefront), ADR-024 (độ rộng layout), ADR-023 (storefront tenant theo section CMS)
 * [[01-Architecture-Decisions/ADR-011-Tenant-Owns-Storefront-Content-Only|ADR-011 (KB, ≙ ADR-025)]] ([ADR-011-Tenant-Owns-Storefront-Content-Only.md](../01-Architecture-Decisions/ADR-011-Tenant-Owns-Storefront-Content-Only.md))
-* `apps/web/app/_ui/site-header.tsx`, `site-footer.tsx`, `system-fonts.ts` (§1.1)
+* `apps/web/app/_ui/site-header.tsx`, `site-footer.tsx`, `system-fonts.ts` (§1.1) · `apps/web/app/_ui/hero-stat-badges.tsx` (§12.10)
 * `apps/web/app/[tenantSlug]/_ui/theme.ts`, `primitives.tsx`, `fonts.ts`, `icons.tsx`, `contact-form.tsx` (§8)
 * [[02-System-Specs/Storefront-CMS-Specs|Storefront-CMS-Specs]] ([Storefront-CMS-Specs.md](../02-System-Specs/Storefront-CMS-Specs.md))
 * `docs/GIEOCHU_BRAND_IDENTITY_PRODUCT_PROPOSAL_V1.0.md` §28 (Color System), §30 (Typography)

@@ -15,7 +15,7 @@ status: Accepted (Chốt — Áp dụng chính thức)
 # 🏛️ ADR-035: Đợt 1 — CMS menu header/footer, trang chủ theo brief + SEO trang chủ, Điều khoản sử dụng có phiên bản
 
 ## 1. Trạng Thái (Status)
-**ĐÃ PHÊ DUYỆT (Accepted)** — tương ứng **ADR-050** trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md) (chủ dự án chốt 2026-10-23), gồm "Bổ sung ADR-050 lần 2" và mục
+**ĐÃ PHÊ DUYỆT (Accepted)** — tương ứng **ADR-050** trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md) (chủ dự án chốt 2026-10-23), gồm "Bổ sung ADR-050 lần 2", "Bổ sung ADR-050 lần 3" (Hero) và mục
 "Bổ sung ADR-050" (Quốc chốt kỹ thuật mục 3 trước migrate). Bản trích ghi vào thư mục này theo duyệt của Quốc (brief 2026-10-23).
 **Sửa đổi** [[01-Architecture-Decisions/ADR-011-Tenant-Owns-Storefront-Content-Only|ADR-011 KB (≙ ADR-025)]]: header/footer không còn là chrome cố định.
 
@@ -67,6 +67,24 @@ hạng mục A–D (trang chủ, pháp lý, menu, SEO). Chủ dự án chỉ duy
 - Ô SEO trang chủ **lưu thẳng, không qua nháp** (giống Bảng giá) cho tới khi có quyết định khác.
 - Migration ADR-050 đã chạy nên **không sửa** comment trong `migration.sql` (đổi checksum) — quy tắc: chạy migration trước khi deploy code.
 
+**Bổ sung ADR-050 lần 3 (2026-10-23, chủ dự án duyệt — Hero), không migration:**
+- (1) `hero.brandMessage` trống → **không hiển thị** dòng thông điệp (bỏ việc tự lấy slogan thương hiệu).
+- (2) Hero thêm **thẻ số liệu nổi bật** quanh ảnh: tối đa 3 thẻ, mỗi thẻ chọn 1 trong 4 số liệu thật sẵn có của section `stats` (`tenants`, `products`,
+  `sold`, `reviews` — tính từ DB mỗi request qua `getHomeStats()`, chưa có cache); nhãn sửa được; ngưỡng tối thiểu (dưới ngưỡng → ẩn thẻ). Mặc định
+  3 thẻ gian hàng / tài liệu / lượt mua, ngưỡng 10, không có thẻ đánh giá. Số hiển thị làm gọn ("120+", "1,2K+").
+- Desktop: thẻ phủ mép ảnh ở các góc; mobile: hàng thẻ dưới ảnh. Không có ảnh → giữ minh hoạ CSS.
+- Khung ảnh hero cố định **4:5** (không CLS) — ảnh 1200×1500 px, tỷ lệ khác bị cắt giữa (`object-cover`); WebP/JPEG < 300 KB, chừa ~15% mỗi góc.
+- Chi tiết: [[02-System-Specs/System-Cms-Menu-Home-Seo-Specs|System-Cms-Menu-Home-Seo-Specs]] §3.6 · bố cục:
+  [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §12.10. Phần code ✅ Long đối chiếu working tree (chưa commit).
+
+> [!note] Tinh chỉnh lần 3 (2026-10-23, Quốc — xử lý [[00-Index/KB-Audit-2026-09-26|KB-Audit]] §32; ≙ dòng "Tinh chỉnh lần 3" dưới "Bổ sung ADR-050 lần 3" trong `docs/DECISIONS.md`)
+> - Dấu "+" chỉ thêm khi số **đã bị làm tròn** (100 → "100", 125 → "120+", 1.000 → "1K", 1.250 → "1,2K+"); câu đọc `sr-only` dùng
+>   `isStatRounded`/`floorStatValue` nên chỉ có "Hơn" khi chữ hiển thị có "+" ✅ code.
+> - Thẻ có giá trị thật **= 0 luôn ẩn**, kể cả khi `minValue` = 0 (thống nhất với section `stats`, ADR-033 mục 2); hint trạng thái trong editor
+>   tính cùng quy tắc ✅ code.
+> - Ảnh Hero trang chủ qua `cloudinaryDeliveryUrl(url, { width: 1200 })` (ADR-028) ✅ code.
+> - Thẻ dưới-trái tràn 48px ở `xl`: giữ như code hiện tại (Quốc chấp nhận).
+
 **Hoãn sang giai đoạn pháp lý:** các trang pháp lý khác, trang hub, mở rộng `abuse_reports`, chấp thuận khi mở gian hàng/xuất bản, công bố bản dự
 thảo, xoá tài khoản, thông tin pháp nhân.
 
@@ -83,11 +101,12 @@ thảo, xoá tài khoản, thông tin pháp nhân.
 | Bộ giới hạn SEO chung | `packages/core/src/admin/seo.ts` (subpath `@gieochu/core/seo`); `pricing-sections.ts` dùng lại (giá trị cũ 120/320 không đổi) |
 | Slug hệ thống | `SYSTEM_CMS_SLUGS = ["home","shop","pricing","menu"]` (`cms-slugs.ts`) |
 | Section trang chủ | `packages/core/src/admin/home-sections.ts`; loader `apps/web/lib/home-cms.ts`; `app/page.tsx` (`generateMetadata`) |
+| Thẻ số liệu Hero (lần 3) | schema + `defaultHeroStatBadges`, `formatCompactStatCount`, `isStatRounded`, `floorStatValue` trong `home-sections.ts` (subpath `@gieochu/core/home-sections`); lọc `buildHeroStatBadges` (`apps/web/lib/home.ts`); UI `apps/web/app/_ui/hero-stat-badges.tsx`; editor `HeroStatBadgesEditor` (`home-sections-editor.tsx`, nhận `liveStats`) |
 | Menu loader / editor | `apps/web/lib/site-menu.ts`; `app/admin/cms/menu/` (`page.tsx`, `actions.ts`, `menu-editor.tsx`) |
 | Pháp lý | `packages/core/src/legal/legal-document.ts` (subpath `@gieochu/core/legal`), `packages/core/src/content/brand-token.ts`, `apps/web/lib/legal.ts`, `app/admin/cms/phap-ly/*`, `app/phap-ly/[slug]/page.tsx`, `api/auth/register/route.ts` |
 | Migration | `packages/db/prisma/migrations/20261023090000_adr050_legal_documents/migration.sql` |
 | Audit | 7 action mới trong `AUDIT_ACTIONS` (`packages/core/src/audit/audit.ts`) |
-| Test | `packages/core/src/admin/site-menu.test.ts` (1 unit), `apps/web/tests/integration/legal.test.ts` (2 integration); trần `scripts/count-tests.mjs` 95/57 |
+| Test | `packages/core/src/admin/site-menu.test.ts` (1 unit — lần 3 chỉ thêm `expect` vào test có sẵn, không thêm test case), `apps/web/tests/integration/legal.test.ts` (2 integration); trần `scripts/count-tests.mjs` 95/57 |
 
 ---
 
