@@ -324,6 +324,7 @@ export type TenantWhereInput = {
   dailyStats?: Prisma.TenantDailyStatListRelationFilter
   abuseReports?: Prisma.AbuseReportListRelationFilter
   subscriptionRefund?: Prisma.XOR<Prisma.SubscriptionRefundRequestNullableScalarRelationFilter, Prisma.SubscriptionRefundRequestWhereInput> | null
+  orderNotes?: Prisma.OrderNoteListRelationFilter
 }
 
 export type TenantOrderByWithRelationInput = {
@@ -365,6 +366,7 @@ export type TenantOrderByWithRelationInput = {
   dailyStats?: Prisma.TenantDailyStatOrderByRelationAggregateInput
   abuseReports?: Prisma.AbuseReportOrderByRelationAggregateInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestOrderByWithRelationInput
+  orderNotes?: Prisma.OrderNoteOrderByRelationAggregateInput
 }
 
 export type TenantWhereUniqueInput = Prisma.AtLeast<{
@@ -409,6 +411,7 @@ export type TenantWhereUniqueInput = Prisma.AtLeast<{
   dailyStats?: Prisma.TenantDailyStatListRelationFilter
   abuseReports?: Prisma.AbuseReportListRelationFilter
   subscriptionRefund?: Prisma.XOR<Prisma.SubscriptionRefundRequestNullableScalarRelationFilter, Prisma.SubscriptionRefundRequestWhereInput> | null
+  orderNotes?: Prisma.OrderNoteListRelationFilter
 }, "id" | "slug" | "ownerId" | "orderCodePrefix">
 
 export type TenantOrderByWithAggregationInput = {
@@ -497,6 +500,7 @@ export type TenantCreateInput = {
   dailyStats?: Prisma.TenantDailyStatCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateInput = {
@@ -537,6 +541,7 @@ export type TenantUncheckedCreateInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUpdateInput = {
@@ -577,6 +582,7 @@ export type TenantUpdateInput = {
   dailyStats?: Prisma.TenantDailyStatUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateInput = {
@@ -617,6 +623,7 @@ export type TenantUncheckedUpdateInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUncheckedUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateManyInput = {
@@ -912,6 +919,20 @@ export type TenantUpdateOneRequiredWithoutOrdersNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.TenantUpdateToOneWithWhereWithoutOrdersInput, Prisma.TenantUpdateWithoutOrdersInput>, Prisma.TenantUncheckedUpdateWithoutOrdersInput>
 }
 
+export type TenantCreateNestedOneWithoutOrderNotesInput = {
+  create?: Prisma.XOR<Prisma.TenantCreateWithoutOrderNotesInput, Prisma.TenantUncheckedCreateWithoutOrderNotesInput>
+  connectOrCreate?: Prisma.TenantCreateOrConnectWithoutOrderNotesInput
+  connect?: Prisma.TenantWhereUniqueInput
+}
+
+export type TenantUpdateOneRequiredWithoutOrderNotesNestedInput = {
+  create?: Prisma.XOR<Prisma.TenantCreateWithoutOrderNotesInput, Prisma.TenantUncheckedCreateWithoutOrderNotesInput>
+  connectOrCreate?: Prisma.TenantCreateOrConnectWithoutOrderNotesInput
+  upsert?: Prisma.TenantUpsertWithoutOrderNotesInput
+  connect?: Prisma.TenantWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.TenantUpdateToOneWithWhereWithoutOrderNotesInput, Prisma.TenantUpdateWithoutOrderNotesInput>, Prisma.TenantUncheckedUpdateWithoutOrderNotesInput>
+}
+
 export type TenantCreateNestedOneWithoutTransactionsInput = {
   create?: Prisma.XOR<Prisma.TenantCreateWithoutTransactionsInput, Prisma.TenantUncheckedCreateWithoutTransactionsInput>
   connectOrCreate?: Prisma.TenantCreateOrConnectWithoutTransactionsInput
@@ -1103,6 +1124,7 @@ export type TenantCreateWithoutOwnerInput = {
   dailyStats?: Prisma.TenantDailyStatCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutOwnerInput = {
@@ -1142,6 +1164,7 @@ export type TenantUncheckedCreateWithoutOwnerInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutOwnerInput = {
@@ -1197,6 +1220,7 @@ export type TenantUpdateWithoutOwnerInput = {
   dailyStats?: Prisma.TenantDailyStatUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutOwnerInput = {
@@ -1236,6 +1260,7 @@ export type TenantUncheckedUpdateWithoutOwnerInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUncheckedUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutSubscriptionInput = {
@@ -1275,6 +1300,7 @@ export type TenantCreateWithoutSubscriptionInput = {
   dailyStats?: Prisma.TenantDailyStatCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutSubscriptionInput = {
@@ -1314,6 +1340,7 @@ export type TenantUncheckedCreateWithoutSubscriptionInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutSubscriptionInput = {
@@ -1369,6 +1396,7 @@ export type TenantUpdateWithoutSubscriptionInput = {
   dailyStats?: Prisma.TenantDailyStatUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutSubscriptionInput = {
@@ -1408,6 +1436,7 @@ export type TenantUncheckedUpdateWithoutSubscriptionInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUncheckedUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutMembersInput = {
@@ -1447,6 +1476,7 @@ export type TenantCreateWithoutMembersInput = {
   dailyStats?: Prisma.TenantDailyStatCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutMembersInput = {
@@ -1486,6 +1516,7 @@ export type TenantUncheckedCreateWithoutMembersInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutMembersInput = {
@@ -1541,6 +1572,7 @@ export type TenantUpdateWithoutMembersInput = {
   dailyStats?: Prisma.TenantDailyStatUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutMembersInput = {
@@ -1580,6 +1612,7 @@ export type TenantUncheckedUpdateWithoutMembersInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUncheckedUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutSlugHistoryInput = {
@@ -1619,6 +1652,7 @@ export type TenantCreateWithoutSlugHistoryInput = {
   dailyStats?: Prisma.TenantDailyStatCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutSlugHistoryInput = {
@@ -1658,6 +1692,7 @@ export type TenantUncheckedCreateWithoutSlugHistoryInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutSlugHistoryInput = {
@@ -1713,6 +1748,7 @@ export type TenantUpdateWithoutSlugHistoryInput = {
   dailyStats?: Prisma.TenantDailyStatUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutSlugHistoryInput = {
@@ -1752,6 +1788,7 @@ export type TenantUncheckedUpdateWithoutSlugHistoryInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUncheckedUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutProductsInput = {
@@ -1791,6 +1828,7 @@ export type TenantCreateWithoutProductsInput = {
   dailyStats?: Prisma.TenantDailyStatCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutProductsInput = {
@@ -1830,6 +1868,7 @@ export type TenantUncheckedCreateWithoutProductsInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutProductsInput = {
@@ -1885,6 +1924,7 @@ export type TenantUpdateWithoutProductsInput = {
   dailyStats?: Prisma.TenantDailyStatUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutProductsInput = {
@@ -1924,6 +1964,7 @@ export type TenantUncheckedUpdateWithoutProductsInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUncheckedUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutPaymentConfigsInput = {
@@ -1963,6 +2004,7 @@ export type TenantCreateWithoutPaymentConfigsInput = {
   dailyStats?: Prisma.TenantDailyStatCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutPaymentConfigsInput = {
@@ -2002,6 +2044,7 @@ export type TenantUncheckedCreateWithoutPaymentConfigsInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutPaymentConfigsInput = {
@@ -2057,6 +2100,7 @@ export type TenantUpdateWithoutPaymentConfigsInput = {
   dailyStats?: Prisma.TenantDailyStatUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutPaymentConfigsInput = {
@@ -2096,6 +2140,7 @@ export type TenantUncheckedUpdateWithoutPaymentConfigsInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUncheckedUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutSubscriptionInvoicesInput = {
@@ -2135,6 +2180,7 @@ export type TenantCreateWithoutSubscriptionInvoicesInput = {
   dailyStats?: Prisma.TenantDailyStatCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutSubscriptionInvoicesInput = {
@@ -2174,6 +2220,7 @@ export type TenantUncheckedCreateWithoutSubscriptionInvoicesInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutSubscriptionInvoicesInput = {
@@ -2229,6 +2276,7 @@ export type TenantUpdateWithoutSubscriptionInvoicesInput = {
   dailyStats?: Prisma.TenantDailyStatUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutSubscriptionInvoicesInput = {
@@ -2268,6 +2316,7 @@ export type TenantUncheckedUpdateWithoutSubscriptionInvoicesInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUncheckedUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutSubscriptionRefundInput = {
@@ -2307,6 +2356,7 @@ export type TenantCreateWithoutSubscriptionRefundInput = {
   posts?: Prisma.PostCreateNestedManyWithoutTenantInput
   dailyStats?: Prisma.TenantDailyStatCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportCreateNestedManyWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutSubscriptionRefundInput = {
@@ -2346,6 +2396,7 @@ export type TenantUncheckedCreateWithoutSubscriptionRefundInput = {
   posts?: Prisma.PostUncheckedCreateNestedManyWithoutTenantInput
   dailyStats?: Prisma.TenantDailyStatUncheckedCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutSubscriptionRefundInput = {
@@ -2401,6 +2452,7 @@ export type TenantUpdateWithoutSubscriptionRefundInput = {
   posts?: Prisma.PostUpdateManyWithoutTenantNestedInput
   dailyStats?: Prisma.TenantDailyStatUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUpdateManyWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutSubscriptionRefundInput = {
@@ -2440,6 +2492,7 @@ export type TenantUncheckedUpdateWithoutSubscriptionRefundInput = {
   posts?: Prisma.PostUncheckedUpdateManyWithoutTenantNestedInput
   dailyStats?: Prisma.TenantDailyStatUncheckedUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUncheckedUpdateManyWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutCouponsInput = {
@@ -2479,6 +2532,7 @@ export type TenantCreateWithoutCouponsInput = {
   dailyStats?: Prisma.TenantDailyStatCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutCouponsInput = {
@@ -2518,6 +2572,7 @@ export type TenantUncheckedCreateWithoutCouponsInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutCouponsInput = {
@@ -2573,6 +2628,7 @@ export type TenantUpdateWithoutCouponsInput = {
   dailyStats?: Prisma.TenantDailyStatUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutCouponsInput = {
@@ -2612,6 +2668,7 @@ export type TenantUncheckedUpdateWithoutCouponsInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUncheckedUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutOrdersInput = {
@@ -2651,6 +2708,7 @@ export type TenantCreateWithoutOrdersInput = {
   dailyStats?: Prisma.TenantDailyStatCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutOrdersInput = {
@@ -2690,6 +2748,7 @@ export type TenantUncheckedCreateWithoutOrdersInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutOrdersInput = {
@@ -2745,6 +2804,7 @@ export type TenantUpdateWithoutOrdersInput = {
   dailyStats?: Prisma.TenantDailyStatUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutOrdersInput = {
@@ -2772,6 +2832,183 @@ export type TenantUncheckedUpdateWithoutOrdersInput = {
   paymentConfigs?: Prisma.TenantPaymentConfigUncheckedUpdateManyWithoutTenantNestedInput
   subscriptionInvoices?: Prisma.SubscriptionInvoiceUncheckedUpdateManyWithoutTenantNestedInput
   coupons?: Prisma.CouponUncheckedUpdateManyWithoutTenantNestedInput
+  transactions?: Prisma.TenantPaymentTransactionUncheckedUpdateManyWithoutTenantNestedInput
+  customers?: Prisma.TenantCustomerUncheckedUpdateManyWithoutTenantNestedInput
+  entitlements?: Prisma.EntitlementUncheckedUpdateManyWithoutTenantNestedInput
+  shareLinks?: Prisma.ShareLinkUncheckedUpdateManyWithoutTenantNestedInput
+  downloadEvents?: Prisma.DownloadEventUncheckedUpdateManyWithoutTenantNestedInput
+  storefrontMessages?: Prisma.StorefrontMessageUncheckedUpdateManyWithoutTenantNestedInput
+  mediaAssets?: Prisma.TenantMediaAssetUncheckedUpdateManyWithoutTenantNestedInput
+  reviews?: Prisma.ReviewUncheckedUpdateManyWithoutTenantNestedInput
+  posts?: Prisma.PostUncheckedUpdateManyWithoutTenantNestedInput
+  dailyStats?: Prisma.TenantDailyStatUncheckedUpdateManyWithoutTenantNestedInput
+  abuseReports?: Prisma.AbuseReportUncheckedUpdateManyWithoutTenantNestedInput
+  subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutTenantNestedInput
+}
+
+export type TenantCreateWithoutOrderNotesInput = {
+  id?: string
+  slug: string
+  name: string
+  bio?: string | null
+  logoKey?: string | null
+  coverKey?: string | null
+  branding?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  storefrontSections?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  storefrontSectionsDraft?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  orderCodePrefix: string
+  status?: $Enums.TenantStatus
+  storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  owner: Prisma.UserCreateNestedOneWithoutOwnedTenantInput
+  members?: Prisma.TenantMemberCreateNestedManyWithoutTenantInput
+  slugHistory?: Prisma.TenantSlugHistoryCreateNestedManyWithoutTenantInput
+  subscription?: Prisma.SubscriptionCreateNestedOneWithoutTenantInput
+  products?: Prisma.ProductCreateNestedManyWithoutTenantInput
+  paymentConfigs?: Prisma.TenantPaymentConfigCreateNestedManyWithoutTenantInput
+  subscriptionInvoices?: Prisma.SubscriptionInvoiceCreateNestedManyWithoutTenantInput
+  coupons?: Prisma.CouponCreateNestedManyWithoutTenantInput
+  orders?: Prisma.OrderCreateNestedManyWithoutTenantInput
+  transactions?: Prisma.TenantPaymentTransactionCreateNestedManyWithoutTenantInput
+  customers?: Prisma.TenantCustomerCreateNestedManyWithoutTenantInput
+  entitlements?: Prisma.EntitlementCreateNestedManyWithoutTenantInput
+  shareLinks?: Prisma.ShareLinkCreateNestedManyWithoutTenantInput
+  downloadEvents?: Prisma.DownloadEventCreateNestedManyWithoutTenantInput
+  storefrontMessages?: Prisma.StorefrontMessageCreateNestedManyWithoutTenantInput
+  mediaAssets?: Prisma.TenantMediaAssetCreateNestedManyWithoutTenantInput
+  reviews?: Prisma.ReviewCreateNestedManyWithoutTenantInput
+  posts?: Prisma.PostCreateNestedManyWithoutTenantInput
+  dailyStats?: Prisma.TenantDailyStatCreateNestedManyWithoutTenantInput
+  abuseReports?: Prisma.AbuseReportCreateNestedManyWithoutTenantInput
+  subscriptionRefund?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutTenantInput
+}
+
+export type TenantUncheckedCreateWithoutOrderNotesInput = {
+  id?: string
+  slug: string
+  ownerId: string
+  name: string
+  bio?: string | null
+  logoKey?: string | null
+  coverKey?: string | null
+  branding?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  storefrontSections?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  storefrontSectionsDraft?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  orderCodePrefix: string
+  status?: $Enums.TenantStatus
+  storageUsedBytes?: number
+  storageBucket?: string | null
+  storageProvider?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  members?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutTenantInput
+  slugHistory?: Prisma.TenantSlugHistoryUncheckedCreateNestedManyWithoutTenantInput
+  subscription?: Prisma.SubscriptionUncheckedCreateNestedOneWithoutTenantInput
+  products?: Prisma.ProductUncheckedCreateNestedManyWithoutTenantInput
+  paymentConfigs?: Prisma.TenantPaymentConfigUncheckedCreateNestedManyWithoutTenantInput
+  subscriptionInvoices?: Prisma.SubscriptionInvoiceUncheckedCreateNestedManyWithoutTenantInput
+  coupons?: Prisma.CouponUncheckedCreateNestedManyWithoutTenantInput
+  orders?: Prisma.OrderUncheckedCreateNestedManyWithoutTenantInput
+  transactions?: Prisma.TenantPaymentTransactionUncheckedCreateNestedManyWithoutTenantInput
+  customers?: Prisma.TenantCustomerUncheckedCreateNestedManyWithoutTenantInput
+  entitlements?: Prisma.EntitlementUncheckedCreateNestedManyWithoutTenantInput
+  shareLinks?: Prisma.ShareLinkUncheckedCreateNestedManyWithoutTenantInput
+  downloadEvents?: Prisma.DownloadEventUncheckedCreateNestedManyWithoutTenantInput
+  storefrontMessages?: Prisma.StorefrontMessageUncheckedCreateNestedManyWithoutTenantInput
+  mediaAssets?: Prisma.TenantMediaAssetUncheckedCreateNestedManyWithoutTenantInput
+  reviews?: Prisma.ReviewUncheckedCreateNestedManyWithoutTenantInput
+  posts?: Prisma.PostUncheckedCreateNestedManyWithoutTenantInput
+  dailyStats?: Prisma.TenantDailyStatUncheckedCreateNestedManyWithoutTenantInput
+  abuseReports?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutTenantInput
+  subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutTenantInput
+}
+
+export type TenantCreateOrConnectWithoutOrderNotesInput = {
+  where: Prisma.TenantWhereUniqueInput
+  create: Prisma.XOR<Prisma.TenantCreateWithoutOrderNotesInput, Prisma.TenantUncheckedCreateWithoutOrderNotesInput>
+}
+
+export type TenantUpsertWithoutOrderNotesInput = {
+  update: Prisma.XOR<Prisma.TenantUpdateWithoutOrderNotesInput, Prisma.TenantUncheckedUpdateWithoutOrderNotesInput>
+  create: Prisma.XOR<Prisma.TenantCreateWithoutOrderNotesInput, Prisma.TenantUncheckedCreateWithoutOrderNotesInput>
+  where?: Prisma.TenantWhereInput
+}
+
+export type TenantUpdateToOneWithWhereWithoutOrderNotesInput = {
+  where?: Prisma.TenantWhereInput
+  data: Prisma.XOR<Prisma.TenantUpdateWithoutOrderNotesInput, Prisma.TenantUncheckedUpdateWithoutOrderNotesInput>
+}
+
+export type TenantUpdateWithoutOrderNotesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  branding?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  storefrontSections?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  storefrontSectionsDraft?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
+  storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  owner?: Prisma.UserUpdateOneRequiredWithoutOwnedTenantNestedInput
+  members?: Prisma.TenantMemberUpdateManyWithoutTenantNestedInput
+  slugHistory?: Prisma.TenantSlugHistoryUpdateManyWithoutTenantNestedInput
+  subscription?: Prisma.SubscriptionUpdateOneWithoutTenantNestedInput
+  products?: Prisma.ProductUpdateManyWithoutTenantNestedInput
+  paymentConfigs?: Prisma.TenantPaymentConfigUpdateManyWithoutTenantNestedInput
+  subscriptionInvoices?: Prisma.SubscriptionInvoiceUpdateManyWithoutTenantNestedInput
+  coupons?: Prisma.CouponUpdateManyWithoutTenantNestedInput
+  orders?: Prisma.OrderUpdateManyWithoutTenantNestedInput
+  transactions?: Prisma.TenantPaymentTransactionUpdateManyWithoutTenantNestedInput
+  customers?: Prisma.TenantCustomerUpdateManyWithoutTenantNestedInput
+  entitlements?: Prisma.EntitlementUpdateManyWithoutTenantNestedInput
+  shareLinks?: Prisma.ShareLinkUpdateManyWithoutTenantNestedInput
+  downloadEvents?: Prisma.DownloadEventUpdateManyWithoutTenantNestedInput
+  storefrontMessages?: Prisma.StorefrontMessageUpdateManyWithoutTenantNestedInput
+  mediaAssets?: Prisma.TenantMediaAssetUpdateManyWithoutTenantNestedInput
+  reviews?: Prisma.ReviewUpdateManyWithoutTenantNestedInput
+  posts?: Prisma.PostUpdateManyWithoutTenantNestedInput
+  dailyStats?: Prisma.TenantDailyStatUpdateManyWithoutTenantNestedInput
+  abuseReports?: Prisma.AbuseReportUpdateManyWithoutTenantNestedInput
+  subscriptionRefund?: Prisma.SubscriptionRefundRequestUpdateOneWithoutTenantNestedInput
+}
+
+export type TenantUncheckedUpdateWithoutOrderNotesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  ownerId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  logoKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  branding?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  storefrontSections?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  storefrontSectionsDraft?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  orderCodePrefix?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
+  storageUsedBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  members?: Prisma.TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
+  slugHistory?: Prisma.TenantSlugHistoryUncheckedUpdateManyWithoutTenantNestedInput
+  subscription?: Prisma.SubscriptionUncheckedUpdateOneWithoutTenantNestedInput
+  products?: Prisma.ProductUncheckedUpdateManyWithoutTenantNestedInput
+  paymentConfigs?: Prisma.TenantPaymentConfigUncheckedUpdateManyWithoutTenantNestedInput
+  subscriptionInvoices?: Prisma.SubscriptionInvoiceUncheckedUpdateManyWithoutTenantNestedInput
+  coupons?: Prisma.CouponUncheckedUpdateManyWithoutTenantNestedInput
+  orders?: Prisma.OrderUncheckedUpdateManyWithoutTenantNestedInput
   transactions?: Prisma.TenantPaymentTransactionUncheckedUpdateManyWithoutTenantNestedInput
   customers?: Prisma.TenantCustomerUncheckedUpdateManyWithoutTenantNestedInput
   entitlements?: Prisma.EntitlementUncheckedUpdateManyWithoutTenantNestedInput
@@ -2823,6 +3060,7 @@ export type TenantCreateWithoutTransactionsInput = {
   dailyStats?: Prisma.TenantDailyStatCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutTransactionsInput = {
@@ -2862,6 +3100,7 @@ export type TenantUncheckedCreateWithoutTransactionsInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutTransactionsInput = {
@@ -2917,6 +3156,7 @@ export type TenantUpdateWithoutTransactionsInput = {
   dailyStats?: Prisma.TenantDailyStatUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutTransactionsInput = {
@@ -2956,6 +3196,7 @@ export type TenantUncheckedUpdateWithoutTransactionsInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUncheckedUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutCustomersInput = {
@@ -2995,6 +3236,7 @@ export type TenantCreateWithoutCustomersInput = {
   dailyStats?: Prisma.TenantDailyStatCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutCustomersInput = {
@@ -3034,6 +3276,7 @@ export type TenantUncheckedCreateWithoutCustomersInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutCustomersInput = {
@@ -3089,6 +3332,7 @@ export type TenantUpdateWithoutCustomersInput = {
   dailyStats?: Prisma.TenantDailyStatUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutCustomersInput = {
@@ -3128,6 +3372,7 @@ export type TenantUncheckedUpdateWithoutCustomersInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUncheckedUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutEntitlementsInput = {
@@ -3167,6 +3412,7 @@ export type TenantCreateWithoutEntitlementsInput = {
   dailyStats?: Prisma.TenantDailyStatCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutEntitlementsInput = {
@@ -3206,6 +3452,7 @@ export type TenantUncheckedCreateWithoutEntitlementsInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutEntitlementsInput = {
@@ -3261,6 +3508,7 @@ export type TenantUpdateWithoutEntitlementsInput = {
   dailyStats?: Prisma.TenantDailyStatUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutEntitlementsInput = {
@@ -3300,6 +3548,7 @@ export type TenantUncheckedUpdateWithoutEntitlementsInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUncheckedUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutShareLinksInput = {
@@ -3339,6 +3588,7 @@ export type TenantCreateWithoutShareLinksInput = {
   dailyStats?: Prisma.TenantDailyStatCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutShareLinksInput = {
@@ -3378,6 +3628,7 @@ export type TenantUncheckedCreateWithoutShareLinksInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutShareLinksInput = {
@@ -3433,6 +3684,7 @@ export type TenantUpdateWithoutShareLinksInput = {
   dailyStats?: Prisma.TenantDailyStatUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutShareLinksInput = {
@@ -3472,6 +3724,7 @@ export type TenantUncheckedUpdateWithoutShareLinksInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUncheckedUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutDownloadEventsInput = {
@@ -3511,6 +3764,7 @@ export type TenantCreateWithoutDownloadEventsInput = {
   dailyStats?: Prisma.TenantDailyStatCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutDownloadEventsInput = {
@@ -3550,6 +3804,7 @@ export type TenantUncheckedCreateWithoutDownloadEventsInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutDownloadEventsInput = {
@@ -3605,6 +3860,7 @@ export type TenantUpdateWithoutDownloadEventsInput = {
   dailyStats?: Prisma.TenantDailyStatUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutDownloadEventsInput = {
@@ -3644,6 +3900,7 @@ export type TenantUncheckedUpdateWithoutDownloadEventsInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUncheckedUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutStorefrontMessagesInput = {
@@ -3683,6 +3940,7 @@ export type TenantCreateWithoutStorefrontMessagesInput = {
   dailyStats?: Prisma.TenantDailyStatCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutStorefrontMessagesInput = {
@@ -3722,6 +3980,7 @@ export type TenantUncheckedCreateWithoutStorefrontMessagesInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutStorefrontMessagesInput = {
@@ -3777,6 +4036,7 @@ export type TenantUpdateWithoutStorefrontMessagesInput = {
   dailyStats?: Prisma.TenantDailyStatUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutStorefrontMessagesInput = {
@@ -3816,6 +4076,7 @@ export type TenantUncheckedUpdateWithoutStorefrontMessagesInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUncheckedUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutMediaAssetsInput = {
@@ -3855,6 +4116,7 @@ export type TenantCreateWithoutMediaAssetsInput = {
   dailyStats?: Prisma.TenantDailyStatCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutMediaAssetsInput = {
@@ -3894,6 +4156,7 @@ export type TenantUncheckedCreateWithoutMediaAssetsInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutMediaAssetsInput = {
@@ -3949,6 +4212,7 @@ export type TenantUpdateWithoutMediaAssetsInput = {
   dailyStats?: Prisma.TenantDailyStatUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutMediaAssetsInput = {
@@ -3988,6 +4252,7 @@ export type TenantUncheckedUpdateWithoutMediaAssetsInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUncheckedUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutReviewsInput = {
@@ -4027,6 +4292,7 @@ export type TenantCreateWithoutReviewsInput = {
   dailyStats?: Prisma.TenantDailyStatCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutReviewsInput = {
@@ -4066,6 +4332,7 @@ export type TenantUncheckedCreateWithoutReviewsInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutReviewsInput = {
@@ -4121,6 +4388,7 @@ export type TenantUpdateWithoutReviewsInput = {
   dailyStats?: Prisma.TenantDailyStatUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutReviewsInput = {
@@ -4160,6 +4428,7 @@ export type TenantUncheckedUpdateWithoutReviewsInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUncheckedUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutPostsInput = {
@@ -4199,6 +4468,7 @@ export type TenantCreateWithoutPostsInput = {
   dailyStats?: Prisma.TenantDailyStatCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutPostsInput = {
@@ -4238,6 +4508,7 @@ export type TenantUncheckedCreateWithoutPostsInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutPostsInput = {
@@ -4293,6 +4564,7 @@ export type TenantUpdateWithoutPostsInput = {
   dailyStats?: Prisma.TenantDailyStatUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutPostsInput = {
@@ -4332,6 +4604,7 @@ export type TenantUncheckedUpdateWithoutPostsInput = {
   dailyStats?: Prisma.TenantDailyStatUncheckedUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUncheckedUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutDailyStatsInput = {
@@ -4371,6 +4644,7 @@ export type TenantCreateWithoutDailyStatsInput = {
   posts?: Prisma.PostCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutDailyStatsInput = {
@@ -4410,6 +4684,7 @@ export type TenantUncheckedCreateWithoutDailyStatsInput = {
   posts?: Prisma.PostUncheckedCreateNestedManyWithoutTenantInput
   abuseReports?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutDailyStatsInput = {
@@ -4465,6 +4740,7 @@ export type TenantUpdateWithoutDailyStatsInput = {
   posts?: Prisma.PostUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutDailyStatsInput = {
@@ -4504,6 +4780,7 @@ export type TenantUncheckedUpdateWithoutDailyStatsInput = {
   posts?: Prisma.PostUncheckedUpdateManyWithoutTenantNestedInput
   abuseReports?: Prisma.AbuseReportUncheckedUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutAbuseReportsInput = {
@@ -4543,6 +4820,7 @@ export type TenantCreateWithoutAbuseReportsInput = {
   posts?: Prisma.PostCreateNestedManyWithoutTenantInput
   dailyStats?: Prisma.TenantDailyStatCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutAbuseReportsInput = {
@@ -4582,6 +4860,7 @@ export type TenantUncheckedCreateWithoutAbuseReportsInput = {
   posts?: Prisma.PostUncheckedCreateNestedManyWithoutTenantInput
   dailyStats?: Prisma.TenantDailyStatUncheckedCreateNestedManyWithoutTenantInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedCreateNestedOneWithoutTenantInput
+  orderNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutAbuseReportsInput = {
@@ -4637,6 +4916,7 @@ export type TenantUpdateWithoutAbuseReportsInput = {
   posts?: Prisma.PostUpdateManyWithoutTenantNestedInput
   dailyStats?: Prisma.TenantDailyStatUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutAbuseReportsInput = {
@@ -4676,6 +4956,7 @@ export type TenantUncheckedUpdateWithoutAbuseReportsInput = {
   posts?: Prisma.PostUncheckedUpdateManyWithoutTenantNestedInput
   dailyStats?: Prisma.TenantDailyStatUncheckedUpdateManyWithoutTenantNestedInput
   subscriptionRefund?: Prisma.SubscriptionRefundRequestUncheckedUpdateOneWithoutTenantNestedInput
+  orderNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 
@@ -4702,6 +4983,7 @@ export type TenantCountOutputType = {
   posts: number
   dailyStats: number
   abuseReports: number
+  orderNotes: number
 }
 
 export type TenantCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -4723,6 +5005,7 @@ export type TenantCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions
   posts?: boolean | TenantCountOutputTypeCountPostsArgs
   dailyStats?: boolean | TenantCountOutputTypeCountDailyStatsArgs
   abuseReports?: boolean | TenantCountOutputTypeCountAbuseReportsArgs
+  orderNotes?: boolean | TenantCountOutputTypeCountOrderNotesArgs
 }
 
 /**
@@ -4861,6 +5144,13 @@ export type TenantCountOutputTypeCountAbuseReportsArgs<ExtArgs extends runtime.T
   where?: Prisma.AbuseReportWhereInput
 }
 
+/**
+ * TenantCountOutputType without action
+ */
+export type TenantCountOutputTypeCountOrderNotesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.OrderNoteWhereInput
+}
+
 
 export type TenantSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -4901,6 +5191,7 @@ export type TenantSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   dailyStats?: boolean | Prisma.Tenant$dailyStatsArgs<ExtArgs>
   abuseReports?: boolean | Prisma.Tenant$abuseReportsArgs<ExtArgs>
   subscriptionRefund?: boolean | Prisma.Tenant$subscriptionRefundArgs<ExtArgs>
+  orderNotes?: boolean | Prisma.Tenant$orderNotesArgs<ExtArgs>
   _count?: boolean | Prisma.TenantCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["tenant"]>
 
@@ -4989,6 +5280,7 @@ export type TenantInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   dailyStats?: boolean | Prisma.Tenant$dailyStatsArgs<ExtArgs>
   abuseReports?: boolean | Prisma.Tenant$abuseReportsArgs<ExtArgs>
   subscriptionRefund?: boolean | Prisma.Tenant$subscriptionRefundArgs<ExtArgs>
+  orderNotes?: boolean | Prisma.Tenant$orderNotesArgs<ExtArgs>
   _count?: boolean | Prisma.TenantCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type TenantIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -5022,6 +5314,7 @@ export type $TenantPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     dailyStats: Prisma.$TenantDailyStatPayload<ExtArgs>[]
     abuseReports: Prisma.$AbuseReportPayload<ExtArgs>[]
     subscriptionRefund: Prisma.$SubscriptionRefundRequestPayload<ExtArgs> | null
+    orderNotes: Prisma.$OrderNotePayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -5465,6 +5758,7 @@ export interface Prisma__TenantClient<T, Null = never, ExtArgs extends runtime.T
   dailyStats<T extends Prisma.Tenant$dailyStatsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Tenant$dailyStatsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TenantDailyStatPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   abuseReports<T extends Prisma.Tenant$abuseReportsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Tenant$abuseReportsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AbuseReportPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   subscriptionRefund<T extends Prisma.Tenant$subscriptionRefundArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Tenant$subscriptionRefundArgs<ExtArgs>>): Prisma.Prisma__SubscriptionRefundRequestClient<runtime.Types.Result.GetResult<Prisma.$SubscriptionRefundRequestPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  orderNotes<T extends Prisma.Tenant$orderNotesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Tenant$orderNotesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OrderNotePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -6379,6 +6673,30 @@ export type Tenant$subscriptionRefundArgs<ExtArgs extends runtime.Types.Extensio
    */
   include?: Prisma.SubscriptionRefundRequestInclude<ExtArgs> | null
   where?: Prisma.SubscriptionRefundRequestWhereInput
+}
+
+/**
+ * Tenant.orderNotes
+ */
+export type Tenant$orderNotesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the OrderNote
+   */
+  select?: Prisma.OrderNoteSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the OrderNote
+   */
+  omit?: Prisma.OrderNoteOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.OrderNoteInclude<ExtArgs> | null
+  where?: Prisma.OrderNoteWhereInput
+  orderBy?: Prisma.OrderNoteOrderByWithRelationInput | Prisma.OrderNoteOrderByWithRelationInput[]
+  cursor?: Prisma.OrderNoteWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.OrderNoteScalarFieldEnum | Prisma.OrderNoteScalarFieldEnum[]
 }
 
 /**

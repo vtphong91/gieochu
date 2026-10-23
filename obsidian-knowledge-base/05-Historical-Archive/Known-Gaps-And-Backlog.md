@@ -87,7 +87,9 @@ video/membership, app mobile, hoá đơn điện tử, đa tiền tệ, partitio
 - Chưa verify luồng mua hàng thật qua trình duyệt (cần R2 + provider thanh toán thật đã cấu hình).
 - Dashboard tenant: ô "Sản phẩm bán chạy"/"Đánh giá mới" vẫn ghi "Cần M5/M6"/"Cần M10".
 - Trang `/studio/[tenantSlug]/customers` thiếu: UI đọc/ghi `TenantCustomer.note`, link sang đơn của khách đó,
-  nút xuất CSV — đặc tả M8 có yêu cầu nhưng bị bỏ sót lúc viết `docs/modules/M8.md`.
+  nút xuất CSV — đặc tả M8 có yêu cầu nhưng bị bỏ sót lúc viết `docs/modules/M8.md`. **Đóng (ADR-048, xong code 2026-10-19, chưa commit):**
+  ghi chú khách + link "Xem đơn của khách" (`orders?khach=`) đã làm; xuất CSV = không làm (ADR-047 mục 3) — xem
+  [[02-System-Specs/Studio-Customers-Specs|Studio-Customers-Specs]].
 
 **M9 — Thư viện/Tải xuống/Share link**
 - Chưa test/chạy thật qua trình duyệt (tải trong `/account/library`, mở `/s/{token}` thật).

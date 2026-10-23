@@ -18,7 +18,7 @@ author: Long
 > Kế hoạch: [`docs/ke-hoach-nang-cap-tai-khoan-va-ho-so-2026-10-17.md`](../../docs/ke-hoach-nang-cap-tai-khoan-va-ho-so-2026-10-17.md);
 > đề xuất giao diện của Phong: `docs/de-xuat-trang-ho-so-2026-10-17.md`.
 >
-> Mức xác minh: ✅ Long đã đối chiếu code working tree 2026-10-17 (**GĐ1 + GĐ2 xong code, chưa commit/deploy**) · 🟡 theo brief/báo
+> Mức xác minh: ✅ Long đã đối chiếu code working tree 2026-10-17 (**GĐ1 + GĐ2 xong code; đã commit `7f8360b`**, deploy ❓) · 🟡 theo brief/báo
 > cáo · ❓ cần môi trường thật. Migration `20261017090000_adr041_email_change` **đã áp DB dùng chung 2026-10-17** 🟡 (brief Quốc).
 
 ---

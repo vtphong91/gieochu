@@ -18,7 +18,7 @@ author: System Architect
 > (`.github/workflows/ci.yml`, chạy lint/typecheck/test trên push `main` và pull request). **Deploy hiện là
 > thủ công.** Từ **ADR-031 (2026-09-29)** nền tảng hosting app là **Vercel** (`apps/web/vercel.json` ✅) — quy trình chi
 > tiết ở [[04-Operations-Runbooks/Deploy-Vercel-Runbook|Deploy-Vercel-Runbook]]; deploy thành công đầu tiên chưa xác nhận ❓.
-> Job nền không cần worker riêng nữa: từ **ADR-036** (2026-10-16, xong code, chưa commit/deploy) job xử lý trong app bằng `after()` +
+> Job nền không cần worker riêng nữa: từ **ADR-036** (2026-10-16, đã commit `9a3208f`, deploy ❓) job xử lý trong app bằng `after()` +
 > Vercel Cron hằng ngày `GET /api/cron/daily` — cần đặt env `CRON_SECRET` trên Vercel (Deploy-Vercel-Runbook §6.2).
 
 ## 1. CI Hiện Có (`.github/workflows/ci.yml`)
@@ -112,7 +112,7 @@ cấu hình và "Kiểm tra kết nối" ở `/admin/settings/cloudinary` (khôn
 
 Cập nhật 2026-10-17 ✅ (`ls packages/db/prisma/migrations`): migration mới nhất là `20261016180000_adr039_entitlement_remedy`, trước đó
 `20261016150000_m12c_abuse_reports`, `20261016120000_m12b_tenant_daily_stats`, `20261016090000_m12a_audit_logs` — đều *expand*, đều đã áp DB
-dùng chung 2026-10-16 🟡, chưa commit. **Hai migration M12c/ADR-039 bắt buộc chạy TRƯỚC khi deploy code** (code lên trước → P2022/500 trên
+dùng chung 2026-10-16 🟡, file đã commit `36103fb` ✅ `git log`. **Hai migration M12c/ADR-039 bắt buộc chạy TRƯỚC khi deploy code** (code lên trước → P2022/500 trên
 mọi trang sản phẩm/đánh giá/bài viết/thư viện) — [[04-Operations-Runbooks/Deploy-Vercel-Runbook|Deploy-Vercel-Runbook]] §9.8.
 
 > ⚠️ **Một DB duy nhất (ADR-034) + sự cố 2026-10-15:** migration chỉ do Quốc duyệt và chạy, không `prisma migrate dev/reset`;

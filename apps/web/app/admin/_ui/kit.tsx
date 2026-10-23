@@ -351,11 +351,15 @@ export function Notice({ tone = "info", icon, children }: { tone?: "info" | "war
 export function DataTable({
   head,
   headClassName,
+  headAriaSort,
   caption,
   children,
 }: {
-  head: string[];
+  /** Tiêu đề cột — thường là chuỗi; cột sắp xếp được truyền phần tử (vd link GET đổi thứ tự, ADR-046). */
+  head: ReactNode[];
   headClassName?: (string | undefined)[];
+  /** `aria-sort` cho `<th>` cột i (chỉ cột đang sắp xếp mang "ascending"/"descending"). */
+  headAriaSort?: ("ascending" | "descending" | "none" | undefined)[];
   /** Tên bảng cho trình đọc màn hình (`<caption>` ẩn) — nên có khi trang có nhiều bảng hoặc bảng dài. */
   caption?: string;
   children: ReactNode;
@@ -367,7 +371,7 @@ export function DataTable({
         <thead>
           <tr className="border-b" style={{ borderColor: GRAY_LINE, color: INK_SOFT }}>
             {head.map((h, i) => (
-              <th key={`${i}-${h}`} scope="col" className={`px-4 py-3 font-medium ${headClassName?.[i] ?? ""}`}>
+              <th key={i} scope="col" aria-sort={headAriaSort?.[i]} className={`px-4 py-3 font-medium ${headClassName?.[i] ?? ""}`}>
                 {h}
               </th>
             ))}

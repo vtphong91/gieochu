@@ -58,6 +58,11 @@ export const AUDIT_ACTIONS = [
   "SUBSCRIPTION_REFUNDED",
   "SUBSCRIPTION_REFUND_REJECTED",
   "SUBSCRIPTION_REFUND_PAYOUT_VIEWED",
+  // ADR-047 (ghi chú nội bộ trên đơn — metadata chỉ id, không nội dung)
+  "ORDER_NOTE_ADDED",
+  "ORDER_NOTE_DELETED",
+  // ADR-048 (ghi chú khách tại gian hàng — metadata chỉ customerUserId, không nội dung)
+  "CUSTOMER_NOTE_UPDATED",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -113,6 +118,9 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   SUBSCRIPTION_REFUNDED: "Hoàn tiền gói dịch vụ",
   SUBSCRIPTION_REFUND_REJECTED: "Từ chối hoàn tiền gói dịch vụ",
   SUBSCRIPTION_REFUND_PAYOUT_VIEWED: "Xem thông tin nhận tiền hoàn gói",
+  ORDER_NOTE_ADDED: "Thêm ghi chú nội bộ cho đơn",
+  ORDER_NOTE_DELETED: "Xoá ghi chú nội bộ của đơn",
+  CUSTOMER_NOTE_UPDATED: "Cập nhật ghi chú khách hàng",
 };
 
 export const AUDIT_SCOPE_LABELS: Record<AuditScopeValue, string> = {

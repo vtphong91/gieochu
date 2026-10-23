@@ -12,6 +12,7 @@ import {
 } from "../../lib/admin-dashboard";
 import { getAdminStatsOverview } from "../../lib/admin-stats";
 import { SalesStatsSection, SalesStatsSkeleton, parseSalesChartMetric, type SalesChartMetric } from "./_ui/sales-stats";
+import { formatVndFull } from "./_ui/stats-chart";
 
 const BLUE = brandColors.primary;
 const GREEN = brandColors.secondary;
@@ -74,12 +75,6 @@ function IconArrow({ className }: { className?: string }) {
       <path d="M4 12h15M13 6l6 6-6 6" />
     </svg>
   );
-}
-
-function formatVndCompact(amount: number): string {
-  if (amount >= 1_000_000) return `${(amount / 1_000_000).toLocaleString("vi-VN", { maximumFractionDigits: 1 })}Tr đ`;
-  if (amount >= 1_000) return `${Math.round(amount / 1000)}K đ`;
-  return `${amount.toLocaleString("vi-VN")}đ`;
 }
 
 function formatRelativeTime(date: Date): string {
@@ -218,7 +213,7 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
                   <div
                     className="w-full rounded-t-md"
                     style={{ height: `${Math.max(4, (m.totalVnd / maxRevenue) * 100)}%`, background: m.totalVnd > 0 ? BLUE : "#EEF1F5", minHeight: 4 }}
-                    title={formatVndCompact(m.totalVnd)}
+                    title={formatVndFull(m.totalVnd)}
                   />
                 </div>
                 <span className="text-[11px] font-medium capitalize" style={{ color: MUTED }}>
@@ -229,7 +224,7 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
           </div>
           <div className="mt-5 flex items-center justify-between border-t pt-4 text-sm" style={{ borderColor: LINE }}>
             <span style={{ color: MUTED }}>Tổng 6 tháng</span>
-            <span className="font-bold text-gray-900">{formatVndCompact(monthlyRevenue.reduce((sum, m) => sum + m.totalVnd, 0))}</span>
+            <span className="font-bold tabular-nums text-gray-900">{formatVndFull(monthlyRevenue.reduce((sum, m) => sum + m.totalVnd, 0))}</span>
           </div>
         </section>
 

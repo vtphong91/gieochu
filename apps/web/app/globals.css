@@ -275,3 +275,22 @@ dialog.app-drawer[open]::backdrop {
     animation: none;
   }
 }
+
+/* Date range picker dashboard Studio (ADR-043 lần 3, `admin/_ui/date-range-picker.tsx`): khoá
+   cuộn trang nền khi mở (popover neo theo ô mở không bị lệch); dạng sheet < md trượt lên từ đáy — tắt khi giảm chuyển động. */
+html:has(dialog.range-picker[open]) {
+  overflow: hidden;
+}
+dialog.range-picker-sheet[open] {
+  animation: range-picker-sheet-in 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+@keyframes range-picker-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  dialog.range-picker-sheet[open] {
+    animation: none;
+  }
+}

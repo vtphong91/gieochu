@@ -18,7 +18,7 @@ author: Long
 > (`order.sweep` 5 phút — nay chỉ còn ở worker local), ADR-031 mục 4 (Vercel không chạy worker), ADR-032 (cấu hình nghiệp vụ
 > đọc từ DB), ADR-034 (một DB dùng chung).
 >
-> Mức xác minh: ✅ Long đã đối chiếu code working tree 2026-10-16 (**chưa commit, chưa deploy**) · 🟡 theo `docs/DECISIONS.md`/brief
+> Mức xác minh: ✅ Long đã đối chiếu code working tree 2026-10-16 (code **đã commit `9a3208f`**, deploy ❓) · 🟡 theo `docs/DECISIONS.md`/brief
 > của Quốc · ❓ cần môi trường thật (Vercel/Neon). **Chưa có test tự động** cho phần mới (nợ test — §8).
 
 ---

@@ -9,7 +9,7 @@ tags:
   - troubleshooting
   - status/living
 date: 2026-10-17
-updated: 2026-10-22
+updated: 2026-10-23
 author: System Architect & DevOps
 ---
 
@@ -21,7 +21,7 @@ author: System Architect & DevOps
 > Trên VPS, MinIO **không** còn được phơi ra internet qua tên miền riêng như mô hình §2.2 mục 2 / §4 dưới đây: MinIO bind `127.0.0.1`, host trong
 > Admin là `127.0.0.1:9000` (useSSL tắt), trình duyệt chỉ thấy `/_s/<vé>` và `/media/` qua nginx của `gieochu.net`. Làm theo
 > [[04-Operations-Runbooks/Storage-Gateway-VPS-Runbook|Storage-Gateway-VPS-Runbook]]. §2.2 mục 2 và §4 chỉ còn áp dụng khi **không** bật Storage
-> Gateway. (Ghi chú của Long 2026-10-22; phần còn lại của trang này chưa được Long đối chiếu lại với code — xem KB-Audit §24.)
+> Gateway. (Ghi chú của Long 2026-10-22; phần còn lại của trang này chưa được Long đối chiếu lại với code — xem KB-Audit §27.)
 
 ---
 
@@ -475,7 +475,7 @@ Khi máy chủ MinIO bị hỏng hoàn toàn:
 ---
 
 ## 9. Tài Liệu Tham Chiếu & Liên Kết
-- **ADR-044** trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md) — Quyết định kiến trúc Dual Storage MinIO & Cloudflare R2, Dedicated Bucket per Tenant.
+- **ADR-044** trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md) — Quyết định kiến trúc Dual Storage MinIO & Cloudflare R2, Dedicated Bucket per Tenant; bản trích [[01-Architecture-Decisions/ADR-034-Dual-Storage-MinIO-R2-Dedicated-Tenant-Bucket|ADR-034 KB]].
 - [[01-Architecture-Decisions/ADR-030-Storage-Gateway-Encrypted-Ticket-Nginx|ADR-030 (≙ ADR-045)]] · [[04-Operations-Runbooks/Storage-Gateway-VPS-Runbook|Storage-Gateway-VPS-Runbook]] — giấu MinIO sau `gieochu.net` bằng vé `/_s/` + nginx `auth_request`.
 - [[01-Architecture-Decisions/ADR-005-Storage-Config-System-Admin|ADR-005 (≙ ADR-017)]] — Quản lý cấu hình Storage qua System Admin và mã hoá an toàn DB.
 - [[02-System-Specs/File-Storage-And-Downloads-Specs|File-Storage-And-Downloads-Specs]] — Đặc tả kỹ thuật chi tiết về lưu trữ file, presigned URL và quét file.

@@ -1040,6 +1040,14 @@
 - **Bổ sung ADR-043 lần 2 (2026-10-18, Quốc):** Top 5 bán chạy tính theo số đơn **gồm cả lượt nhận miễn phí** (phản
   ánh mức phổ biến; cột doanh thu cạnh đó cho thấy tài liệu miễn phí = 0đ). "Khách quay lại" đếm cả đơn > 0đ đã hoàn
   tiền vào điều kiện ≥2 đơn (khách đã mua 2 lần). `ordersPaid` System Center gồm đơn 0đ, Studio không — có chủ đích.
+- **Bổ sung ADR-043 lần 3 (2026-10-18, chủ dự án yêu cầu):** bộ lọc kỳ đổi sang **date range picker** kiểu ô
+  `dd/mm/yyyy - dd/mm/yyyy` + popup (danh sách mốc trái + lịch 2 tháng có số tuần, Thứ Hai đầu tuần, ngày tương lai
+  vô hiệu). Mốc: Hôm nay, Hôm qua, Tuần này, **Tuần trước**, Tháng này, **Tháng trước**, Quý này, **Quý trước**, Năm nay,
+  7 ngày qua, 30 ngày qua (mặc định), Tuỳ chọn. Key mới: `tuan-truoc`, `thang-truoc`, `quy-truoc`. Thẻ thống kê hiển thị
+  **số đầy đủ** theo `vi-VN` (vd `993.000 đ`), **không rút gọn** — áp cho cả System Center (component chung).
+  (Quốc) Ba mốc đã kết thúc (`tuan-truoc`, `thang-truoc`, `quy-truoc`) so với **trọn** kỳ liền trước (vd tháng 9 so
+  với cả tháng 8), không cắt theo độ dài — ngoại lệ có chủ đích của ADR-043 mục 5. Range có thêm `displayFrom`/`displayTo`
+  (ngày VN, gồm ngày cuối) cho ô hiển thị.
 
 
 ## ADR-044 — Lưu trữ đa nền tảng MinIO song song Cloudflare R2, Dedicated Bucket cho Gian hàng và Công cụ Quản trị Giám sát / Đồng bộ (2026-10-17)
@@ -1105,3 +1113,70 @@
 - **Hệ quả:** Bật gateway cho provider nào thì mọi URL mới của provider đó đi qua `/_s/`; URL presigned cũ đã phát ra
   hết hạn trong ≤10 phút. Chỉ khoá cổng MinIO **sau khi** bật gateway và kiểm tra xong. Đổi `host` MinIO sang
   `127.0.0.1` thì app phải chạy cùng máy với MinIO (máy dev dùng SSH tunnel `-L 9000:127.0.0.1:9000`).
+
+## ADR-046 — Nâng cấp trang Đơn hàng Studio (danh sách + chi tiết)
+
+- **Bối cảnh (2026-10-18):** chủ dự án yêu cầu trang `/studio/{slug}/orders` và chi tiết đơn chuyên nghiệp hơn (tham
+  khảo WooCommerce). Dữ liệu nghiệp vụ, không có nội dung CMS (PLAN_CHECK: không cần GĐ CMS).
+- **Quyết định:**
+  1. **Danh sách:** bộ lọc gọn dạng dropdown (trạng thái kèm số đếm, yêu cầu hoàn tiền, khoảng ngày tạo đơn dùng lại
+     date range picker ADR-043, sản phẩm), ô tìm theo mã đơn / họ tên / email khách, sắp xếp ngày tạo + tổng tiền,
+     **phân trang server** (20/trang, tuỳ chọn 10/20/50/100), URL GET chia sẻ được. Cột: mã đơn (link) · ngày tạo ·
+     khách (**họ tên + email** — không SĐT/địa chỉ, giữ ADR-041) · tài liệu · tổng tiền · trạng thái (+ badge hoàn
+     tiền) · **Thao tác** (menu: Xem chi tiết, và các thao tác hợp lệ theo trạng thái — dùng lại action có sẵn).
+  2. **Chi tiết:** bố cục 2 cột kiểu WooCommerce — cột chính: thông tin chung (mã, ngày tạo/thanh toán giờ VN,
+     trạng thái, kênh thanh toán), khách (họ tên, email), bảng dòng tài liệu (giá gốc, giảm giá/mã giảm giá, thành
+     tiền), quyền tải (lượt đã dùng/giới hạn, remedy ADR-039); cột phụ: hộp **Thao tác đơn** (xác nhận thanh toán,
+     huỷ, đánh dấu đã hoàn, cấp thêm lượt, thu hồi — chỉ hiện thao tác hợp lệ, xác nhận 2 bước), **Lịch sử khách
+     tại gian hàng** (tổng đơn, tổng chi tiêu, giá trị đơn TB — chỉ đơn > 0đ đã thanh toán, ADR-043), **Lịch sử
+     đơn** (dòng thời gian tự động từ dữ liệu có sẵn: tạo đơn, thanh toán/giao dịch, audit đơn, email đã gửi).
+  3. **Không** ghi chú nội bộ (để sau), **không** thao tác hàng loạt (để sau), **không** migration.
+  4. Mọi truy vấn L2 qua `withTenant`, chỉ OWNER (như hiện tại); không đổi luật nghiệp vụ của các action tiền.
+- **Bổ sung ADR-046 (2026-10-18, Quốc — đính chính theo code):** bảng dòng hiện **đơn giá lúc mua** (DB không lưu giá
+  niêm yết gốc); "cấp thêm lượt / thu hồi quyền tải" đặt theo từng dòng tài liệu ở cột chính, hộp "Thao tác đơn" chỉ
+  gồm xác nhận / đánh dấu đã hoàn / huỷ. Bộ lọc dùng form GET riêng (`order-filter-form.tsx`). Tìm đơn phân biệt dấu
+  (không dấu → BACKLOG).
+
+## ADR-047 — Đơn hàng Studio: tìm không dấu, ghi chú nội bộ; không thao tác hàng loạt
+
+- **Bối cảnh (2026-10-18, chủ dự án chốt):**
+  1. **Tìm đơn không dấu:** ô `q` (mã/họ tên/email) so khớp qua `public.gieochu_unaccent(lower(...))` (ADR-035), tham
+     số hoá + escape LIKE; kết quả như Cửa hàng.
+  2. **Ghi chú nội bộ:** bảng L2 mới `order_notes` (`id`, `tenantId`, `orderId`, `authorId`, `body` ≤1000 ký tự,
+     `createdAt`), RLS theo tenant (chỉ scope tenant + system_job; **không** customer/public); chủ gian hàng thêm ghi
+     chú, **chỉ xoá ghi chú do mình viết**; không sửa; khách **không bao giờ** thấy; hiện trong "Lịch sử đơn" kèm giờ +
+     người viết. Audit `ORDER_NOTE_ADDED/DELETED` (không lưu nội dung trong metadata). Migration expand — chủ dự án chạy.
+  3. **Không thao tác hàng loạt** và **không xuất CSV** đơn hàng/khách hàng ra khỏi hệ thống (tạm thời). Huỷ đơn chỉ
+     từng đơn.
+  4. Dọn `listOrders` / `getOrderDetail` cũ (không còn nơi gọi).
+
+## ADR-048 — Nâng cấp danh sách Khách hàng Studio
+
+- **Bối cảnh (2026-10-18, chủ dự án chốt):** trang `/studio/{slug}/customers` chỉ là bảng 4 cột. Dữ liệu nghiệp vụ,
+  không CMS. Chỉ nâng cấp **danh sách** (không trang chi tiết khách).
+- **Quyết định:**
+  1. **Số liệu khớp ADR-043:** số đơn / tổng chi tiêu / chi tiêu TB tính lại từ `orders` (qua `withTenant`), chỉ đơn
+     **> 0đ** có `paidAt`; tổng chi tiêu **gộp** + cột/dòng **"Đã hoàn"** riêng; khách chỉ có đơn 0đ = "chỉ nhận miễn
+     phí". Không dựa cột cache `ordersCount/totalSpentVnd` để hiển thị.
+  2. **Thẻ thống kê:** tổng khách (+ khách mới trong kỳ), khách quay lại (≥2 đơn > 0đ) + %, tổng chi tiêu (+ đã hoàn),
+     chi tiêu TB / khách trả phí, khách chỉ nhận miễn phí.
+  3. **Danh sách:** tìm không dấu họ tên/email; dropdown nhóm (tất cả, khách mới trong kỳ, quay lại, chỉ miễn phí, có
+     yêu cầu hoàn tiền, **lâu chưa quay lại = không mua 90 ngày**); khoảng ngày (mua lần đầu / mua gần nhất); lọc tài
+     liệu đã mua; cột Khách (họ tên + email, không SĐT/tỉnh — ADR-041) · Số đơn · Tổng chi tiêu · Đã hoàn · Mua lần
+     đầu · Mua gần nhất · Thao tác (Xem đơn của khách → trang Đơn hàng lọc theo khách; Ghi chú); sắp xếp, phân trang 20.
+  4. **Ghi chú khách:** một ô duy nhất, dùng cột có sẵn `tenant_customers.note` (≤500 ký tự, sửa được, chỉ gian hàng
+     thấy). Không migration.
+  5. Không xuất CSV (ADR-047 mục 3).
+- **Bổ sung ADR-048 (2026-10-23, Quốc — đính chính theo code):** ngày mua lần đầu/gần nhất và "lâu chưa quay lại"
+  (không có đơn đã thanh toán nào trong 90 ngày) tính **cả lượt nhận miễn phí** (đơn 0đ) — coi là có tương tác. % khách
+  quay lại = khách có ≥2 đơn > 0đ / **khách trả phí**. Giới hạn ghi chú 500 ký tự kiểm ở server (không thêm CHECK DB —
+  dữ liệu không quan trọng, tránh migration).
+
+## ADR-049 — Môi trường chạy: Vercel để thử nghiệm, VPS cho production
+
+- **Bối cảnh (2026-10-23, chủ dự án xác nhận):** hiện chạy thử trên Vercel; production sẽ chạy trên **VPS** (cùng nơi
+  đặt MinIO + Storage Gateway nginx — ADR-044/045).
+- **Hệ quả cần làm khi chuyển production sang VPS (chưa làm):** runbook deploy VPS (build/run Next, process manager,
+  reverse proxy, TLS, env); cron thay Vercel Cron (crontab gọi `GET /api/cron/daily` với `CRON_SECRET`, có thể dày hơn);
+  cân nhắc chạy `worker.ts` thường trực trên VPS thay cơ chế `after()` của ADR-036 (cần ADR riêng). Quy tắc một DB dùng
+  chung (ADR-034) vẫn áp dụng cho tới khi có quyết định tách DB.

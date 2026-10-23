@@ -337,6 +337,14 @@ export type CouponRedemption = Prisma.CouponRedemptionModel
  */
 export type Order = Prisma.OrderModel
 /**
+ * Model OrderNote
+ * ADR-047 mục 2 — ghi chú nội bộ của chủ gian hàng trên một đơn. L2 (RLS FORCE, migration `adr045_order_notes`):
+ * chỉ scope `tenant` (đúng `app.tenant_id`) + `system_job`; KHÔNG customer/public — khách không bao giờ đọc được.
+ * Không UPDATE (không có policy update): chỉ thêm và xoá (xoá chỉ tác giả — kiểm ở `lib/order-note.ts`).
+ * `body` đã trim, 1–1000 ký tự (CHECK `order_notes_body_length`). `authorId` SET NULL khi xoá user (giữ ghi chú).
+ */
+export type OrderNote = Prisma.OrderNoteModel
+/**
  * Model OrderItem
  * §5.3 "order_items lưu snapshot tiêu đề và giá tại thời điểm mua" — a later
  * price/title change on Product never rewrites a placed order.

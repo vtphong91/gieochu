@@ -3,7 +3,7 @@ tags:
   - meta
   - spec
 date: 2026-09-26
-updated: 2026-10-22
+updated: 2026-10-23
 ---
 
 # 📐 System Specifications (Living Specs)
@@ -54,35 +54,45 @@ bộ nội dung được viết lại từ nguồn thật: `CLAUDE.md`, `docs/AR
   `/cua-hang` + `/cua-hang/tai-lieu`: "Công khai" = PUBLISHED + tenant ACTIVE trong `withPublic`, quy tắc từng kệ, số bán 30 ngày
   dưới `withSystemJob` (chỉ xếp hạng, không hiển thị), tìm không dấu `gieochu_unaccent`, Suspense theo vị trí, SEO/noindex, 6 slug
   tenant dành riêng ([Shop-Marketplace-Specs.md](./Shop-Marketplace-Specs.md)).
-- `[[Background-Jobs-Specs]]`: Job nền M11 theo ADR-036 — **xong code (2026-10-16), chưa commit/deploy**. Không worker thường trực trên
+- `[[Background-Jobs-Specs]]`: Job nền M11 theo ADR-036 — **xong code (2026-10-16), đã commit `9a3208f`**, deploy ❓. Không worker thường trực trên
   Vercel: `payment.process`/`file.scan` vẫn `send` vào pg-boss rồi `after()` drain ngay sau response (`fetch` → `complete`/`fail`, ngân
   sách thời gian, retry 60 giây + backoff); `GET /api/cron/daily` (Vercel Cron 03:00 giờ VN, Bearer `CRON_SECRET`) chạy sweep thuê bao/đơn
   + bảo trì + dọn hàng đợi; `effectiveOrderStatus`; `worker.ts` chỉ còn cho local ([Background-Jobs-Specs.md](./Background-Jobs-Specs.md)).
-- `[[Audit-Log-Specs]]`: Audit log M12a (ADR-037) — **xong code (2026-10-16), chưa commit/deploy; migration đã áp DB**. Bảng L1
+- `[[Audit-Log-Specs]]`: Audit log M12a (ADR-037) — **xong code (2026-10-16), đã commit `36103fb`; migration đã áp DB**; deploy ❓. Bảng L1
   `audit_logs` chỉ-INSERT (quyền `gieochu_app` + 3 trigger, purge chỉ dòng > 12 tháng qua cờ `gieochu.audit_purge`), không khoá ngoại;
   27 action + bảng nơi ghi; `audit.log` ghi sau commit, lỗi không ném; lọc metadata nhạy cảm; trang `/admin/audit` và
   `/studio/{slug}/activity` (chỉ OWNER, che actor ngoài tenant); bước cron `audit.purge` ([Audit-Log-Specs.md](./Audit-Log-Specs.md)).
-- `[[Tenant-Stats-Specs]]`: Thống kê hằng ngày M12b (ADR-037) — **xong code (2026-10-16), chưa commit/deploy; migration đã áp DB**. Bảng L1
+- `[[Tenant-Stats-Specs]]`: Thống kê hằng ngày M12b (ADR-037) — **xong code (2026-10-16), đã commit `36103fb`; migration đã áp DB**; deploy ❓. Bảng L1
   `tenant_daily_stats` (tenant + ngày giờ VN, FK Cascade, không RLS, không dữ liệu cá nhân); định nghĩa số liệu (GMV gộp theo `paidAt` tính
   cả đơn hoàn tiền, khách mới theo `tenant_customers.firstOrderAt`, lượt tải theo `download_events`); job `stats.aggregate` trong cron
   (hôm qua + hôm nay, backfill ≤ 400 ngày khi bảng trống, cửa sổ 31 ngày, advisory lock); loader `getAdminStatsOverview` + section dashboard
   `/admin` ([Tenant-Stats-Specs.md](./Tenant-Stats-Specs.md)).
-- `[[Abuse-Reports-Specs]]`: Báo cáo vi phạm M12c (ADR-038) + quyền lợi người mua (ADR-039) — **xong code (2026-10-16), chưa commit/deploy;
+- `[[Abuse-Reports-Specs]]`: Báo cáo vi phạm M12c (ADR-038) + quyền lợi người mua (ADR-039) — **xong code (2026-10-16), đã commit `36103fb`, deploy ❓;
   2 migration đã áp DB**. Bảng L1 `abuse_reports` (ẩn danh với tenant); `POST /api/reports` (Origin, honeypot, 5/giờ/IP, chặn trùng); xử lý ở
   `/admin/reports` (ẩn/lưu trữ/khoá gian hàng/bác bỏ) + khoá kiểm duyệt (trigger `*_guard_moderation`); cam kết bản quyền mỗi lần xuất bản;
   người mua tài liệu bị lưu trữ chọn "tải lần cuối" (đủ mọi tệp) hoặc "yêu cầu hoàn tiền" (SLA 7 ngày, trigger `entitlements_guard_remedy`);
   5 email mới; bước cron `abuse_report.ip_purge` ([Abuse-Reports-Specs.md](./Abuse-Reports-Specs.md)).
-- `[[Pricing-Page-Specs]]`: Trang Bảng giá `/pricing` + CMS `pricing` (ADR-041 A) — **GĐ1 + GĐ2 xong code (2026-10-17), chưa commit/deploy; không
+- `[[Pricing-Page-Specs]]`: Trang Bảng giá `/pricing` + CMS `pricing` (ADR-041 A) — **GĐ1 + GĐ2 xong code (2026-10-17), đã commit `7f8360b`, deploy ❓; không
   DDL**. 9 section, giá/hạn mức chỉ từ `Plan`, ghép cặp gói năm (`altPlanId`, % tính từ giá thật), CTA theo người xem (ANON/NO_TENANT/TENANT),
   `IMPLEMENTED_PLAN_FEATURES = []`, xem nháp chỉ admin + `noindex`, SEO CMS, Billing `?plan=` ([Pricing-Page-Specs.md](./Pricing-Page-Specs.md)).
-- `[[Account-Profile-Specs]]`: Khu vực tài khoản `/account` (ADR-041 C) — **xong code (2026-10-17), chưa commit/deploy; migration `EMAIL_CHANGE` đã
+- `[[Account-Profile-Specs]]`: Khu vực tài khoản `/account` (ADR-041 C) — **xong code (2026-10-17), đã commit `7f8360b`, deploy ❓; migration `EMAIL_CHANGE` đã
   áp DB**. Tổng quan + app shell + sidebar 3 nhóm, hồ sơ (SĐT/Tỉnh tuỳ chọn, 34 tỉnh), ảnh đại diện Cloudinary riêng tư ≤2MB, đổi mật khẩu
   (giữ phiên hiện tại, thu hồi phiên khác), đổi email qua token `EMAIL_CHANGE`, menu tài khoản disclosure, 4 email
   ([Account-Profile-Specs.md](./Account-Profile-Specs.md)).
-- `[[Studio-Dashboard-Specs]]`: Dashboard Tổng quan gian hàng `/studio/{slug}` (ADR-043) — **xong code (2026-10-18), chưa commit/deploy; không
-  migration**. Kỳ `?ky=` (giờ VN, tuần bắt đầu Thứ Hai, mặc định 30 ngày, tuỳ chọn ≤ 366 ngày, so kỳ trước cùng độ dài); doanh thu gộp + thực
+- `[[Studio-Dashboard-Specs]]`: Dashboard Tổng quan gian hàng `/studio/{slug}` (ADR-043) — **đã commit `e5d63d0` (2026-10-18), deploy ❓; "Bổ sung lần 3" chưa commit; không
+  migration**. Kỳ `?ky=` 12 mốc chọn qua date range picker (giờ VN, tuần bắt đầu Thứ Hai, mặc định 30 ngày, tuỳ chọn ≤ 366 ngày, so kỳ trước cùng độ dài — riêng tuần/tháng/quý trước so trọn kỳ); số đầy đủ không rút gọn; doanh thu gộp + thực
   nhận, chỉ đơn > 0đ (đơn 0đ = lượt nhận miễn phí); khách mới/người mua/quay lại; đánh giá; tài liệu; top 5 bán chạy (loại đơn hoàn); 10 đơn
   mới không email; tính realtime qua `withTenant`, chỉ OWNER ([Studio-Dashboard-Specs.md](./Studio-Dashboard-Specs.md)).
+- `[[Studio-Orders-Specs]]`: Trang Đơn hàng Studio `/studio/{slug}/orders` + chi tiết (ADR-046) — **working tree, chưa commit (2026-10-18); không
+  migration, không route/action mới**. Danh sách lọc trạng thái hiệu lực (kèm số đếm)/yêu cầu hoàn tiền/ngày tạo đơn/tài liệu, tìm mã-họ tên-email
+  (escape `%`/`_`), sắp xếp, phân trang server 20/trang; thao tác hợp lệ theo `orderAllowedActions`; chi tiết kênh thanh toán suy ra, dòng tài liệu,
+  giao dịch, lịch sử khách (chỉ đơn > 0đ), dòng thời gian từ dữ liệu có sẵn; khách chỉ họ tên + email; chỉ OWNER; ADR-047 tìm không dấu + ghi chú
+  nội bộ `order_notes`; ADR-048 thêm `?khach=` lọc đơn theo khách ([Studio-Orders-Specs.md](./Studio-Orders-Specs.md)).
+- `[[Studio-Customers-Specs]]`: Danh sách Khách hàng Studio `/studio/{slug}/customers` (ADR-048) — **working tree, chưa commit (2026-10-23); không
+  migration, không route mới**. Khách = ≥ 1 đơn có `paidAt` (gồm 0đ); số đơn/chi tiêu chỉ đơn > 0đ, gộp + "Đã hoàn" riêng, tính lại từ `orders`; 5 thẻ
+  thống kê chỉ áp kỳ; tìm không dấu, 6 nhóm (gồm "lâu chưa quay lại" 90 ngày), kỳ theo mua lần đầu/gần nhất, tài liệu đã mua, sắp xếp, phân trang;
+  ghi chú một ô `tenant_customers.note` ≤ 500 ký tự (audit không nội dung); link "Xem đơn của khách"; chỉ OWNER
+  ([Studio-Customers-Specs.md](./Studio-Customers-Specs.md)).
 
 ## Ghi chú lịch sử
 

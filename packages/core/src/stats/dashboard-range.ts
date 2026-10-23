@@ -10,19 +10,25 @@ import { DISPLAY_TIME_ZONE } from "../settings/system-settings";
  * - Kỳ so sánh **cùng độ dài**: bắt đầu ở đầu kỳ liền trước (hôm qua, tuần trước, tháng trước…, hoặc lùi đúng N ngày với
  *   kỳ N ngày/tuỳ chọn), kéo dài `end − start`, và không vượt quá `start` (vd tháng trước ngắn hơn phần đã trôi của tháng
  *   này → cắt ở cuối tháng trước).
+ * - Bổ sung ADR-043 lần 3: kỳ đã kết thúc `tuan-truoc`/`thang-truoc`/`quy-truoc` so với **trọn** kỳ liền trước cùng loại
+ *   (tuần/tháng/quý trước nữa) — `prevEnd = start`, không cắt theo độ dài (tháng/quý dài ngắn khác nhau).
  * - `?ky=` lạ, hoặc `tuy-chon` có `tu`/`den` sai (sai định dạng, `tu > den`, `den` sau hôm nay, dài hơn
  *   {@link DASHBOARD_CUSTOM_MAX_DAYS} ngày) → về mặc định {@link DEFAULT_DASHBOARD_PRESET} và `invalid = true`. Không ném lỗi.
  */
 
+/** Thứ tự theo danh sách mốc của date range picker (ADR-043 lần 3). */
 export const DASHBOARD_PRESETS = [
   "hom-nay",
   "hom-qua",
+  "tuan-nay",
+  "tuan-truoc",
+  "thang-nay",
+  "thang-truoc",
+  "quy-nay",
+  "quy-truoc",
+  "nam-nay",
   "7-ngay",
   "30-ngay",
-  "tuan-nay",
-  "thang-nay",
-  "quy-nay",
-  "nam-nay",
   "tuy-chon",
 ] as const;
 export type DashboardPreset = (typeof DASHBOARD_PRESETS)[number];
@@ -35,24 +41,30 @@ export const DASHBOARD_CUSTOM_MAX_DAYS = 366;
 export const DASHBOARD_PRESET_LABELS: Record<DashboardPreset, string> = {
   "hom-nay": "Hôm nay",
   "hom-qua": "Hôm qua",
+  "tuan-nay": "Tuần này",
+  "tuan-truoc": "Tuần trước",
+  "thang-nay": "Tháng này",
+  "thang-truoc": "Tháng trước",
+  "quy-nay": "Quý này",
+  "quy-truoc": "Quý trước",
+  "nam-nay": "Năm nay",
   "7-ngay": "7 ngày qua",
   "30-ngay": "30 ngày qua",
-  "tuan-nay": "Tuần này",
-  "thang-nay": "Tháng này",
-  "quy-nay": "Quý này",
-  "nam-nay": "Năm nay",
   "tuy-chon": "Tuỳ chọn",
 };
 
 const PREV_LABELS: Record<Exclude<DashboardPreset, "tuy-chon">, string> = {
   "hom-nay": "hôm qua",
   "hom-qua": "hôm kia",
+  "tuan-nay": "tuần trước",
+  "tuan-truoc": "tuần trước nữa",
+  "thang-nay": "tháng trước",
+  "thang-truoc": "tháng trước nữa",
+  "quy-nay": "quý trước",
+  "quy-truoc": "quý trước nữa",
+  "nam-nay": "năm trước",
   "7-ngay": "7 ngày trước đó",
   "30-ngay": "30 ngày trước đó",
-  "tuan-nay": "tuần trước",
-  "thang-nay": "tháng trước",
-  "quy-nay": "quý trước",
-  "nam-nay": "năm trước",
 };
 
 export interface DashboardRangeInput {
@@ -74,7 +86,7 @@ export interface DashboardRange {
   /** UTC, kỳ hiện tại `[start, end)`. */
   start: Date;
   end: Date;
-  /** UTC, kỳ so sánh `[prevStart, prevEnd)`, `prevEnd − prevStart ≤ end − start`. */
+  /** UTC, kỳ so sánh `[prevStart, prevEnd)`. Thường `prevEnd − prevStart = end − start` (cùng độ dài); riêng `tuan-truoc`/`thang-truoc`/`quy-truoc` so với **trọn** kỳ liền trước nên độ dài có thể khác (ADR-043 bổ sung lần 3). */
   prevStart: Date;
   prevEnd: Date;
   /** UTC, cuối danh nghĩa của kỳ (vd 00:00 ngày mai với "hôm nay", Thứ Hai tuần sau với "tuần này") — để dựng trục biểu đồ đủ điểm. */
@@ -83,6 +95,12 @@ export interface DashboardRange {
   /** `YYYY-MM-DD` của khoảng tuỳ chọn hợp lệ (để điền lại form); null với preset. */
   customFrom: string | null;
   customTo: string | null;
+  /**
+   * Bổ sung ADR-043 lần 3 — `YYYY-MM-DD` theo giờ VN của ngày đầu và **ngày cuối bao gồm** của kỳ hiện tại (kỳ "tới hiện
+   * tại" → `displayTo` = hôm nay), để UI hiển thị `dd/mm/yyyy - dd/mm/yyyy` và đánh dấu lịch. Luôn có, kể cả preset.
+   */
+  displayFrom: string;
+  displayTo: string;
   /** true khi đầu vào không hợp lệ và đã về mặc định. */
   invalid: boolean;
 }
@@ -163,6 +181,8 @@ interface LocalPlan {
   prevStartL: number;
   /** null = `end = now`; số = `end` cố định (giờ tường). */
   fixedEndL: number | null;
+  /** null = `prevEnd` cắt theo độ dài kỳ hiện tại; số = `prevEnd` cố định (giờ tường) — kỳ so sánh trọn vẹn. */
+  prevEndL: number | null;
   granularity: DashboardGranularity;
   label: string;
   prevLabel: string;
@@ -175,7 +195,7 @@ function planPreset(key: Exclude<DashboardPreset, "tuy-chon">, nowL: number): Lo
   const d = new Date(today);
   const y = d.getUTCFullYear();
   const m = d.getUTCMonth();
-  const base = { key, fixedEndL: null, label: DASHBOARD_PRESET_LABELS[key], prevLabel: PREV_LABELS[key], customFrom: null, customTo: null };
+  const base = { key, fixedEndL: null, prevEndL: null, label: DASHBOARD_PRESET_LABELS[key], prevLabel: PREV_LABELS[key], customFrom: null, customTo: null };
   switch (key) {
     case "hom-nay":
       return { ...base, startL: today, periodEndL: today + MS_DAY, prevStartL: today - MS_DAY, granularity: "hour" };
@@ -189,11 +209,21 @@ function planPreset(key: Exclude<DashboardPreset, "tuy-chon">, nowL: number): Lo
       const monday = today - ((d.getUTCDay() + 6) % 7) * MS_DAY;
       return { ...base, startL: monday, periodEndL: monday + 7 * MS_DAY, prevStartL: monday - 7 * MS_DAY, granularity: "day" };
     }
+    case "tuan-truoc": {
+      const monday = today - ((d.getUTCDay() + 6) % 7) * MS_DAY - 7 * MS_DAY;
+      return { ...base, startL: monday, periodEndL: monday + 7 * MS_DAY, fixedEndL: monday + 7 * MS_DAY, prevStartL: monday - 7 * MS_DAY, prevEndL: monday, granularity: "day" };
+    }
     case "thang-nay":
       return { ...base, startL: Date.UTC(y, m, 1), periodEndL: Date.UTC(y, m + 1, 1), prevStartL: Date.UTC(y, m - 1, 1), granularity: "day" };
+    case "thang-truoc":
+      return { ...base, startL: Date.UTC(y, m - 1, 1), periodEndL: Date.UTC(y, m, 1), fixedEndL: Date.UTC(y, m, 1), prevStartL: Date.UTC(y, m - 2, 1), prevEndL: Date.UTC(y, m - 1, 1), granularity: "day" };
     case "quy-nay": {
       const qm = m - (m % 3);
       return { ...base, startL: Date.UTC(y, qm, 1), periodEndL: Date.UTC(y, qm + 3, 1), prevStartL: Date.UTC(y, qm - 3, 1), granularity: "week" };
+    }
+    case "quy-truoc": {
+      const qm = m - (m % 3) - 3;
+      return { ...base, startL: Date.UTC(y, qm, 1), periodEndL: Date.UTC(y, qm + 3, 1), fixedEndL: Date.UTC(y, qm + 3, 1), prevStartL: Date.UTC(y, qm - 3, 1), prevEndL: Date.UTC(y, qm, 1), granularity: "week" };
     }
     case "nam-nay":
       return { ...base, startL: Date.UTC(y, 0, 1), periodEndL: Date.UTC(y + 1, 0, 1), prevStartL: Date.UTC(y - 1, 0, 1), granularity: "month" };
@@ -219,6 +249,7 @@ function planCustom(tu: unknown, den: unknown, nowL: number): LocalPlan | null {
     periodEndL,
     prevStartL: startL - days * MS_DAY,
     fixedEndL: lastDayL === today ? null : periodEndL,
+    prevEndL: null,
     granularity,
     label: days === 1 ? formatLocalDate(startL) : `${formatLocalDate(startL)} – ${formatLocalDate(lastDayL)}`,
     prevLabel: `${days} ngày trước đó`,
@@ -246,7 +277,9 @@ export function resolveDashboardRange(input: DashboardRangeInput = {}): Dashboar
   const startMs = fromLocal(plan.startL);
   const endMs = plan.fixedEndL === null ? nowMs : Math.min(fromLocal(plan.fixedEndL), nowMs);
   const prevStartMs = fromLocal(plan.prevStartL);
-  const prevEndMs = Math.min(prevStartMs + (endMs - startMs), startMs);
+  const prevEndMs = plan.prevEndL === null ? Math.min(prevStartMs + (endMs - startMs), startMs) : fromLocal(plan.prevEndL);
+  const isoDay = (localMs: number) => new Date(localMs).toISOString().slice(0, 10);
+  const lastDayL = plan.fixedEndL === null ? localDayStart(nowL) : plan.fixedEndL - MS_DAY;
 
   return {
     key: plan.key,
@@ -260,6 +293,8 @@ export function resolveDashboardRange(input: DashboardRangeInput = {}): Dashboar
     granularity: plan.granularity,
     customFrom: plan.customFrom,
     customTo: plan.customTo,
+    displayFrom: isoDay(plan.startL),
+    displayTo: isoDay(Math.max(lastDayL, plan.startL)),
     invalid,
   };
 }

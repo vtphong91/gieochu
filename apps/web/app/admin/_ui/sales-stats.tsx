@@ -9,7 +9,7 @@ import {
   STAT_INK_SOFT,
   TrendChart,
   computeChange,
-  formatVndCompact,
+  formatVndAxis,
   formatVndFull,
   toBigIntSafe,
 } from "./stats-chart";
@@ -118,7 +118,7 @@ function DailyChart({ series, metric }: { series: SeriesPoint[]; metric: SalesCh
         value: isGmv ? toBigIntSafe(p.gmvVnd) : BigInt(p.ordersPaid),
       }))}
       metricName={isGmv ? "GMV theo ngày" : "Đơn đã thanh toán theo ngày"}
-      formatAxis={(v) => (isGmv ? formatVndCompact(v) : `${vnInt.format(v)} đơn`)}
+      formatAxis={(v) => (isGmv ? formatVndAxis(v) : `${vnInt.format(v)} đơn`)}
       formatFull={(v) => (isGmv ? formatVndFull(v) : `${vnInt.format(v)} đơn`)}
       emptyText={`Không có ${isGmv ? "doanh thu" : "đơn đã thanh toán"} nào trong 30 ngày.`}
       integerScale={!isGmv}
@@ -185,38 +185,41 @@ function TopTenants({ tenants }: { tenants: TopTenant[] }) {
       ) : (
         <ol className="mt-4 space-y-1">
           {tenants.slice(0, 5).map((t, i) => (
-            <li key={t.tenantId} className="flex items-center gap-3 border-b py-2 last:border-0" style={{ borderColor: LINE }}>
+            <li key={t.tenantId} className="flex items-start gap-3 border-b py-2 last:border-0" style={{ borderColor: LINE }}>
               <span
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums"
+                className="mt-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums lg:mt-0"
                 style={{ background: brandColors.surface, color: brandColors.primary }}
                 aria-hidden="true"
               >
                 {i + 1}
               </span>
-              <div className="min-w-0 flex-1">
-                <a
-                  href={`/${t.slug}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex min-h-11 max-w-full items-center gap-1 text-sm font-semibold hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary,#0F3B82)] lg:min-h-0"
-                  style={{ color: INK }}
-                >
-                  <span className="sr-only">Hạng {i + 1}: </span>
-                  <span className="truncate" title={t.name}>{t.name}</span>
-                  <IconExternalLink className="h-3.5 w-3.5 shrink-0" />
-                  <span className="sr-only">(mở gian hàng ở tab mới)</span>
-                </a>
-                <p className="text-xs" style={{ color: INK_SOFT }}>
-                  /{t.slug}
-                </p>
-              </div>
-              <div className="shrink-0 text-right">
-                <p className="text-sm font-semibold tabular-nums" style={{ color: INK }}>
-                  {formatVndCompact(t.gmvVnd)}
-                </p>
-                <p className="text-xs tabular-nums" style={{ color: INK_SOFT }}>
-                  {vnInt.format(t.ordersPaid)} đơn
-                </p>
+              {/* Số GMV đầy đủ (không rút gọn — ADR-043 lần 3): thiếu chỗ thì cả khối số xuống dòng dưới tên, không cắt tên. */}
+              <div className="flex min-w-0 flex-1 flex-wrap items-start justify-between gap-x-3">
+                <div className="min-w-0 flex-1 basis-40">
+                  <a
+                    href={`/${t.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-11 max-w-full items-center gap-1 text-sm font-semibold hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary,#0F3B82)] lg:min-h-0"
+                    style={{ color: INK }}
+                  >
+                    <span className="sr-only">Hạng {i + 1}: </span>
+                    <span className="truncate" title={t.name}>{t.name}</span>
+                    <IconExternalLink className="h-3.5 w-3.5 shrink-0" />
+                    <span className="sr-only">(mở gian hàng ở tab mới)</span>
+                  </a>
+                  <p className="text-xs" style={{ color: INK_SOFT }}>
+                    /{t.slug}
+                  </p>
+                </div>
+                <div className="ml-auto shrink-0 text-right">
+                  <p className="text-sm font-semibold whitespace-nowrap tabular-nums" style={{ color: INK }}>
+                    {formatVndFull(t.gmvVnd)}
+                  </p>
+                  <p className="text-xs tabular-nums" style={{ color: INK_SOFT }}>
+                    {vnInt.format(t.ordersPaid)} đơn
+                  </p>
+                </div>
               </div>
             </li>
           ))}
@@ -265,8 +268,7 @@ export function SalesStatsSection({ overview, metric }: { overview: AdminStatsOv
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           label="GMV"
-          value={formatVndCompact(totals.gmvVnd)}
-          detail={formatVndFull(totals.gmvVnd)}
+          value={formatVndFull(totals.gmvVnd)}
           change={computeChange(totals.gmvVnd, prevTotals.gmvVnd)}
         />
         <KpiCard

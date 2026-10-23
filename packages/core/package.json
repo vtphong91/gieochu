@@ -27,7 +27,8 @@
     "./abuse-report": "./src/report/abuse-report.ts",
     "./entitlement-remedy": "./src/download/entitlement-remedy.ts",
     "./account-profile": "./src/account/profile.ts",
-    "./dashboard-range": "./src/stats/dashboard-range.ts"
+    "./dashboard-range": "./src/stats/dashboard-range.ts",
+    "./customer-list": "./src/customer/customer-list.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

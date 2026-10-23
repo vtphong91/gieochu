@@ -1,6 +1,8 @@
+import { z } from "zod";
 import {
   AppError,
   applyOrderToCustomerStats,
+  auditActionLabel,
   calculateOrderPricing,
   canManuallyConfirmOrder,
   canPurchaseProduct,
@@ -10,11 +12,14 @@ import {
   internalError,
   logger,
   notFound,
+  REMEDY_REFUND_SLA_DAYS,
+  resolveDashboardRange,
   transitionOrderStatus,
+  type DashboardPreset,
   type OrderStatus,
   type TenantCustomerStats,
 } from "@gieochu/core";
-import { getPrismaClient, withCustomer, withSystemJob, withTenant, type Prisma, type Tx } from "@gieochu/db";
+import { getPrismaClient, Prisma, withCustomer, withSystemJob, withTenant, type Tx } from "@gieochu/db";
 import {
   buildWebhookNotifyUrl,
   decryptSecret,
@@ -31,7 +36,9 @@ import { getEffectiveBrand } from "./branding";
 import { getSystemSettings } from "./system-settings";
 import { hideReviewsForRevokedItems, recomputeProductRatings } from "./review";
 import { recomputeProductSoldCounts } from "./product-sold-count";
-import { audit } from "./audit";
+import { audit, isAuditTableMissing } from "./audit";
+import { escapeLikePattern } from "./shop";
+import { listOrderNotes, type OrderNoteView } from "./order-note";
 
 const ORDER_CODE_RETRIES = 10;
 
@@ -596,67 +603,785 @@ export function parseOrderRemedyFilter(value: string | undefined): OrderListFilt
   return value === "REFUND_REQUESTED" ? "REFUND_REQUESTED" : undefined;
 }
 
-/** ADR-036: filters and labels by effective status — PENDING excludes overdue orders, EXPIRED includes them. */
-function effectiveStatusWhere(status: OrderStatus, now: Date): Prisma.OrderWhereInput {
-  if (status === "PENDING") return { status: "PENDING", expiresAt: { gte: now } };
-  if (status === "EXPIRED") return { OR: [{ status: "EXPIRED" }, { status: "PENDING", expiresAt: { lt: now } }] };
-  return { status };
+// ───────────────────────── ADR-046: danh sách đơn Studio (lọc / tìm / sắp xếp / phân trang server) ─────────────────────────
+
+/** Mọi trạng thái lọc được (trạng thái HIỆU LỰC — ADR-036). Thứ tự = thứ tự trong dropdown. */
+export const ORDER_LIST_STATUSES = ["PENDING", "PAID", "FULFILLED", "EXPIRED", "CANCELED", "REFUNDED"] as const satisfies readonly OrderStatus[];
+export const ORDER_LIST_SORTS = ["moi-nhat", "cu-nhat", "tong-giam", "tong-tang"] as const;
+export type OrderListSort = (typeof ORDER_LIST_SORTS)[number];
+export const ORDER_LIST_DEFAULT_SORT: OrderListSort = "moi-nhat";
+/** Khớp lựa chọn của component Pagination (admin/_ui/pagination.tsx). */
+export const ORDER_LIST_PAGE_SIZES = [10, 20, 50, 100] as const;
+export const ORDER_LIST_DEFAULT_PAGE_SIZE = 20;
+export const ORDER_LIST_Q_MAX = 100;
+
+export type OrderRowAction = "confirm" | "cancel" | "refund" | "view";
+
+/** Bộ lọc đã chuẩn hoá (trang dùng để điền lại form / dựng URL bằng {@link buildOrderListSearch}). */
+export interface OrderListQuery {
+  status: OrderStatus | null;
+  remedy: "REFUND_REQUESTED" | null;
+  q: string | null;
+  /** Khoảng ngày TẠO ĐƠN (ADR-046). null = mọi thời gian (không có `ky`, hoặc `ky`/`tu`/`den` không hợp lệ). */
+  range: {
+    key: DashboardPreset;
+    label: string;
+    /** `YYYY-MM-DD` (giờ VN) — chỉ có với `tuy-chon`. */
+    customFrom: string | null;
+    customTo: string | null;
+    /** `YYYY-MM-DD` (giờ VN) — ngày đầu / ngày cuối bao gồm, cho ô `dd/mm/yyyy - dd/mm/yyyy`. */
+    displayFrom: string;
+    displayTo: string;
+    /** UTC, nửa mở `[start, end)` theo `createdAt`. */
+    start: Date;
+    end: Date;
+  } | null;
+  /** Chỉ giữ khi sản phẩm thuộc gian hàng và đã có trong ít nhất 1 đơn (có trong `products`). */
+  productId: string | null;
+  /**
+   * ADR-048 — `?khach=<userId>`: chỉ đơn của một khách. `listOrdersPage` chỉ giữ khi khách có ít nhất 1 đơn tại gian hàng
+   * (mọi trạng thái); không thì bỏ (null) — như `productId`.
+   */
+  customerId: string | null;
+  sort: OrderListSort;
+  /** Trang YÊU CẦU (≥1). Trang thực tế sau khi kẹp ở `OrderListPage.page`. */
+  page: number;
+  pageSize: number;
 }
 
-export async function listOrders(tenantId: string, filters: OrderListFilters = {}) {
+export interface OrderListItem {
+  id: string;
+  code: string;
+  createdAt: Date;
+  paidAt: Date | null;
+  /** Trạng thái hiệu lực (ADR-036: PENDING quá hạn → EXPIRED). */
+  status: OrderStatus;
+  totalVnd: number;
+  /** ADR-041/044: chỉ họ tên + email — KHÔNG SĐT/địa chỉ. `fullName` null khi khách chưa có hồ sơ. */
+  customer: { fullName: string | null; email: string };
+  items: { productTitle: string }[];
+  /** ADR-039: có dòng đơn đang REFUND_REQUESTED. */
+  refundRequested: boolean;
+  /** `remedyChosenAt` của yêu cầu hoàn tiền đang chờ (null khi không có) — dùng với `isRefundOverdue`. */
+  refundRequestedAt: Date | null;
+  /** Yêu cầu hoàn tiền quá hạn {@link REMEDY_REFUND_SLA_DAYS} ngày. */
+  refundOverdue: boolean;
+  /** Luôn có "view". Thứ tự cố định: view, confirm, cancel, refund. */
+  allowedActions: OrderRowAction[];
+}
+
+export type OrderStatusCounts = Record<OrderStatus | "ALL", number>;
+
+export interface OrderListPage {
+  items: OrderListItem[];
+  /** Số đơn khớp TOÀN BỘ bộ lọc. */
+  total: number;
+  /** Trang thực tế (đã kẹp về [1, pageCount]). */
+  page: number;
+  pageSize: number;
+  /** ≥ 1 (kể cả khi total = 0). */
+  pageCount: number;
+  /** Số đơn theo trạng thái hiệu lực, áp MỌI bộ lọc khác TRỪ trạng thái (q, khoảng ngày, sản phẩm, khách, remedy). ALL = tổng. */
+  statusCounts: OrderStatusCounts;
+  /** Số đơn có yêu cầu hoàn tiền đang chờ — TOÀN gian hàng, không áp bộ lọc (cảnh báo, như badge cũ). */
+  refundRequestCount: number;
+  /** Trong số trên, số đơn quá hạn {@link REMEDY_REFUND_SLA_DAYS} ngày. */
+  refundRequestOverdueCount: number;
+  /** Sản phẩm của gian hàng đã có trong ít nhất 1 đơn (mọi trạng thái), sắp theo tên — cho dropdown. */
+  products: { id: string; title: string }[];
+  /** ADR-048: khách đang lọc (`?khach=`, đã kiểm thuộc gian hàng) — chỉ họ tên + email (ADR-041); null khi không lọc. */
+  customer: { userId: string; fullName: string | null; email: string } | null;
+  query: OrderListQuery;
+}
+
+const firstQueryValue = (value: unknown): unknown => (Array.isArray(value) ? value[0] : value);
+const statusParamSchema = z.preprocess(firstQueryValue, z.enum(ORDER_LIST_STATUSES));
+const sortParamSchema = z.preprocess(firstQueryValue, z.enum(ORDER_LIST_SORTS));
+const pageParamSchema = z.preprocess(firstQueryValue, z.coerce.number().int().min(1).max(1_000_000));
+const pageSizeParamSchema = z.preprocess(firstQueryValue, z.coerce.number().int());
+const productIdParamSchema = z.preprocess(firstQueryValue, z.string().regex(/^[a-z0-9]{1,64}$/));
+/** cuid2 — cùng dạng với `san-pham`. */
+const customerIdParamSchema = productIdParamSchema;
+const textParamSchema = z.preprocess(firstQueryValue, z.string());
+
+/** Chuẩn hoá từ khoá tìm kiếm: NFC, bỏ ký tự điều khiển, gộp khoảng trắng, cắt {@link ORDER_LIST_Q_MAX} ký tự. */
+export function normalizeOrderSearchQuery(value: unknown): string | null {
+  const parsed = textParamSchema.safeParse(value);
+  if (!parsed.success) return null;
+  const normalized = parsed.data
+    .normalize("NFC")
+    .replace(/[\u0000-\u001F\u007F]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, ORDER_LIST_Q_MAX)
+    .trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+export type OrderListSearchParams = Record<string, string | string[] | undefined>;
+
+/**
+ * Parse phòng thủ `searchParams` của `/studio/{slug}/orders` (không bao giờ ném). Tham số: `trang-thai` (tên trạng thái,
+ * vd `PENDING`; nhận thêm `status` cũ — link Tổng quan), `remedy=REFUND_REQUESTED` (link trong email ADR-039), `q`,
+ * `ky`/`tu`/`den` (như dashboard ADR-043; không có `ky` hoặc sai → mọi thời gian), `san-pham`, `khach` (userId — ADR-048),
+ * `sap-xep`, `trang`, `so-dong`. `san-pham`/`khach` chỉ được kiểm định dạng ở đây; `listOrdersPage` bỏ nếu không thuộc
+ * gian hàng.
+ */
+export function parseOrderListQuery(sp: OrderListSearchParams, now = new Date()): OrderListQuery {
+  const status = statusParamSchema.safeParse(sp["trang-thai"] ?? sp.status);
+  const sort = sortParamSchema.safeParse(sp["sap-xep"]);
+  const page = pageParamSchema.safeParse(sp.trang);
+  const size = pageSizeParamSchema.safeParse(sp["so-dong"]);
+  const productId = productIdParamSchema.safeParse(sp["san-pham"]);
+  const customerId = customerIdParamSchema.safeParse(sp.khach);
+
+  let range: OrderListQuery["range"] = null;
+  const ky = firstQueryValue(sp.ky);
+  if (typeof ky === "string" && ky !== "") {
+    const resolved = resolveDashboardRange({ ky, tu: sp.tu, den: sp.den, now });
+    if (!resolved.invalid) {
+      range = {
+        key: resolved.key,
+        label: resolved.label,
+        customFrom: resolved.customFrom,
+        customTo: resolved.customTo,
+        displayFrom: resolved.displayFrom,
+        displayTo: resolved.displayTo,
+        start: resolved.start,
+        end: resolved.end,
+      };
+    }
+  }
+
+  return {
+    status: status.success ? status.data : null,
+    remedy: parseOrderRemedyFilter(typeof firstQueryValue(sp.remedy) === "string" ? (firstQueryValue(sp.remedy) as string) : undefined) ?? null,
+    q: normalizeOrderSearchQuery(sp.q),
+    range,
+    productId: productId.success ? productId.data : null,
+    customerId: customerId.success ? customerId.data : null,
+    sort: sort.success ? sort.data : ORDER_LIST_DEFAULT_SORT,
+    page: page.success ? page.data : 1,
+    pageSize: size.success && (ORDER_LIST_PAGE_SIZES as readonly number[]).includes(size.data) ? size.data : ORDER_LIST_DEFAULT_PAGE_SIZE,
+  };
+}
+
+/**
+ * Dựng query string (không có `?`) từ bộ lọc đã chuẩn hoá + phần thay đổi. Bỏ giá trị mặc định (sort `moi-nhat`,
+ * trang 1, 20 dòng). Đổi bất kỳ bộ lọc nào mà không truyền `page` → về trang 1. `range` truyền dạng URL
+ * (`{ ky, tu?, den? }`) hoặc null (mọi thời gian).
+ */
+export function buildOrderListSearch(
+  query: OrderListQuery,
+  patch: Partial<Omit<OrderListQuery, "range">> & { range?: { ky: DashboardPreset; tu?: string; den?: string } | null } = {},
+): string {
+  const next = { ...query, ...patch };
+  const params = new URLSearchParams();
+  if (next.status) params.set("trang-thai", next.status);
+  if (next.remedy) params.set("remedy", next.remedy);
+  if (next.q) params.set("q", next.q);
+  const range =
+    "range" in patch
+      ? patch.range
+      : query.range
+        ? { ky: query.range.key, tu: query.range.customFrom ?? undefined, den: query.range.customTo ?? undefined }
+        : null;
+  if (range) {
+    params.set("ky", range.ky);
+    if (range.ky === "tuy-chon" && range.tu && range.den) {
+      params.set("tu", range.tu);
+      params.set("den", range.den);
+    }
+  }
+  if (next.productId) params.set("san-pham", next.productId);
+  if (next.customerId) params.set("khach", next.customerId);
+  if (next.sort !== ORDER_LIST_DEFAULT_SORT) params.set("sap-xep", next.sort);
+  if (next.pageSize !== ORDER_LIST_DEFAULT_PAGE_SIZE) params.set("so-dong", String(next.pageSize));
+  const filterChanged = Object.keys(patch).some((k) => k !== "page");
+  const page = "page" in patch ? (patch.page ?? 1) : filterChanged ? 1 : query.page;
+  if (page > 1) params.set("trang", String(page));
+  return params.toString();
+}
+
+/** Thứ tự sắp xếp danh sách đơn (SQL, alias `o` = "orders"); luôn kết thúc bằng `id` để phân trang ổn định. */
+function orderListOrderBySql(sort: OrderListSort): Prisma.Sql {
+  switch (sort) {
+    case "cu-nhat":
+      return Prisma.sql`o."createdAt" ASC, o."id" ASC`;
+    case "tong-giam":
+      return Prisma.sql`o."totalVnd" DESC, o."createdAt" DESC, o."id" DESC`;
+    case "tong-tang":
+      return Prisma.sql`o."totalVnd" ASC, o."createdAt" DESC, o."id" DESC`;
+    case "moi-nhat":
+      return Prisma.sql`o."createdAt" DESC, o."id" DESC`;
+  }
+}
+
+/** Mốc thời gian JS (UTC) → `timestamp(3)` UTC trong SQL thô (cột lưu UTC không múi giờ — mẫu `tenant-dashboard.ts`). */
+export function utcTimestampSql(value: Date): Prisma.Sql {
+  return Prisma.sql`(${value.toISOString()}::timestamptz AT TIME ZONE 'UTC')`;
+}
+
+/** ADR-036 bằng SQL: lọc theo trạng thái HIỆU LỰC — PENDING bỏ đơn quá hạn, EXPIRED gồm cả PENDING quá hạn. */
+function effectiveStatusSql(status: OrderStatus, now: Date): Prisma.Sql {
+  if (status === "PENDING") return Prisma.sql`(o."status" = 'PENDING' AND o."expiresAt" >= ${utcTimestampSql(now)})`;
+  if (status === "EXPIRED") {
+    return Prisma.sql`(o."status" = 'EXPIRED' OR (o."status" = 'PENDING' AND o."expiresAt" < ${utcTimestampSql(now)}))`;
+  }
+  return Prisma.sql`o."status"::text = ${status}`;
+}
+
+const LIKE_ESCAPE = "\\";
+
+/** ADR-047 mục 1 (mẫu ADR-035): `gieochu_unaccent(lower(col)) LIKE '%' || gieochu_unaccent(lower($q)) || '%' ESCAPE '\'`. */
+export function unaccentLikeSql(column: Prisma.Sql, escapedQuery: string): Prisma.Sql {
+  return Prisma.sql`public.gieochu_unaccent(lower(${column})) LIKE '%' || public.gieochu_unaccent(lower(${escapedQuery})) || '%' ESCAPE ${LIKE_ESCAPE}`;
+}
+
+/**
+ * ADR-046 — luật thao tác của MỘT đơn, đúng như trang chi tiết và các action hiện có (không đặt luật mới):
+ * confirm = `canManuallyConfirmOrder` (PENDING, hoặc EXPIRED ≤ 24 giờ); cancel = trạng thái hiệu lực PENDING
+ * (`cancelOrder` → `transitionOrderStatus(..., "CANCEL")`); refund = FULFILLED (`markOrderRefunded`).
+ */
+export function orderAllowedActions(order: { status: OrderStatus; expiresAt: Date }, now = new Date()): OrderRowAction[] {
+  const effective = effectiveOrderStatus(order.status, order.expiresAt, now);
+  const actions: OrderRowAction[] = ["view"];
+  if (canManuallyConfirmOrder(order.status, order.expiresAt, now)) actions.push("confirm");
+  if (effective === "PENDING") actions.push("cancel");
+  if (effective === "FULFILLED") actions.push("refund");
+  return actions;
+}
+
+function refundOverdueBefore(now: Date): Date {
+  return new Date(now.getTime() - REMEDY_REFUND_SLA_DAYS * 24 * 60 * 60 * 1000);
+}
+
+/**
+ * ADR-046 — danh sách đơn Studio. TIỀN ĐIỀU KIỆN: nơi gọi đã `requireTenantMember(slug)` (OWNER) và truyền `tenant.id`
+ * lấy từ đó — không lấy tenantId từ URL. Toàn bộ trong MỘT `withTenant` + `tenantId` tường minh. Bảng L1 đọc: `users.email`,
+ * `user_profiles.fullName` (chỉ 2 trường này — ADR-041). Trang vượt số trang → kẹp về trang cuối.
+ * ADR-047 mục 1 — tìm `q` KHÔNG DẤU, không phân biệt hoa thường trên mã đơn / email khách / họ tên khách:
+ * `gieochu_unaccent(lower(col)) LIKE ... ESCAPE '\'` (`%`/`_`/`\` của người dùng được escape, tham số hoá). Prisma không
+ * biểu diễn được điều kiện này nên lọc + đếm + lấy id trang bằng SQL thô (cùng transaction RLS), rồi Prisma nạp đúng các
+ * đơn của trang theo id (≤ 100).
+ */
+export async function listOrdersPage(tenantId: string, sp: OrderListSearchParams): Promise<OrderListPage> {
   const now = new Date();
-  const orders = await withTenant(tenantId, (tx) =>
-    tx.order.findMany({
-      where: {
-        tenantId,
-        ...(filters.status ? effectiveStatusWhere(filters.status, now) : {}),
-        ...(filters.remedy ? { items: { some: { entitlement: { is: { remedyStatus: filters.remedy } } } } } : {}),
-      },
-      include: {
-        customer: { select: { email: true } },
-        // ADR-039: trạng thái quyền lợi người mua của từng dòng (null = dòng chưa có entitlement, vd đơn chưa thanh toán).
-        items: { include: { entitlement: { select: { remedyStatus: true, remedyChosenAt: true } } } },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-  );
-  return orders.map((order) => ({
-    ...withEffectiveStatus(order, now),
-    refundRequested: order.items.some((item) => item.entitlement?.remedyStatus === "REFUND_REQUESTED"),
-  }));
-}
+  const parsed = parseOrderListQuery(sp, now);
 
-export async function getOrderDetail(tenantId: string, orderId: string) {
-  const order = await withTenant(tenantId, (tx) =>
-    tx.order.findUnique({
-      where: { id: orderId },
-      include: { customer: { select: { email: true } }, items: { include: { entitlement: true } }, transactions: true },
-    }),
-  );
-  if (!order || order.tenantId !== tenantId) throw notFound("Không tìm thấy đơn hàng.");
-  return withEffectiveStatus(order);
-}
-
-export async function listTenantCustomers(tenantId: string) {
-  return withTenant(tenantId, (tx) =>
-    tx.tenantCustomer.findMany({
-      where: { tenantId },
-      include: { user: { select: { email: true } } },
-      orderBy: { lastOrderAt: "desc" },
-    }),
-  );
-}
-
-/** Studio dashboard stat cards: revenue over the trailing 30 days + orders currently awaiting payment. */
-export async function getOrderDashboardStats(tenantId: string): Promise<{ revenue30dVnd: number; pendingOrdersCount: number }> {
   return withTenant(tenantId, async (tx) => {
-    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const [paidOrders, pendingOrdersCount] = await Promise.all([
-      tx.order.findMany({ where: { tenantId, status: { in: ["PAID", "FULFILLED"] }, paidAt: { gte: since } }, select: { totalVnd: true } }),
-      tx.order.count({ where: { tenantId, status: "PENDING", expiresAt: { gte: new Date() } } }),
+    const products = await tx.product.findMany({
+      where: { tenantId, orderItems: { some: {} } },
+      select: { id: true, title: true },
+      orderBy: [{ title: "asc" }, { id: "asc" }],
+    });
+    const productId = parsed.productId && products.some((p) => p.id === parsed.productId) ? parsed.productId : null;
+    // ADR-048: khách phải có ít nhất 1 đơn tại gian hàng này (RLS + tenantId tường minh) — không thì bỏ bộ lọc. `users`/
+    // `user_profiles` (L1) chỉ đọc email + họ tên của đúng khách đó.
+    const customerOrder = parsed.customerId
+      ? await tx.order.findFirst({
+          where: { tenantId, customerId: parsed.customerId },
+          select: { customer: { select: { id: true, email: true, profile: { select: { fullName: true } } } } },
+        })
+      : null;
+    const customer = customerOrder
+      ? { userId: customerOrder.customer.id, fullName: customerOrder.customer.profile?.fullName ?? null, email: customerOrder.customer.email }
+      : null;
+    const customerId = customer?.userId ?? null;
+
+    const nonStatusFilters: Prisma.Sql[] = [Prisma.sql`o."tenantId" = ${tenantId}`];
+    if (parsed.remedy) {
+      nonStatusFilters.push(Prisma.sql`EXISTS (
+        SELECT 1 FROM "order_items" oi JOIN "entitlements" e ON e."orderItemId" = oi."id"
+        WHERE oi."orderId" = o."id" AND e."remedyStatus"::text = ${parsed.remedy}
+      )`);
+    }
+    if (parsed.range) {
+      nonStatusFilters.push(
+        Prisma.sql`o."createdAt" >= ${utcTimestampSql(parsed.range.start)} AND o."createdAt" < ${utcTimestampSql(parsed.range.end)}`,
+      );
+    }
+    if (productId) {
+      nonStatusFilters.push(Prisma.sql`EXISTS (SELECT 1 FROM "order_items" oi WHERE oi."orderId" = o."id" AND oi."productId" = ${productId})`);
+    }
+    if (customerId) nonStatusFilters.push(Prisma.sql`o."customerId" = ${customerId}`);
+    if (parsed.q) {
+      const escaped = escapeLikePattern(parsed.q);
+      nonStatusFilters.push(Prisma.sql`(
+        ${unaccentLikeSql(Prisma.sql`o."code"`, escaped)}
+        OR EXISTS (SELECT 1 FROM "users" u WHERE u."id" = o."customerId" AND ${unaccentLikeSql(Prisma.sql`u."email"`, escaped)})
+        OR EXISTS (SELECT 1 FROM "user_profiles" up WHERE up."userId" = o."customerId" AND ${unaccentLikeSql(Prisma.sql`up."fullName"`, escaped)})
+      )`);
+    }
+    const baseWhere = Prisma.join(nonStatusFilters, " AND ");
+    const where = parsed.status ? Prisma.sql`${baseWhere} AND ${effectiveStatusSql(parsed.status, now)}` : baseWhere;
+
+    const refundWhere: Prisma.OrderWhereInput = { tenantId, items: { some: { entitlement: { is: { remedyStatus: "REFUND_REQUESTED" } } } } };
+    const [totalRows, grouped, refundRequestCount, refundRequestOverdueCount] = await Promise.all([
+      tx.$queryRaw<{ total: number }[]>(Prisma.sql`SELECT count(*)::int AS total FROM "orders" o WHERE ${where}`),
+      // Đếm theo trạng thái hiệu lực (PENDING quá hạn tính là EXPIRED — ADR-036).
+      tx.$queryRaw<{ status: OrderStatus; n: number }[]>(Prisma.sql`
+        SELECT CASE WHEN o."status" = 'PENDING' AND o."expiresAt" < ${utcTimestampSql(now)} THEN 'EXPIRED' ELSE o."status"::text END AS status,
+               count(*)::int AS n
+        FROM "orders" o
+        WHERE ${baseWhere}
+        GROUP BY 1
+      `),
+      tx.order.count({ where: refundWhere }),
+      tx.order.count({
+        where: {
+          tenantId,
+          items: { some: { entitlement: { is: { remedyStatus: "REFUND_REQUESTED", remedyChosenAt: { lt: refundOverdueBefore(now) } } } } },
+        },
+      }),
     ]);
-    return { revenue30dVnd: paidOrders.reduce((sum, o) => sum + o.totalVnd, 0), pendingOrdersCount };
+    const total = totalRows[0]?.total ?? 0;
+
+    const statusCounts: OrderStatusCounts = { ALL: 0, PENDING: 0, PAID: 0, FULFILLED: 0, EXPIRED: 0, CANCELED: 0, REFUNDED: 0 };
+    for (const row of grouped) {
+      if (row.status in statusCounts) statusCounts[row.status] += row.n;
+      statusCounts.ALL += row.n;
+    }
+
+    const pageCount = Math.max(1, Math.ceil(total / parsed.pageSize));
+    const page = Math.min(parsed.page, pageCount);
+    const pageIds =
+      total > 0
+        ? (
+            await tx.$queryRaw<{ id: string }[]>(Prisma.sql`
+              SELECT o."id" FROM "orders" o
+              WHERE ${where}
+              ORDER BY ${orderListOrderBySql(parsed.sort)}
+              LIMIT ${parsed.pageSize}::int OFFSET ${(page - 1) * parsed.pageSize}::int
+            `)
+          ).map((row) => row.id)
+        : [];
+    const fetched =
+      pageIds.length > 0
+        ? await tx.order.findMany({
+            where: { tenantId, id: { in: pageIds } },
+            select: {
+              id: true,
+              code: true,
+              createdAt: true,
+              paidAt: true,
+              status: true,
+              expiresAt: true,
+              totalVnd: true,
+              customer: { select: { email: true, profile: { select: { fullName: true } } } },
+              items: {
+                orderBy: { createdAt: "asc" },
+                select: { titleSnapshot: true, entitlement: { select: { remedyStatus: true, remedyChosenAt: true } } },
+              },
+            },
+          })
+        : [];
+    const byId = new Map(fetched.map((order) => [order.id, order]));
+    const rows = pageIds.flatMap((id) => {
+      const order = byId.get(id);
+      return order ? [order] : [];
+    });
+
+    const overdueBefore = refundOverdueBefore(now);
+    const items = rows.map((order): OrderListItem => {
+      const refund = order.items.find((item) => item.entitlement?.remedyStatus === "REFUND_REQUESTED")?.entitlement ?? null;
+      const refundRequestedAt = refund?.remedyChosenAt ?? null;
+      return {
+        id: order.id,
+        code: order.code,
+        createdAt: order.createdAt,
+        paidAt: order.paidAt,
+        status: effectiveOrderStatus(order.status, order.expiresAt, now),
+        totalVnd: order.totalVnd,
+        customer: { fullName: order.customer.profile?.fullName ?? null, email: order.customer.email },
+        items: order.items.map((item) => ({ productTitle: item.titleSnapshot })),
+        refundRequested: refund !== null,
+        refundRequestedAt,
+        refundOverdue: refundRequestedAt !== null && refundRequestedAt.getTime() < overdueBefore.getTime(),
+        allowedActions: orderAllowedActions(order, now),
+      };
+    });
+
+    return {
+      items,
+      total,
+      page,
+      pageSize: parsed.pageSize,
+      pageCount,
+      statusCounts,
+      refundRequestCount,
+      refundRequestOverdueCount,
+      products,
+      customer,
+      query: { ...parsed, productId, customerId, page },
+    };
   });
+}
+
+// ───────────────────────── ADR-046: chi tiết đơn Studio ─────────────────────────
+
+export type OrderPaymentChannel =
+  /** Đã trả qua cổng (giao dịch tenant MATCHED mới nhất). */
+  | { kind: "PROVIDER"; provider: PaymentProviderId; providerTxnId: string; at: Date }
+  /** Chủ gian hàng xác nhận thủ công (`confirmNote` có giá trị — bắt buộc khi xác nhận tay). */
+  | { kind: "MANUAL"; provider: PaymentProviderId | null }
+  /** Đơn 0đ (tài liệu miễn phí / mã giảm 100%) — tự thanh toán. */
+  | { kind: "FREE" }
+  /** Đã thanh toán nhưng không xác định được kênh (dữ liệu cũ). `provider` = cổng khách đã chọn lúc checkout. */
+  | { kind: "UNKNOWN"; provider: PaymentProviderId | null }
+  /** Chưa thanh toán. `provider` = cổng khách đã chọn ở trang checkout (null nếu chưa chọn). */
+  | { kind: "UNPAID"; provider: PaymentProviderId | null };
+
+export interface OrderDetailLine {
+  id: string;
+  productId: string;
+  productTitle: string;
+  /** Đơn giá lúc đặt (đã gồm giá khuyến mãi nếu đang sale). Giá niêm yết trước khuyến mãi KHÔNG được lưu snapshot. */
+  unitPriceVnd: number;
+  /** Giảm từ mã giảm giá trên dòng này = unitPriceVnd − finalPriceVnd (≥ 0). */
+  discountVnd: number;
+  /** Mã giảm giá của đơn khi dòng này có giảm; null nếu không. */
+  couponCode: string | null;
+  /** Thành tiền dòng. */
+  finalPriceVnd: number;
+  entitlement: {
+    id: string;
+    downloadsUsed: number;
+    /** 0 = không giới hạn. */
+    downloadLimit: number;
+    revokedAt: Date | null;
+    remedyStatus: "NONE" | "PENDING_CHOICE" | "FINAL_DOWNLOAD" | "REFUND_REQUESTED" | "REFUNDED";
+    remedyRequestedAt: Date | null;
+    remedyChosenAt: Date | null;
+    remedyResolvedAt: Date | null;
+  } | null;
+}
+
+export interface OrderTimelineEvent {
+  at: Date;
+  kind:
+    | "created"
+    | "payment_txn"
+    | "paid"
+    | "expired"
+    | "canceled"
+    | "audit"
+    | "remedy_opened"
+    | "email"
+    /** ADR-047: ghi chú nội bộ — `noteId` khớp `OrderDetailView.notes[].id`, `detail` = nội dung ghi chú. */
+    | "note";
+  label: string;
+  detail?: string;
+  /** Chỉ có với kind "note". */
+  noteId?: string;
+}
+
+export interface OrderDetailView {
+  id: string;
+  code: string;
+  /** Trạng thái hiệu lực (ADR-036). */
+  status: OrderStatus;
+  createdAt: Date;
+  paidAt: Date | null;
+  expiresAt: Date;
+  subtotalVnd: number;
+  discountVnd: number;
+  totalVnd: number;
+  couponCode: string | null;
+  /** Ghi chú xác nhận thủ công của chủ gian hàng (có thể null). */
+  confirmNote: string | null;
+  paymentChannel: OrderPaymentChannel;
+  /** ADR-041/044: chỉ họ tên + email. */
+  customer: { fullName: string | null; email: string };
+  lines: OrderDetailLine[];
+  /** Giao dịch cổng thanh toán tenant gắn với đơn (không trả `rawPayload`), mới nhất trước. */
+  transactions: { id: string; provider: PaymentProviderId; providerTxnId: string; amountVnd: number; matchStatus: "MATCHED" | "UNMATCHED" | "MISMATCH_AMOUNT"; createdAt: Date }[];
+  /**
+   * Lịch sử khách TẠI GIAN HÀNG NÀY (ADR-043): chỉ đơn `totalVnd > 0` đã thanh toán (`paidAt` khác null), mọi trạng thái
+   * kể cả đã hoàn — `spentVnd` là doanh thu gộp (gồm đơn sau này hoàn), `refundedVnd` tách riêng phần đã hoàn.
+   */
+  customerHistory: { orders: number; spentVnd: number; refundedVnd: number; avgOrderVnd: number | null };
+  /** Có yêu cầu hoàn tiền đang chờ (ADR-039). */
+  refundRequested: boolean;
+  refundRequestedAt: Date | null;
+  refundOverdue: boolean;
+  /** Cũ → mới. */
+  timeline: OrderTimelineEvent[];
+  allowedActions: OrderRowAction[];
+  /**
+   * ADR-047: ghi chú nội bộ (cũ → mới, tối đa 200). Khách không bao giờ thấy. Rỗng khi `notesAvailable = false`
+   * (migration `order_notes` chưa áp — UI ẩn form thêm ghi chú / báo "chưa sẵn sàng").
+   */
+  notes: OrderNoteView[];
+  notesAvailable: boolean;
+}
+
+const PROVIDER_LABELS: Record<PaymentProviderId, string> = { MANUAL_QR: "Chuyển khoản QR", SEPAY: "SePay", MOMO: "MoMo" };
+const MATCH_STATUS_LABELS: Record<string, string> = { MATCHED: "khớp đơn", UNMATCHED: "không khớp đơn", MISMATCH_AMOUNT: "sai số tiền" };
+const ORDER_TIMELINE_AUDIT_ACTIONS = [
+  "ORDER_MANUALLY_CONFIRMED",
+  "ORDER_REFUNDED",
+  "COUPON_OVERUSED",
+  "ENTITLEMENT_EXTRA_GRANTED",
+  "ENTITLEMENT_REVOKED",
+  "REMEDY_FINAL_DOWNLOAD_CHOSEN",
+  "REMEDY_REFUND_REQUESTED",
+];
+/** Email gửi qua `sendEmailNow` có mã đơn trong tiêu đề — lọc được đúng đơn (mã đơn unique toàn hệ thống). */
+const ORDER_EMAIL_TYPES: Record<string, string> = {
+  order_paid: "Email xác nhận thanh toán gửi khách",
+  remedy_refund_requested: "Email báo yêu cầu hoàn tiền gửi chủ gian hàng",
+};
+
+function formatAmount(amountVnd: number): string {
+  return `${amountVnd.toLocaleString("vi-VN")}đ`;
+}
+
+/**
+ * ADR-046 — dữ liệu trang chi tiết đơn Studio. TIỀN ĐIỀU KIỆN như {@link listOrdersPage} (OWNER, `tenant.id` từ guard).
+ * Bảng L2 (orders, order_items, entitlements, tenant_payment_transactions, tenant_members) đọc trong MỘT `withTenant`.
+ * Bảng L1: `audit_logs` (`tenantId` = tenant VÀ target là đơn này hoặc entitlement của đơn này — không IP/UA; actor
+ * ngoài gian hàng chỉ hiện "Khách hàng"/"Quản trị hệ thống"/"Hệ thống"), `email_send_log` (chỉ loại có mã đơn trong
+ * tiêu đề, người nhận ∈ {email khách của đơn, email chủ gian hàng}; không trả địa chỉ người nhận), `tenants.owner`.
+ * Email `new_sale` (tiêu đề chỉ có tên tài liệu) và email remedy cho khách (tiêu đề theo tài liệu) KHÔNG lọc được theo
+ * đơn → không đưa vào dòng thời gian.
+ * ADR-047: ghi chú nội bộ đọc ở transaction `withTenant` riêng (lib/order-note.ts); `viewerId` (user đang xem) quyết định
+ * `canDelete` (chỉ tác giả).
+ */
+export async function getOrderDetailView(tenantId: string, orderId: string, viewerId: string | null = null): Promise<OrderDetailView> {
+  const now = new Date();
+  const loaded = await withTenant(tenantId, async (tx) => {
+    const order = await tx.order.findFirst({
+      where: { id: orderId, tenantId },
+      select: {
+        id: true,
+        code: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        paidAt: true,
+        expiresAt: true,
+        subtotalVnd: true,
+        discountVnd: true,
+        totalVnd: true,
+        couponCode: true,
+        provider: true,
+        confirmNote: true,
+        customerId: true,
+        customer: { select: { email: true, profile: { select: { fullName: true } } } },
+        items: {
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            productId: true,
+            titleSnapshot: true,
+            unitPriceVnd: true,
+            finalPriceVnd: true,
+            entitlement: {
+              select: {
+                id: true,
+                downloadsUsed: true,
+                downloadLimit: true,
+                revokedAt: true,
+                remedyStatus: true,
+                remedyRequestedAt: true,
+                remedyChosenAt: true,
+                remedyResolvedAt: true,
+              },
+            },
+          },
+        },
+        transactions: {
+          where: { tenantId },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          select: { id: true, provider: true, providerTxnId: true, amountVnd: true, matchStatus: true, createdAt: true },
+        },
+      },
+    });
+    if (!order) return null;
+    const [history, refunded, members] = await Promise.all([
+      tx.order.aggregate({
+        where: { tenantId, customerId: order.customerId, paidAt: { not: null }, totalVnd: { gt: 0 } },
+        _count: { _all: true },
+        _sum: { totalVnd: true },
+      }),
+      tx.order.aggregate({
+        where: { tenantId, customerId: order.customerId, paidAt: { not: null }, totalVnd: { gt: 0 }, status: "REFUNDED" },
+        _sum: { totalVnd: true },
+      }),
+      tx.tenantMember.findMany({ where: { tenantId }, select: { userId: true } }),
+    ]);
+    return { order, history, refunded, memberIds: new Set(members.map((m) => m.userId)) };
+  });
+  if (!loaded) throw notFound("Không tìm thấy đơn hàng.");
+  const { order, history, refunded, memberIds } = loaded;
+  const noteData = await listOrderNotes(tenantId, order.id, viewerId);
+
+  const status = effectiveOrderStatus(order.status, order.expiresAt, now);
+  const entitlementIds = order.items.flatMap((item) => (item.entitlement ? [item.entitlement.id] : []));
+  const titleByEntitlement = new Map(order.items.flatMap((item) => (item.entitlement ? [[item.entitlement.id, item.titleSnapshot] as const] : [])));
+
+  // ── Bảng L1 (không RLS) — phạm vi giới hạn tường minh bằng tenantId + target của đúng đơn này.
+  const prisma = getPrismaClient();
+  const [auditRows, owner] = await Promise.all([
+    prisma.auditLog
+      .findMany({
+        where: {
+          tenantId,
+          action: { in: ORDER_TIMELINE_AUDIT_ACTIONS },
+          OR: [
+            { targetType: "Order", targetId: order.id },
+            ...(entitlementIds.length > 0 ? [{ targetType: "Entitlement", targetId: { in: entitlementIds } }] : []),
+          ],
+        },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        take: 200,
+        select: { id: true, actorId: true, scope: true, action: true, targetType: true, targetId: true, metadata: true, createdAt: true },
+      })
+      .catch((error: unknown) => {
+        if (isAuditTableMissing(error)) return [];
+        throw error;
+      }),
+    prisma.tenant.findUnique({ where: { id: tenantId }, select: { owner: { select: { email: true } } } }),
+  ]);
+  const recipients = [order.customer.email, ...(owner ? [owner.owner.email] : [])];
+  const [emailRows, memberUsers] = await Promise.all([
+    prisma.emailSendLog.findMany({
+      where: {
+        type: { in: Object.keys(ORDER_EMAIL_TYPES) },
+        recipient: { in: recipients },
+        subject: { contains: order.code },
+        createdAt: { gte: order.createdAt },
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      take: 50,
+      select: { type: true, status: true, createdAt: true },
+    }),
+    (async () => {
+      const ids = [...new Set(auditRows.flatMap((r) => (r.actorId && memberIds.has(r.actorId) ? [r.actorId] : [])))];
+      if (ids.length === 0) return new Map<string, string>();
+      const users = await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, email: true, profile: { select: { fullName: true } } } });
+      return new Map(users.map((u) => [u.id, u.profile?.fullName ?? u.email]));
+    })(),
+  ]);
+
+  const actorLabel = (row: { actorId: string | null; scope: string }): string => {
+    if (!row.actorId) return "Hệ thống";
+    if (row.scope === "CUSTOMER") return "Khách hàng";
+    const member = memberUsers.get(row.actorId);
+    if (member) return member;
+    return "Quản trị hệ thống";
+  };
+
+  const timeline: OrderTimelineEvent[] = [{ at: order.createdAt, kind: "created", label: "Đơn hàng được tạo", detail: `Tổng ${formatAmount(order.totalVnd)}` }];
+  for (const txn of [...order.transactions].reverse()) {
+    timeline.push({
+      at: txn.createdAt,
+      kind: "payment_txn",
+      label: `Nhận giao dịch ${PROVIDER_LABELS[txn.provider]}`,
+      detail: `${formatAmount(txn.amountVnd)} · ${MATCH_STATUS_LABELS[txn.matchStatus] ?? txn.matchStatus} · mã GD ${txn.providerTxnId}`,
+    });
+  }
+  if (order.paidAt) {
+    timeline.push({ at: order.paidAt, kind: "paid", label: order.totalVnd === 0 ? "Nhận tài liệu miễn phí (đơn 0đ)" : "Đơn hàng đã thanh toán" });
+  } else if (status === "EXPIRED") {
+    timeline.push({ at: order.expiresAt, kind: "expired", label: "Đơn hết hạn thanh toán" });
+  }
+  if (status === "CANCELED") {
+    // `orders` không có `canceledAt`; CANCELED là trạng thái cuối nên lần cập nhật cuối = lúc huỷ.
+    timeline.push({ at: order.updatedAt, kind: "canceled", label: "Đơn hàng bị huỷ" });
+  }
+  for (const item of order.items) {
+    if (item.entitlement?.remedyRequestedAt) {
+      timeline.push({
+        at: item.entitlement.remedyRequestedAt,
+        kind: "remedy_opened",
+        label: "Tài liệu bị gỡ do vi phạm — khách được chọn tải lần cuối hoặc hoàn tiền",
+        detail: item.titleSnapshot,
+      });
+    }
+  }
+  for (const row of auditRows) {
+    const meta = (row.metadata ?? {}) as Record<string, unknown>;
+    const parts = [actorLabel(row)];
+    if (row.targetType === "Entitlement" && row.targetId) {
+      const title = titleByEntitlement.get(row.targetId);
+      if (title) parts.push(title);
+    }
+    if (row.action === "ENTITLEMENT_EXTRA_GRANTED" && typeof meta.extra === "number") parts.push(`+${meta.extra} lượt`);
+    if (row.action === "REMEDY_FINAL_DOWNLOAD_CHOSEN" && typeof meta.grantedDownloads === "number") parts.push(`${meta.grantedDownloads} lượt tải cuối`);
+    if (row.action === "COUPON_OVERUSED" && typeof meta.couponCode === "string") parts.push(`mã ${meta.couponCode}`);
+    timeline.push({ at: row.createdAt, kind: "audit", label: auditActionLabel(row.action), detail: parts.join(" · ") });
+  }
+  for (const email of emailRows) {
+    timeline.push({
+      at: email.createdAt,
+      kind: "email",
+      label: ORDER_EMAIL_TYPES[email.type] ?? "Email",
+      detail: email.status === "SENT" ? "Đã gửi" : "Gửi thất bại",
+    });
+  }
+  for (const note of noteData.notes) {
+    const author = note.author ? (note.author.name ?? note.author.email) : "Tài khoản đã xoá";
+    timeline.push({ at: note.createdAt, kind: "note", label: `Ghi chú nội bộ · ${author}`, detail: note.body, noteId: note.id });
+  }
+  timeline.sort((a, b) => a.at.getTime() - b.at.getTime());
+
+  const matched = order.transactions.find((txn) => txn.matchStatus === "MATCHED");
+  let paymentChannel: OrderPaymentChannel;
+  if (!order.paidAt) paymentChannel = { kind: "UNPAID", provider: order.provider };
+  else if (matched) paymentChannel = { kind: "PROVIDER", provider: matched.provider, providerTxnId: matched.providerTxnId, at: matched.createdAt };
+  else if (order.confirmNote) paymentChannel = { kind: "MANUAL", provider: order.provider };
+  else if (order.totalVnd === 0) paymentChannel = { kind: "FREE" };
+  else paymentChannel = { kind: "UNKNOWN", provider: order.provider };
+
+  const refund = order.items.find((item) => item.entitlement?.remedyStatus === "REFUND_REQUESTED")?.entitlement ?? null;
+  const refundRequestedAt = refund?.remedyChosenAt ?? null;
+  const historyOrders = history._count._all;
+  const spentVnd = history._sum.totalVnd ?? 0;
+
+  return {
+    id: order.id,
+    code: order.code,
+    status,
+    createdAt: order.createdAt,
+    paidAt: order.paidAt,
+    expiresAt: order.expiresAt,
+    subtotalVnd: order.subtotalVnd,
+    discountVnd: order.discountVnd,
+    totalVnd: order.totalVnd,
+    couponCode: order.couponCode,
+    confirmNote: order.confirmNote,
+    paymentChannel,
+    customer: { fullName: order.customer.profile?.fullName ?? null, email: order.customer.email },
+    lines: order.items.map((item) => {
+      const discountVnd = Math.max(0, item.unitPriceVnd - item.finalPriceVnd);
+      return {
+        id: item.id,
+        productId: item.productId,
+        productTitle: item.titleSnapshot,
+        unitPriceVnd: item.unitPriceVnd,
+        discountVnd,
+        couponCode: discountVnd > 0 ? order.couponCode : null,
+        finalPriceVnd: item.finalPriceVnd,
+        entitlement: item.entitlement,
+      };
+    }),
+    transactions: order.transactions,
+    customerHistory: {
+      orders: historyOrders,
+      spentVnd,
+      refundedVnd: refunded._sum.totalVnd ?? 0,
+      avgOrderVnd: historyOrders > 0 ? Math.floor(spentVnd / historyOrders) : null,
+    },
+    refundRequested: refund !== null,
+    refundRequestedAt,
+    refundOverdue: refundRequestedAt !== null && refundRequestedAt.getTime() < refundOverdueBefore(now).getTime(),
+    timeline,
+    allowedActions: orderAllowedActions(order, now),
+    notes: noteData.notes,
+    notesAvailable: noteData.available,
+  };
 }
 
 /**

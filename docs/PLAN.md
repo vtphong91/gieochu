@@ -25,7 +25,7 @@ BACKLOG) → M12 → hoàn thiện M2.
 | M8 | Checkout và Đơn hàng | ✅ Xong | `apps/web/lib/{order,payment-process}.ts`, `packages/core/src/order` | 10 / 9 |
 | M9 | Thư viện, Tải xuống, Share link | ✅ Xong | `apps/web/lib/{download,share-link,library,entitlement}.ts`, `packages/core/src/download` | 7 / 5 |
 | M10 | Social Feed và Đánh giá (tách theo ADR-029) | 🟡 **GĐ1 hoàn tất code** (nợ test): **M10a Đánh giá: xong code** (verify thủ công) · **M10b Bài viết tối giản: xong code** (verify thủ công) · M10c (bình luận/thả tim/theo dõi): chuyển `docs/BACKLOG.md` | M10a: `apps/web/lib/review.ts`, `packages/core/src/review`, `apps/web/app/studio/[tenantSlug]/reviews`; M10b: `apps/web/lib/post.ts`, `packages/core/src/content/post.ts`, `apps/web/app/studio/[tenantSlug]/posts`, `apps/web/app/[tenantSlug]/posts` | 4 / 3 (ngân sách gốc — chưa dùng, ADR-029 chọn chưa thêm test) |
-| M11 | Email và Background Jobs | 🟡 Email gửi đồng bộ (`sendEmailNow`); **job nền theo ADR-036: xong code, chưa commit/deploy** — `after()` drain hàng đợi trong route + Vercel Cron hằng ngày `GET /api/cron/daily`, `worker.ts` chỉ còn cho local | `packages/jobs`, `packages/email`, `apps/web/lib/{jobs,job-handlers,job-runner}.ts`, `apps/web/app/api/cron/daily`, `apps/web/worker.ts` | 0 / 0 (tính trong module khác) |
+| M11 | Email và Background Jobs | 🟡 Email gửi đồng bộ (`sendEmailNow`); **job nền theo ADR-036: đã commit `9a3208f`, deploy ❓ chờ chủ dự án** — `after()` drain hàng đợi trong route + Vercel Cron hằng ngày `GET /api/cron/daily`, `worker.ts` chỉ còn cho local | `packages/jobs`, `packages/email`, `apps/web/lib/{jobs,job-handlers,job-runner}.ts`, `apps/web/app/api/cron/daily`, `apps/web/worker.ts` | 0 / 0 (tính trong module khác) |
 | M12 | Audit Log, Thống kê, Báo cáo vi phạm (chia 3 đợt theo ADR-037) | 🟡 **Xong code cả 3 đợt — chờ commit/deploy** (M12a Audit log, M12b Thống kê, M12c Báo cáo vi phạm + quyền lợi người mua ADR-038/039; 4 migration đã áp DB 2026-10-16 — M12c/ADR-039 phải áp **trước** khi deploy code) | M12a: `packages/core/src/audit`, `apps/web/lib/{audit,audit-query}.ts`, `apps/web/app/admin/audit`, `apps/web/app/studio/[tenantSlug]/activity`; M12b: `apps/web/lib/{tenant-stats,admin-stats}.ts`, `apps/web/app/admin/_ui/sales-stats.tsx`, `apps/web/app/admin/page.tsx`; M12c: `packages/core/src/report`, `packages/core/src/download/entitlement-remedy.ts`, `apps/web/lib/{abuse-report,entitlement-remedy,moderation,tenant-lock,origin-guard}.ts`, `apps/web/app/api/reports`, `apps/web/app/admin/reports`, `apps/web/app/account/library` | 2 / 2 (M12a `audit.test.ts`, M12b `stats.test.ts`) |
 | | **Tổng** | | | Trần gốc mục 9: **91 / 50** · trần hiện **94 / 55** (ADR-026 + ADR-037 mục 6) · thực **94 / 55** — chạm trần (`pnpm test:count` 2026-10-18, sau ADR-043 +1/+1). Cộng cột theo module ra 92 / 51 — cột là ngân sách gốc từng module, không phải số thực |
 
@@ -579,10 +579,10 @@ trong đợt ADR-032/033".
 - **Còn treo:** dọn dữ liệu demo (`demo:clean`) trước go-live (ADR-034); migration contract `DROP COLUMN IF EXISTS "platformName"` chạy **sau** khi deploy
   bản ADR-032. Quy trình: KB `04-Operations-Runbooks/Deploy-Vercel-Runbook.md` §9, `Publish-And-Rollback-Runbook.md` §4.2.1.
 
-## Cửa hàng GĐ1 + GĐ2 (ADR-035) — xong code, chưa commit/deploy — 2026-10-15
+## Cửa hàng GĐ1 + GĐ2 (ADR-035) — đã commit `f021ed3`, deploy ❓ chờ chủ dự án — 2026-10-15
 
-**GĐ1 (CMS Cửa hàng trong System Center) và GĐ2 (trang công khai `/cua-hang`, `/cua-hang/tai-lieu`) đã xong code, chưa commit,
-chưa deploy.** Quyết định: ADR-035 + "Bổ sung ADR-035" + "Chủ dự án chốt". Kế hoạch: `docs/ke-hoach-cua-hang-marketplace-2026-10-15.md`
+**GĐ1 (CMS Cửa hàng trong System Center) và GĐ2 (trang công khai `/cua-hang`, `/cua-hang/tai-lieu`) đã xong code, đã commit `f021ed3`,
+deploy ❓ chờ chủ dự án.** Quyết định: ADR-035 + "Bổ sung ADR-035" + "Chủ dự án chốt". Kế hoạch: `docs/ke-hoach-cua-hang-marketplace-2026-10-15.md`
 — §5 bước 1–14 xong, bước 15 (KB) xong. Verify: `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test:unit` đạt; thử trên dev server
 với dữ liệu thật đạt.
 
@@ -629,9 +629,9 @@ với dữ liệu thật đạt.
 `02-System-Specs/Shop-Marketplace-Specs.md`, `03-API-Contracts/Endpoint-Directory.md` §15–§16,
 `04-Operations-Runbooks/UI-Design-System.md` §13–§14.
 
-## Job nền trong app + Vercel Cron hằng ngày (ADR-036) — xong code, chưa commit/deploy — 2026-10-16
+## Job nền trong app + Vercel Cron hằng ngày (ADR-036) — đã commit `9a3208f`, deploy ❓ chờ chủ dự án — 2026-10-16
 
-**Đã xong code, chưa commit, chưa deploy.** Quyết định: ADR-036 + "Chủ dự án chốt (2026-10-16)". Bối cảnh: Vercel không chạy worker
+**Đã xong code, đã commit `9a3208f`, deploy ❓ chờ chủ dự án.** Quyết định: ADR-036 + "Chủ dự án chốt (2026-10-16)". Bối cảnh: Vercel không chạy worker
 thường trực (ADR-031 mục 4); kiểm chỉ đọc hàng đợi thấy job tồn đều từ integration test, không có đơn khách thật kẹt.
 
 - **`packages/jobs`** (`src/queue.ts`): `createJobQueue(conn, { schedule?, supervise? })` (mặc định bật như pg-boss); thêm `fetch`
@@ -662,9 +662,9 @@ thường trực (ADR-031 mục 4); kiểm chỉ đọc hàng đợi thấy job 
 trong đợt ADR-036". KB: `02-System-Specs/Background-Jobs-Specs.md`, `02-System-Specs/Order-State-Machine.md` §3.1/§3.4,
 `03-API-Contracts/Endpoint-Directory.md` §17, `04-Operations-Runbooks/Deploy-Vercel-Runbook.md` §3.4/§6.
 
-## M12a — Audit log (ADR-037) — xong code, chưa commit/deploy — 2026-10-16
+## M12a — Audit log (ADR-037) — đã commit `36103fb`, deploy ❓ chờ chủ dự án — 2026-10-16
 
-**Đã xong code, chưa commit, chưa deploy. Migration đã áp lên DB dùng chung 2026-10-16.** Quyết định: ADR-037 (M12 chia 3 đợt
+**Đã xong code, đã commit `36103fb`, deploy ❓ chờ chủ dự án. Migration đã áp lên DB dùng chung 2026-10-16.** Quyết định: ADR-037 (M12 chia 3 đợt
 deploy riêng: M12a Audit log → M12b Thống kê → M12c Báo cáo vi phạm).
 
 - **DB — migration `20261016090000_m12a_audit_logs`** (expand, chỉ thêm): enum `AuditScope` (`SYSTEM`/`TENANT`/`CUSTOMER`), bảng L1
@@ -696,9 +696,9 @@ deploy riêng: M12a Audit log → M12b Thống kê → M12c Báo cáo vi phạm)
 `03-API-Contracts/Endpoint-Directory.md` §17–§18, `04-Operations-Runbooks/UI-Design-System.md` §15,
 `04-Operations-Runbooks/Deploy-Vercel-Runbook.md`.
 
-## M12b — Thống kê (ADR-037) — xong code, chưa commit/deploy — 2026-10-16
+## M12b — Thống kê (ADR-037) — đã commit `36103fb`, deploy ❓ chờ chủ dự án — 2026-10-16
 
-**Đã xong code, chưa commit, chưa deploy. Migration đã áp lên DB dùng chung 2026-10-16** (`gieochu_app` có SELECT/INSERT/UPDATE, không
+**Đã xong code, đã commit `36103fb`, deploy ❓ chờ chủ dự án. Migration đã áp lên DB dùng chung 2026-10-16** (`gieochu_app` có SELECT/INSERT/UPDATE, không
 RLS, bảng trống — backfill lần đầu khi cron chạy sau deploy). Quyết định: ADR-037 mục 5–6 + đoạn "ADR-037 — M12b chốt định nghĩa số liệu".
 
 - **DB — migration `20261016120000_m12b_tenant_daily_stats`** (expand, chỉ thêm): bảng L1 `tenant_daily_stats` (model `TenantDailyStat`):
@@ -722,9 +722,9 @@ RLS, bảng trống — backfill lần đầu khi cron chạy sau deploy). Quy�
 `02-System-Specs/Tenant-Stats-Specs.md`, `03-API-Contracts/Database-Schema-Reference.md`, `03-API-Contracts/Endpoint-Directory.md`
 §17/§19, `04-Operations-Runbooks/UI-Design-System.md` §16, `04-Operations-Runbooks/Deploy-Vercel-Runbook.md` §6/§9.7.
 
-## M12c — Báo cáo vi phạm (ADR-038) + Quyền lợi người mua (ADR-039) — xong code, chưa commit/deploy — 2026-10-16
+## M12c — Báo cáo vi phạm (ADR-038) + Quyền lợi người mua (ADR-039) — đã commit `36103fb`, deploy ❓ chờ chủ dự án — 2026-10-16
 
-**Đã xong code, chưa commit, chưa deploy. 2 migration đã áp lên DB dùng chung 2026-10-16** — Quốc kiểm bằng `gieochu_app` trong transaction
+**Đã xong code, đã commit `36103fb`, deploy ❓ chờ chủ dự án. 2 migration đã áp lên DB dùng chung 2026-10-16** — Quốc kiểm bằng `gieochu_app` trong transaction
 rollback: tenant đặt khoá kiểm duyệt/remedy → `42501`; tenant cấp thêm lượt khi có remedy → `42501`; `system_job` được; CHECK hình dạng chặn;
 checksum migration ADR-039 khớp file. ⚠️ **Thứ tự deploy: migration TRƯỚC code** — code đọc cột mới của `products`/`reviews`/`posts`/
 `entitlements`, lên trước sẽ 500 (P2022). Quyết định: ADR-038, ADR-039 + "Bổ sung ADR-039".
@@ -763,7 +763,7 @@ checksum migration ADR-039 khớp file. ⚠️ **Thứ tự deploy: migration TR
 §8, `03-API-Contracts/Database-Schema-Reference.md`, `03-API-Contracts/Endpoint-Directory.md` §17/§20, `04-Operations-Runbooks/UI-Design-System.md`
 §17, bản trích `01-Architecture-Decisions/ADR-024` (≙ ADR-038), `ADR-025` (≙ ADR-039).
 
-## Chỉ gian hàng ACTIVE hiển thị tài liệu (ADR-040) — xong code, chưa commit/deploy — 2026-10-17
+## Chỉ gian hàng ACTIVE hiển thị tài liệu (ADR-040) — đã commit `36103fb`, deploy ❓ chờ chủ dự án — 2026-10-17
 
 Chủ dự án chốt: gian hàng chỉ hiển thị tài liệu khi `ACTIVE`. Không migration, không thêm test.
 
@@ -782,7 +782,7 @@ Chủ dự án chốt: gian hàng chỉ hiển thị tài liệu khi `ACTIVE`. K
 **Số test:** `pnpm test:count` = **93/94 unit, 54/55 integration** (Long chạy 2026-10-17, chỉ đếm). KB:
 `02-System-Specs/Storefront-CMS-Specs.md` §1.2, bản trích `01-Architecture-Decisions/ADR-026` (≙ ADR-040), `00-Index/KB-Audit-2026-09-26.md` §19.
 
-## Nâng cấp tài khoản + Hồ sơ + hoàn tiền gói (ADR-041) — GĐ1 + GĐ2 + GĐ2b xong code, chưa commit/deploy — 2026-10-17
+## Nâng cấp tài khoản + Hồ sơ + hoàn tiền gói (ADR-041) — GĐ1 + GĐ2 đã commit `7f8360b`, GĐ2b đã commit `9d37ab1`, deploy ❓ chờ chủ dự án — 2026-10-17
 
 Chủ dự án + Quốc chốt ngày 2026-10-17, ghi ở **ADR-041** (`docs/DECISIONS.md`, gồm bổ sung ADR-008 và 3 lần "Bổ sung ADR-041"). Kế hoạch:
 [docs/ke-hoach-nang-cap-tai-khoan-va-ho-so-2026-10-17.md](ke-hoach-nang-cap-tai-khoan-va-ho-so-2026-10-17.md) (nguồn: hai đề xuất của Phong
@@ -819,7 +819,7 @@ AES-256-GCM). Deploy được.
   cần kiểm. KB: `02-System-Specs/{Pricing-Page-Specs,Account-Profile-Specs,Payment-And-Billing}.md`, bản trích
   `01-Architecture-Decisions/ADR-027` (≙ ADR-041), `00-Index/KB-Audit-2026-09-26.md` §21.
 
-## Sidebar dùng chung System Center + Studio, Đăng xuất, drawer mobile (ADR-042) — xong code, chưa commit/deploy — 2026-10-17
+## Sidebar dùng chung System Center + Studio, Đăng xuất, drawer mobile (ADR-042) — đã commit `9d37ab1`, deploy ❓ chờ chủ dự án — 2026-10-17
 
 Chủ dự án yêu cầu: sidebar Studio cùng style System Center; dashboard admin/Studio có Đăng xuất; hoàn tất GĐ2b ADR-041. Không migration, không
 đổi API/schema, không thêm test.
@@ -842,7 +842,7 @@ Chủ dự án yêu cầu: sidebar Studio cùng style System Center; dashboard a
 `04-Operations-Runbooks/UI-Design-System.md` §5.1/§11.1/§12.6/§18.5, `02-System-Specs/User-Management-System-Center-Specs.md` §2,
 `02-System-Specs/Account-Profile-Specs.md` §5, bản trích `01-Architecture-Decisions/ADR-028` (≙ ADR-042), `00-Index/KB-Audit-2026-09-26.md` §22.
 
-## Dashboard Tổng quan gian hàng (ADR-043) — xong code, chưa commit/deploy — 2026-10-18
+## Dashboard Tổng quan gian hàng (ADR-043) — đã commit (`e5d63d0`), deploy ❓ chờ chủ dự án; "Bổ sung lần 3" xong code, chưa commit — 2026-10-18
 
 Chủ dự án chốt §9 kế hoạch [ke-hoach-dashboard-tong-quan-gian-hang-2026-10-17.md](ke-hoach-dashboard-tong-quan-gian-hang-2026-10-17.md) ngày
 2026-10-18 → **ADR-043** + "Bổ sung ADR-043" (`docs/DECISIONS.md`). Dữ liệu nghiệp vụ, không có GĐ CMS. Không migration, không route HTTP mới.
@@ -864,12 +864,140 @@ Chủ dự án chốt §9 kế hoạch [ke-hoach-dashboard-tong-quan-gian-hang-2
 - **Kiểm:** lint/typecheck/build đạt (Quốc chạy lại 2026-10-18); integration `studio-dashboard.test.ts` chạy thật đạt, dọn dữ liệu; xem trước
   dữ liệu giả 360/768/1280. **Chưa** kiểm phiên OWNER thật, `/admin` sau refactor, bàn phím/trình đọc màn hình. Việc còn lại: `docs/BACKLOG.md`
   mục "Phát sinh trong đợt ADR-043".
+- **"Bổ sung ADR-043 lần 3" (2026-10-18, chủ dự án yêu cầu; working tree, chưa commit):**
+  - *Dữ liệu (Hiếu):* `dashboard-range.ts` thêm `tuan-truoc` (Thứ Hai–Chủ nhật tuần trước, theo ngày), `thang-truoc` (theo ngày), `quy-truoc`
+    (theo tuần) → 12 mốc, thứ tự = danh sách mốc picker; ba mốc đã kết thúc so với **trọn** kỳ liền trước (ngoại lệ có chủ đích của mục 5);
+    `DashboardRange.displayFrom/displayTo` (`YYYY-MM-DD` giờ VN, gồm ngày cuối), cũng có trong `TenantDashboardRangeView`.
+  - *UI (Phong):* `(tong-quan)/_ui/date-range-picker.tsx` (`DashboardDateRangePicker`) — ô `dd/mm/yyyy - dd/mm/yyyy` + `<dialog>` `showModal`
+    (≥ xl popover 2 tháng, 768–1279px 1 tháng, < 768px sheet đáy), mốc là link `?ky=`, lịch có cột tuần ISO, Thứ Hai đầu tuần, chọn tháng/năm (lùi
+    10 năm), ngày tương lai vô hiệu + gạch, bàn phím đầy đủ, tối đa 366 ngày; thay chip kỳ + form tuỳ chọn cũ; **cần JS**. Số đầy đủ `vi-VN` cho
+    thẻ/dòng phụ/top 5/bảng/tooltip, chỉ trục Y rút gọn (`formatVndAxis`, đổi tên từ `formatVndCompact`), `statValueSizeClass` — áp cả `/admin`
+    (`sales-stats.tsx`, thẻ "Doanh thu gói dịch vụ"). `IconCalendar`, CSS `.range-picker`.
+  - *Kiểm (báo cáo):* lint/typecheck/build đạt, Playwright kiểm bàn phím, 360/1100/1440 không cuộn ngang; chưa kiểm phiên OWNER thật. Test chỉ thêm
+    assertion — vẫn **94/94 unit, 55/55 integration** (Long chạy `pnpm test:count` 2026-10-18).
 
 **Số test:** +1 unit (`packages/core/src/stats/dashboard-range.test.ts`) +1 integration (`apps/web/tests/integration/studio-dashboard.test.ts`),
 không nâng trần — `pnpm test:count` = **94/94 unit, 55/55 integration** (Long chạy 2026-10-18, chỉ đếm) — **chạm trần**; test mới cần chủ dự án
 duyệt nâng trần. KB: `02-System-Specs/Studio-Dashboard-Specs.md` (mới), `02-System-Specs/Tenant-Stats-Specs.md` §9,
-`03-API-Contracts/Endpoint-Directory.md` §22, `04-Operations-Runbooks/UI-Design-System.md` §6/§16/§19, bản trích
-`01-Architecture-Decisions/ADR-029` (≙ ADR-043), `00-Index/KB-Audit-2026-09-26.md` §23.
+`03-API-Contracts/Endpoint-Directory.md` §22, `04-Operations-Runbooks/UI-Design-System.md` §6/§16/§19 (lần 3: §19.5 date range picker, §19.6
+quy tắc số), bản trích `01-Architecture-Decisions/ADR-029` (≙ ADR-043), `00-Index/KB-Audit-2026-09-26.md` §23, §24 (lần 3).
+
+## Nâng cấp trang Đơn hàng Studio — danh sách + chi tiết (ADR-046) — xong code, chưa commit — 2026-10-18
+
+Chủ dự án yêu cầu 2026-10-18 (tham khảo WooCommerce) → **ADR-046** (`docs/DECISIONS.md`). Dữ liệu nghiệp vụ, không có GĐ CMS. **Không migration,
+không `route.ts`/Server Action mới**; `orders/[orderId]/actions.ts` không đổi (luật các thao tác tiền giữ nguyên).
+
+- **Dữ liệu (Hiếu):** `apps/web/lib/order.ts` — `listOrdersPage`, `parseOrderListQuery`, `buildOrderListSearch`, `orderAllowedActions`,
+  `getOrderDetailView` + hằng `ORDER_LIST_*`. URL: `trang-thai` (alias `status`), `remedy`, `q` (mã/họ tên/email, NFC, ≤ 100 ký tự, escape),
+  `ky`/`tu`/`den` (theo `createdAt`; không có = mọi thời gian), `san-pham`, `sap-xep` (`moi-nhat`|`cu-nhat`|`tong-giam`|`tong-tang`), `trang`,
+  `so-dong` (10/20/50/100, mặc định 20). `statusCounts` theo trạng thái hiệu lực, áp mọi bộ lọc trừ trạng thái; số yêu cầu hoàn tiền / quá hạn tính
+  toàn gian hàng. `allowedActions`: xác nhận theo `canManuallyConfirmOrder`, huỷ khi PENDING hiệu lực, hoàn tiền khi FULFILLED. Chi tiết: kênh thanh
+  toán suy ra (PROVIDER / MANUAL theo `confirmNote` / FREE / UNKNOWN / UNPAID), dòng tài liệu (đơn giá lúc mua, giảm giá, mã giảm giá), giao dịch
+  (không `rawPayload`), lịch sử khách (chỉ đơn > 0đ: số đơn, tổng chi tiêu gộp, đã hoàn, TB), dòng thời gian từ dữ liệu có sẵn (tạo / thanh toán /
+  giao dịch / audit đơn + entitlement không IP-UA / email `order_paid` & `remedy_refund_requested` lọc theo mã đơn; huỷ lấy `updatedAt`, hết hạn lấy
+  `expiresAt`). Khách chỉ họ tên + email (ADR-041). L2 trong một `withTenant`, chỉ OWNER.
+- **Quy ước mới:** input người dùng vào Prisma `contains` phải qua `escapeContainsValue` (`apps/web/lib/prisma-contains.ts`) — đã áp `lib/order.ts`,
+  `lib/home.ts` (3 chỗ), `app/admin/users/page.tsx`; SQL thô dùng `escapeLikePattern` + `ESCAPE '\'`.
+- **UI (Phong):** `orders/_ui/{order-format.ts, order-filter-form.tsx, order-list.tsx, order-row-actions.tsx, order-detail-parts.tsx,
+  order-skeleton.tsx}`, `orders/loading.tsx`, `orders/[orderId]/loading.tsx`, `orders/error.tsx`. Danh sách: thanh lọc form GET (dropdown trạng
+  thái kèm số đếm, hoàn tiền, tài liệu, số dòng, ô ngày `DashboardDateRangePicker` (dùng chung `admin/_ui/`) `formMode` + "Mọi thời gian", ô tìm, Xoá lọc; URL rút gọn bỏ ô
+  rỗng/mặc định), bảng từ `xl` / thẻ dưới `xl`, sắp xếp bằng tiêu đề cột (`aria-sort`), menu dòng `RowMenu` (Xem, Xác nhận → `#order-actions`,
+  Hoàn tiền/Huỷ → `<dialog>` xác nhận gọi action cũ), Notice yêu cầu hoàn tiền, `LinkPagination pageParam="trang"`. Chi tiết: `MainAsideGrid` —
+  Thông tin chung + Khách, Tài liệu trong đơn (+ quyền tải theo dòng: cấp thêm lượt, thu hồi 2 bước; remedy), Giao dịch; cột phụ Thao tác đơn (chỉ
+  thao tác hợp lệ, 2 bước), Lịch sử khách, Lịch sử đơn (mới nhất trên). `?back=` giữ bộ lọc (whitelist khoá, không open redirect). Kit:
+  `DataTable.head` `ReactNode[]` + `headAriaSort`; `LinkPagination.pageParam`; `DashboardDateRangePicker.formMode`; dashboard link `?trang-thai=PENDING`.
+- **"Bổ sung ADR-046" (Quốc, đính chính theo code):** bảng dòng hiện đơn giá lúc mua; cấp thêm lượt / thu hồi đặt theo dòng ở cột chính; bộ lọc
+  dùng form GET riêng; tìm phân biệt dấu (không dấu → BACKLOG). Sửa kèm: tiền tách `formatOrderPrice` (giá/tổng đơn, dòng: 0 → "Miễn phí") và
+  `formatOrderVnd` (số tổng hợp, giảm giá, giao dịch: 0 → "0 đ"); date range picker chuyển sang `apps/web/app/admin/_ui/date-range-picker.tsx` dùng
+  chung (`hrefForPreset`/`hrefForCustom` hoặc `formMode`), dashboard dùng wrapper `(tong-quan)/_ui/dashboard-range-picker.tsx`
+  (`StudioDashboardRangePicker`).
+- **Kiểm:** lint/typecheck/build đạt (Quốc kiểm cuối 2026-10-18); dữ liệu thật tenant `phongweb` đọc-only đúng (Hiếu). **Chưa** xem UI thật với phiên
+  OWNER, chưa thử tenant chéo trên trình duyệt, nhánh timeline audit/email chưa có dữ liệu. Việc còn lại: `docs/BACKLOG.md` mục "Phát sinh trong
+  đợt ADR-046".
+
+**Số test:** không thêm case — `pnpm test:count` = **94/94 unit, 55/55 integration** (Long chạy 2026-10-18, chỉ đếm). `apps/web/tests/integration/order.test.ts`
+chuyển sang kiểm `listOrdersPage`/`getOrderDetailView` (cô lập tenant, escape `%`/`_`, `allowedActions`), chạy thật đạt 9/9; `listOrders`/`getOrderDetail`
+cũ không còn nơi gọi (BACKLOG dọn). KB: `02-System-Specs/Studio-Orders-Specs.md` (mới),
+`02-System-Specs/Order-State-Machine.md`, `03-API-Contracts/Endpoint-Directory.md` §23, `04-Operations-Runbooks/UI-Design-System.md` §20, bản trích
+`01-Architecture-Decisions/ADR-031` (≙ ADR-046), `00-Index/KB-Audit-2026-09-26.md` §25.
+
+## Đơn hàng Studio — tìm không dấu, ghi chú nội bộ (ADR-047) — xong code, chưa commit; migration đã áp — 2026-10-18
+
+Chủ dự án chốt 2026-10-18 → **ADR-047** (`docs/DECISIONS.md`). Dữ liệu nghiệp vụ, không có GĐ CMS. Không `route.ts` mới.
+
+- **Tìm không dấu (mục 1):** `listOrdersPage` khớp `q` (mã đơn / email / họ tên khách) bằng SQL thô
+  `public.gieochu_unaccent(lower(col)) LIKE '%' || gieochu_unaccent(lower($q)) || '%' ESCAPE '\'` (`escapeLikePattern`, tham số hoá); lọc + đếm +
+  lấy id trang bằng `$queryRaw` trong một `withTenant`, rồi Prisma nạp ≤ 100 đơn theo id. Đếm trạng thái hiệu lực bằng SQL (`CASE … EXPIRED`).
+- **Ghi chú nội bộ (mục 2):** bảng L2 mới `order_notes` — migration expand `20261018090000_adr045_order_notes` (tên thư mục giữ số cũ ADR-045; **đã áp DB dùng chung 2026-10-18**;
+  Quốc kiểm: RLS enable + force, 5 policy `select_access` / `tenant_insert` (kiểm đơn cùng tenant) / `system_job_insert` / `tenant_delete` /
+  `system_job_delete`, không UPDATE (`REVOKE`), CHECK nội dung 1–1000 ký tự). Lib `apps/web/lib/order-note.ts` (`listOrderNotes`, `addOrderNote`,
+  `deleteOrderNote` — chỉ tác giả, kiểm ở server); `getOrderDetailView(tenantId, orderId, viewerId)` trả `notes[]` + `notesAvailable`, timeline kind
+  `note`; Server Action `addOrderNoteAction`, `deleteOrderNoteAction`; lỗi `ORDER_NOTES_UNAVAILABLE` 503 (code lên trước migration),
+  `ORDER_NOTE_NOT_FOUND` 404, `ORDER_NOTE_FORBIDDEN` 403; audit `ORDER_NOTE_ADDED` / `ORDER_NOTE_DELETED` (metadata chỉ `noteId`).
+- **UI (Phong):** `orders/[orderId]/order-note-actions.tsx` (`AddOrderNoteForm`, `DeleteOrderNoteButton` 2 bước), thẻ `OrderNotesCard` ở cột phụ
+  trên "Lịch sử đơn", `IconNote`, tông timeline `neutral`, hằng `ORDER_NOTE_MAX_LENGTH_UI`; tác giả đã xoá → "Tài khoản đã xoá".
+- **Không làm (mục 3):** thao tác hàng loạt và xuất CSV đơn hàng / khách hàng (tạm thời); huỷ đơn chỉ từng đơn.
+- **Dọn (mục 4):** xoá `listOrders`, `getOrderDetail`, `effectiveStatusWhere` (giữ `OrderListFilters`, `parseOrderRemedyFilter`).
+- **Kiểm:** lint/typecheck/build đạt (Quốc); `order.test.ts` chạy thật 9/9 sau migration — assertion mới nằm trong case cô lập tenant có sẵn (tìm
+  không dấu; ghi chú: tenant B/khách/public không đọc, insert chéo tenant bị chặn, UPDATE bị chặn, xoá 404/403, tác giả xoá được). **Chưa** xem UI
+  ghi chú thật với phiên OWNER. Việc còn lại: `docs/BACKLOG.md` mục "Phát sinh trong đợt ADR-047".
+
+**Số test:** không thêm case — `pnpm test:count` = **94/94 unit, 55/55 integration** (Long chạy, chỉ đếm). KB: `02-System-Specs/Studio-Orders-Specs.md`
+§2/§3.2, `02-System-Specs/Audit-Log-Specs.md` §4, `03-API-Contracts/Endpoint-Directory.md` §23.3–§23.5, `03-API-Contracts/Database-Schema-Reference.md`
+§3.2/§7, `04-Operations-Runbooks/UI-Design-System.md` §20.8, `04-Operations-Runbooks/Deploy-Vercel-Runbook.md` §9.10, bản trích
+`01-Architecture-Decisions/ADR-032` (≙ ADR-047), `00-Index/KB-Audit-2026-09-26.md` §26.
+
+## Danh sách Khách hàng Studio (ADR-048) — xong code, chưa commit; không migration — 2026-10-19
+
+Chủ dự án chốt 2026-10-18 → **ADR-048** (`docs/DECISIONS.md`). Dữ liệu nghiệp vụ, không có GĐ CMS. Chỉ nâng cấp danh sách (không trang chi tiết khách).
+Không `route.ts` mới, không migration (dùng cột có sẵn `tenant_customers.note`).
+
+- **Dữ liệu (Hiếu):** `apps/web/lib/customer-list.ts` — `listCustomersPage` (một `withTenant`, 1 Prisma + 2 SQL tổng hợp tham số hoá),
+  `parseCustomerListQuery`, `buildCustomerListSearch`, `updateCustomerNote`; Server Action `customers/actions.ts` `saveCustomerNoteAction`; subpath
+  `@gieochu/core/customer-list` (`CUSTOMER_NOTE_MAX_LENGTH = 500`, `INACTIVE_CUSTOMER_DAYS = 90`); audit `CUSTOMER_NOTE_UPDATED` (metadata chỉ
+  `customerUserId`, không nội dung; lưu không đổi → không ghi).
+- **Định nghĩa:** khách = ≥ 1 đơn có `paidAt` (gồm đơn 0đ); mua lần đầu / gần nhất gồm đơn 0đ (lượt nhận miễn phí cũng tính là có quay lại); số liệu mỗi khách
+  luỹ kế; số đơn / tổng chi tiêu chỉ đơn > 0đ (gộp, gồm đơn đã hoàn) + "Đã hoàn" riêng + số lượt miễn phí. Thẻ thống kê chỉ áp kỳ (`ky` + `theo`) — không
+  kỳ thì toàn bộ, khách mới tính 30 ngày; số đếm nhóm áp kỳ + `q` + `san-pham`; nhóm "có yêu cầu hoàn tiền" = entitlement `REFUND_REQUESTED`.
+- **URL:** `q` (không dấu), `nhom` (`tat-ca`|`moi`|`quay-lai`|`mien-phi`|`hoan-tien`|`lau-chua-quay-lai`), `ky`/`tu`/`den`, `theo` (`mua-dau` mặc
+  định|`mua-gan-nhat`), `san-pham`, `sap-xep` (`gan-nhat` mặc định|`moi-nhat`|`chi-tieu-giam`|`so-don-giam`), `trang`, `so-dong`.
+- **Trang Đơn hàng:** thêm `?khach=` (`OrderListQuery.customerId`, `OrderListPage.customer`; khách không có đơn tại gian hàng → bỏ bộ lọc).
+  Dọn: xoá `listTenantCustomers`, `getOrderDashboardStats`.
+- **UI (Phong):** `customers/page.tsx` + `loading.tsx` + `error.tsx`; `customers/_ui/{customer-list.tsx, customer-row-actions.tsx, customer-format.ts,
+  customer-skeleton.tsx}` — 5 `KpiCard`, form lọc dùng `OrderFilterForm` (prop `label` mới), date picker `formMode`, bảng từ `xl` / thẻ dưới, sắp xếp
+  `aria-sort`, `LinkPagination`, menu Thao tác (Xem đơn của khách → `orders?khach=`; Ghi chú → `<dialog>` 500 ký tự, trống = xoá), badge chữ. Trang
+  Đơn hàng: dòng "Đang xem đơn của khách X" + ô ẩn `khach` + "Bỏ lọc khách"; `BACK_KEYS` có `khach`.
+- **Kiểm:** lint/typecheck/build đạt (Quốc 2026-10-19); `order.test.ts` chạy thật 9/9 — assertion mới trong case cô lập tenant có sẵn (khách của tenant
+  A không lộ sang B; ghi chú khách khác tenant bị chặn 404; quá 500 ký tự 400; trống → xoá). Thử đọc-only `phongweb`: 5 khách, 2 quay lại (40%),
+  993.000đ — khớp dashboard. **Chưa** kiểm UI thật với phiên OWNER. Việc còn lại: `docs/BACKLOG.md` mục "Phát sinh trong đợt ADR-048".
+
+**Số test:** không thêm case — `pnpm test:count` = **94/94 unit, 55/55 integration** (Long chạy 2026-10-23, chỉ đếm). KB: `02-System-Specs/Studio-Customers-Specs.md`
+(mới), `02-System-Specs/Studio-Orders-Specs.md` §2.1 (`?khach=`), `02-System-Specs/Audit-Log-Specs.md` §4, `03-API-Contracts/Endpoint-Directory.md` §23.2,
+§24, `03-API-Contracts/Database-Schema-Reference.md` (`TenantCustomer.note`), `04-Operations-Runbooks/UI-Design-System.md` §21, bản trích
+`01-Architecture-Decisions/ADR-033` (≙ ADR-048), `00-Index/KB-Audit-2026-09-26.md` §28.
+
+## Lưu trữ MinIO song song R2 + bucket riêng cho gian hàng (ADR-044) — đã commit `78a9d9c`; migration **chưa áp DB**; deploy ❓ — 2026-10-22
+
+Dev vuong làm, vào `master` qua commit `78a9d9c` (2026-10-22; ADR đề ngày 2026-10-17). `SystemStorageConfig` lưu song song cấu hình `CLOUDFLARE_R2` và
+`MINIO` + `activeProvider`; mỗi gian hàng một bucket riêng `{prefix}tenant-{tenantId}` (tạo lười khi upload / nút admin — `lib/tenant-storage.ts`);
+đồng bộ R2 ↔ MinIO (`lib/storage-sync.ts`, `packages/storage/src/stream-copy.ts`) và giám sát bucket ở `/admin/settings/storage?tab=buckets|sync`.
+
+- **Migration** `20261017140000_adr038_tenant_storage_bucket` (tên mang số "adr038" nhưng thuộc ADR-044): expand — thêm cột nullable
+  `storageBucket`/`storageProvider` vào `tenants` và `product_files`. **CHƯA áp DB dùng chung** (Quốc kiểm `migrate status` 2026-10-23). Code đã đọc
+  các cột này → phải áp migration trước khi code chạy trên DB đó (ADR-034).
+- Không thêm test case (trần 94/55 đã chạm).
+- Tài liệu: bản trích `01-Architecture-Decisions/ADR-034` (≙ ADR-044), `03-API-Contracts/Database-Schema-Reference.md` §3.2 + §7,
+  `04-Operations-Runbooks/Minio-Storage-Operations-Runbook.md`, `00-Index/KB-Audit-2026-09-26.md` §29.
+
+## Storage Gateway — vé mã hoá `/_s/` + nginx `auth_request` (ADR-045) — đã commit `4ab5a3b`; không migration; deploy ❓ — 2026-10-22
+
+Dev vuong làm, commit `4ab5a3b` (2026-10-22). Env hạ tầng tuỳ chọn `STORAGE_GATEWAY_PROVIDERS` chọn provider giao file qua `/_s/<vé>` (mặc định:
+presigned trực tiếp như cũ); vé AES-256-GCM (khoá HKDF từ `STORAGE_ENCRYPTION_KEY`); route nội bộ mới `GET /api/internal/storage/ticket` chỉ cho
+nginx gọi (23 `route.ts` dưới `/api`, 24 toàn app); file mẫu `docker/nginx/gieochu-storage-gateway.conf.example`. Không migration, không thêm test case.
+Câu hỏi mở: production chạy VPS hay Vercel — Quốc đang hỏi chủ dự án.
+
+- Tài liệu: bản trích `01-Architecture-Decisions/ADR-030` (≙ ADR-045), `02-System-Specs/File-Storage-And-Downloads-Specs.md` §9,
+  `03-API-Contracts/Endpoint-Directory.md` §25, `04-Operations-Runbooks/Storage-Gateway-VPS-Runbook.md`, `00-Index/KB-Audit-2026-09-26.md` §27, §29.
 
 ## Câu hỏi còn mở (đã chọn phương án an toàn, xem ADR tương ứng)
 

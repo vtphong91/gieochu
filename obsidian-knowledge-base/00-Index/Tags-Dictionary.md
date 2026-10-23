@@ -4,7 +4,7 @@ tags:
   - index
   - taxonomy
 date: 2026-09-26
-updated: 2026-10-18
+updated: 2026-10-23
 author: System Architect
 ---
 
@@ -38,13 +38,13 @@ giúp phân loại nội dung và tra cứu nhanh cho người và AI agent đ�
 | `#tenant` | Tenant workspace, storefront, onboarding, slug, branding |
 | `#billing` | Subscription, plan, hoá đơn, mô hình Free Forever + Paid (M3 v2) |
 | `#payment` | Cổng thanh toán Platform và Tenant (SePay/MoMo/VietQR QR thủ công), webhook, mã hoá secret |
-| `#order` | Checkout, vòng đời đơn hàng, khuyến mãi/coupon |
+| `#order` | Checkout, vòng đời đơn hàng, khuyến mãi/coupon; trang Đơn hàng Studio — danh sách + chi tiết (ADR-046), tìm không dấu + ghi chú nội bộ `order_notes` (ADR-047, `Studio-Orders-Specs`) |
 | `#product` | Sản phẩm (tài liệu số), file đính kèm, upload, giá |
 | `#download` | Thư viện khách hàng, token tải file, share link |
 | `#rbac` | Phân quyền — `SystemRole`/`TenantMemberRole`, bảng `Role`/`Permission` (ADR-022) |
 | `#auth` | Đăng ký/đăng nhập, JWT, refresh token, xác minh email |
 | `#system-admin` | Console quản trị cấp hệ thống (L1) |
-| `#customer` | Trải nghiệm khách hàng mua tài liệu |
+| `#customer` | Trải nghiệm khách hàng mua tài liệu; danh sách Khách hàng Studio `/studio/{slug}/customers` — số liệu khách, nhóm, ghi chú khách (ADR-048, `Studio-Customers-Specs`) |
 | `#reviews` | Đánh giá sản phẩm của khách đã mua (M10a, ADR-029): quyền đánh giá, kiểm duyệt/trả lời của tenant, điểm trung bình |
 | `#posts` | Bài viết tối giản của tenant (M10b, ADR-029): trạng thái DRAFT/PUBLISHED/HIDDEN, ghim, gắn tài liệu, trang `/[slug]/posts`, section `posts` |
 | `#marketplace` | Trang Cửa hàng tổng hợp tài liệu mọi tenant (ADR-035): CMS `shop` ở System Center (GĐ1), `/cua-hang` + `/cua-hang/tai-lieu` (GĐ2) |

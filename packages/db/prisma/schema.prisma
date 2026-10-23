@@ -64,6 +64,7 @@ model User {
   reviews              Review[]
   abuseReportsFiled    AbuseReport[]       @relation("AbuseReportReporter")
   abuseReportsResolved AbuseReport[]       @relation("AbuseReportResolver")
+  orderNotesAuthored   OrderNote[]         @relation("OrderNoteAuthor")
 
   @@map("users")
 }
@@ -334,6 +335,7 @@ model Tenant {
   dailyStats           TenantDailyStat[]
   abuseReports         AbuseReport[]
   subscriptionRefund   SubscriptionRefundRequest?
+  orderNotes           OrderNote[]
 
   @@map("tenants")
 }
@@ -943,10 +945,32 @@ model Order {
   items             OrderItem[]
   transactions      TenantPaymentTransaction[]
   couponRedemptions CouponRedemption[]
+  notes             OrderNote[]
 
   @@index([tenantId])
   @@index([customerId])
   @@map("orders")
+}
+
+/// ADR-047 mục 2 — ghi chú nội bộ của chủ gian hàng trên một đơn. L2 (RLS FORCE, migration `adr045_order_notes`):
+/// chỉ scope `tenant` (đúng `app.tenant_id`) + `system_job`; KHÔNG customer/public — khách không bao giờ đọc được.
+/// Không UPDATE (không có policy update): chỉ thêm và xoá (xoá chỉ tác giả — kiểm ở `lib/order-note.ts`).
+/// `body` đã trim, 1–1000 ký tự (CHECK `order_notes_body_length`). `authorId` SET NULL khi xoá user (giữ ghi chú).
+model OrderNote {
+  id        String   @id @default(cuid(2))
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  authorId  String?
+  author    User?    @relation("OrderNoteAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, orderId, createdAt])
+  @@index([orderId])
+  @@index([authorId])
+  @@map("order_notes")
 }
 
 /// §5.3 "order_items lưu snapshot tiêu đề và giá tại thời điểm mua" — a later

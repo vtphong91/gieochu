@@ -7,7 +7,7 @@ tags:
   - jobs
   - status/living
 date: 2026-09-29
-updated: 2026-10-22
+updated: 2026-10-23
 author: Long
 ---
 
@@ -30,8 +30,8 @@ author: Long
 > **Trạng thái (2026-10-15):** theo `docs/DECISIONS.md` (sự cố 2026-10-15) đã có **một bản đang chạy production trên Vercel** —
 > bản trước ADR-032, còn đọc cột `system_settings.platformName` 🟡. Bản ADR-032/033 (8 biến env) **chưa deploy** ❓. Máy dev,
 > Preview và Production dùng **một DB duy nhất** (ADR-034, quyết định lâu dài) — xem §9.
-> **2026-10-16:** code ADR-036 (cron `/api/cron/daily`, `CRON_SECRET`, drain hàng đợi bằng `after()`) **xong code, chưa commit/deploy** ✅
-> (đối chiếu working tree).
+> **2026-10-16:** code ADR-036 (cron `/api/cron/daily`, `CRON_SECRET`, drain hàng đợi bằng `after()`) **xong code** (đối chiếu working tree) — nay **đã commit `9a3208f`** ✅ `git log`;
+> deploy ❓ chờ chủ dự án xác nhận.
 
 ---
 
@@ -72,7 +72,7 @@ author: Long
 }
 ```
 
-Khoá `crons` thêm theo ADR-036 (working tree 2026-10-16, chưa commit) — lịch tính theo **UTC**: `0 20 * * *` = 03:00 giờ Việt Nam.
+Khoá `crons` thêm theo ADR-036 (2026-10-16, đã commit `9a3208f`) — lịch tính theo **UTC**: `0 20 * * *` = 03:00 giờ Việt Nam.
 
 **Vì sao không dùng `turbo run build`:** script `build` của `@gieochu/db` là `prisma generate && tsc …` ✅ — Vercel không cần
 chạy lại vì Prisma client sinh sẵn đã được **commit** ở `packages/db/src/generated/prisma` (`git ls-files` có file) ✅. Hệ quả:
@@ -136,7 +136,7 @@ cấu hình dev:
   hơn thì `getEnv()` lỗi và **cả app dừng** (fail-fast), không chỉ route cron. Không đặt → app chạy bình thường nhưng
   `GET /api/cron/daily` trả `503 CRON_NOT_CONFIGURED` → sweep thuê bao/đơn và dọn hàng đợi hằng ngày **không chạy**. Cách đặt: §6.2.
 
-* **`STORAGE_GATEWAY_PROVIDERS`** (ADR-045, 2026-10-22, chưa commit/deploy) ✅ `packages/config/src/env.ts`: tuỳ chọn; danh sách `MINIO`/
+* **`STORAGE_GATEWAY_PROVIDERS`** (ADR-045, 2026-10-22, đã commit `4ab5a3b` — deploy ❓) ✅ `packages/config/src/env.ts`: tuỳ chọn; danh sách `MINIO`/
   `CLOUDFLARE_R2` phân tách dấu phẩy; giá trị lạ → **cả app dừng** (fail-fast). **Không đặt trên Vercel** — chỉ đặt trên máy có nginx cấu hình
   `location /_s/` + `auth_request` (VPS). Đặt trên Vercel thì URL tải/upload thành `/_s/...` mà không có gì phục vụ → hỏng tải/upload (suy từ
   code ✅). Quy trình: [[04-Operations-Runbooks/Storage-Gateway-VPS-Runbook|Storage-Gateway-VPS-Runbook]].
@@ -233,8 +233,8 @@ Các trang trên tồn tại trong `apps/web/app/admin/**` ✅. Cổng thanh to�
 
 ## 6. Job nền trên Vercel — `after()` + Vercel Cron hằng ngày (ADR-036)
 
-Nguồn: **ADR-036** + "Chủ dự án chốt (2026-10-16)" trong `docs/DECISIONS.md`. Code đối chiếu working tree 2026-10-16 (**chưa commit/
-deploy**) ✅. Nghiệp vụ chi tiết: [[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]].
+Nguồn: **ADR-036** + "Chủ dự án chốt (2026-10-16)" trong `docs/DECISIONS.md`. Code đối chiếu working tree 2026-10-16 (nay đã commit `9a3208f`,
+deploy ❓) ✅. Nghiệp vụ chi tiết: [[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]].
 
 ### 6.1. Ai xử lý job nào
 
@@ -432,7 +432,7 @@ cột đã xoá) **không** quay lại được. Point-in-Time Restore ảnh hư
 * `20261016120000_m12b_tenant_daily_stats` — chỉ *thêm*: bảng L1 `tenant_daily_stats` + index `(date)` + unique `(tenantId, date)` + FK
   `tenants` `ON DELETE CASCADE`; không RLS, không trigger; khối `DO` `GRANT SELECT, INSERT, UPDATE, DELETE` cho `gieochu_app` ✅ đọc SQL.
 * Quốc áp lên DB dùng chung **2026-10-16** và kiểm: `gieochu_app` có SELECT/INSERT/UPDATE, không RLS, bảng trống 🟡 (báo cáo Quốc).
-* Bản production hiện tại không biết bảng này → không ảnh hưởng. Code M12b **chưa commit/deploy** ✅ `git status`. Nếu code lên trước
+* Bản production hiện tại không biết bảng này → không ảnh hưởng. Code M12b **đã commit `36103fb`** ✅ `git log`; deploy ❓. Nếu code lên trước
   migration ở môi trường khác: bước cron `stats.aggregate` trả `skipped: true`, dashboard hiện "Thống kê chưa sẵn sàng" — không lỗi ✅ đọc
   code.
 * Sau deploy: backfill lần đầu — §6.2 bước 6.
@@ -487,6 +487,19 @@ cột đã xoá) **không** quay lại được. Point-in-Time Restore ảnh hư
   email/hoàn tiền với địa chỉ/tài khoản ngân hàng thật của người khác (ADR-034).
 * Build: xem §7.6 (lỗi `workStore` chỉ ở máy dev). Nghiệp vụ: [[02-System-Specs/Pricing-Page-Specs|Pricing-Page-Specs]],
   [[02-System-Specs/Account-Profile-Specs|Account-Profile-Specs]], [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5A–§5B.
+
+### 9.10. Migration ADR-047 (ghi chú nội bộ đơn) — đã áp 2026-10-18, deploy được
+
+* `20261018090000_adr045_order_notes` (tên thư mục giữ số cũ ADR-045 vì đã áp DB — quyết định nay là **ADR-047**) — chỉ *thêm* (expand): bảng L2 `order_notes` + 3 index + 3 FK + CHECK `order_notes_body_length` + RLS
+  (`ENABLE` + `FORCE`, 5 policy, không policy UPDATE) + `GRANT SELECT, INSERT, DELETE` / `REVOKE UPDATE` cho `gieochu_app` (bọc `IF EXISTS`) ✅ đọc
+  SQL. Không đổi bảng cũ — quan hệ mới trên `Order`/`Tenant`/`User` là quan hệ ngược, không thêm cột.
+* **Thứ tự:** code chịu được việc lên **trước** migration — đọc ghi chú gặp P2021/42P01 → thẻ "Ghi chú nội bộ tạm chưa sẵn sàng", thêm/xoá → 503
+  `ORDER_NOTES_UNAVAILABLE`, trang đơn vẫn chạy ✅ `lib/order-note.ts`. Vẫn nên áp trước.
+* **Đã áp lên DB dùng chung 2026-10-18** 🟡 (brief Quốc — Quốc kiểm RLS enable+force, 5 policy, không UPDATE, CHECK 1–1000 ký tự; `order.test.ts` chạy
+  thật 9/9 sau migration) → **deploy được**. File migration **chưa commit** ✅ `git status`. Mọi DB khác (restore, branch mới): `pnpm db:migrate`
+  trước hoặc cùng lúc deploy. Không có migration contract. Rollback code về bản trước: an toàn — bảng mới không ai đọc ✅ theo comment migration.
+* Cùng đợt: tìm đơn không dấu dùng `public.gieochu_unaccent` có sẵn từ migration ADR-035 (§9.5) — **không** cần DDL mới. **Không cần biến env mới.**
+* Nghiệp vụ: [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]] §3.2. Bảng: [[03-API-Contracts/Database-Schema-Reference|Database-Schema-Reference]] §7.
 
 ---
 

@@ -248,9 +248,11 @@ lộ ra 2 lỗi cả 2 đều tồn tại từ trước, không riêng module n�
   nối được luôn từ `order_items` (M8), nhưng chưa làm vì không nằm trong phạm vi hàm M8 phải xây; dễ hoàn
   thành sau bằng một `groupBy` đơn giản trên `OrderItem`.
 - **Phát hiện muộn khi dựng M9 — trang `/studio/[tenantSlug]/customers` (M8) thiếu 3 việc đặc tả M8 có
-  yêu cầu**: đặc tả mục M8 ghi rõ "ghi chú nội bộ [cho khách hàng], xem các đơn của khách đó tại tenant này.
+  yêu cầu** — **Đóng (ADR-048, xong code 2026-10-19, chưa commit):** ghi chú khách (`tenant_customers.note`) + link "Xem đơn của khách"
+  (`orders?khach=`) đã làm; CSV = không làm (ADR-047 mục 3). Nội dung gốc: đặc tả mục M8 ghi rõ "ghi chú nội bộ [cho khách hàng], xem các đơn của khách đó tại tenant này.
   Xuất CSV" — cột `TenantCustomer.note` đã có trong schema từ M8 nhưng chưa có UI đọc/ghi; trang customers
-  hiện chỉ liệt kê, chưa link sang danh sách đơn của riêng khách đó; chưa có nút xuất CSV. Bỏ sót khi viết
+  hiện chỉ liệt kê, chưa link sang danh sách đơn của riêng khách đó; chưa có nút xuất CSV (~~Xuất CSV~~ — **Không làm (tạm thời, ADR-047 mục 3)**,
+  Quốc xác nhận 2026-10-18). Bỏ sót khi viết
   `docs/modules/M8.md` (không được ghi vào BACKLOG lúc đó) — ghi nhận lại ở đây khi rà soát lại trong lúc
   làm M9. Chưa làm ngay vì ngoài phạm vi M9.
 
@@ -615,7 +617,8 @@ nhiều trang; nhánh SEO từ CMS đã xuất bản (`seoTitle`/`seoDescription
   song song với cron — cần chốt có cho phép không.
 
 **Test**
-- **Integration test "the hourly sweep expires an overdue PENDING order…"** (`order.test.ts`) đọc trạng thái qua `getOrderDetail` — hàm
+- **Integration test "the hourly sweep expires an overdue PENDING order…"** (`order.test.ts`) đọc trạng thái qua `getOrderDetail` (từ ADR-046:
+  `getOrderDetailView`; hàm cũ đã xoá ở ADR-047) — hàm
   này nay trả trạng thái hiệu lực nên test qua kể cả khi `runOrderSweep` không ghi DB. Nên đọc status thô (`tx.order.findUnique`) để test
   còn kiểm đúng sweep; tên test còn chữ "hourly".
 - **`afterAll` dọn job pg-boss trong `order.test.ts`** chưa chạy thật.
@@ -773,22 +776,89 @@ nhiều trang; nhánh SEO từ CMS đã xuất bản (`seoTitle`/`seoDescription
 ## Phát sinh trong đợt ADR-043 (dashboard Tổng quan gian hàng `/studio/{slug}`)
 
 **Dọn code**
-- **Xoá `getOrderDashboardStats`** (`apps/web/lib/order.ts`) — thẻ "Doanh thu 30 ngày" cũ đã thay bằng `getTenantDashboard`, hàm không còn nơi gọi.
+- ~~**Xoá `getOrderDashboardStats`**~~ (`apps/web/lib/order.ts`) — **Đóng** trong đợt ADR-048 (đã xoá cùng `listTenantCustomers`).
 
 **Giao diện**
 - **Nhãn tiếng Việt cho `tenant.status`** ở phụ đề header Tổng quan (đang hiện enum thô `ACTIVE`/`READ_ONLY`…).
 - **Bộ lọc "chưa trả lời" ở trang Đánh giá Studio** — link "Trả lời đánh giá" trong khối "Việc cần xử lý" hiện chỉ lọc `?status=VISIBLE`.
 - **Chưa kiểm thật:** phiên OWNER thật, trang `/admin` sau khi refactor `sales-stats.tsx` sang `stats-chart.tsx`, bàn phím/trình đọc màn hình — mới
   xem trước bằng dữ liệu giả 360/768/1280.
+- **(Bổ sung lần 3) Date range picker:** kiểm với phiên OWNER thật + trình đọc màn hình (bàn phím mới kiểm bằng Playwright, 360/1100/1440); kiểm
+  `/admin` sau khi đổi sang số đầy đủ (thẻ GMV, top 5, thẻ "Doanh thu gói dịch vụ").
 
 **Dữ liệu / hiệu năng**
 - **Index khi gian hàng lớn** (migration expand-only, Quốc duyệt, chủ dự án chạy — ADR-034): `orders(tenantId, paidAt)`, `orders(tenantId,
   createdAt)`, `download_events(tenantId, createdAt)`. Chưa đo `EXPLAIN` kỳ "Năm nay"/tuỳ chọn 366 ngày trên DB thật.
 
 **Để sau theo ADR-043 mục 7**
-- **Xuất CSV** số liệu/đơn trong kỳ (CSV chứa dữ liệu khách = dữ liệu cá nhân — cần quyết riêng).
+- ~~**Xuất CSV** số liệu/đơn trong kỳ~~ — **Không làm (tạm thời, ADR-047 mục 3)** — Quốc xác nhận 2026-10-18.
 - **Biểu đồ doanh thu theo danh mục (donut)** — theo danh mục hiện tại của sản phẩm.
 
 **Test (trần đã chạm 94/55 — test mới cần chủ dự án duyệt nâng trần)**
 - **Test cô lập tenant chéo** cho `getTenantDashboard` (tenant B không thấy số của tenant A) — `studio-dashboard.test.ts` chỉ dùng 1 tenant; hết ngân
   sách test.
+
+## Phát sinh trong đợt ADR-046 (trang Đơn hàng Studio — danh sách + chi tiết)
+
+**Để sau theo ADR-046 mục 3**
+- ~~**Ghi chú nội bộ cho đơn**~~ — **Đóng 2026-10-18** (ADR-047 mục 2): bảng L2 `order_notes`, migration đã áp.
+- ~~**Thao tác hàng loạt**~~ trên danh sách đơn — **Không làm** (ADR-047 mục 3, chủ dự án chốt 2026-10-18 — tạm thời; huỷ đơn chỉ từng đơn).
+  Chỉ mở lại khi chủ dự án đổi quyết định.
+
+**Dữ liệu / hiệu năng**
+- **Index tìm kiếm khi gian hàng nhiều đơn** — `q` dùng ILIKE `%…%` trên `orders.code`, `users.email`, `user_profiles.fullName` (không dùng được
+  B-tree); cân nhắc `pg_trgm` hoặc index `(tenantId, createdAt)` (đã ghi ở mục ADR-043 phía trên, chưa tạo) — migration expand-only, Quốc duyệt, chưa đo `EXPLAIN`.
+- **Không có giá niêm yết gốc** — dòng đơn chỉ lưu `unitPriceVnd` (đơn giá lúc mua, đã gồm khuyến mãi) và `finalPriceVnd`; muốn hiện "giá gốc → giá
+  sale" phải thêm cột snapshot (chỉ áp cho đơn mới).
+- **`OrderTimelineEvent` chưa có trường actor riêng** — người thực hiện đang nằm trong chuỗi `detail`; tách ra nếu UI cần lọc/hiển thị riêng.
+
+**Tìm kiếm**
+- ~~**Tìm đơn không dấu**~~ ("Bổ sung ADR-046") — **Đóng 2026-10-18** (ADR-047 mục 1): `gieochu_unaccent(lower(..)) LIKE … ESCAPE '\'` bằng SQL
+  thô + `escapeLikePattern`.
+
+**Dọn code**
+- ~~**Xoá `listOrders`, `getOrderDetail`**~~ — **Đóng 2026-10-18** (ADR-047 mục 4): đã xoá cùng `effectiveStatusWhere`; giữ `OrderListFilters`,
+  `parseOrderRemedyFilter`.
+
+**Chưa kiểm thật**
+- Xem UI thật với phiên OWNER (danh sách, chi tiết, menu dòng, hộp xác nhận), thử truy cập đơn của tenant khác, nhánh timeline audit/email (chưa có
+  dữ liệu), trình đọc màn hình.
+
+## Phát sinh trong đợt ADR-047 (Đơn hàng Studio — tìm không dấu, ghi chú nội bộ)
+
+**Không làm (ADR-047 mục 3 — quyết định, không phải việc treo)**
+- **Thao tác hàng loạt** trên danh sách đơn và **xuất CSV** đơn hàng / khách hàng ra khỏi hệ thống — tạm thời không làm; huỷ đơn chỉ từng đơn.
+  Quốc xác nhận 2026-10-18: quyết định này bao gồm cả "Xuất CSV" của ADR-043 mục 7 và "Xuất CSV" trang khách hàng M8 ở trên (đã gạch).
+
+**Dữ liệu / hiệu năng**
+- **Index trigram cho tìm đơn** khi gian hàng nhiều đơn — `q` nay là `gieochu_unaccent(lower(col)) LIKE '%…%'` trên `orders.code`, `users.email`,
+  `user_profiles.fullName` (không dùng được B-tree); hàm đã `IMMUTABLE` nên có thể tạo index biểu thức `pg_trgm` — migration expand-only, Quốc duyệt,
+  chưa đo `EXPLAIN`.
+
+**Nghiệp vụ còn hở**
+- **Ghi chú của tài khoản đã xoá không ai xoá được** — `authorId` SET NULL khi xoá user, "chỉ tác giả xoá" nên `canDelete = false` với mọi người.
+  Quốc chốt 2026-10-18: **giữ như hiện tại** — MVP chỉ có OWNER nên thực tế không phát sinh; xem lại khi có STAFF.
+- Ghi chú đọc tối đa 200/đơn, không phân trang.
+
+**Chưa kiểm thật**
+- Xem UI ghi chú thật với phiên OWNER (thêm, xoá 2 bước, Notice khi bảng thiếu), trình đọc màn hình.
+
+## Phát sinh trong đợt ADR-048 (danh sách Khách hàng Studio)
+
+**Dữ liệu / hiệu năng**
+- **CTE tổng hợp chạy 2 lần mỗi request** (`listCustomersPage`: lần 1 thống kê + đếm nhóm, lần 2 lấy khách của trang) và gom **mọi** đơn đã thanh toán
+  của gian hàng mỗi lần — cần index (vd `orders(tenantId, customerId, paidAt)`) hoặc cache khi gian hàng lớn; migration expand-only, Quốc duyệt; chưa đo
+  `EXPLAIN`. Tìm không dấu họ tên/email dùng chung nhu cầu index trigram với mục ADR-047.
+
+**Nghiệp vụ** — ~~lượt miễn phí có tính là quay lại; mẫu số % quay lại; CHECK DB cho ghi chú~~ — **Đóng 2026-10-23** ("Bổ sung ADR-048": lượt miễn
+phí là có tương tác, % ÷ khách trả phí, 500 ký tự kiểm ở server, **không** thêm CHECK DB).
+
+**Dọn code**
+- **Chuyển `OrderFilterForm`** từ `studio/[tenantSlug]/orders/_ui/order-filter-form.tsx` về thư mục `_ui` dùng chung — trang Khách hàng đang import chéo
+  từ trang Đơn hàng.
+- **Hằng `CUSTOMER_NOTE_MAX_LENGTH` / `INACTIVE_CUSTOMER_DAYS`** chỉ có ở subpath `@gieochu/core/customer-list`, không re-export ở barrel `@gieochu/core`
+  (khác `dashboard-range`, `audit`) — cân nhắc re-export cho đồng bộ.
+
+**Chưa kiểm thật**
+- Xem UI thật với phiên OWNER: thẻ thống kê, bộ lọc, menu Thao tác, hộp ghi chú `<dialog>` (mobile + bàn phím), link "Xem đơn của khách" → dòng "Đang xem
+  đơn của khách" / "Bỏ lọc khách"; trình đọc màn hình.

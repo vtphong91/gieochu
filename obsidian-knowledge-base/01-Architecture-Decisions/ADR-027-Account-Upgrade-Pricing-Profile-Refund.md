@@ -18,9 +18,9 @@ status: Accepted (Chốt — Áp dụng chính thức)
 chốt), "Bổ sung ADR-041 lần 2" và "Bổ sung ADR-041 lần 3" (2026-10-17, Quốc đính chính theo code — xem §5). ADR-041 mục C.1 **bổ sung ADR-008** (hồ sơ không còn bắt buộc 4 trường). Bản trích ghi vào
 thư mục này theo duyệt của Quốc (brief 2026-10-17).
 
-Tiến độ (2026-10-17): **GĐ1 (dữ liệu/CMS) + GĐ2 (UI) xong code, chưa commit/deploy** ✅ `git status`; 2 migration expand
+Tiến độ (2026-10-17): **GĐ1 (dữ liệu/CMS) + GĐ2 (UI) xong code; đã commit `7f8360b`** ✅ `git log`, deploy ❓; 2 migration expand
 (`20261017090000_adr041_email_change`, `20261017100000_adr041_subscription_refunds`) **đã áp DB dùng chung** 🟡 (brief Quốc). GĐ2b (menu
-mobile Studio) **xong code 2026-10-17** theo ADR-042 ([[01-Architecture-Decisions/ADR-028-Shared-App-Sidebar-Logout-Mobile-Drawer|ADR-028 KB (≙ ADR-042)]]), chưa commit/deploy ✅ `git status`.
+mobile Studio) **xong code 2026-10-17** theo ADR-042 ([[01-Architecture-Decisions/ADR-028-Shared-App-Sidebar-Logout-Mobile-Drawer|ADR-028 KB (≙ ADR-042)]]), đã commit `9d37ab1` ✅ `git log`, deploy ❓.
 
 Mức xác minh: ✅ Long đã đối chiếu code (2026-10-17) · 🟡 theo `docs/DECISIONS.md`/báo cáo · ❓ cần môi trường thật.
 

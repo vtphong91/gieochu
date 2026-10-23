@@ -18,7 +18,7 @@ status: Accepted (Chốt — Áp dụng chính thức)
 (2026-10-16, Quốc)" và "Bổ sung ADR-039 lần 2" (2026-10-17, Quốc). Bản trích ghi vào thư mục này theo duyệt của Quốc (brief 2026-10-17). Đặc tả sống:
 [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]] §6.
 
-Tiến độ (2026-10-17): **xong code, chưa commit/deploy** ✅ `git status`; migration `20261016180000_adr039_entitlement_remedy` **đã áp DB
+Tiến độ (2026-10-17): **xong code; đã commit `36103fb`** (2026-10-17) ✅ `git log`, deploy ❓; migration `20261016180000_adr039_entitlement_remedy` **đã áp DB
 dùng chung 2026-10-16** 🟡 (Quốc báo, kèm kiểm trigger/CHECK bằng `gieochu_app` và checksum khớp file).
 
 Mức xác minh: ✅ Long đã đối chiếu code/migration (2026-10-17) · 🟡 theo `docs/DECISIONS.md`/báo cáo của Quốc · ❓ cần môi trường thật.

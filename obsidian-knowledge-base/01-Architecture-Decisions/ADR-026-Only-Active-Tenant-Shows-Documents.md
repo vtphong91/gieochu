@@ -18,7 +18,7 @@ theo duyệt của Quốc (brief 2026-10-17). Quyết định này **chốt** m�
 ([[01-Architecture-Decisions/ADR-025-Buyer-Remedy-Final-Download-Or-Refund|ADR-025 KB (≙ ADR-039)]]): chặn thanh toán đơn `PENDING` khi
 tenant không `ACTIVE`.
 
-Tiến độ (2026-10-17): **xong code, chưa commit/deploy** ✅ `git status`; không có migration (chỉ đổi logic đọc/hiển thị).
+Tiến độ (2026-10-17): **xong code; đã commit `36103fb`** (2026-10-17) ✅ `git log`, deploy ❓; không có migration (chỉ đổi logic đọc/hiển thị).
 
 Mức xác minh: ✅ Long đã đối chiếu code (2026-10-17) · 🟡 theo `docs/DECISIONS.md`/báo cáo của Quốc · ❓ cần môi trường thật.
 

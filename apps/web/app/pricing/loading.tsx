@@ -26,7 +26,7 @@ export default function PricingLoading() {
           </div>
         </section>
         <section className="pb-14">
-          <div className="container-page grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="container-page grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: 3 }, (_, i) => (
               <div key={i} className={`rounded-3xl border bg-white p-6 ${i === 2 ? "hidden lg:block" : ""}`} style={{ borderColor: LINE }}>
                 <Bone className="h-6 w-1/2" />

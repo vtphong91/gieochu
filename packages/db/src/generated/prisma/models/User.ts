@@ -293,6 +293,7 @@ export type UserWhereInput = {
   reviews?: Prisma.ReviewListRelationFilter
   abuseReportsFiled?: Prisma.AbuseReportListRelationFilter
   abuseReportsResolved?: Prisma.AbuseReportListRelationFilter
+  orderNotesAuthored?: Prisma.OrderNoteListRelationFilter
 }
 
 export type UserOrderByWithRelationInput = {
@@ -322,6 +323,7 @@ export type UserOrderByWithRelationInput = {
   reviews?: Prisma.ReviewOrderByRelationAggregateInput
   abuseReportsFiled?: Prisma.AbuseReportOrderByRelationAggregateInput
   abuseReportsResolved?: Prisma.AbuseReportOrderByRelationAggregateInput
+  orderNotesAuthored?: Prisma.OrderNoteOrderByRelationAggregateInput
 }
 
 export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -354,6 +356,7 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   reviews?: Prisma.ReviewListRelationFilter
   abuseReportsFiled?: Prisma.AbuseReportListRelationFilter
   abuseReportsResolved?: Prisma.AbuseReportListRelationFilter
+  orderNotesAuthored?: Prisma.OrderNoteListRelationFilter
 }, "id" | "email">
 
 export type UserOrderByWithAggregationInput = {
@@ -423,6 +426,7 @@ export type UserCreateInput = {
   reviews?: Prisma.ReviewCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
 }
 
 export type UserUncheckedCreateInput = {
@@ -452,6 +456,7 @@ export type UserUncheckedCreateInput = {
   reviews?: Prisma.ReviewUncheckedCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
 }
 
 export type UserUpdateInput = {
@@ -481,6 +486,7 @@ export type UserUpdateInput = {
   reviews?: Prisma.ReviewUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserUncheckedUpdateInput = {
@@ -510,6 +516,7 @@ export type UserUncheckedUpdateInput = {
   reviews?: Prisma.ReviewUncheckedUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserCreateManyInput = {
@@ -742,6 +749,22 @@ export type UserUpdateOneRequiredWithoutOrdersNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutOrdersInput, Prisma.UserUpdateWithoutOrdersInput>, Prisma.UserUncheckedUpdateWithoutOrdersInput>
 }
 
+export type UserCreateNestedOneWithoutOrderNotesAuthoredInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutOrderNotesAuthoredInput, Prisma.UserUncheckedCreateWithoutOrderNotesAuthoredInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutOrderNotesAuthoredInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneWithoutOrderNotesAuthoredNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutOrderNotesAuthoredInput, Prisma.UserUncheckedCreateWithoutOrderNotesAuthoredInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutOrderNotesAuthoredInput
+  upsert?: Prisma.UserUpsertWithoutOrderNotesAuthoredInput
+  disconnect?: Prisma.UserWhereInput | boolean
+  delete?: Prisma.UserWhereInput | boolean
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutOrderNotesAuthoredInput, Prisma.UserUpdateWithoutOrderNotesAuthoredInput>, Prisma.UserUncheckedUpdateWithoutOrderNotesAuthoredInput>
+}
+
 export type UserCreateNestedOneWithoutTenantCustomerOfInput = {
   create?: Prisma.XOR<Prisma.UserCreateWithoutTenantCustomerOfInput, Prisma.UserUncheckedCreateWithoutTenantCustomerOfInput>
   connectOrCreate?: Prisma.UserCreateOrConnectWithoutTenantCustomerOfInput
@@ -872,6 +895,7 @@ export type UserCreateWithoutProfileInput = {
   reviews?: Prisma.ReviewCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
 }
 
 export type UserUncheckedCreateWithoutProfileInput = {
@@ -900,6 +924,7 @@ export type UserUncheckedCreateWithoutProfileInput = {
   reviews?: Prisma.ReviewUncheckedCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
 }
 
 export type UserCreateOrConnectWithoutProfileInput = {
@@ -944,6 +969,7 @@ export type UserUpdateWithoutProfileInput = {
   reviews?: Prisma.ReviewUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserUncheckedUpdateWithoutProfileInput = {
@@ -972,6 +998,7 @@ export type UserUncheckedUpdateWithoutProfileInput = {
   reviews?: Prisma.ReviewUncheckedUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserCreateWithoutRefreshTokensInput = {
@@ -1000,6 +1027,7 @@ export type UserCreateWithoutRefreshTokensInput = {
   reviews?: Prisma.ReviewCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
 }
 
 export type UserUncheckedCreateWithoutRefreshTokensInput = {
@@ -1028,6 +1056,7 @@ export type UserUncheckedCreateWithoutRefreshTokensInput = {
   reviews?: Prisma.ReviewUncheckedCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
 }
 
 export type UserCreateOrConnectWithoutRefreshTokensInput = {
@@ -1072,6 +1101,7 @@ export type UserUpdateWithoutRefreshTokensInput = {
   reviews?: Prisma.ReviewUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserUncheckedUpdateWithoutRefreshTokensInput = {
@@ -1100,6 +1130,7 @@ export type UserUncheckedUpdateWithoutRefreshTokensInput = {
   reviews?: Prisma.ReviewUncheckedUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserCreateWithoutVerificationTokensInput = {
@@ -1128,6 +1159,7 @@ export type UserCreateWithoutVerificationTokensInput = {
   reviews?: Prisma.ReviewCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
 }
 
 export type UserUncheckedCreateWithoutVerificationTokensInput = {
@@ -1156,6 +1188,7 @@ export type UserUncheckedCreateWithoutVerificationTokensInput = {
   reviews?: Prisma.ReviewUncheckedCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
 }
 
 export type UserCreateOrConnectWithoutVerificationTokensInput = {
@@ -1200,6 +1233,7 @@ export type UserUpdateWithoutVerificationTokensInput = {
   reviews?: Prisma.ReviewUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserUncheckedUpdateWithoutVerificationTokensInput = {
@@ -1228,6 +1262,7 @@ export type UserUncheckedUpdateWithoutVerificationTokensInput = {
   reviews?: Prisma.ReviewUncheckedUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserCreateWithoutOwnedTenantInput = {
@@ -1256,6 +1291,7 @@ export type UserCreateWithoutOwnedTenantInput = {
   reviews?: Prisma.ReviewCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
 }
 
 export type UserUncheckedCreateWithoutOwnedTenantInput = {
@@ -1284,6 +1320,7 @@ export type UserUncheckedCreateWithoutOwnedTenantInput = {
   reviews?: Prisma.ReviewUncheckedCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
 }
 
 export type UserCreateOrConnectWithoutOwnedTenantInput = {
@@ -1328,6 +1365,7 @@ export type UserUpdateWithoutOwnedTenantInput = {
   reviews?: Prisma.ReviewUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserUncheckedUpdateWithoutOwnedTenantInput = {
@@ -1356,6 +1394,7 @@ export type UserUncheckedUpdateWithoutOwnedTenantInput = {
   reviews?: Prisma.ReviewUncheckedUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserCreateWithoutTenantMembershipsInput = {
@@ -1384,6 +1423,7 @@ export type UserCreateWithoutTenantMembershipsInput = {
   reviews?: Prisma.ReviewCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
 }
 
 export type UserUncheckedCreateWithoutTenantMembershipsInput = {
@@ -1412,6 +1452,7 @@ export type UserUncheckedCreateWithoutTenantMembershipsInput = {
   reviews?: Prisma.ReviewUncheckedCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
 }
 
 export type UserCreateOrConnectWithoutTenantMembershipsInput = {
@@ -1456,6 +1497,7 @@ export type UserUpdateWithoutTenantMembershipsInput = {
   reviews?: Prisma.ReviewUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserUncheckedUpdateWithoutTenantMembershipsInput = {
@@ -1484,6 +1526,7 @@ export type UserUncheckedUpdateWithoutTenantMembershipsInput = {
   reviews?: Prisma.ReviewUncheckedUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserCreateWithoutOrdersInput = {
@@ -1512,6 +1555,7 @@ export type UserCreateWithoutOrdersInput = {
   reviews?: Prisma.ReviewCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
 }
 
 export type UserUncheckedCreateWithoutOrdersInput = {
@@ -1540,6 +1584,7 @@ export type UserUncheckedCreateWithoutOrdersInput = {
   reviews?: Prisma.ReviewUncheckedCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
 }
 
 export type UserCreateOrConnectWithoutOrdersInput = {
@@ -1584,6 +1629,7 @@ export type UserUpdateWithoutOrdersInput = {
   reviews?: Prisma.ReviewUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserUncheckedUpdateWithoutOrdersInput = {
@@ -1605,6 +1651,139 @@ export type UserUncheckedUpdateWithoutOrdersInput = {
   verificationTokens?: Prisma.VerificationTokenUncheckedUpdateManyWithoutUserNestedInput
   ownedTenant?: Prisma.TenantUncheckedUpdateOneWithoutOwnerNestedInput
   tenantMemberships?: Prisma.TenantMemberUncheckedUpdateManyWithoutUserNestedInput
+  entitlements?: Prisma.EntitlementUncheckedUpdateManyWithoutUserNestedInput
+  tenantCustomerOf?: Prisma.TenantCustomerUncheckedUpdateManyWithoutUserNestedInput
+  downloadTokens?: Prisma.DownloadTokenUncheckedUpdateManyWithoutUserNestedInput
+  downloadEvents?: Prisma.DownloadEventUncheckedUpdateManyWithoutUserNestedInput
+  reviews?: Prisma.ReviewUncheckedUpdateManyWithoutUserNestedInput
+  abuseReportsFiled?: Prisma.AbuseReportUncheckedUpdateManyWithoutReporterNestedInput
+  abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
+}
+
+export type UserCreateWithoutOrderNotesAuthoredInput = {
+  id?: string
+  email: string
+  passwordHash: string
+  systemRole?: $Enums.SystemRole
+  status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
+  emailVerifiedAt?: Date | string | null
+  profileCompletedAt?: Date | string | null
+  lastLoginAt?: Date | string | null
+  failedLoginAttempts?: number
+  passwordResetRequired?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  profile?: Prisma.UserProfileCreateNestedOneWithoutUserInput
+  refreshTokens?: Prisma.RefreshTokenCreateNestedManyWithoutUserInput
+  verificationTokens?: Prisma.VerificationTokenCreateNestedManyWithoutUserInput
+  ownedTenant?: Prisma.TenantCreateNestedOneWithoutOwnerInput
+  tenantMemberships?: Prisma.TenantMemberCreateNestedManyWithoutUserInput
+  orders?: Prisma.OrderCreateNestedManyWithoutCustomerInput
+  entitlements?: Prisma.EntitlementCreateNestedManyWithoutUserInput
+  tenantCustomerOf?: Prisma.TenantCustomerCreateNestedManyWithoutUserInput
+  downloadTokens?: Prisma.DownloadTokenCreateNestedManyWithoutUserInput
+  downloadEvents?: Prisma.DownloadEventCreateNestedManyWithoutUserInput
+  reviews?: Prisma.ReviewCreateNestedManyWithoutUserInput
+  abuseReportsFiled?: Prisma.AbuseReportCreateNestedManyWithoutReporterInput
+  abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
+}
+
+export type UserUncheckedCreateWithoutOrderNotesAuthoredInput = {
+  id?: string
+  email: string
+  passwordHash: string
+  systemRole?: $Enums.SystemRole
+  status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
+  emailVerifiedAt?: Date | string | null
+  profileCompletedAt?: Date | string | null
+  lastLoginAt?: Date | string | null
+  failedLoginAttempts?: number
+  passwordResetRequired?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  profile?: Prisma.UserProfileUncheckedCreateNestedOneWithoutUserInput
+  refreshTokens?: Prisma.RefreshTokenUncheckedCreateNestedManyWithoutUserInput
+  verificationTokens?: Prisma.VerificationTokenUncheckedCreateNestedManyWithoutUserInput
+  ownedTenant?: Prisma.TenantUncheckedCreateNestedOneWithoutOwnerInput
+  tenantMemberships?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutUserInput
+  orders?: Prisma.OrderUncheckedCreateNestedManyWithoutCustomerInput
+  entitlements?: Prisma.EntitlementUncheckedCreateNestedManyWithoutUserInput
+  tenantCustomerOf?: Prisma.TenantCustomerUncheckedCreateNestedManyWithoutUserInput
+  downloadTokens?: Prisma.DownloadTokenUncheckedCreateNestedManyWithoutUserInput
+  downloadEvents?: Prisma.DownloadEventUncheckedCreateNestedManyWithoutUserInput
+  reviews?: Prisma.ReviewUncheckedCreateNestedManyWithoutUserInput
+  abuseReportsFiled?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutReporterInput
+  abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
+}
+
+export type UserCreateOrConnectWithoutOrderNotesAuthoredInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutOrderNotesAuthoredInput, Prisma.UserUncheckedCreateWithoutOrderNotesAuthoredInput>
+}
+
+export type UserUpsertWithoutOrderNotesAuthoredInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutOrderNotesAuthoredInput, Prisma.UserUncheckedUpdateWithoutOrderNotesAuthoredInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutOrderNotesAuthoredInput, Prisma.UserUncheckedCreateWithoutOrderNotesAuthoredInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutOrderNotesAuthoredInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutOrderNotesAuthoredInput, Prisma.UserUncheckedUpdateWithoutOrderNotesAuthoredInput>
+}
+
+export type UserUpdateWithoutOrderNotesAuthoredInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
+  passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  profile?: Prisma.UserProfileUpdateOneWithoutUserNestedInput
+  refreshTokens?: Prisma.RefreshTokenUpdateManyWithoutUserNestedInput
+  verificationTokens?: Prisma.VerificationTokenUpdateManyWithoutUserNestedInput
+  ownedTenant?: Prisma.TenantUpdateOneWithoutOwnerNestedInput
+  tenantMemberships?: Prisma.TenantMemberUpdateManyWithoutUserNestedInput
+  orders?: Prisma.OrderUpdateManyWithoutCustomerNestedInput
+  entitlements?: Prisma.EntitlementUpdateManyWithoutUserNestedInput
+  tenantCustomerOf?: Prisma.TenantCustomerUpdateManyWithoutUserNestedInput
+  downloadTokens?: Prisma.DownloadTokenUpdateManyWithoutUserNestedInput
+  downloadEvents?: Prisma.DownloadEventUpdateManyWithoutUserNestedInput
+  reviews?: Prisma.ReviewUpdateManyWithoutUserNestedInput
+  abuseReportsFiled?: Prisma.AbuseReportUpdateManyWithoutReporterNestedInput
+  abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
+}
+
+export type UserUncheckedUpdateWithoutOrderNotesAuthoredInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
+  passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  profile?: Prisma.UserProfileUncheckedUpdateOneWithoutUserNestedInput
+  refreshTokens?: Prisma.RefreshTokenUncheckedUpdateManyWithoutUserNestedInput
+  verificationTokens?: Prisma.VerificationTokenUncheckedUpdateManyWithoutUserNestedInput
+  ownedTenant?: Prisma.TenantUncheckedUpdateOneWithoutOwnerNestedInput
+  tenantMemberships?: Prisma.TenantMemberUncheckedUpdateManyWithoutUserNestedInput
+  orders?: Prisma.OrderUncheckedUpdateManyWithoutCustomerNestedInput
   entitlements?: Prisma.EntitlementUncheckedUpdateManyWithoutUserNestedInput
   tenantCustomerOf?: Prisma.TenantCustomerUncheckedUpdateManyWithoutUserNestedInput
   downloadTokens?: Prisma.DownloadTokenUncheckedUpdateManyWithoutUserNestedInput
@@ -1640,6 +1819,7 @@ export type UserCreateWithoutTenantCustomerOfInput = {
   reviews?: Prisma.ReviewCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
 }
 
 export type UserUncheckedCreateWithoutTenantCustomerOfInput = {
@@ -1668,6 +1848,7 @@ export type UserUncheckedCreateWithoutTenantCustomerOfInput = {
   reviews?: Prisma.ReviewUncheckedCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
 }
 
 export type UserCreateOrConnectWithoutTenantCustomerOfInput = {
@@ -1712,6 +1893,7 @@ export type UserUpdateWithoutTenantCustomerOfInput = {
   reviews?: Prisma.ReviewUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserUncheckedUpdateWithoutTenantCustomerOfInput = {
@@ -1740,6 +1922,7 @@ export type UserUncheckedUpdateWithoutTenantCustomerOfInput = {
   reviews?: Prisma.ReviewUncheckedUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserCreateWithoutEntitlementsInput = {
@@ -1768,6 +1951,7 @@ export type UserCreateWithoutEntitlementsInput = {
   reviews?: Prisma.ReviewCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
 }
 
 export type UserUncheckedCreateWithoutEntitlementsInput = {
@@ -1796,6 +1980,7 @@ export type UserUncheckedCreateWithoutEntitlementsInput = {
   reviews?: Prisma.ReviewUncheckedCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
 }
 
 export type UserCreateOrConnectWithoutEntitlementsInput = {
@@ -1840,6 +2025,7 @@ export type UserUpdateWithoutEntitlementsInput = {
   reviews?: Prisma.ReviewUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserUncheckedUpdateWithoutEntitlementsInput = {
@@ -1868,6 +2054,7 @@ export type UserUncheckedUpdateWithoutEntitlementsInput = {
   reviews?: Prisma.ReviewUncheckedUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserCreateWithoutDownloadTokensInput = {
@@ -1896,6 +2083,7 @@ export type UserCreateWithoutDownloadTokensInput = {
   reviews?: Prisma.ReviewCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
 }
 
 export type UserUncheckedCreateWithoutDownloadTokensInput = {
@@ -1924,6 +2112,7 @@ export type UserUncheckedCreateWithoutDownloadTokensInput = {
   reviews?: Prisma.ReviewUncheckedCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
 }
 
 export type UserCreateOrConnectWithoutDownloadTokensInput = {
@@ -1968,6 +2157,7 @@ export type UserUpdateWithoutDownloadTokensInput = {
   reviews?: Prisma.ReviewUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserUncheckedUpdateWithoutDownloadTokensInput = {
@@ -1996,6 +2186,7 @@ export type UserUncheckedUpdateWithoutDownloadTokensInput = {
   reviews?: Prisma.ReviewUncheckedUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserCreateWithoutDownloadEventsInput = {
@@ -2024,6 +2215,7 @@ export type UserCreateWithoutDownloadEventsInput = {
   reviews?: Prisma.ReviewCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
 }
 
 export type UserUncheckedCreateWithoutDownloadEventsInput = {
@@ -2052,6 +2244,7 @@ export type UserUncheckedCreateWithoutDownloadEventsInput = {
   reviews?: Prisma.ReviewUncheckedCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
 }
 
 export type UserCreateOrConnectWithoutDownloadEventsInput = {
@@ -2096,6 +2289,7 @@ export type UserUpdateWithoutDownloadEventsInput = {
   reviews?: Prisma.ReviewUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserUncheckedUpdateWithoutDownloadEventsInput = {
@@ -2124,6 +2318,7 @@ export type UserUncheckedUpdateWithoutDownloadEventsInput = {
   reviews?: Prisma.ReviewUncheckedUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserCreateWithoutReviewsInput = {
@@ -2152,6 +2347,7 @@ export type UserCreateWithoutReviewsInput = {
   downloadEvents?: Prisma.DownloadEventCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
 }
 
 export type UserUncheckedCreateWithoutReviewsInput = {
@@ -2180,6 +2376,7 @@ export type UserUncheckedCreateWithoutReviewsInput = {
   downloadEvents?: Prisma.DownloadEventUncheckedCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
 }
 
 export type UserCreateOrConnectWithoutReviewsInput = {
@@ -2224,6 +2421,7 @@ export type UserUpdateWithoutReviewsInput = {
   downloadEvents?: Prisma.DownloadEventUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserUncheckedUpdateWithoutReviewsInput = {
@@ -2252,6 +2450,7 @@ export type UserUncheckedUpdateWithoutReviewsInput = {
   downloadEvents?: Prisma.DownloadEventUncheckedUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserCreateWithoutAbuseReportsFiledInput = {
@@ -2280,6 +2479,7 @@ export type UserCreateWithoutAbuseReportsFiledInput = {
   downloadEvents?: Prisma.DownloadEventCreateNestedManyWithoutUserInput
   reviews?: Prisma.ReviewCreateNestedManyWithoutUserInput
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
 }
 
 export type UserUncheckedCreateWithoutAbuseReportsFiledInput = {
@@ -2308,6 +2508,7 @@ export type UserUncheckedCreateWithoutAbuseReportsFiledInput = {
   downloadEvents?: Prisma.DownloadEventUncheckedCreateNestedManyWithoutUserInput
   reviews?: Prisma.ReviewUncheckedCreateNestedManyWithoutUserInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
 }
 
 export type UserCreateOrConnectWithoutAbuseReportsFiledInput = {
@@ -2341,6 +2542,7 @@ export type UserCreateWithoutAbuseReportsResolvedInput = {
   downloadEvents?: Prisma.DownloadEventCreateNestedManyWithoutUserInput
   reviews?: Prisma.ReviewCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportCreateNestedManyWithoutReporterInput
+  orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
 }
 
 export type UserUncheckedCreateWithoutAbuseReportsResolvedInput = {
@@ -2369,6 +2571,7 @@ export type UserUncheckedCreateWithoutAbuseReportsResolvedInput = {
   downloadEvents?: Prisma.DownloadEventUncheckedCreateNestedManyWithoutUserInput
   reviews?: Prisma.ReviewUncheckedCreateNestedManyWithoutUserInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutReporterInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
 }
 
 export type UserCreateOrConnectWithoutAbuseReportsResolvedInput = {
@@ -2413,6 +2616,7 @@ export type UserUpdateWithoutAbuseReportsFiledInput = {
   downloadEvents?: Prisma.DownloadEventUpdateManyWithoutUserNestedInput
   reviews?: Prisma.ReviewUpdateManyWithoutUserNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserUncheckedUpdateWithoutAbuseReportsFiledInput = {
@@ -2441,6 +2645,7 @@ export type UserUncheckedUpdateWithoutAbuseReportsFiledInput = {
   downloadEvents?: Prisma.DownloadEventUncheckedUpdateManyWithoutUserNestedInput
   reviews?: Prisma.ReviewUncheckedUpdateManyWithoutUserNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserUpsertWithoutAbuseReportsResolvedInput = {
@@ -2480,6 +2685,7 @@ export type UserUpdateWithoutAbuseReportsResolvedInput = {
   downloadEvents?: Prisma.DownloadEventUpdateManyWithoutUserNestedInput
   reviews?: Prisma.ReviewUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUpdateManyWithoutReporterNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
 }
 
 export type UserUncheckedUpdateWithoutAbuseReportsResolvedInput = {
@@ -2508,6 +2714,7 @@ export type UserUncheckedUpdateWithoutAbuseReportsResolvedInput = {
   downloadEvents?: Prisma.DownloadEventUncheckedUpdateManyWithoutUserNestedInput
   reviews?: Prisma.ReviewUncheckedUpdateManyWithoutUserNestedInput
   abuseReportsFiled?: Prisma.AbuseReportUncheckedUpdateManyWithoutReporterNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
 }
 
 
@@ -2527,6 +2734,7 @@ export type UserCountOutputType = {
   reviews: number
   abuseReportsFiled: number
   abuseReportsResolved: number
+  orderNotesAuthored: number
 }
 
 export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2541,6 +2749,7 @@ export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.I
   reviews?: boolean | UserCountOutputTypeCountReviewsArgs
   abuseReportsFiled?: boolean | UserCountOutputTypeCountAbuseReportsFiledArgs
   abuseReportsResolved?: boolean | UserCountOutputTypeCountAbuseReportsResolvedArgs
+  orderNotesAuthored?: boolean | UserCountOutputTypeCountOrderNotesAuthoredArgs
 }
 
 /**
@@ -2630,6 +2839,13 @@ export type UserCountOutputTypeCountAbuseReportsResolvedArgs<ExtArgs extends run
   where?: Prisma.AbuseReportWhereInput
 }
 
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountOrderNotesAuthoredArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.OrderNoteWhereInput
+}
+
 
 export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -2658,6 +2874,7 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   reviews?: boolean | Prisma.User$reviewsArgs<ExtArgs>
   abuseReportsFiled?: boolean | Prisma.User$abuseReportsFiledArgs<ExtArgs>
   abuseReportsResolved?: boolean | Prisma.User$abuseReportsResolvedArgs<ExtArgs>
+  orderNotesAuthored?: boolean | Prisma.User$orderNotesAuthoredArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -2724,6 +2941,7 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   reviews?: boolean | Prisma.User$reviewsArgs<ExtArgs>
   abuseReportsFiled?: boolean | Prisma.User$abuseReportsFiledArgs<ExtArgs>
   abuseReportsResolved?: boolean | Prisma.User$abuseReportsResolvedArgs<ExtArgs>
+  orderNotesAuthored?: boolean | Prisma.User$orderNotesAuthoredArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -2745,6 +2963,7 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     reviews: Prisma.$ReviewPayload<ExtArgs>[]
     abuseReportsFiled: Prisma.$AbuseReportPayload<ExtArgs>[]
     abuseReportsResolved: Prisma.$AbuseReportPayload<ExtArgs>[]
+    orderNotesAuthored: Prisma.$OrderNotePayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -3181,6 +3400,7 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   reviews<T extends Prisma.User$reviewsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$reviewsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ReviewPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   abuseReportsFiled<T extends Prisma.User$abuseReportsFiledArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$abuseReportsFiledArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AbuseReportPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   abuseReportsResolved<T extends Prisma.User$abuseReportsResolvedArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$abuseReportsResolvedArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AbuseReportPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  orderNotesAuthored<T extends Prisma.User$orderNotesAuthoredArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$orderNotesAuthoredArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OrderNotePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -3915,6 +4135,30 @@ export type User$abuseReportsResolvedArgs<ExtArgs extends runtime.Types.Extensio
   take?: number
   skip?: number
   distinct?: Prisma.AbuseReportScalarFieldEnum | Prisma.AbuseReportScalarFieldEnum[]
+}
+
+/**
+ * User.orderNotesAuthored
+ */
+export type User$orderNotesAuthoredArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the OrderNote
+   */
+  select?: Prisma.OrderNoteSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the OrderNote
+   */
+  omit?: Prisma.OrderNoteOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.OrderNoteInclude<ExtArgs> | null
+  where?: Prisma.OrderNoteWhereInput
+  orderBy?: Prisma.OrderNoteOrderByWithRelationInput | Prisma.OrderNoteOrderByWithRelationInput[]
+  cursor?: Prisma.OrderNoteWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.OrderNoteScalarFieldEnum | Prisma.OrderNoteScalarFieldEnum[]
 }
 
 /**

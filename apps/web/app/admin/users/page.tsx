@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getPrismaClient } from "@gieochu/db";
 import type { Prisma } from "@gieochu/db";
 import { requireAdminAccess } from "../../../lib/page-guards";
+import { escapeContainsValue } from "../../../lib/prisma-contains";
 import { AdminPageHeader, Badge, DataTable, EmptyState, Td, Tr } from "../_ui/kit";
 import { IconLock, IconUnlock, IconUsers } from "../_ui/icons";
 import { MenuItemButton, RowMenu } from "../_ui/row-menu";
@@ -51,7 +52,7 @@ export default async function AdminUsersPage({
   const prisma = getPrismaClient();
   const where: Prisma.UserWhereInput = {
     ...roleWhere(role),
-    ...(sp.q ? { email: { contains: sp.q, mode: "insensitive" } } : {}),
+    ...(sp.q ? { email: { contains: escapeContainsValue(sp.q), mode: "insensitive" } } : {}),
   };
   const [users, total] = await Promise.all([
     prisma.user.findMany({

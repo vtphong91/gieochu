@@ -24,7 +24,7 @@ nguồn khu vực `/admin`):
 
 > **System Admin không có route nào đọc chi tiết `orders`/`order_items`/`tenant_customers` của một tenant cụ
 > thể.** Dashboard/thống kê phía Admin chỉ đọc `tenant_daily_stats` (bảng tổng hợp M12b — section "Hoạt động bán tài liệu (30 ngày)" trên `/admin`,
-> [[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]]; xong code 2026-10-16, chưa commit/deploy) và các
+> [[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]]; xong code 2026-10-16, đã commit `36103fb`, deploy ❓) và các
 > bảng L1 (`User`, `Plan`, `Subscription`, `SubscriptionInvoice`, `PlatformPaymentTransaction`...).
 
 Nói cách khác, System Admin không phải người xem đơn hàng của tenant — ở Gieo Chữ, dữ

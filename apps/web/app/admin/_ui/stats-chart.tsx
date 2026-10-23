@@ -42,10 +42,11 @@ export function formatVndFull(raw: MoneyLike): string {
 }
 
 /**
- * Rút gọn tiền cho thẻ KPI/trục: "12,5 triệu đ", "1,2 tỷ đ". Phần nguyên + 1 chữ số thập phân tính bằng BigInt rồi
- * mới đổi sang number (giá trị đã nhỏ, an toàn) — không mất chính xác với số rất lớn.
+ * Rút gọn tiền **chỉ cho nhãn trục Y** của biểu đồ (cột nhãn hẹp 64–80px): "12,5 triệu đ", "1,2 tỷ đ". ADR-043 lần 3:
+ * thẻ KPI, dòng phụ, top 5, bảng, tooltip và dòng "Cao nhất" luôn dùng {@link formatVndFull} (số đầy đủ, không rút gọn).
+ * Phần nguyên + 1 chữ số thập phân tính bằng BigInt rồi mới đổi sang number — không mất chính xác với số rất lớn.
  */
-export function formatVndCompact(raw: MoneyLike): string {
+export function formatVndAxis(raw: MoneyLike): string {
   const v = toBigIntSafe(raw);
   const units: Array<[bigint, string]> = [
     [BigInt(1_000_000_000), "tỷ"],
@@ -136,7 +137,20 @@ export function StatIcon({ icon, tone = "primary", size = "md" }: { icon: ReactN
 }
 
 /**
- * Thẻ KPI: nhãn (+ icon tròn tuỳ chọn) · giá trị lớn · dòng phụ (số đầy đủ) · chú thích định nghĩa · xu hướng.
+ * Cỡ chữ của số thống kê theo độ dài chuỗi (ADR-043 lần 3 — số đầy đủ, không rút gọn): số dài thu nhỏ một bậc để vẫn
+ * nằm gọn trong thẻ hẹp (4 cột cạnh sidebar, 360px). Vẫn kèm `[overflow-wrap:anywhere]` ở nơi gọi làm lưới an toàn —
+ * khoảng trắng trước "đ" là chỗ xuống dòng ưu tiên.
+ */
+export function statValueSizeClass(value: string, level: "primary" | "secondary" = "primary"): string {
+  const n = value.length;
+  if (level === "secondary") return n <= 13 ? "text-lg" : "text-base";
+  if (n <= 12) return "text-2xl";
+  if (n <= 15) return "text-xl";
+  return "text-lg";
+}
+
+/**
+ * Thẻ KPI: nhãn (+ icon tròn tuỳ chọn) · giá trị lớn (số đầy đủ) · dòng phụ · chú thích định nghĩa · xu hướng.
  * `change` bỏ trống → không hiện dòng xu hướng (chỉ số ảnh chụp).
  */
 export function KpiCard({
@@ -168,7 +182,10 @@ export function KpiCard({
         </p>
         {icon ? <StatIcon icon={icon} tone={iconTone} /> : null}
       </div>
-      <p className={`${icon ? "-mt-2" : "mt-1"} text-2xl font-bold tabular-nums [overflow-wrap:anywhere]`} style={{ color: STAT_INK }}>
+      <p
+        className={`mt-1 ${statValueSizeClass(value)} leading-tight font-bold tabular-nums [overflow-wrap:anywhere]`}
+        style={{ color: STAT_INK }}
+      >
         {value}
       </p>
       {detail ? (

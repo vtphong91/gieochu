@@ -1,5 +1,5 @@
 /**
- * Khung chờ dashboard Tổng quan gian hàng (ADR-043): cùng khung với trang thật (tiêu đề, chip kỳ, 4 KPI + 3 thẻ phụ,
+ * Khung chờ dashboard Tổng quan gian hàng (ADR-043): cùng khung với trang thật (tiêu đề, ô chọn kỳ, 4 KPI + 3 thẻ phụ,
  * biểu đồ + top 5, bảng đơn) để không nhảy layout. `motion-reduce:animate-none` tôn trọng prefers-reduced-motion.
  * Wrapper là <div>: layout Studio đã có <main>.
  */
@@ -23,14 +23,12 @@ export function StudioDashboardSkeleton() {
           </div>
           <Block className="h-4 w-36" />
         </div>
-        <div className="space-y-3">
-          <Block className="h-6 w-60 max-w-full" />
-          <div className="flex flex-wrap gap-2">
-            {Array.from({ length: 8 }, (_, i) => (
-              <Block key={i} className="h-11 w-24 rounded-full lg:h-9" />
-            ))}
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+          <div>
+            <Block className="h-6 w-60 max-w-full" />
+            <Block className="mt-1.5 h-4 w-40" />
           </div>
-          <Block className="h-11 w-full rounded-xl" />
+          <Block className="h-11 w-64 max-w-full rounded-full" />
         </div>
         <div className="space-y-4">
           <Block className="h-6 w-28" />

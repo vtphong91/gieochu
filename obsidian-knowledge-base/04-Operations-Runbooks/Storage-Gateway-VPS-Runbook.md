@@ -17,7 +17,7 @@ author: Long (theo brief Quốc 2026-10-22)
 > [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §23.
 >
 > **Mức xác minh:** ✅ = Long đối chiếu code/file mẫu trong repo (2026-10-22) · 🟡 = theo `docs/DECISIONS.md` ADR-045/brief Quốc · ❓ = chưa chạy
-> trên VPS thật. Code ADR-045 **chưa commit/deploy** tại 2026-10-22. Repo **không** có file pm2 (ecosystem) hay cấu hình nginx thật — tên app
+> trên VPS thật. Code ADR-045 **đã commit `4ab5a3b`** (2026-10-22), deploy ❓. Repo **không** có file pm2 (ecosystem) hay cấu hình nginx thật — tên app
 > pm2, đường dẫn file nginx, cách chạy MinIO trên VPS là của máy chủ, Long không kiểm được ❓.
 
 ---

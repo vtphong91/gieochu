@@ -19,7 +19,7 @@ author: Long
 > [[01-Architecture-Decisions/ADR-023-M12-Audit-Log-Append-Only|ADR-023 (≙ ADR-037)]]. ADR liên quan: ADR-034 (một DB dùng chung),
 > ADR-036 (cron hằng ngày), CLAUDE.md §7.9 (admin không đọc đơn/khách của tenant).
 >
-> Mức xác minh: ✅ Long đã đối chiếu code working tree 2026-10-16 (**code chưa commit, chưa deploy**) · 🟡 theo brief/báo cáo của Quốc
+> Mức xác minh: ✅ Long đã đối chiếu code working tree 2026-10-16 (code **đã commit `36103fb`**, deploy ❓) · 🟡 theo brief/báo cáo của Quốc
 > · ❓ cần môi trường thật. Trạng thái migration: **đã áp lên DB dùng chung 2026-10-16** 🟡 (Quốc báo; Long không chạy lệnh DB).
 
 ---

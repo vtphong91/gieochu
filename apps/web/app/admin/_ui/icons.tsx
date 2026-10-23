@@ -477,6 +477,16 @@ export function IconCloud({ className }: IconProps) {
   );
 }
 
+/** Lịch (ô chọn khoảng ngày — dashboard Studio, ADR-043 lần 3). */
+export function IconCalendar({ className }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3.5" y="5" width="17" height="15.5" rx="2.3" />
+      <path d="M3.5 10h17M8 3v4M16 3v4" />
+    </svg>
+  );
+}
+
 /** Máy chủ / Server (MinIO self-hosted storage — ADR-038). */
 export function IconServer({ className }: IconProps) {
   return (
@@ -497,6 +507,17 @@ export function IconRefresh({ className }: IconProps) {
       <path d="M3 3v5h5" />
       <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
       <path d="M16 21h5v-5" />
+    </svg>
+  );
+}
+
+/** Tờ ghi chú có bút (ghi chú nội bộ trên đơn hàng Studio — ADR-047). */
+export function IconNote({ className }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M13 20.5H6a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2V11" />
+      <path d="M8 8h8M8 12h5" />
+      <path d="m15.5 20.5 5-5a1.4 1.4 0 0 0-2-2l-5 5v2h2Z" />
     </svg>
   );
 }

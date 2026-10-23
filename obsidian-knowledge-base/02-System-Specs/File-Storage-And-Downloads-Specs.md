@@ -16,7 +16,7 @@ author: System Architect
 > chung: (1) storage S3-compatible (Cloudflare R2) cho **file sản phẩm bán** (bucket private, presigned URL);
 > (2) **Cloudinary hệ thống** cho **ảnh** — ảnh CMS của System Admin, và từ ADR-023/027/028 cả ảnh storefront, ảnh
 > bìa sản phẩm, ảnh trong mô tả của tenant (có hạn mức theo gói). Mục 1–5 nói về (1); mục 6–7 nói về (2).
-> Từ ADR-045 (2026-10-22, chưa commit/deploy): provider liệt kê trong env `STORAGE_GATEWAY_PROVIDERS` không trả presigned URL cho trình duyệt
+> Từ ADR-045 (2026-10-22, đã commit `4ab5a3b` — deploy ❓): provider liệt kê trong env `STORAGE_GATEWAY_PROVIDERS` không trả presigned URL cho trình duyệt
 > mà trả `/_s/<vé mã hoá>` qua nginx — §9.
 
 ## 1. Mục Tiêu & Kiến Trúc Tổng Thể (File Sản Phẩm)
@@ -358,7 +358,7 @@ commit/deploy). Nghiệp vụ đầy đủ: [[02-System-Specs/Abuse-Reports-Spec
 ## 9. Storage Gateway — Giao File Qua `/_s/<vé>` (ADR-045) ✅
 
 Đối chiếu `packages/core/src/crypto/storage-ticket.ts`, `apps/web/lib/storage-gateway.ts`, `apps/web/app/api/internal/storage/ticket/route.ts`,
-`packages/config/src/env.ts`, `docker/nginx/gieochu-storage-gateway.conf.example` (working tree 2026-10-22, **chưa commit/deploy**). Quyết định:
+`packages/config/src/env.ts`, `docker/nginx/gieochu-storage-gateway.conf.example` (working tree 2026-10-22; nay đã commit `4ab5a3b` — deploy ❓). Quyết định:
 [[01-Architecture-Decisions/ADR-030-Storage-Gateway-Encrypted-Ticket-Nginx|ADR-030 (≙ ADR-045)]].
 
 ### 9.1 Khi nào bật

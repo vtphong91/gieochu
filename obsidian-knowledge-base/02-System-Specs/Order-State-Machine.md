@@ -4,7 +4,7 @@ tags:
   - order
   - status/living
 date: 2026-09-26
-updated: 2026-10-17
+updated: 2026-10-23
 author: System Architect
 ---
 
@@ -116,10 +116,11 @@ commit/deploy**) ✅.
   nguyên `status`. Không ghi DB. Áp vào ✅:
   - `applyCouponToOrder`, `removeCouponFromOrder`, `initiateOrderCheckout` — đơn quá hạn → `409 ORDER_NOT_PENDING`;
   - `cancelOrder` (§3.2); `canManuallyConfirmOrder` (§3.1 — webhook + xác nhận tay);
-  - đọc: `getOrderForCustomer` (trang checkout), `getOrderDetail`, `listOrders` trả `status` hiệu lực; bộ lọc `listOrders`:
-    `PENDING` loại đơn quá hạn (`expiresAt ≥ now`), `EXPIRED` gồm cả đơn `PENDING` quá hạn;
+  - đọc: `getOrderForCustomer` (trang checkout), `getOrderDetailView`, `listOrdersPage` trả `status` hiệu lực; bộ lọc trạng thái của
+    `listOrdersPage` (SQL `effectiveStatusSql`): `PENDING` loại đơn quá hạn, `EXPIRED` gồm cả đơn `PENDING` quá hạn ✅ code
+    (`getOrderDetail`/`listOrders` cũ đã xoá ở ADR-047 — [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]]);
   - `listCustomerOrders` (`apps/web/lib/library.ts`, tab đơn của khách) — đơn quá hạn hiện `EXPIRED`, không còn link thanh toán;
-  - `getOrderDashboardStats` — ô "Đơn chờ xác nhận" chỉ đếm `PENDING` có `expiresAt ≥ now`.
+  - ~~`getOrderDashboardStats`~~ — **đã xoá** (ADR-048, 2026-10-23 ✅ grep); ô "Đơn chờ xác nhận" của dashboard nay ở `getTenantDashboard` (ADR-043).
 - **Đồng bộ DB:** `runOrderSweep()` quét mọi đơn `PENDING` có `expiresAt < now()`, chuyển `EXPIRED` qua `withSystemJob()`, **trả
   số đơn đã chuyển** (trước đây `void`). Không đụng `Coupon.usedCount` — con số này chỉ tăng trong `markOrderPaid()`.
 - **Lịch chạy:** từ ADR-036, trên Vercel sweep chạy **một lần mỗi ngày** trong `GET /api/cron/daily` (03:00 giờ VN) — gọi trực tiếp,
@@ -166,6 +167,11 @@ gỡ/lưu trữ/chuyển nháp hoặc gian hàng bị khoá/tạm ngưng.
 - **Không** chặn webhook / xác nhận tay cho giao dịch **đã trả tiền** — các đường đó không qua hàm này; fulfil bình thường (sản phẩm bị
   khoá kiểm duyệt → `PENDING_CHOICE`, §3.1).
 
+> **Hiển thị ở Studio (ADR-046, 2026-10-18 — working tree, chưa commit ✅ `git status`):** trang `/studio/{slug}/orders` lọc/đếm theo trạng thái
+> **hiệu lực** (`effectiveOrderStatus`) và chỉ hiện thao tác hợp lệ theo `orderAllowedActions` — `confirm` = `canManuallyConfirmOrder`, `cancel` =
+> hiệu lực PENDING, `refund` = FULFILLED ✅ đọc code. Đây chỉ là lớp hiển thị; các action vẫn tự kiểm luật ở §3 (không đổi). Xem
+> [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]] §2.4 ([Studio-Orders-Specs.md](./Studio-Orders-Specs.md)).
+
 ---
 
 ## 4. Ranh Giới Bảo Mật (RLS) Áp Dụng Cho `orders`/`order_items`
@@ -189,6 +195,7 @@ transaction — xem [[02-System-Specs/Reviews-Specs|Reviews-Specs]] §5. Xem th�
 * [[File-Storage-And-Downloads-Specs]] — `Entitlement` quyết định quyền tải sau khi `FULFILLED` ([File-Storage-And-Downloads-Specs.md](./File-Storage-And-Downloads-Specs.md))
 * [[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]] — hàng đợi pg-boss, `after()` + cron hằng ngày (ADR-036) ([Background-Jobs-Specs.md](./Background-Jobs-Specs.md))
 * [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]] — quyền lợi người mua khi tài liệu bị gỡ do vi phạm (ADR-039) ([Abuse-Reports-Specs.md](./Abuse-Reports-Specs.md))
+* [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]] — trang Đơn hàng Studio: danh sách lọc/tìm/phân trang + chi tiết, dòng thời gian đơn (ADR-046) ([Studio-Orders-Specs.md](./Studio-Orders-Specs.md))
 * Mã nguồn: `packages/core/src/order/state.ts` (máy trạng thái), `packages/core/src/order/expiry.ts` (`effectiveOrderStatus`,
   `canManuallyConfirmOrder`), `apps/web/lib/order.ts` (`markOrderPaid`, `cancelOrder`, `markOrderRefunded`, `runOrderSweep`),
   `apps/web/lib/payment-process.ts`, enum: `packages/db/prisma/schema.prisma`

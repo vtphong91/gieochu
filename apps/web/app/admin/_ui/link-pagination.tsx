@@ -39,6 +39,7 @@ export function LinkPagination({
   total,
   label = "Phân trang",
   unit = "mục",
+  pageParam = "page",
 }: {
   basePath: string;
   query: Record<string, string | number | null | undefined>;
@@ -48,6 +49,8 @@ export function LinkPagination({
   label?: string;
   /** Danh từ đếm trong dòng tóm tắt ("Hiển thị 1–20 trong 135 mục"). */
   unit?: string;
+  /** Tên tham số số trang trong URL (mặc định `page`; trang Đơn hàng Studio dùng `trang` — ADR-046). */
+  pageParam?: string;
 }) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
@@ -58,8 +61,8 @@ export function LinkPagination({
     for (const [key, value] of Object.entries(query)) {
       if (value !== null && value !== undefined && value !== "") params.set(key, String(value));
     }
-    if (target > 1) params.set("page", String(target));
-    else params.delete("page");
+    if (target > 1) params.set(pageParam, String(target));
+    else params.delete(pageParam);
     const qs = params.toString();
     return qs ? `${basePath}?${qs}` : basePath;
   };

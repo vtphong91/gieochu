@@ -141,7 +141,7 @@ stateDiagram-v2
   deploy) ✅: trên Vercel gọi trực tiếp **mỗi ngày một lần** trong HTTP cron `GET /api/cron/daily` (03:00 giờ VN) — chuyển trạng
   thái thuê bao có thể trễ tới ~24h; lịch pg-boss hằng giờ (`0 * * * *`) chỉ còn khi chạy `apps/web/worker.ts` local/server riêng.
 
-### 5A. Hạn mức gói, cờ tính năng, gói năm (ADR-041 A) — xong code, chưa commit/deploy
+### 5A. Hạn mức gói, cờ tính năng, gói năm (ADR-041 A) — đã commit `7f8360b`, deploy ❓
 
 Mức xác minh: ✅ Long đối chiếu working tree 2026-10-17 · 🟡 theo báo cáo · ❓ cần môi trường thật.
 
@@ -165,7 +165,7 @@ Mức xác minh: ✅ Long đối chiếu working tree 2026-10-17 · 🟡 theo b�
   `subscription-billing.ts` đợt này).
 - **Billing nhận `?plan={planId}`** ✅ (`studio/[tenantSlug]/billing/page.tsx`): chỉ nhận gói trả phí đang bật; sai/không có → gói hiện tại.
 
-### 5B. Hoàn tiền gói trả phí (ADR-041 B + 2 lần bổ sung) — xong code, chưa commit/deploy; migration đã áp 2026-10-17
+### 5B. Hoàn tiền gói trả phí (ADR-041 B + 2 lần bổ sung) — đã commit `7f8360b`, deploy ❓; migration đã áp 2026-10-17
 
 **Quy tắc** (chủ dự án chốt): trong **7 ngày** kể từ `paidAt`, **chỉ hoá đơn gói PAID đầu tiên** của mỗi tenant, hoàn **100%** (=
 `amountVnd` của hoá đơn). Admin **tự chuyển khoản tay** rồi bấm "Đã hoàn" — cổng QR/MoMo không tự hoàn. Tenant đã có **hoá đơn gói PAID

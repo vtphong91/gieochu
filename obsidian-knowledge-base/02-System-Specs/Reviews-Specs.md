@@ -77,7 +77,7 @@ trong `lib/review.ts`.
 
 ### 2.3. Báo cáo vi phạm & khoá kiểm duyệt (M12c, ADR-038 — 2026-10-17) ✅
 
-Đối chiếu code working tree (chưa commit/deploy). Nghiệp vụ chung: [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]].
+Đối chiếu code working tree 2026-10-17 (nay đã commit `36103fb`, deploy ❓). Nghiệp vụ chung: [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]].
 - Mỗi đánh giá `VISIBLE` trên trang tài liệu có nút **"Báo cáo vi phạm"** (`ReportAbuseButton`, `targetType = "REVIEW"`); ai cũng gửi được.
 - Admin quyết định `HIDE_CONTENT` → `status = HIDDEN` + `moderationLockedAt`/`moderationReason` (nhãn loại vi phạm). Đã ẩn sẵn (do tenant/
   hoàn tiền) thì giữ `hiddenReason` cũ; chưa ẩn → `hiddenReason = OTHER`. Sau commit tính lại điểm sản phẩm.
@@ -197,7 +197,7 @@ Bảng L2 `reviews` — chi tiết cột/CHECK/index/policy ở
 | Email `review_new` gửi thật | ❓ |
 | Rate limit chỉ đúng khi chạy 1 instance | ✅ (đọc code) |
 | Cache điểm lệch nếu `recomputeProductRatings` lỗi — chưa có job đối soát | ✅ (đọc code; BACKLOG) |
-| Audit log ẩn/khôi phục: có từ M12a (trừ `REVIEW_HIDDEN_REFUNDED`); nút Báo cáo vi phạm có từ M12c (chưa commit/deploy); `AggregateRating` (GĐ3) chưa có | ✅ (đọc code 2026-10-17) |
+| Audit log ẩn/khôi phục: có từ M12a (trừ `REVIEW_HIDDEN_REFUNDED`); nút Báo cáo vi phạm có từ M12c (đã commit `36103fb`); `AggregateRating` (GĐ3) chưa có | ✅ (đọc code 2026-10-17) |
 | Trigger `reviews_guard_moderation` chặn tenant trên DB thật | 🟡 (Quốc kiểm bằng `gieochu_app`, rollback, 2026-10-16) · chưa có test ❓ |
 
 ## 10. Liên Kết

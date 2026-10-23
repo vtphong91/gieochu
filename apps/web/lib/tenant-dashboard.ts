@@ -76,6 +76,9 @@ export interface TenantDashboardRangeView {
   granularity: DashboardGranularity;
   customFrom: string | null;
   customTo: string | null;
+  /** `YYYY-MM-DD` giờ VN — ngày đầu / ngày cuối bao gồm của kỳ (ADR-043 lần 3, cho ô `dd/mm/yyyy - dd/mm/yyyy`). */
+  displayFrom: string;
+  displayTo: string;
   invalid: boolean;
 }
 
@@ -490,6 +493,8 @@ export async function getTenantDashboard(input: { tenantId: string; range: Dashb
       granularity: range.granularity,
       customFrom: range.customFrom,
       customTo: range.customTo,
+      displayFrom: range.displayFrom,
+      displayTo: range.displayTo,
       invalid: range.invalid,
     },
     generatedAt: now.toISOString(),

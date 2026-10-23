@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import Form from "next/form";
 import { brandColors } from "@gieochu/config/theme";
-import { DASHBOARD_CUSTOM_MAX_DAYS, DASHBOARD_PRESET_LABELS, DASHBOARD_PRESETS } from "@gieochu/core/dashboard-range";
+import { DASHBOARD_CUSTOM_MAX_DAYS } from "@gieochu/core/dashboard-range";
 import { REMEDY_REFUND_SLA_DAYS } from "@gieochu/core/entitlement-remedy";
 import type { TenantDashboard } from "../../../../../lib/tenant-dashboard";
 import { AdminPageHeader, DataTable, Notice, Td, Tr } from "../../../../admin/_ui/kit";
@@ -31,10 +30,11 @@ import {
   STAT_INK,
   STAT_INK_SOFT,
   StatIcon,
+  statValueSizeClass,
   TrendChart,
   computeChange,
   formatCount,
-  formatVndCompact,
+  formatVndAxis,
   formatVndFull,
   type TrendPoint,
 } from "../../../../admin/_ui/stats-chart";
@@ -49,6 +49,7 @@ import {
   vnDateInputValue,
   type StudioChartMetric,
 } from "./dashboard-format";
+import { StudioDashboardRangePicker } from "./dashboard-range-picker";
 
 /**
  * ADR-043 — giao diện dashboard Tổng quan gian hàng (`/studio/{slug}`). Chỉ trình bày: nhận `TenantDashboard` đã tính
@@ -59,11 +60,6 @@ import {
 const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary,#0F3B82)]";
 const INK = STAT_INK;
 const INK_SOFT = STAT_INK_SOFT;
-
-// Chip cùng kiểu bộ lọc trang Đơn hàng Studio: đang chọn nền primary chữ trắng; thường nền trắng, chữ ink.
-const CHIP = `inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-semibold transition-colors motion-reduce:transition-none lg:min-h-9 ${FOCUS}`;
-const CHIP_ACTIVE = { background: brandColors.primary, color: "#FFFFFF", borderColor: brandColors.primary };
-const CHIP_IDLE = { background: "#FFFFFF", color: INK };
 
 const TEXT_LINK = `inline-flex min-h-11 items-center gap-1 text-sm font-semibold underline-offset-2 hover:underline lg:min-h-0 ${FOCUS}`;
 
@@ -114,68 +110,29 @@ export function StudioDashboardView({ tenant, data, metric }: { tenant: StudioDa
 
 /* ------------------------------------------------------------------ Thanh chọn kỳ */
 
+/** ADR-043 lần 3: tiêu đề kỳ + ô `dd/mm/yyyy - dd/mm/yyyy` mở date range picker (client `dashboard-range-picker.tsx` bọc `admin/_ui/date-range-picker.tsx`). */
 function RangeBar({ slug, data, metric }: { slug: string; data: TenantDashboard; metric: StudioChartMetric }) {
   const { range } = data;
-  const today = vnDateInputValue(data.generatedAt);
-  const presets = DASHBOARD_PRESETS.filter((p) => p !== "tuy-chon");
-  const customActive = range.key === "tuy-chon";
   return (
     <section aria-labelledby="ky-thong-ke-title" className="space-y-3">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 id="ky-thong-ke-title" className="font-[family-name:var(--font-heading)] text-lg font-bold" style={{ color: INK }}>
-          Kỳ thống kê: {range.label}
-        </h2>
-        <p className="text-sm" style={{ color: INK_SOFT }}>
-          So với {range.prevLabel} (cùng độ dài)
-        </p>
-      </div>
-
-      <nav aria-label="Chọn kỳ thống kê">
-        <ul className="flex flex-wrap gap-2">
-          {presets.map((key) => {
-            const active = range.key === key;
-            return (
-              <li key={key}>
-                <Link
-                  href={dashboardHref(slug, { ky: key, chiSo: metric })}
-                  aria-current={active ? "page" : undefined}
-                  className={`${CHIP} ${active ? "" : "border-gray-200 hover:bg-gray-50"}`}
-                  style={active ? CHIP_ACTIVE : CHIP_IDLE}
-                >
-                  {DASHBOARD_PRESET_LABELS[key]}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-
-      <details open={customActive || range.invalid} className="group rounded-xl border border-gray-200 bg-white">
-        <summary className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-xl px-4 text-sm font-semibold ${FOCUS}`} style={{ color: brandColors.primary }}>
-          {DASHBOARD_PRESET_LABELS["tuy-chon"]}: chọn khoảng ngày
-          {customActive ? (
-            <span className="rounded-full px-2 py-0.5 text-xs" style={{ background: brandColors.surface }}>
-              đang xem
-            </span>
-          ) : null}
-        </summary>
-        <Form action={`/studio/${slug}`} className="grid gap-3 border-t border-gray-200 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
-          <input type="hidden" name="ky" value="tuy-chon" />
-          {metric !== "gop" ? <input type="hidden" name="chi-so" value={metric} /> : null}
-          <DateField id="ky-tu" name="tu" label="Từ ngày" max={today} defaultValue={range.customFrom ?? ""} />
-          <DateField id="ky-den" name="den" label="Đến ngày" max={today} defaultValue={range.customTo ?? ""} />
-          <button
-            type="submit"
-            className={`inline-flex min-h-11 cursor-pointer items-center justify-center rounded-lg px-5 text-sm font-semibold text-white hover:brightness-110 ${FOCUS}`}
-            style={{ background: brandColors.primary }}
-          >
-            Áp dụng
-          </button>
-          <p id="ky-tuy-chon-hint" className="text-xs sm:col-span-3" style={{ color: INK_SOFT }}>
-            Tối đa {DASHBOARD_CUSTOM_MAX_DAYS} ngày, ngày kết thúc không quá hôm nay (giờ Việt Nam).
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+        <div className="min-w-0">
+          <h2 id="ky-thong-ke-title" className="font-[family-name:var(--font-heading)] text-lg font-bold" style={{ color: INK }}>
+            Kỳ thống kê: {range.label}
+          </h2>
+          <p className="mt-0.5 text-sm" style={{ color: INK_SOFT }}>
+            So với {range.prevLabel}
           </p>
-        </Form>
-      </details>
+        </div>
+        <StudioDashboardRangePicker
+          slug={slug}
+          metric={metric}
+          activeKey={range.key}
+          displayFrom={range.displayFrom}
+          displayTo={range.displayTo}
+          today={vnDateInputValue(data.generatedAt)}
+        />
+      </div>
 
       {range.invalid ? (
         <Notice tone="warning" icon={<IconAlertTriangle className="h-4 w-4" />}>
@@ -186,27 +143,6 @@ function RangeBar({ slug, data, metric }: { slug: string; data: TenantDashboard;
         </Notice>
       ) : null}
     </section>
-  );
-}
-
-function DateField({ id, name, label, max, defaultValue }: { id: string; name: string; label: string; max: string; defaultValue: string }) {
-  return (
-    <div className="min-w-0">
-      <label htmlFor={id} className="block text-sm font-medium" style={{ color: INK }}>
-        {label}
-      </label>
-      <input
-        id={id}
-        name={name}
-        type="date"
-        required
-        max={max}
-        defaultValue={defaultValue}
-        aria-describedby="ky-tuy-chon-hint"
-        className={`mt-1.5 min-h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-base ${FOCUS}`}
-        style={{ color: INK }}
-      />
-    </div>
   );
 }
 
@@ -238,7 +174,7 @@ function AlertsSection({ slug, data }: { slug: string; data: TenantDashboard }) 
       key: "pending",
       icon: <IconReceipt className="h-4 w-4" />,
       text: `${formatCount(pendingOrders)} đơn đang chờ khách thanh toán`,
-      href: `/studio/${slug}/orders?status=PENDING`,
+      href: `/studio/${slug}/orders?trang-thai=PENDING`,
       cta: "Xem đơn chờ",
     });
   }
@@ -323,8 +259,7 @@ function SalesSection({ data }: { data: TenantDashboard }) {
         <KpiCard
           label="Doanh thu (gộp)"
           icon={<IconWallet className="h-5 w-5" />}
-          value={formatVndCompact(s.grossRevenueVnd.current)}
-          detail={formatVndFull(s.grossRevenueVnd.current)}
+          value={formatVndFull(s.grossRevenueVnd.current)}
           note="Tính cả đơn sau này hoàn tiền — cùng cách tính của System Center."
           change={computeChange(s.grossRevenueVnd.current, s.grossRevenueVnd.previous)}
           compareLabel={cmp}
@@ -333,8 +268,7 @@ function SalesSection({ data }: { data: TenantDashboard }) {
           label="Doanh thu thực nhận"
           icon={<IconCheckCircle className="h-5 w-5" />}
           iconTone="secondary"
-          value={formatVndCompact(s.netRevenueVnd.current)}
-          detail={formatVndFull(s.netRevenueVnd.current)}
+          value={formatVndFull(s.netRevenueVnd.current)}
           note={`Đã trừ ${formatCount(s.refundedOrders.current)} đơn hoàn tiền (theo ngày khách trả tiền).`}
           change={computeChange(s.netRevenueVnd.current, s.netRevenueVnd.previous)}
           compareLabel={cmp}
@@ -351,8 +285,8 @@ function SalesSection({ data }: { data: TenantDashboard }) {
           label="Giá trị đơn trung bình"
           icon={<IconTag className="h-5 w-5" />}
           iconTone="accent"
-          value={s.avgOrderVnd.current === null ? "—" : formatVndCompact(s.avgOrderVnd.current)}
-          detail={s.avgOrderVnd.current === null ? "Chưa có đơn trong kỳ" : formatVndFull(s.avgOrderVnd.current)}
+          value={s.avgOrderVnd.current === null ? "—" : formatVndFull(s.avgOrderVnd.current)}
+          detail={s.avgOrderVnd.current === null ? "Chưa có đơn trong kỳ" : undefined}
           note="Doanh thu gộp ÷ số đơn đã thanh toán."
           change={computeChange(s.avgOrderVnd.current, s.avgOrderVnd.previous)}
           compareLabel={cmp}
@@ -362,8 +296,8 @@ function SalesSection({ data }: { data: TenantDashboard }) {
         <SecondaryStat
           icon={<IconXCircle className="h-4 w-4" />}
           label="Đã hoàn tiền"
-          value={formatVndCompact(s.refundedVnd.current)}
-          detail={`${formatCount(s.refundedOrders.current)} đơn · ${formatVndFull(s.refundedVnd.current)}`}
+          value={formatVndFull(s.refundedVnd.current)}
+          detail={`${formatCount(s.refundedOrders.current)} đơn`}
           change={
             <ChangeLine change={computeChange(s.refundedVnd.current, s.refundedVnd.previous)} compareLabel={cmp} higherIsBetter={false} />
           }
@@ -394,7 +328,7 @@ function SecondaryStat({ icon, label, value, detail, change }: { icon: ReactNode
         <p className="text-sm font-medium" style={{ color: INK_SOFT }}>
           {label}
         </p>
-        <p className="text-lg font-bold tabular-nums [overflow-wrap:anywhere]" style={{ color: INK }}>
+        <p className={`${statValueSizeClass(value, "secondary")} font-bold tabular-nums [overflow-wrap:anywhere]`} style={{ color: INK }}>
           {value}
         </p>
         {detail ? (
@@ -470,7 +404,7 @@ function SalesChartCard({ slug, data, metric }: { slug: string; data: TenantDash
       <TrendChart
         points={revenuePoints}
         metricName={`${revenueName} theo ${unit}`}
-        formatAxis={(v) => formatVndCompact(v)}
+        formatAxis={(v) => formatVndAxis(v)}
         formatFull={(v) => formatVndFull(v)}
         emptyText="Không có đơn đã thanh toán trong kỳ này."
       />
@@ -586,7 +520,7 @@ function TopSellingCard({ slug, data }: { slug: string; data: TenantDashboard })
                   <span className="font-semibold" style={{ color: INK }}>
                     {formatCount(t.orders)} đơn
                   </span>{" "}
-                  · {formatVndCompact(t.revenueVnd)} · đã bán từ trước tới nay {formatCount(t.soldAllTime)}
+                  · <span className="whitespace-nowrap">{formatVndFull(t.revenueVnd)}</span> · đã bán từ trước tới nay {formatCount(t.soldAllTime)}
                 </p>
               </div>
             </li>

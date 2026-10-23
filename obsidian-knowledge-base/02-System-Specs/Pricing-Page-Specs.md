@@ -19,7 +19,7 @@ author: Long
 > giao diện của Phong: `docs/de-xuat-trang-bang-gia-2026-10-17.md`. Theo nguyên tắc **CMS trước, UI sau** (mẫu đã áp dụng: trang chủ
 > ADR-033, Cửa hàng ADR-035 — [[02-System-Specs/Shop-Marketplace-Specs|Shop-Marketplace-Specs]]).
 >
-> Mức xác minh: ✅ Long đã đối chiếu code working tree 2026-10-17 (**GĐ1 + GĐ2 xong code, chưa commit/deploy**) · 🟡 theo brief/báo
+> Mức xác minh: ✅ Long đã đối chiếu code working tree 2026-10-17 (**GĐ1 + GĐ2 xong code; đã commit `7f8360b`**, deploy ❓) · 🟡 theo brief/báo
 > cáo · ❓ cần môi trường thật. Không DDL cho phần CMS (dùng bảng `cms_pages` có sẵn).
 
 ---

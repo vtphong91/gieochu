@@ -8,7 +8,7 @@ tags:
   - database
   - status/living
 date: 2026-10-16
-updated: 2026-10-17
+updated: 2026-10-23
 author: Long
 ---
 
@@ -19,7 +19,7 @@ author: Long
 > [[01-Architecture-Decisions/ADR-023-M12-Audit-Log-Append-Only|ADR-023 (≙ ADR-037)]]. ADR liên quan: ADR-010 (role `gieochu_app`), ADR-034 (một DB dùng chung),
 > ADR-036 (cron hằng ngày).
 >
-> Mức xác minh: ✅ Long đã đối chiếu code working tree 2026-10-16 (**code chưa commit, chưa deploy**) · 🟡 theo brief/báo cáo của Quốc
+> Mức xác minh: ✅ Long đã đối chiếu code working tree 2026-10-16 (code **đã commit `36103fb`**, deploy ❓) · 🟡 theo brief/báo cáo của Quốc
 > · ❓ cần môi trường thật. Trạng thái migration: **đã áp lên DB dùng chung 2026-10-16** 🟡 (Quốc báo; Long không chạy lệnh DB).
 
 ---
@@ -76,7 +76,7 @@ Hàm thuần, không phụ thuộc Prisma (client component import được nhã
 | Export | Vai trò |
 | :-- | :-- |
 | `AUDIT_SCOPES`, `isAuditScope`, `AUDIT_SCOPE_LABELS` | 3 scope + nhãn ("Hệ thống", "Gian hàng", "Khách hàng") |
-| `AUDIT_ACTIONS` (40 — 27 từ M12a + 5 từ M12c/ADR-039 + 8 từ ADR-041), `isAuditAction`, `AUDIT_ACTION_LABELS`, `auditActionLabel` | Danh sách action + nhãn tiếng Việt; action lạ hiển thị nguyên chuỗi |
+| `AUDIT_ACTIONS` (42 đã ghi nhận — 27 từ M12a + 5 từ M12c/ADR-039 + 8 từ ADR-041 + 2 từ ADR-047; working tree có thêm 1 của ADR-048), `isAuditAction`, `AUDIT_ACTION_LABELS`, `auditActionLabel` | Danh sách action + nhãn tiếng Việt; action lạ hiển thị nguyên chuỗi |
 | `sanitizeAuditMetadata` | Thay giá trị khoá nhạy cảm (khớp `pass(word)`, `secret`, `token`, `hash`, `authorization`, `cookie`, `api key`, `private key`, `signature`, `otp`) bằng `"[REDACTED]"` ở mọi độ sâu; bỏ giá trị không phải JSON; giới hạn độ sâu 4, 40 khoá, 50 phần tử mảng, chuỗi 500 ký tự; JSON > 4096 byte → chỉ còn `{ truncated: true }`. Không bao giờ ném |
 | `maskEmail` | `nguyen@gmail.com` → `n***@gmail.com` |
 | `extractAuditIp`, `normalizeAuditUserAgent` | IP = phần tử đầu `x-forwarded-for` (hoặc `x-real-ip`), cắt 64 ký tự; User-Agent cắt 512 |
@@ -110,10 +110,11 @@ Từ M12c (ADR-038, 2026-10-17) ✅: **`publishProduct(tenantId, productId, acto
 
 ---
 
-## 4. Action và nơi ghi ✅ (grep `audit.log(` 2026-10-16; cập nhật M12c 2026-10-17; cập nhật ADR-041 2026-10-17)
+## 4. Action và nơi ghi ✅ (grep `audit.log(` 2026-10-16; cập nhật M12c 2026-10-17; cập nhật ADR-041 2026-10-17; cập nhật ADR-047 2026-10-18; cập nhật ADR-048 2026-10-23)
 
-40 action trong `AUDIT_ACTIONS` ✅ (đếm 2026-10-17): 21 theo đặc tả §"M12" + 6 bổ sung ở M12a (trước đây chỉ ghi `logger`) + 5 ở M12c/ADR-039
-+ 8 ở ADR-041 (Hồ sơ, Bảng giá CMS, hoàn tiền gói). Thêm action không cần DDL (`action` là chuỗi).
+**43** action trong `AUDIT_ACTIONS` ✅ (đếm working tree 2026-10-23): 21 theo đặc tả §"M12" + 6 bổ sung ở M12a (trước đây chỉ ghi `logger`) + 5 ở
+M12c/ADR-039 + 8 ở ADR-041 (Hồ sơ, Bảng giá CMS, hoàn tiền gói) + 2 ở ADR-047 (ghi chú nội bộ đơn) + 1 ở ADR-048 (ghi chú khách). Thêm action không
+cần DDL (`action` là chuỗi).
 
 | Action | Scope | Nơi ghi | Actor |
 | :-- | :-- | :-- | :-- |
@@ -132,6 +133,8 @@ Từ M12c (ADR-038, 2026-10-17) ✅: **`publishProduct(tenantId, productId, acto
 | `ORDER_MANUALLY_CONFIRMED` / `ORDER_REFUNDED` | TENANT | `lib/order.ts` | thành viên |
 | `COUPON_OVERUSED` | SYSTEM (+`tenantId`) | `lib/order.ts` `auditMarkOrderPaid` — gọi từ thanh toán 0đ, xác nhận tay, `payment-process.ts` (webhook) | null |
 | `ENTITLEMENT_EXTRA_GRANTED` / `ENTITLEMENT_REVOKED` | TENANT | `lib/entitlement.ts` | thành viên |
+| `ORDER_NOTE_ADDED` / `ORDER_NOTE_DELETED` | TENANT | `lib/order-note.ts` (`addOrderNote`, `deleteOrderNote` — sau commit) — `targetType: "Order"`, `targetId` = id đơn, metadata **chỉ `{ noteId }`**, **không** nội dung ghi chú (ADR-047). Nhãn: "Thêm ghi chú nội bộ cho đơn" / "Xoá ghi chú nội bộ của đơn". Không nằm trong danh sách audit của timeline đơn (`ORDER_TIMELINE_AUDIT_ACTIONS`) — timeline hiện ghi chú qua kind `note` | thành viên (tác giả) |
+| `CUSTOMER_NOTE_UPDATED` | TENANT | `lib/customer-list.ts` `updateCustomerNote` (gọi từ `customers/actions.ts` `saveCustomerNoteAction` — sau commit) — `targetType: "TenantCustomer"`, `targetId` = userId khách, metadata **chỉ `{ customerUserId }`**, **không** nội dung ghi chú (ADR-048); gồm cả xoá (ghi chú rỗng → `null`); nội dung không đổi → **không ghi**. Nhãn: "Cập nhật ghi chú khách hàng" | thành viên |
 | `SHARE_LINK_CREATED` / `SHARE_LINK_REVOKED` | TENANT | `lib/share-link.ts` | thành viên |
 | `REVIEW_HIDDEN` / `REVIEW_RESTORED` | TENANT | `lib/review.ts` `hideReview`/`unhideReview` | thành viên |
 | `REVIEW_RESTORED` | CUSTOMER | `lib/review.ts` — đánh giá hiện lại khi khách mua lại (`reason: "REPURCHASE"`) | khách |

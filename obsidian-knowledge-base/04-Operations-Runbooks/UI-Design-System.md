@@ -5,7 +5,7 @@ tags:
   - design-system
   - status/living
 date: 2026-05-24
-updated: 2026-10-18
+updated: 2026-10-23
 author: System Architect
 ---
 
@@ -254,7 +254,7 @@ module that depends on useState into a Server Component module".
 | `PrimaryLinkButton`, `GhostLinkButton` | Nút dạng `<Link>` — dùng cho pattern "bấm để hiện form" qua query param (`?new=1`) thay vì client state |
 | `RowActionButton` | Nút hành động nhỏ trong dòng bảng, 4 tone: `primary` / `success` / `danger` / `neutral`; prop `size`: `sm` (mặc định, dòng bảng desktop) · **`touch`** (ADR-029 — thẻ/danh sách dùng cả trên mobile: `min-h-11` = 44px dưới `lg`, gọn như `sm` từ `lg`) ✅ |
 | `FormBanner` | Banner thông báo kết quả form (`ok` → xanh, lỗi → đỏ), `role="status"`/`role="alert"` |
-| `DataTable`, `Tr`, `Td` | Bảng dữ liệu chuẩn (từ M12a: prop `caption?` → `<caption class="sr-only">`, `<th scope="col">` — §15.5) — cố tình không set `overflow-x-auto` (tránh browser tự suy ra `overflow-y: auto`, cắt mất `RowMenu` dùng `position: absolute` ở các hàng cuối) |
+| `DataTable`, `Tr`, `Td` | Bảng dữ liệu chuẩn (từ M12a: prop `caption?` → `<caption class="sr-only">`, `<th scope="col">` — §15.5; từ ADR-046: `head` là `ReactNode[]`, prop `headAriaSort?` → `aria-sort` — §20.5) — cố tình không set `overflow-x-auto` (tránh browser tự suy ra `overflow-y: auto`, cắt mất `RowMenu` dùng `position: absolute` ở các hàng cuối) |
 | `EmptyState` | Trạng thái rỗng: icon + tiêu đề + mô tả + hành động gợi ý |
 
 **Quy tắc bắt buộc khi thêm trang quản trị mới** (System Center hoặc Studio): tái dùng các component trên
@@ -263,7 +263,7 @@ thay vì tự viết class Tailwind rời rạc cho bảng/badge/form — tránh
 
 ### 5.1. App shell System Center + Studio — sidebar dùng chung, Đăng xuất, drawer mobile (ADR-042) ✅
 
-Đối chiếu working tree 2026-10-17 (**chưa commit/deploy**). Quyết định: [[01-Architecture-Decisions/ADR-028-Shared-App-Sidebar-Logout-Mobile-Drawer|ADR-028 KB (≙ ADR-042)]].
+Đối chiếu working tree 2026-10-17 (nay đã commit `9d37ab1`, deploy ❓). Quyết định: [[01-Architecture-Decisions/ADR-028-Shared-App-Sidebar-Logout-Mobile-Drawer|ADR-028 KB (≙ ADR-042)]].
 **Một bộ duy nhất** cho `/admin` và `/studio/{slug}` — sidebar riêng của Studio (`studio/[tenantSlug]/_ui/sidebar-nav.tsx`) **đã xoá**, không
 dựng lại sidebar thứ hai.
 
@@ -288,7 +288,7 @@ thật, đăng xuất thật, trình đọc màn hình ❓.
 
 ## 6. Bộ Icon Dùng Chung (`apps/web/app/admin/_ui/icons.tsx`)
 
-**50** icon SVG dạng component (đếm lại `export function Icon` 2026-10-18 ✅ — ADR-043 thêm `IconArrowUp`/`IconArrowDown` (mũi tên xu hướng trong `ChangeLine`), `IconStarSolid` (điểm đánh giá, top đánh giá), `IconGift` (thẻ "Lượt nhận tài liệu miễn phí"), §19; danh sách dưới là mốc 42 của 2026-09-28, các icon thêm sau — `IconMenu`, `IconClose`, `IconShoppingBag`… — ghi ở §14.6 và các mục tương ứng) (`IconProps = { className?: string }`; mốc 2026-09-28 sau M10b — thêm
+**51** icon SVG dạng component (đếm lại `export function Icon` 2026-10-18 sau "Bổ sung ADR-043 lần 3" ✅ — ADR-043 thêm `IconArrowUp`/`IconArrowDown` (mũi tên xu hướng trong `ChangeLine`), `IconStarSolid` (điểm đánh giá, top đánh giá), `IconGift` (thẻ "Lượt nhận tài liệu miễn phí"), §19; lần 3 thêm `IconCalendar` (ô mở date range picker, §19.5); danh sách dưới là mốc 42 của 2026-09-28, các icon thêm sau — `IconMenu`, `IconClose`, `IconShoppingBag`… — ghi ở §14.6 và các mục tương ứng) (`IconProps = { className?: string }`; mốc 2026-09-28 sau M10b — thêm
 `IconNewspaper` (mục "Bài viết" sidebar Studio, key `posts`; icon trạng thái rỗng) và `IconPin` (ghim bài), ADR-029 M10b), dùng chung cho cả System Center và
 Studio, cùng vị trí `_ui` với `kit.tsx`:
 
@@ -1141,7 +1141,7 @@ Giao diện chỉ hiển thị — **không tự quyết quyền**; dữ liệu 
   mỗi trang là một URL thật (chia sẻ/bookmark được, Back/Forward đúng). `query` là các tham số cần giữ, giá trị rỗng bị bỏ khỏi URL.
   Trang hiện tại `aria-current="page"` + nền đặc; đầu/cuối, Trước/Sau là `<span>` mờ. Dưới `sm` chỉ "Trước · Trang x/y · Sau"; số trang
   hiện từ `sm` (cửa sổ 1, …, p−1, p, p+1, …, cuối). Target 44px dưới `lg`, 36px từ `lg`. Dùng cho trang danh sách quản trị có bộ lọc
-  dạng form GET.
+  dạng form GET. Từ ADR-046 có prop `pageParam` (mặc định `page`; Đơn hàng Studio dùng `trang`) — §20.5.
 * **`AuditLogSkeleton`:** cùng khung với trang thật (tiêu đề, form lọc theo số ô `fields`, danh sách), `aria-busy`, `role="status"` ẩn
   chứa `label`, `animate-pulse motion-reduce:animate-none`. Admin `fields={6}`.
 
@@ -1172,7 +1172,7 @@ kiểm tay riêng ❓.
 | File | Vai trò |
 | :-- | :-- |
 | `admin/_ui/sales-stats.tsx` | Chỉ trình bày, **Server Component** (không hook): `SalesStatsSection({ overview, metric })`, `SalesStatsSkeleton()`, `parseSalesChartMetric(raw)`, kiểu `SalesChartMetric = "gmv" \| "don"`, `AdminStatsOverviewView`. Nhận kết quả `getAdminStatsOverview()` qua prop — **không tự truy vấn** |
-| `admin/_ui/stats-chart.tsx` (từ ADR-043, 2026-10-18) | Khối con dùng chung với Studio Tổng quan: `KpiCard`, `ChangeLine`, `computeChange`, `TrendChart`, định dạng VND — `sales-stats.tsx` đã refactor để import thay cho các hàm nội bộ cũ (`KpiCard`, `DailyChart`, `computeChange`, `formatVndCompact`). Nhãn trục X `/admin` vẫn neo ngày cuối, lùi 7 ngày (truyền `showTick` riêng). **Chưa kiểm lại `/admin` trên trình duyệt sau refactor** ❓. API: §19.4 |
+| `admin/_ui/stats-chart.tsx` (từ ADR-043, 2026-10-18) | Khối con dùng chung với Studio Tổng quan: `KpiCard`, `ChangeLine`, `computeChange`, `TrendChart`, định dạng VND — `sales-stats.tsx` đã refactor để import thay cho các hàm nội bộ cũ (`KpiCard`, `DailyChart`, `computeChange`, `formatVndCompact`). Nhãn trục X `/admin` vẫn neo ngày cuối, lùi 7 ngày (truyền `showTick` riêng). Từ "Bổ sung ADR-043 lần 3": số đầy đủ, chỉ trục Y rút gọn (`formatVndAxis`) — §19.6. **Chưa kiểm lại `/admin` trên trình duyệt sau refactor/đổi số** ❓. API: §19.4 |
 | `admin/page.tsx` | Component async `SalesStats` gọi `getAdminStatsOverview({ days: 30 })`, bọc `<Suspense fallback={<SalesStatsSkeleton />}>` riêng — phần còn lại dashboard không phải chờ. Đặt sau khối thanh toán gói gần đây, trước "Thao tác nhanh" |
 
 Section có `id="hoat-dong-ban-tai-lieu"` + `scroll-mt-20`, `aria-labelledby` trỏ tiêu đề `h2`.
@@ -1185,8 +1185,9 @@ Section có `id="hoat-dong-ban-tai-lieu"` + `scroll-mt-20`, `aria-labelledby` tr
 
 ### 16.3. Thẻ KPI (4 thẻ)
 
-* Lưới `grid-cols-1 sm:grid-cols-2 xl:grid-cols-4`: **GMV** (giá trị rút gọn "12,5 triệu đ"/"1,2 tỷ đ" + dòng phụ số đầy đủ "1.234.567 đ"),
-  **Đơn đã thanh toán**, **Khách mới**, **Lượt tải**.
+* Lưới `grid-cols-1 sm:grid-cols-2 xl:grid-cols-4`: **GMV**, **Đơn đã thanh toán**, **Khách mới**, **Lượt tải**. Từ "Bổ sung ADR-043 lần 3"
+  (working tree, chưa commit ✅ `git diff`): GMV hiện **số đầy đủ** "1.234.567 đ" (`formatVndFull`), **bỏ** dòng phụ; trước đó là giá trị rút gọn
+  "12,5 triệu đ" + dòng phụ số đầy đủ. Cỡ chữ theo độ dài (`statValueSizeClass`, §19.6).
 * Dòng thay đổi so với 30 ngày trước, tính bằng **BigInt** (cả GMV), 1 chữ số thập phân:
   - kỳ trước = 0 → "— chưa có số liệu kỳ trước" (màu chữ phụ);
   - 0% → "Không đổi so với 30 ngày trước";
@@ -1210,7 +1211,7 @@ Section có `id="hoat-dong-ban-tai-lieu"` + `scroll-mt-20`, `aria-labelledby` tr
 ### 16.5. Top 5 gian hàng theo GMV
 
 * Thẻ cạnh biểu đồ (dưới `xl` xếp dưới): danh sách `<ol>` hạng 1–5, mỗi dòng tên gian hàng (link `/{slug}` mở tab mới, có chữ ẩn "Hạng n" và
-  "(mở gian hàng ở tab mới)"), `/{slug}`, GMV rút gọn + số đơn. **Chỉ tên + số tổng hợp** (§7.9).
+  "(mở gian hàng ở tab mới)"), `/{slug}`, GMV (số đầy đủ từ lần 3 — trước là rút gọn) + số đơn. **Chỉ tên + số tổng hợp** (§7.9).
 * Không có tenant GMV > 0 → "Chưa có gian hàng nào phát sinh doanh thu trong 30 ngày."
 
 ### 16.6. Trạng thái
@@ -1321,7 +1322,7 @@ dõi tranh chấp hoàn tiền.
 
 ## 18. Bảng Giá CMS, Khu Vực Tài Khoản `/account`, Hoàn Tiền Gói (ADR-041) ✅
 
-Đối chiếu working tree 2026-10-17 (**chưa commit/deploy**). Nghiệp vụ: [[02-System-Specs/Pricing-Page-Specs|Pricing-Page-Specs]],
+Đối chiếu working tree 2026-10-17 (nay đã commit `7f8360b`, deploy ❓). Nghiệp vụ: [[02-System-Specs/Pricing-Page-Specs|Pricing-Page-Specs]],
 [[02-System-Specs/Account-Profile-Specs|Account-Profile-Specs]], [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5B. Đề xuất gốc
 của Phong: `docs/de-xuat-trang-bang-gia-2026-10-17.md`, `docs/de-xuat-trang-ho-so-2026-10-17.md`.
 
@@ -1420,6 +1421,11 @@ Quyết định: [[01-Architecture-Decisions/ADR-029-Studio-Dashboard-Period-Gro
 làm UI theo brief của Quốc, Long đọc code 2026-10-18 (working tree, chưa commit). Kiểm: lint/typecheck/build đạt (Quốc chạy lại 2026-10-18) 🟡,
 xem trước dữ liệu giả 360/768/1280 🟡. **Chưa** kiểm phiên OWNER thật, bàn phím/trình đọc màn hình ❓.
 
+**"Bổ sung ADR-043 lần 3"** (2026-10-18, chủ dự án yêu cầu; working tree **chưa commit** ✅ `git status` — phần ADR-043 gốc đã commit `e5d63d0`):
+bộ chọn kỳ đổi sang **date range picker** (§19.5), thẻ thống kê hiện **số đầy đủ** — chỉ trục Y rút gọn (§19.6), áp cho cả `/admin`. Phong báo:
+lint/typecheck/build đạt, Playwright kiểm bàn phím, 360/1100/1440 không cuộn ngang 🟡; **chưa** kiểm phiên OWNER thật ❓; thẻ "Doanh thu gói dịch
+vụ" `/admin` đã xong (Phong báo, Long đọc lại `git diff` ✅).
+
 ### 19.1. File
 
 | File | Vai trò |
@@ -1429,6 +1435,7 @@ xem trước dữ liệu giả 360/768/1280 🟡. **Chưa** kiểm phiên OWNER 
 | `(tong-quan)/error.tsx` | Client; `role="alert"`, tiêu đề "Không tải được số liệu Tổng quan", hiện `digest` (không `error.message`), nút "Thử lại" (`retry()` — "Next 16.3" theo comment code 🟡) + link "Xem đơn hàng"; nằm trong app shell nên sidebar vẫn dùng được |
 | `(tong-quan)/_ui/dashboard.tsx` | `StudioDashboardView({ tenant, data, metric })` — chỉ trình bày, nhận `TenantDashboard` qua prop |
 | `(tong-quan)/_ui/dashboard-format.ts` | Thuần: `parseStudioChartMetric` (`gop` mặc định \| `thuc-nhan`), `dashboardHref` (bỏ giá trị mặc định khỏi query), định dạng ngày giờ VN, `GRANULARITY_UNIT`, `formatRating`, `formatPercent` |
+| `admin/_ui/date-range-picker.tsx` (chuyển từ `(tong-quan)/_ui/` theo "Bổ sung ADR-046", chưa commit) + wrapper `(tong-quan)/_ui/dashboard-range-picker.tsx` | Client: `DashboardDateRangePicker({ activeKey, displayFrom, displayTo, today, hrefForPreset?, hrefForCustom?, formMode? })` dùng chung; dashboard gọi `StudioDashboardRangePicker({ slug, metric, … })` dựng link bằng `dashboardHref` (giữ `?chi-so=`) — §19.5 |
 | `admin/_ui/stats-chart.tsx` | Component thống kê dùng chung `/admin` + Studio (§19.4) |
 
 ### 19.2. Thứ tự khối
@@ -1440,10 +1447,9 @@ xem trước dữ liệu giả 360/768/1280 🟡. **Chưa** kiểm phiên OWNER 
 3. **Gian hàng chưa có đơn nào** (`latestOrders` rỗng) → thay mục 4–8 bằng **checklist 3 bước** (khung nét đứt): Thêm tài liệu đầu tiên (xong khi
    có ≥ 1 tài liệu) · Xuất bản tài liệu (xong khi có tài liệu Công khai) · Chia sẻ trang bán hàng (link `/{slug}` tab mới, có chữ ẩn "(mở tab
    mới)").
-4. **Kỳ thống kê**: `h2` "Kỳ thống kê: {label}" + "So với {prevLabel} (cùng độ dài)"; `<nav aria-label="Chọn kỳ thống kê">` 8 chip link
-   (`aria-current="page"` ở kỳ đang chọn; chip active nền primary chữ trắng; `min-h-11`, `lg:min-h-9`); `<details>` "Tuỳ chọn: chọn khoảng ngày"
-   (mở sẵn khi đang xem tuỳ chọn hoặc URL sai) chứa `next/form` GET 2 ô `type="date"` có `<label>`, `max` = hôm nay, gợi ý "Tối đa 366 ngày…"
-   (`aria-describedby`); URL sai → `Notice tone="warning"` báo đang hiện kỳ mặc định.
+4. **Kỳ thống kê** (từ lần 3): một hàng `flex-wrap` — trái `h2` "Kỳ thống kê: {label}" + "So với {prevLabel}" (bỏ chữ "(cùng độ dài)" vì 3 mốc
+   "… trước" so trọn kỳ); phải ô **date range picker** (§19.5). URL sai → `Notice tone="warning"` báo đang hiện kỳ mặc định (giữ). *Trước lần 3:*
+   `<nav>` 8 chip link + `<details>` "Tuỳ chọn" chứa `next/form` GET 2 ô `type="date"` — **đã bỏ** ✅ `git diff`.
 5. **Bán hàng**: ghi chú "Đơn có thời điểm khách trả tiền trong kỳ. Không tính tài liệu miễn phí (đơn 0 đ)…"; lưới 4 `KpiCard` có icon tròn —
    **Doanh thu (gộp)** (note "Tính cả đơn sau này hoàn tiền — cùng cách tính của System Center."), **Doanh thu thực nhận**, **Đơn đã thanh toán**,
    **Giá trị đơn trung bình**; dải 3 chỉ số phụ: **Đã hoàn tiền** (xu hướng đảo màu — `higherIsBetter=false`), **Tài liệu khác nhau đã bán**, **Lượt
@@ -1466,7 +1472,8 @@ xem trước dữ liệu giả 360/768/1280 🟡. **Chưa** kiểm phiên OWNER 
 
 - Mọi `section` có `aria-labelledby` → tiêu đề; biểu đồ `role="img"` + `aria-label` tóm tắt (khoảng thời gian, giá trị cao nhất) + bảng thay thế;
   % thay đổi luôn có mũi tên + chữ "Tăng/Giảm" (không chỉ màu); chỉ số ảnh chụp ghi "hiện tại", luỹ kế ghi "từ trước tới nay".
-- Vùng chạm `min-h-11` dưới `lg`; focus `focus-visible:outline-2` màu primary; không cần JS cho kỳ/chỉ số (link + form GET).
+- Vùng chạm `min-h-11` dưới `lg`; focus `focus-visible:outline-2` màu primary; công tắc chỉ số `?chi-so=` là link GET (không cần JS). Từ lần 3
+  **chọn kỳ cần JS** (picker client); không JS thì chỉ đổi kỳ được bằng cách gõ URL `?ky=`/`?tu=`/`?den=`.
 - App shell fluid theo sidebar (ADR-024/042), padding `px-5 lg:px-8`.
 
 ### 19.4. `admin/_ui/stats-chart.tsx` — API dùng chung
@@ -1476,7 +1483,8 @@ Server Component thuần (không hook), không tự truy vấn. Màu từ `brand
 | Export | Ghi chú |
 | :-- | :-- |
 | `STAT_INK`, `STAT_INK_SOFT`, `STAT_CARD_CLASS` | Màu chữ + class khung thẻ (`min-w-0 rounded-2xl border border-gray-200 bg-white`) |
-| `MoneyLike = bigint \| number \| string`, `toBigIntSafe`, `formatCount`, `formatVndFull` ("1.234.567 đ"), `formatVndCompact` ("12,5 triệu đ") | Định dạng không qua float |
+| `MoneyLike = bigint \| number \| string`, `toBigIntSafe`, `formatCount`, `formatVndFull` ("1.234.567 đ"), `formatVndAxis` ("12,5 triệu đ" — **đổi tên từ `formatVndCompact`** ở lần 3, chỉ cho trục Y) | Định dạng không qua float; quy tắc dùng §19.6 |
+| `statValueSizeClass(value, level?: "primary" \| "secondary")` (lần 3) | Class cỡ chữ theo độ dài chuỗi số — §19.6 |
 | `computeChange(cur, prev) → Change` | BigInt, 1 chữ số thập phân; `prev` = 0 hoặc `null` → `{ kind: "none" }` |
 | `ChangeLine({ change, compareLabel, higherIsBetter? })` | "— chưa có số liệu kỳ trước…" / "Không đổi so với …" / mũi tên + "Tăng/Giảm x%" + "so với …"; `higherIsBetter=false` đảo màu |
 | `StatIcon({ icon, tone?, size? })` | Icon tròn `aria-hidden`, tone `primary`/`accent`/`secondary` |
@@ -1484,15 +1492,240 @@ Server Component thuần (không hook), không tự truy vấn. Màu từ `brand
 | `TrendPoint { key, tick, label, value: bigint, future? }`, `TrendChart({ points, variant?: "bar" \| "line", metricName, formatAxis, formatFull, emptyText, color?, heightClass?, integerScale?, showTick? })` | Cột HTML hoặc đường SVG trong khung `aria-hidden`; khối `role="img"` có tóm tắt; nhãn trục X thưa mặc định ~5 nhãn neo điểm đầu |
 | `RatioBar({ ratio, color?, label? })` | Thanh tỉ lệ `aria-hidden` (phân bố sao) |
 
-### 19.5. Việc còn mở (BACKLOG)
+### 19.5. Pattern: Date range picker (`DashboardDateRangePicker`, "Bổ sung ADR-043 lần 3") ✅ đọc code
+
+File dùng chung `admin/_ui/date-range-picker.tsx` (client; từ "Bổ sung ADR-046" — trước nằm ở `(tong-quan)/_ui/`). Dùng ở Tổng quan Studio (wrapper `StudioDashboardRangePicker`) và trang Đơn hàng (`formMode`, §20.4); dùng lại được cho màn hình
+thống kê khác nếu Quốc giao.
+
+* **Nguồn dữ liệu:** không tự tính kỳ — ngày hiển thị/tô lấy từ `range.displayFrom/displayTo` (server, giờ VN), "hôm nay" là prop `today`
+  (`YYYY-MM-DD` giờ VN từ `generatedAt`). Lịch chỉ làm phép tính ngày dương lịch thuần (UTC, không múi giờ).
+* **Ô mở:** nút bo tròn `min-h-11`, `IconCalendar` + chữ `dd/mm/yyyy - dd/mm/yyyy` (`tabular-nums`) + `IconChevronDown`; `aria-haspopup="dialog"`,
+  `aria-expanded`, `aria-controls`; chữ ẩn "Kỳ thống kê {nhãn mốc}, từ …". Cạnh ô có vùng `role="status"` "Đang tải số liệu…" khi đang chuyển
+  trang (`useTransition`).
+* **Popup:** `<dialog>` mở bằng `showModal()` (bẫy focus, Esc đóng, nền inert), bấm nền đóng, đóng xong trả focus về ô mở. Bố cục theo độ rộng
+  (theo `matchMedia`, đổi được khi đang mở):
+  - **≥ xl (1280px)**: popover neo dưới ô, **2 tháng** cạnh nhau;
+  - **768–1279px (md → < xl)**: popover neo dưới ô, **1 tháng**;
+  - **< 768px**: **sheet đáy** (`range-picker-sheet`, bo góc trên, `max-h-[92dvh]`), 1 tháng, có tiêu đề "Chọn kỳ thống kê" + nút Đóng 44px; mốc
+    xếp lưới 3 cột.
+  Popover tự né mép màn hình (cách mép 16px), tính lại khi đổi kích thước; ẩn (`visibility: hidden`) tới khi định vị xong.
+* **Cột mốc (trái):** `<nav aria-label="Mốc thời gian">`, 11 mốc là **`Link` `?ky=<key>`** (giữ `chi-so`, `prefetch={false}`, `scroll={false}`;
+  bấm → đóng dialog rồi `router.push` trong transition) + nút "Tuỳ chọn" (đưa focus vào lịch). Mục đang chọn `aria-current="true"`, nền primary chữ
+  trắng; focus đầu tiên khi mở = mục đang chọn (hoặc ô ngày nếu đang ở Tuỳ chọn).
+* **Lịch:** `<table role="grid">` 6 hàng × (cột **W** = số tuần ISO-8601 + 7 ngày), **Thứ Hai đầu tuần** (T2…CN, `abbr` tên đầy đủ); tiêu đề tháng
+  ẩn cho trình đọc màn hình; tháng đầu có **select Tháng + select Năm** (lùi **10 năm**, `YEARS_BACK`), nút tháng trước/sau; **không** duyệt qua
+  tháng tương lai (option tháng tương lai `disabled`). Ngày thuộc tháng khác hiện mờ, không tương tác. **Ngày tương lai** `aria-disabled` + chữ
+  xám **gạch ngang** (không chỉ dựa vào màu). Hôm nay `aria-current="date"` + chấm accent. Mỗi ô có `aria-label` đầy đủ ("Thứ Hai, 5 tháng 10 năm
+  2026, ngày bắt đầu khoảng chọn…").
+* **Tô khoảng không chỉ màu:** hai đầu khoảng nền primary chữ đậm; dải giữa nền `surface` + **viền trên/dưới** primary (nét liền khi đã chọn xong,
+  **nét đứt** khi đang xem trước sau lần bấm đầu); đầu xem trước còn lại viền nét đứt.
+* **Bàn phím** (roving tabindex): mũi tên ±1 ngày/±1 tuần, Home/End đầu/cuối tuần, PageUp/PageDown ±1 tháng, **Shift+PageUp/PageDown ±1 năm**,
+  Enter/Space chọn, Esc đóng; focus bị kẹp trong [10 năm trước, hôm nay].
+* **Chọn khoảng:** bấm ngày đầu rồi ngày cuối (bấm ngày trước ngày đầu → tự đảo). Chân popup: tóm tắt `aria-live="polite"` ("Từ … — chọn ngày kết
+  thúc" / "Đã chọn … - … (N ngày)"), nút Huỷ / **Áp dụng**. Quá **366 ngày** (`DASHBOARD_CUSTOM_MAX_DAYS`) → thông báo `role="alert"` + nút Áp dụng
+  `disabled` (`aria-describedby` trỏ lỗi). Áp dụng → `?ky=tuy-chon&tu=YYYY-MM-DD&den=YYYY-MM-DD` (giữ `chi-so`); khoảng không đổi → chỉ đóng.
+  Server vẫn kiểm lại (§19.2 mục 4).
+* **CSS** (`globals.css`, khối `.range-picker`): `html:has(dialog.range-picker[open])` khoá cuộn trang nền; `dialog.range-picker-sheet[open]` trượt
+  lên 200ms, tắt dưới `prefers-reduced-motion`.
+* **Cần JS** — không có phương án form GET dự phòng (URL gõ tay vẫn chạy). Quốc chấp nhận 2026-10-18 (app shell vốn cần JS).
+
+### 19.6. Quy tắc hiển thị số tiền/số đếm (lần 3) ✅ đọc code
+
+* **Số đầy đủ, không rút gọn** theo `vi-VN` (vd `993.000 đ`) — `formatVndFull` — cho: thẻ KPI, dòng phụ, top 5, bảng số liệu, tooltip/`title` cột,
+  dòng "Cao nhất". Áp cho **cả** Studio và `/admin` (component chung `stats-chart.tsx`): `sales-stats.tsx` (thẻ GMV, top 5 gian hàng, bảng) và thẻ
+  "Doanh thu gói dịch vụ" 6 tháng trong `admin/page.tsx` (`title` cột + "Tổng 6 tháng"; trước dùng hàm nội bộ `formatVndCompact` kiểu "1,2Tr đ"/"35K đ"
+  — đã xoá) ✅ `git diff` (Long đọc lại sau khi Phong báo xong, 2026-10-18). Thẻ này **không có trục Y** nên không dùng `formatVndAxis`.
+* **Chỉ nhãn trục Y** biểu đồ được rút gọn — `formatVndAxis` ("12,5 triệu đ", "1,2 tỷ đ"; cột nhãn hẹp 64–80px). Không dùng hàm này ở chỗ khác.
+* Vì đã bỏ rút gọn, thẻ không còn dòng phụ "số đầy đủ" (Studio: Doanh thu gộp/thực nhận/giá trị TB bỏ `detail`; "Đã hoàn tiền" chỉ còn "{n} đơn").
+* **Cỡ chữ theo độ dài** — `statValueSizeClass(value, level)`: `primary` ≤ 12 ký tự `text-2xl`, ≤ 15 `text-xl`, dài hơn `text-lg`; `secondary` ≤ 13
+  `text-lg`, dài hơn `text-base`. Nơi gọi vẫn kèm `[overflow-wrap:anywhere]` làm lưới an toàn (khoảng trắng trước "đ" là chỗ xuống dòng ưu
+  tiên); số trong danh sách bọc `whitespace-nowrap`.
+
+### 19.7. Việc còn mở (BACKLOG)
 
 * Nhãn tiếng Việt cho `tenant.status` ở phụ đề header.
 * Trang Đánh giá chưa có bộ lọc "chưa trả lời" (link từ "Việc cần xử lý" chỉ lọc `VISIBLE`).
-* Chưa kiểm phiên OWNER thật, `/admin` sau refactor, bàn phím/trình đọc màn hình ❓.
+* Chưa kiểm phiên OWNER thật, `/admin` sau refactor + đổi số đầy đủ, trình đọc màn hình ❓ (picker: bàn phím đã kiểm bằng Playwright 🟡).
 
 ---
 
-## 20. Tài Liệu Tham Chiếu & Liên Kết
+## 20. Trang Đơn Hàng Studio — Danh Sách + Chi Tiết (ADR-046, ADR-047) ✅
+
+Quyết định: [[01-Architecture-Decisions/ADR-031-Studio-Orders-List-Detail-Upgrade|ADR-031 (≙ ADR-046)]], [[01-Architecture-Decisions/ADR-032-Studio-Orders-Unaccent-Search-Internal-Notes|ADR-032 (≙ ADR-047 — ghi chú nội bộ, §20.8)]]; nghiệp vụ:
+[[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]]; contract: [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §23. Phong làm UI, Hiếu
+làm dữ liệu theo brief của Quốc; Long đọc code working tree 2026-10-18 (**chưa commit** ✅ `git status`). Kiểm: lint/typecheck/build đạt (Quốc chạy
+2026-10-18) 🟡. **Chưa** xem UI thật với phiên OWNER, chưa trình đọc màn hình ❓.
+
+### 20.1. File
+
+| File | Vai trò |
+| :-- | :-- |
+| `studio/[tenantSlug]/orders/page.tsx` | Server Component: guard OWNER → `listOrdersPage` → `RefundRequestNotice`, `OrderFilterBar`, `OrderList`. Trong app shell (layout đã có `<main>`) nên bọc `<div>` |
+| `orders/_ui/order-list.tsx` | Thanh lọc, Notice hoàn tiền, bảng/thẻ, tiêu đề cột sắp xếp, phân trang |
+| `orders/_ui/order-filter-form.tsx` (client) | `OrderFilterForm` — `<form method="get" role="search">`; có JS thì bỏ ô rỗng + giá trị mặc định (`sap-xep=moi-nhat`, `so-dong=20`) rồi `router.push` (URL gọn); không JS gửi form thường |
+| `orders/_ui/order-row-actions.tsx` (client) | Menu "Thao tác" mỗi dòng + hộp xác nhận |
+| `orders/_ui/order-detail-parts.tsx` | `DetailCard`, `InfoList`, `DateTimeValue`, `OrderItemsTable`, `CustomerHistoryCard`, `OrderNotesCard` (ADR-047), `OrderTimeline` |
+| `orders/_ui/order-format.ts` | Nhãn/tone trạng thái, nhãn sắp xếp, nhãn cổng, `paymentChannelText`, `formatOrderPrice` (giá/tổng của một đơn hoặc một dòng; 0 → "Miễn phí") và `formatOrderVnd` (số tổng hợp — Lịch sử khách, giảm giá, giao dịch; 0 → "0 đ"), ngày/giờ VN, `orderDetailHref`/`orderListBackHref` |
+| `orders/_ui/order-skeleton.tsx`, `orders/loading.tsx`, `orders/[orderId]/loading.tsx` | Khung chờ cùng bố cục trang thật; `aria-busy`, `role="status"` ẩn, `animate-pulse motion-reduce:animate-none` |
+| `orders/error.tsx` (client) | Lỗi chung cho danh sách + chi tiết: `role="alert"`, mã tham chiếu `digest`, không hiện `error.message`, nút thử lại (`retry`) |
+| `orders/[orderId]/page.tsx`, `order-status-actions.tsx`, `entitlement-actions.tsx`, `confirm-form.tsx` | Chi tiết + thao tác 2 bước (action cũ, không đổi) |
+| `orders/[orderId]/order-note-actions.tsx` (client, ADR-047) | `AddOrderNoteForm` (thêm ghi chú) + `DeleteOrderNoteButton` (xoá 2 bước) — §20.8 |
+
+### 20.2. Danh sách `/studio/{slug}/orders`
+
+1. **Notice yêu cầu hoàn tiền** (`Notice tone="warning"`, ADR-039): "N đơn có yêu cầu hoàn tiền đang chờ…, trong đó M đơn đã quá hạn 7 ngày" +
+   link "Xem các đơn này" (`?remedy=REFUND_REQUESTED`); ẩn khi không có, hoặc khi đang xem đúng bộ lọc đó mà không có đơn quá hạn.
+2. **Thanh lọc** (khung trắng bo 2xl): ô **Tìm đơn hàng** (`type="search"`, placeholder "Mã đơn, họ tên hoặc email khách", `maxLength=100`; từ ADR-047 khớp **không dấu** ở server — UI không đổi) + nút
+   **Lọc** + **Xoá lọc** (chỉ khi có điều kiện). Hàng dropdown: **Trạng thái** (mỗi lựa chọn kèm số đếm, vd "Chờ thanh toán (3)"; "Tất cả trạng
+   thái (N)"), **Hoàn tiền** ("Có yêu cầu hoàn tiền (N)"), **Tài liệu** (chỉ tài liệu đã có đơn), **Ngày tạo đơn** (date range picker `formMode`,
+   §20.4), **Sắp xếp** (chỉ dưới `xl`), **Số dòng mỗi trang** (10/20/50/100). Dòng chú thích "Đang áp dụng N điều kiện lọc." / "Đang xem mọi đơn
+   hàng." + "Ngày giờ theo giờ Việt Nam". Form có `key` theo bộ lọc đã áp dụng để ô `defaultValue` dựng lại đúng sau điều hướng.
+3. **Tiêu đề kết quả** "N đơn hàng (khớp bộ lọc)".
+4. **Từ `xl`: `DataTable`** (có `caption` ẩn "Danh sách đơn hàng, N đơn…, trang x/y") 7 cột: **Mã đơn** (link mono, primary) · **Ngày tạo**
+   (ngày + giờ, sắp xếp được) · **Khách hàng** (họ tên đậm hoặc "Chưa có họ tên" nghiêng + email nhỏ) · **Tài liệu** (`line-clamp-2`, `title` đủ) ·
+   **Tổng tiền** (căn phải, sắp xếp được) · **Trạng thái** (`Badge` + `RefundRequestBadge` khi có yêu cầu hoàn tiền) · cột Thao tác (tiêu đề
+   `sr-only`). **Dưới `xl`: danh sách thẻ** (`md` 2 cột) — mã + ngày giờ + nút menu, khách, tài liệu, chân thẻ trạng thái + tổng; không cuộn ngang
+   ở 360px. Sidebar Studio chiếm chỗ ở `lg` nên bảng chỉ từ `xl`.
+5. **Sắp xếp bằng tiêu đề cột** (`SortHeader`): link GET (`scroll={false}`), icon mũi tên lên/xuống/cặp mờ, chữ `sr-only` ", bấm để sắp xếp tăng/giảm
+   dần"; bấm cột đang giảm → tăng, còn lại → giảm trước. `<th aria-sort>` qua prop mới `headAriaSort` (§20.5).
+6. **Trạng thái rỗng** (`EmptyState`): 3 biến thể — chưa có đơn / không khớp bộ lọc (+ nút "Xem tất cả đơn hàng") / không có yêu cầu hoàn tiền.
+7. **Phân trang** `LinkPagination pageParam="trang" unit="đơn"`, giữ bộ lọc.
+
+### 20.3. Menu "Thao tác" của dòng (`OrderRowActions`)
+
+* Dùng `RowMenu` + `MenuItemLink`/`MenuItemButton` có sẵn (`admin/_ui/row-menu`). Mục theo `allowedActions`: **Xem chi tiết** (luôn có) ·
+  **Xác nhận thanh toán** → link tới chi tiết `#order-actions` (cần ghi chú nên không làm tại danh sách) · **Đánh dấu đã hoàn tiền** · **Huỷ đơn**
+  (tone `danger`, sau separator).
+* Hoàn tiền / Huỷ mở **`<dialog>` xác nhận** (`showModal()` — bẫy focus, Esc đóng) nằm **ngoài** menu (menu tự đóng khi bấm); focus mặc định vào nút
+  an toàn ("Giữ đơn"/"Thôi"); đóng xong trả focus về nút mở menu; lỗi action hiện `role="alert"`. Gọi thẳng `cancelOrderAction` /
+  `markOrderRefundedAction` (tự kiểm quyền, revalidate). Câu chữ hoàn tiền nói rõ hệ thống **không tự chuyển tiền** và quyền tải sẽ bị thu hồi.
+* Link "Xem" mang `?back=<query danh sách>` (§20.6).
+
+### 20.4. Date range picker ở chế độ form (`DashboardDateRangePicker formMode`)
+
+* Prop mới `formMode?: { label, dialogTitle, allowAll? }` (file dùng chung `admin/_ui/date-range-picker.tsx`, §19.5): **không tự điều
+  hướng** — chọn mốc / "Áp dụng" khoảng ghi vào 3 input ẩn `ky`/`tu`/`den` rồi `requestSubmit()` form chứa ô (giữ các ô lọc khác đang nhập). Ô rỗng bị
+  `disabled` để không rơi `?ky=` thừa vào URL.
+* `allowAll` thêm mốc **"Mọi thời gian"** (`activeKey = null`, không gửi `ky`) — mặc định của trang Đơn hàng. `activeKey` nay nhận `null`.
+* Kỳ vẫn do server giải (`resolveDashboardRange`); picker **cần JS** (như dashboard).
+* Không có `formMode` thì picker điều hướng bằng `hrefForPreset(key)` / `hrefForCustom(tu, den)` do nơi gọi truyền (dashboard: wrapper client `StudioDashboardRangePicker`, vì hàm không truyền được từ Server Component). Trang Đơn hàng import thẳng từ `admin/_ui/` ("Bổ sung ADR-046").
+
+### 20.5. Kit — thay đổi dùng chung
+
+* **`DataTable.head`** đổi từ `string[]` sang **`ReactNode[]`** (cột sắp xếp truyền phần tử link); `key` của `<th>` đổi sang chỉ số cột.
+* **`DataTable.headAriaSort?`** — mảng `"ascending" | "descending" | "none" | undefined` theo cột → `aria-sort` trên `<th>`.
+* **`LinkPagination.pageParam?`** (mặc định `"page"`) — tên tham số số trang; trang Đơn hàng dùng `trang`.
+* Dashboard Tổng quan: thẻ "Đơn chờ xác nhận" link `?trang-thai=PENDING` (trước `?status=PENDING` — loader vẫn nhận alias).
+
+### 20.6. Chi tiết `/studio/{slug}/orders/{orderId}`
+
+* Đầu trang: link **"← Danh sách đơn hàng"** về đúng bộ lọc/trang qua `?back=` — `orderListBackHref` chỉ giữ khoá lọc đã biết, ghép vào đường dẫn
+  danh sách cố định (không open redirect). Tiêu đề `h1` "Đơn hàng #{mã}" (mono) + dòng "Tạo lúc … · tổng tiền"; bên phải badge trạng thái +
+  `RefundRequestBadge` khi có yêu cầu hoàn tiền.
+* **`MainAsideGrid`** (2 cột từ `xl`, `asideLabel="Thao tác và lịch sử đơn"`; dưới `xl` cột phụ xuống dưới):
+  - Cột chính: **Thông tin chung** (mã, ngày tạo/thanh toán giờ VN, trạng thái, kênh thanh toán, khách họ tên + email) · **Tài liệu trong đơn**
+    (`OrderItemsTable`: đơn giá, giảm giá/mã, thành tiền; khối quyền tải **theo từng dòng** — lượt đã dùng/giới hạn, **Cấp thêm lượt** (ô "Số lượt" có
+    nhãn thật; ẩn khi có remedy), **Thu hồi quyền tải** 2 bước (focus "Thôi"), remedy ADR-039 `OrderItemRemedy`)
+    · **Giao dịch thanh toán** (khi có; badge khớp/không khớp/sai số tiền).
+  - Cột phụ: **Thao tác đơn** (`id="order-actions"`, `scroll-mt-6`) — chỉ thao tác trong `allowedActions`: xác nhận thanh toán (form ghi chú), đánh dấu
+    đã hoàn, huỷ; huỷ/hoàn là **2 bước** (`TwoStepAction`: bấm → khung xác nhận mở ngay dưới, focus vào "Thôi", "Thôi"/Esc đóng và trả focus; không
+    `window.confirm`) · **Lịch sử khách hàng** (Đơn đã thanh toán, Tổng chi tiêu, "Đã hoàn −x đ" khi > 0, Giá trị đơn trung bình; chú thích "Chỉ tính
+    đơn trả phí (> 0 đ) … Tổng chi tiêu gồm cả đơn đã hoàn tiền sau đó") · **Ghi chú nội bộ** (ADR-047, §20.8) · **Lịch sử đơn** (`<ol aria-label="Sự kiện của đơn, mới nhất trước">`, mốc
+    tròn có icon theo loại, đường nối dọc `aria-hidden`; rỗng → "Chưa có sự kiện nào.").
+* `DetailCard` = `<section aria-labelledby>` với icon trong ô `surface`.
+
+### 20.7. Việc còn mở (BACKLOG)
+
+* Chưa xem UI thật với phiên OWNER, chưa thử tenant chéo, nhánh timeline audit/email chưa có dữ liệu thật, chưa trình đọc màn hình ❓.
+* ~~Tìm đơn không dấu~~ — xong ở ADR-047 (server). ~~Ghi chú nội bộ~~ — xong ở ADR-047 (§20.8).
+* **Không làm** (ADR-047 mục 3): thao tác hàng loạt (chọn nhiều dòng), nút xuất CSV đơn/khách — không thêm checkbox chọn dòng hay nút "Xuất".
+
+### 20.8. Ghi chú nội bộ trên chi tiết đơn (ADR-047) ✅ đọc code
+
+* **Thẻ `OrderNotesCard`** ("Ghi chú nội bộ", `id="order-notes"`, icon `IconNote` — mới trong `admin/_ui/icons.tsx`) nằm ở cột phụ **giữa** "Lịch sử
+  khách hàng" và "Lịch sử đơn". Chứa `AddOrderNoteForm` + dòng đếm "N ghi chú — xem trong “Lịch sử đơn” bên dưới." / "Chưa có ghi chú nào…".
+  `notesAvailable = false` → chỉ `Notice tone="warning"` "Ghi chú nội bộ tạm chưa sẵn sàng. Vui lòng thử lại sau.", không hiện form.
+* **`AddOrderNoteForm`** (`useActionState` → `addOrderNoteAction`): `<label>` thật "Nội dung ghi chú" + gợi ý "Chỉ gian hàng thấy — khách không bao giờ
+  thấy."; `<textarea name="body" required rows=3 maxLength={ORDER_NOTE_MAX_LENGTH_UI}>` (hằng UI = 1000, bản sao `ORDER_NOTE_MAX_LENGTH` ở lib —
+  `orders/_ui/order-format.ts`); bộ đếm "x/1.000" (chữ `sr-only` "Đã nhập … ký tự", đổi màu khi ≥ 90%); **Ctrl/⌘+Enter** gửi; đang gửi → `readOnly` +
+  nút "Đang thêm..."; lỗi `role="alert"` + `aria-invalid` + viền đỏ; thành công xoá ô + `role="status"` ẩn "Đã thêm ghi chú."; sau gửi trả focus về ô.
+  Nút "Thêm ghi chú" full-width, màu `brandColors.primary`.
+* **Trong "Lịch sử đơn"**: sự kiện kind `note`, icon `IconNote`, **tông `neutral`** mới (`#F3F4F6` / `#4B5563`); nhãn "Ghi chú nội bộ · {họ tên ?? email}"
+  (`orderNoteAuthorText` — tác giả null → **"Tài khoản đã xoá"**); nội dung trong khung viền xám nhạt, `whitespace-pre-wrap`, render text (không HTML).
+* **`DeleteOrderNoteButton`** — chỉ render khi `canDelete` (tác giả): nút chữ đỏ "Xoá" (`aria-label` "Xoá ghi chú lúc {giờ}", `aria-expanded`,
+  `min-h-11` dưới `lg`) → khung xác nhận ngay dưới "Xoá ghi chú lúc …? Thao tác không hoàn tác được." với "Thôi" (focus mặc định, Esc đóng, trả focus
+  về nút) / "Xoá ghi chú"; lỗi `role="alert"`. Không `window.confirm`.
+* Không có nút sửa ghi chú (ghi chú bất biến).
+
+---
+
+## 21. Trang Khách Hàng Studio + Mẫu Trang Danh Sách Studio Dùng Chung (ADR-048) ✅ đọc code
+
+Quyết định: [[01-Architecture-Decisions/ADR-033-Studio-Customers-List-Upgrade|ADR-033 (≙ ADR-048)]]; nghiệp vụ:
+[[02-System-Specs/Studio-Customers-Specs|Studio-Customers-Specs]]; contract: [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §24. Phong làm UI, Hiếu
+làm dữ liệu theo brief của Quốc; Long đọc code working tree 2026-10-23 (**chưa commit** ✅ `git status`). Kiểm: lint/typecheck/build đạt (Quốc
+2026-10-19) 🟡. **Chưa** kiểm UI thật với phiên OWNER, chưa trình đọc màn hình ❓.
+
+### 21.1. Mẫu trang danh sách Studio (dùng chung Đơn hàng §20 ↔ Khách hàng)
+
+Trang danh sách dữ liệu mới trong Studio theo cùng khung (đã áp ở Đơn hàng và Khách hàng):
+
+1. `AdminPageHeader` (tiêu đề + phụ đề) — trang nằm trong app shell nên bọc `<div className="px-5 py-8 lg:px-8">`, không `<main>`.
+2. (Tuỳ trang) dải `KpiCard` (`admin/_ui/stats-chart.tsx`, số đầy đủ `formatVndFull`/`formatCount`, có `note` định nghĩa) + dòng nêu **phạm vi** số liệu.
+3. Form lọc **`OrderFilterForm`** (GET, `role="search"`, `aria-label` = prop `label`; có JS thì bỏ ô rỗng + giá trị `defaults` rồi `router.push`) — ô tìm
+   `type="search"` `maxLength=100` + nút **Lọc** + **Xoá lọc** (khi có điều kiện); hàng dropdown có số đếm; date range picker `formMode` + `allowAll`;
+   "Sắp xếp" chỉ dưới `xl` (từ `xl` đổi bằng tiêu đề cột); "Số dòng mỗi trang"; dòng chú thích "Đang áp dụng N điều kiện lọc." Form `key` theo bộ lọc đã áp.
+4. Tiêu đề kết quả "N … (khớp bộ lọc)". **Từ `xl`: `DataTable`** (`caption` ẩn, `headAriaSort`); **dưới `xl`: thẻ** (`md` 2 cột, không cuộn ngang 360px).
+5. Cột sắp xếp = `SortHeader` (link GET `scroll={false}`, chữ `sr-only`). Menu **Thao tác** mỗi dòng = `RowMenu` (`admin/_ui/row-menu`); hộp thoại là
+   `<dialog>` + `showModal()` nằm **ngoài** menu, đóng xong trả focus về nút menu.
+6. `EmptyState` 2 biến thể (chưa có dữ liệu / không khớp bộ lọc + nút "Xem tất cả"), `LinkPagination pageParam="trang"`.
+7. `loading.tsx` (skeleton cùng bố cục, `animate-pulse motion-reduce:animate-none`) + `error.tsx` (`role="alert"`, mã `digest`, không `error.message`, nút thử lại).
+
+**`OrderFilterForm.label`** (prop mới, mặc định `"Lọc đơn hàng"`) — tên vùng tìm kiếm cho trình đọc màn hình; trang Khách hàng truyền `"Lọc khách hàng"`.
+Form vẫn nằm ở `orders/_ui/order-filter-form.tsx` (trang Khách hàng import chéo) — chưa chuyển về thư mục dùng chung.
+
+### 21.2. File
+
+| File | Vai trò |
+| :-- | :-- |
+| `studio/[tenantSlug]/customers/page.tsx` | Server Component: guard OWNER → `listCustomersPage` → `CustomerStatsStrip`, `CustomerFilterBar`, `CustomerList`; bind `saveCustomerNoteAction` với `tenantSlug` |
+| `customers/_ui/customer-list.tsx` | Thẻ thống kê, thanh lọc, bảng/thẻ, `SortHeader`, phân trang |
+| `customers/_ui/customer-row-actions.tsx` (client) | Menu Thao tác + hộp ghi chú |
+| `customers/_ui/customer-format.ts` | Nhãn nhóm/mốc ngày/sắp xếp, `customerOrdersHref`, `customerDisplayName` (họ tên → email), `formatRate` ("62,5%"), `countActiveCustomerFilters` — file thuần, chỉ `import type` từ loader |
+| `customers/_ui/customer-skeleton.tsx`, `customers/loading.tsx`, `customers/error.tsx` | Khung chờ / lỗi theo §21.1 |
+
+### 21.3. Trang `/studio/{slug}/customers`
+
+* **5 `KpiCard`** (lưới 1 → `sm` 2 → `xl` 3 → `2xl` 5 cột): **Tổng khách** (dòng phụ "+N khách mới · {kỳ}") · **Khách quay lại** ("x% số khách trả phí") ·
+  **Tổng chi tiêu** ("Đã hoàn: …") · **Chi tiêu TB / khách trả phí** ("—" khi chưa có) · **Khách chỉ nhận miễn phí**. Trên dải: dòng phạm vi — có kỳ thì "Khách có
+  {mua lần đầu/mua gần nhất} trong {kỳ}…", không kỳ thì "Toàn bộ khách của gian hàng — không áp ô tìm, nhóm và tài liệu."
+* **Thanh lọc:** Tìm khách hàng (placeholder "Họ tên hoặc email (gõ không dấu cũng được)") · **Nhóm khách** (6 lựa chọn kèm số đếm; gợi ý "Khách mới = mua lần
+  đầu trong …") · **Khoảng ngày** (picker `formMode` "Khoảng ngày mua", có "Mọi thời gian") · **Ngày tính theo** (Mua lần đầu / Mua gần nhất) · **Đã mua tài
+  liệu** · Sắp xếp (dưới `xl`) · Số dòng. Chú thích: số đơn/chi tiêu là luỹ kế, chỉ đơn trả phí; đơn 0 đ ghi riêng là "miễn phí"; giờ Việt Nam.
+* **Bảng (từ `xl`) 7 cột:** **Khách** (họ tên đậm hoặc email; email nhỏ; "Ghi chú: …" 1 dòng `truncate` + `title`; badge **chữ** `warning` "Có yêu cầu hoàn
+  tiền", `neutral` "Lâu chưa quay lại") · **Số đơn** (sắp xếp; "+N miễn phí") · **Tổng chi tiêu** (sắp xếp, đậm, phải) · **Đã hoàn** ("—" + `sr-only` "Chưa hoàn"
+  khi 0) · **Mua lần đầu** (sắp xếp) · **Mua gần nhất** (sắp xếp, mặc định) · Thao tác (`sr-only`). Mọi cột sắp xếp chỉ chiều **giảm**; `aria-sort` =
+  `"descending"` ở cột đang chọn, `"none"` ở cột sắp xếp được khác. **Thẻ (dưới `xl`)**: khối khách + menu, `<dl>` 5 số liệu.
+* **Menu Thao tác** (`RowMenu size="touch"`, nhãn "Thao tác khách {tên}"): **Xem đơn của khách** → `/studio/{slug}/orders?khach=<userId>` · **Thêm ghi chú… / Sửa
+  ghi chú…**.
+* **Hộp ghi chú** (`<dialog aria-labelledby>`, rộng `min(32rem, 100vw − 2rem)`): tiêu đề "Ghi chú về {tên}", `<label>` thật, `<textarea name="note" rows=5
+  maxLength=500 autoFocus>`, gợi ý "Chỉ gian hàng thấy — khách không đọc được. Để trống rồi Lưu để xoá ghi chú.", bộ đếm "x/500 ký tự" (đổi màu khi còn ≤ 20),
+  lỗi `role="alert"` + `aria-invalid`; nút "Huỷ" / "Lưu ghi chú" ("Đang lưu..."); lưu thành công tự đóng (trang revalidate); lỗi lần trước không hiện lại
+  khi mở lại.
+
+### 21.4. Trang Đơn hàng — lọc theo khách
+
+* Có `?khach=` hợp lệ: khung trên cùng của form lọc "Đang xem đơn của khách **{họ tên ?? email}** · {email}" + ô ẩn `khach` (giữ khi lọc tiếp) + link **"Bỏ lọc
+  khách"** (`min-h-11` dưới `lg`). `BACK_KEYS` (`orders/_ui/order-format.ts`) thêm `khach` để "← Danh sách đơn hàng" ở chi tiết quay về đúng bộ lọc.
+
+### 21.5. Việc còn mở
+
+* Kiểm UI thật với phiên OWNER (menu, hộp ghi chú, mobile), trình đọc màn hình ❓ — `docs/BACKLOG.md` "Phát sinh trong đợt ADR-048".
+* Không thêm nút "Xuất CSV" / chọn nhiều dòng (ADR-047 mục 3).
+
+---
+
+## 22. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * `apps/web/app/admin/_ui/kit.tsx`, `apps/web/app/admin/_ui/kit-interactive.tsx`, `apps/web/app/admin/_ui/icons.tsx`
@@ -1516,7 +1749,9 @@ Server Component thuần (không hook), không tự truy vấn. Màu từ `brand
 * `apps/web/app/admin/_ui/{audit-log,link-pagination,audit-log-skeleton}.tsx`, `apps/web/app/admin/audit/*`, `apps/web/app/studio/[tenantSlug]/activity/*` (§15) · [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]] ([Audit-Log-Specs.md](../02-System-Specs/Audit-Log-Specs.md))
 * `apps/web/app/admin/_ui/{sales-stats,stats-chart}.tsx`, `apps/web/app/admin/page.tsx` (§16) · [[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]] ([Tenant-Stats-Specs.md](../02-System-Specs/Tenant-Stats-Specs.md))
 * `apps/web/app/admin/cms/_ui/sortable-list-editor.tsx`, `apps/web/app/admin/cms/pricing/*`, `apps/web/app/pricing/*`, `apps/web/app/_ui/pricing/*`, `apps/web/app/account/**`, `apps/web/app/_ui/{account-menu,account-avatar}.tsx`, `apps/web/app/admin/billing/refunds/*`, `apps/web/app/studio/[tenantSlug]/billing/refund-request-form.tsx` (§18) · [[02-System-Specs/Pricing-Page-Specs|Pricing-Page-Specs]] ([Pricing-Page-Specs.md](../02-System-Specs/Pricing-Page-Specs.md)) · [[02-System-Specs/Account-Profile-Specs|Account-Profile-Specs]] ([Account-Profile-Specs.md](../02-System-Specs/Account-Profile-Specs.md)) · [[01-Architecture-Decisions/ADR-027-Account-Upgrade-Pricing-Profile-Refund|ADR-027 (≙ ADR-041)]]
-* `apps/web/app/studio/[tenantSlug]/(tong-quan)/**`, `apps/web/app/admin/_ui/stats-chart.tsx` (§19) · [[02-System-Specs/Studio-Dashboard-Specs|Studio-Dashboard-Specs]] ([Studio-Dashboard-Specs.md](../02-System-Specs/Studio-Dashboard-Specs.md)) · [[01-Architecture-Decisions/ADR-029-Studio-Dashboard-Period-Gross-Net-Revenue|ADR-029 (≙ ADR-043)]]
+* `apps/web/app/studio/[tenantSlug]/(tong-quan)/**` (gồm `_ui/dashboard-range-picker.tsx`), `apps/web/app/admin/_ui/{stats-chart,date-range-picker}.tsx`, `apps/web/app/globals.css` (`.range-picker`) (§19) · [[02-System-Specs/Studio-Dashboard-Specs|Studio-Dashboard-Specs]] ([Studio-Dashboard-Specs.md](../02-System-Specs/Studio-Dashboard-Specs.md)) · [[01-Architecture-Decisions/ADR-029-Studio-Dashboard-Period-Gross-Net-Revenue|ADR-029 (≙ ADR-043)]]
+* `apps/web/app/studio/[tenantSlug]/orders/**` (gồm `_ui/{order-list,order-filter-form,order-row-actions,order-detail-parts,order-format,order-skeleton}.ts(x)`), `apps/web/app/admin/_ui/{kit,link-pagination}.tsx` (§20) · [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]] ([Studio-Orders-Specs.md](../02-System-Specs/Studio-Orders-Specs.md)) · [[01-Architecture-Decisions/ADR-031-Studio-Orders-List-Detail-Upgrade|ADR-031 (≙ ADR-046)]]
+* `apps/web/app/studio/[tenantSlug]/customers/**` (gồm `_ui/{customer-list,customer-row-actions,customer-format,customer-skeleton}.ts(x)`), `apps/web/app/studio/[tenantSlug]/orders/_ui/order-filter-form.tsx` (prop `label`) (§21) · [[02-System-Specs/Studio-Customers-Specs|Studio-Customers-Specs]] ([Studio-Customers-Specs.md](../02-System-Specs/Studio-Customers-Specs.md)) · [[01-Architecture-Decisions/ADR-033-Studio-Customers-List-Upgrade|ADR-033 (≙ ADR-048)]]
 * [[04-Operations-Runbooks/README|Quay lại danh mục Operations Runbooks]]
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

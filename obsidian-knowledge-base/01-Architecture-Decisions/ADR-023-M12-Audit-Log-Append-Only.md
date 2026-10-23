@@ -18,9 +18,9 @@ status: Accepted (Chốt — Áp dụng chính thức)
 (2026-10-16, Quốc)". Bản trích ghi vào thư mục này theo duyệt của Quốc ngày 2026-10-16.
 Đặc tả sống: [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]].
 
-Tiến độ (2026-10-16): **M12a Audit log xong code** (chưa commit/deploy), migration `20261016090000_m12a_audit_logs` **đã áp DB** 🟡;
-**M12b Thống kê xong code** (chưa commit/deploy), migration `20261016120000_m12b_tenant_daily_stats` **đã áp DB** 🟡 — đặc tả sống
-[[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]]; **M12c Báo cáo vi phạm xong code (2026-10-16, chưa commit/deploy)**, migration
+Tiến độ (2026-10-16): **M12a Audit log xong code** (đã commit `36103fb`, deploy ❓), migration `20261016090000_m12a_audit_logs` **đã áp DB** 🟡;
+**M12b Thống kê xong code** (đã commit `36103fb`, deploy ❓), migration `20261016120000_m12b_tenant_daily_stats` **đã áp DB** 🟡 — đặc tả sống
+[[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]]; **M12c Báo cáo vi phạm xong code (2026-10-16; đã commit `36103fb`, deploy ❓)**, migration
 `20261016150000_m12c_abuse_reports` đã áp DB 🟡 — [[01-Architecture-Decisions/ADR-024-M12c-Abuse-Reports-Moderation-Lock|ADR-024 (≙ ADR-038)]],
 [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]].
 

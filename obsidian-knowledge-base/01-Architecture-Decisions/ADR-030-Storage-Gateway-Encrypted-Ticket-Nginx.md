@@ -15,7 +15,7 @@ status: Accepted (Chốt — Áp dụng chính thức)
 **ĐÃ PHÊ DUYỆT (Accepted)** — tương ứng **ADR-045** trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md) (2026-10-22).
 Bản trích ghi vào thư mục này theo duyệt của Quốc (brief 2026-10-22).
 
-Tiến độ (2026-10-22): **xong code, chưa commit/deploy** ✅ `git status` (file mới `packages/core/src/crypto/storage-ticket.ts`,
+Tiến độ (2026-10-22): xong code ✅ `git status`; **đã commit `4ab5a3b`** (vuong, 2026-10-22 ✅ `git log`), deploy ❓ (file mới `packages/core/src/crypto/storage-ticket.ts`,
 `apps/web/lib/storage-gateway.ts`, `apps/web/app/api/internal/storage/ticket/route.ts`, `docker/nginx/gieochu-storage-gateway.conf.example`;
 sửa `packages/config/src/env.ts`, `lib/{download,share-link,product-upload}.ts`, `api/downloads/[token]/route.ts`, `.env.example`).
 Không migration, không đổi schema. Không thêm test case — `pnpm test:count` = **94/94 unit, 55/55 integration** ✅ (Long chạy 2026-10-22, chỉ đếm).
@@ -31,7 +31,7 @@ Theo ADR-045: production chạy trên **VPS Ubuntu** (Next.js qua pm2, nginx rev
 
 > ❓ Mô tả "production chạy trên VPS" khác với phần KB còn lại (Vercel — [[01-Architecture-Decisions/ADR-017-Vercel-Deploy-Build-Without-Env|ADR-017 (≙ ADR-031)]],
 > [[01-Architecture-Decisions/ADR-022-Background-Jobs-After-And-Daily-Cron|ADR-022 (≙ ADR-036)]] Vercel Cron). Đã ghi câu hỏi cho Quốc trong
-> [[00-Index/KB-Audit-2026-09-26|KB-Audit]] §24 — KB chưa đổi mô tả hạ tầng deploy.
+> [[00-Index/KB-Audit-2026-09-26|KB-Audit]] §27 — KB chưa đổi mô tả hạ tầng deploy.
 
 ---
 
@@ -86,7 +86,7 @@ Theo ADR-045: production chạy trên **VPS Ubuntu** (Next.js qua pm2, nginx rev
 ## 7. Tài Liệu Tham Chiếu & Liên Kết
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * Tương ứng **ADR-045** trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md); nền là **ADR-044** (MinIO song song R2, bucket riêng theo tenant —
-  chưa có bản trích trong thư mục này).
+  [[01-Architecture-Decisions/ADR-034-Dual-Storage-MinIO-R2-Dedicated-Tenant-Bucket|ADR-034 KB]]).
 * [[01-Architecture-Decisions/ADR-005-Storage-Config-System-Admin|ADR-005 (≙ ADR-017)]] — cấu hình storage qua System Admin ([ADR-005-Storage-Config-System-Admin.md](./ADR-005-Storage-Config-System-Admin.md))
 * [[01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-From-System-Center|ADR-018 (≙ ADR-032)]] — danh sách env runtime ([ADR-018-System-Settings-And-Brand-From-System-Center.md](./ADR-018-System-Settings-And-Brand-From-System-Center.md))
 * [[01-Architecture-Decisions/ADR-020-Single-Database-Dev-Preview-Production|ADR-020 (≙ ADR-034)]] — lý do dùng env, không dùng DB ([ADR-020-Single-Database-Dev-Preview-Production.md](./ADR-020-Single-Database-Dev-Preview-Production.md))

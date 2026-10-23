@@ -7,7 +7,7 @@ import { parseStudioChartMetric } from "./_ui/dashboard-format";
 /**
  * ADR-043 — Tổng quan gian hàng `/studio/{slug}` (route group `(tong-quan)` để `loading.tsx`/`error.tsx` chỉ áp cho trang
  * này, không lan sang các trang Studio con). Chỉ OWNER (`requireTenantMemberPage`); `tenantId` lấy từ guard, không từ URL.
- * Kỳ `?ky=` / `?tu=` / `?den=` và chỉ số biểu đồ `?chi-so=` đều là link/form GET — không cần JS.
+ * Kỳ `?ky=` / `?tu=` / `?den=` (chọn qua date range picker client — ADR-043 lần 3) và chỉ số biểu đồ `?chi-so=` (link GET).
  */
 export default async function StudioDashboardPage({
   params,

@@ -23,7 +23,7 @@ author: Long
 > nội dung — [[01-Architecture-Decisions/ADR-026-Only-Active-Tenant-Shows-Documents|ADR-026 (KB)]]) đổi điều kiện đối tượng ở §3. M12 chia 3 đợt (ADR-037): M12a
 > [[02-System-Specs/Audit-Log-Specs|Audit log]] → M12b [[02-System-Specs/Tenant-Stats-Specs|Thống kê]] → **M12c Báo cáo vi phạm** (trang này).
 >
-> Mức xác minh: ✅ Long đã đối chiếu code working tree 2026-10-17 (**code chưa commit, chưa deploy**) · 🟡 theo brief/báo cáo của Quốc ·
+> Mức xác minh: ✅ Long đã đối chiếu code working tree 2026-10-17 (code **đã commit `36103fb`**, deploy ❓) · 🟡 theo brief/báo cáo của Quốc ·
 > ❓ cần môi trường thật. Trạng thái migration: **2 migration đã áp lên DB dùng chung 2026-10-16** 🟡 (Quốc báo; Long không chạy lệnh DB).
 
 ---

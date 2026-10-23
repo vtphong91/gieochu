@@ -18,7 +18,7 @@ status: Accepted (Chốt — Áp dụng chính thức)
 duyệt của Quốc (brief 2026-10-17). Quyết định này **hoàn tất GĐ2b của ADR-041** (menu mobile Studio —
 [[01-Architecture-Decisions/ADR-027-Account-Upgrade-Pricing-Profile-Refund|ADR-027 KB (≙ ADR-041)]]).
 
-Tiến độ (2026-10-17): **xong code, chưa commit/deploy** ✅ `git status`; không migration, không đổi API/schema, không thêm test.
+Tiến độ (2026-10-17): **xong code; đã commit `9d37ab1`** (2026-10-17) ✅ `git log`, deploy ❓; không migration, không đổi API/schema, không thêm test.
 
 Mức xác minh: ✅ Long đã đối chiếu code (2026-10-17) · 🟡 theo `docs/DECISIONS.md`/báo cáo của Quốc · ❓ cần môi trường thật.
 

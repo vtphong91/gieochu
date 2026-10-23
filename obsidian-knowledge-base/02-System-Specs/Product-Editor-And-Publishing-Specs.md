@@ -120,7 +120,7 @@ Nguồn: `packages/core/src/product/external-document-url.ts`, `apps/web/lib/pro
 
 ### 5.1. Cam kết bản quyền & khoá kiểm duyệt (M12c, ADR-038 — 2026-10-17) ✅ code · ❓ trình duyệt
 
-Đối chiếu code working tree (chưa commit/deploy). Nghiệp vụ chung: [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]] §5.
+Đối chiếu code working tree 2026-10-17 (nay đã commit `36103fb`, deploy ❓). Nghiệp vụ chung: [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]] §5.
 - Chữ ký mới: `publishProduct(tenantId, productId, actorId, { rightsConfirmed })`. Thứ tự kiểm: đã `PUBLISHED` → no-op (không cần tích) ·
   đang khoá kiểm duyệt → 409 `CONTENT_MODERATION_LOCKED` · điều kiện xuất bản (§5) → `PRODUCT_NOT_PUBLISHABLE` · `rightsConfirmed !== true` →
   400 `RIGHTS_CONFIRMATION_REQUIRED` · hạn mức gói → đặt `PUBLISHED` + `rightsConfirmedAt = now`, `rightsConfirmedById = actorId` · audit

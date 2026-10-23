@@ -5,7 +5,7 @@ tags:
   - endpoint
   - status/living
 date: 2026-06-15
-updated: 2026-10-22
+updated: 2026-10-23
 author: System Architect
 ---
 
@@ -27,24 +27,31 @@ author: System Architect
 > `route.ts`** (đếm lại 2026-09-28: vẫn 20 ✅) — contract Server Action + hàm lib đánh giá ghi ở §12. Đợt M10b Bài viết
 > (ADR-029, 2026-09-28) cũng **không thêm `route.ts`** (đếm lại 2026-09-28: vẫn 20 ✅) — contract ghi ở §13. Đợt Cửa hàng
 > (ADR-035 GĐ1 + GĐ2, 2026-10-15) cũng **không thêm `route.ts`** (đếm lại 2026-10-15: 20 dưới `/api`, 21 toàn app ✅) — action
-> CMS ở §15, trang công khai `/cua-hang` + loader `lib/shop.ts` ở §16. Đợt ADR-036 (2026-10-16, **chưa commit/deploy**) **thêm 1
+> CMS ở §15, trang công khai `/cua-hang` + loader `lib/shop.ts` ở §16. Đợt ADR-036 (2026-10-16, nay đã commit `9a3208f`) **thêm 1
 > `route.ts`**: `GET /api/cron/daily` (§17) — đếm lại 2026-10-16: **21 dưới `/api`, 22 toàn app** ✅; hai route webhook tenant và
-> `uploads/complete` thêm xử lý job sau response (§6, §9). Đợt M12a Audit log (ADR-037, 2026-10-16, **chưa commit/deploy**) **không thêm
+> `uploads/complete` thêm xử lý job sau response (§6, §9). Đợt M12a Audit log (ADR-037, 2026-10-16, nay đã commit `36103fb`) **không thêm
 > `route.ts`** (đếm lại 2026-10-16: vẫn 22 toàn app ✅) — thêm 2 trang + loader ở §18, bước `audit.purge` vào cron §17; các route
-> `api/auth/login`, `api/auth/refresh` ghi audit nhưng không đổi contract HTTP. Đợt M12b Thống kê (ADR-037, 2026-10-16, **chưa
-> commit/deploy**) **không thêm `route.ts`** (đếm lại 2026-10-16: vẫn 22 toàn app ✅) — thêm bước `stats.aggregate` vào cron §17 (khoá
-> `results.statsAggregate`) và loader dashboard `/admin` ở §19. Đợt M12c Báo cáo vi phạm + ADR-039 (2026-10-16, **chưa commit/deploy**)
+> `api/auth/login`, `api/auth/refresh` ghi audit nhưng không đổi contract HTTP. Đợt M12b Thống kê (ADR-037, 2026-10-16, nay đã
+> commit `36103fb`) **không thêm `route.ts`** (đếm lại 2026-10-16: vẫn 22 toàn app ✅) — thêm bước `stats.aggregate` vào cron §17 (khoá
+> `results.statsAggregate`) và loader dashboard `/admin` ở §19. Đợt M12c Báo cáo vi phạm + ADR-039 (2026-10-16, nay đã commit `36103fb`)
 > **thêm 1 `route.ts`**: `POST /api/reports` (§20) — đếm lại 2026-10-17: **22 dưới `/api`, 23 toàn app** ✅; thêm bước
 > `abuse_report.ip_purge` vào cron §17 (khoá `results.reportIpPurge`), Server Action admin/thư viện và mã lỗi mới ở §20; route
-> `/api/downloads` và `/api/downloads/[token]` có thêm mã lỗi remedy (§7). Đợt ADR-040 (2026-10-17, **chưa commit/deploy**) **không thêm
+> `/api/downloads` và `/api/downloads/[token]` có thêm mã lỗi remedy (§7). Đợt ADR-040 (2026-10-17, nay đã commit `36103fb`) **không thêm
 > `route.ts`** (đếm lại 2026-10-17: vẫn 22 dưới `/api`, 23 toàn app ✅) — đổi điều kiện ở `POST /api/share-links/[token]/download` (§7,
 > 410 `SHARE_LINK_TENANT_LOCKED` khi tenant không `ACTIVE`), `POST /api/reports` (§20.1, 404 khi tenant không `ACTIVE`) và thêm mã
-> `TENANT_NOT_ACTIVE` cho action đánh giá (§12). Đợt ADR-041 (2026-10-17, **chưa commit/deploy**) **không thêm `route.ts`** (đếm lại
-> 2026-10-17: vẫn 22 dưới `/api`, 23 toàn app ✅) — trang + Server Action Bảng giá CMS, hoàn tiền gói, Hồ sơ/Bảo mật/đổi email ở §21. Đợt ADR-043 (2026-10-18, **chưa commit/deploy**) **không thêm `route.ts`** (đếm lại 2026-10-18: vẫn
-> 22 dưới `/api`, 23 toàn app ✅) — loader dashboard Studio + subpath `@gieochu/core/dashboard-range` ở §22. Đợt ADR-045 Storage Gateway
-> (2026-10-22, **chưa commit/deploy**) **thêm 1 `route.ts` nội bộ**: `GET /api/internal/storage/ticket` (§23) — đếm lại 2026-10-22:
+> `TENANT_NOT_ACTIVE` cho action đánh giá (§12). Đợt ADR-041 (2026-10-17, nay đã commit `7f8360b`) **không thêm `route.ts`** (đếm lại
+> 2026-10-17: vẫn 22 dưới `/api`, 23 toàn app ✅) — trang + Server Action Bảng giá CMS, hoàn tiền gói, Hồ sơ/Bảo mật/đổi email ở §21. Đợt ADR-043 (2026-10-18, đã commit `e5d63d0`, deploy ❓) **không thêm `route.ts`** (đếm lại 2026-10-18: vẫn
+> 22 dưới `/api`, 23 toàn app ✅) — loader dashboard Studio + subpath `@gieochu/core/dashboard-range` ở §22. "Bổ sung ADR-043 lần 3"
+> (2026-10-18, **chưa commit**) cũng không thêm `route.ts` (đếm lại sau lần 3: vẫn 22 / 23 ✅) — chỉ thêm 3 key `?ky=` và `displayFrom/To` (§22.1).
+> Đợt ADR-046 (Đơn hàng Studio, 2026-10-18, **chưa commit**) **không thêm `route.ts`, không thêm/đổi Server Action** (đếm lại 2026-10-18: vẫn 22
+> dưới `/api`, 23 toàn app ✅; `orders/[orderId]/actions.ts` không đổi ✅ `git status`) — loader + tham số URL trang Đơn hàng và quy ước escape
+> Prisma `contains` ở §23.
+> Đợt ADR-045 Storage Gateway
+> (vuong, 2026-10-22, đã commit `4ab5a3b`, deploy ❓) **thêm 1 `route.ts` nội bộ**: `GET /api/internal/storage/ticket` (§25 — trước đây §23 ở nhánh vuong) — đếm lại 2026-10-22:
 > **23 dưới `/api`, 24 toàn app** ✅; URL trả về ở §6 (`presign`, `cover-presign`) và §7 (`downloads/[token]`, `share-links/[token]/download`)
 > có thể là `/_s/<vé>` khi bật gateway — **shape JSON không đổi**.
+> Đợt ADR-048 (Khách hàng Studio, 2026-10-23 đối chiếu, **chưa commit**) **không thêm `route.ts`** (đếm lại 2026-10-23 trên working tree trước khi pull nhánh vuong: vẫn 22 dưới `/api`, 23 toàn
+> app ✅; sau khi gộp ADR-045 Storage Gateway: **23 dưới `/api`, 24 toàn app** ✅ đếm lại 2026-10-23) — loader + 1 Server Action ghi chú khách + subpath `@gieochu/core/customer-list` ở §24; tham số `?khach=` trang Đơn hàng ở §23.2.
 
 ## 1. Quy Ước Chung
 
@@ -692,7 +699,7 @@ interface AdminStatsTopTenant { tenantId: string; name: string; slug: string; gm
 
 ## 20. Báo cáo vi phạm & quyền lợi người mua (M12c — ADR-038, ADR-039) ✅
 
-Đối chiếu working tree 2026-10-17 (**chưa commit/deploy**). Nghiệp vụ: [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]].
+Đối chiếu working tree 2026-10-17 (nay đã commit `36103fb`, deploy ❓). Nghiệp vụ: [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]].
 
 ### 20.1. Route — `POST /api/reports`
 
@@ -741,7 +748,7 @@ entitlementId)`; trả `RemedyActionState = { ok?, error?, code? }`; revalidate 
 | Studio sản phẩm — `publishProductAction(slug, id, options?)` | Thêm `options?: { rightsConfirmed?: boolean }`; thiếu → `{ error, fieldErrors: { rightsConfirmed } }` (`RIGHTS_CONFIRMATION_REQUIRED`). Các action lưu-và-xuất-bản đọc FormData `rightsConfirmed` (`on`/`true`/`1`) |
 | Studio sản phẩm/đánh giá/bài viết | Thao tác đổi trạng thái trên nội dung bị khoá → `CONTENT_MODERATION_LOCKED` 409 |
 | Studio đơn hàng — `grantExtraDownloads` | `REMEDY_DOWNLOAD_LIMIT_LOCKED` 409 khi entitlement có remedy |
-| Studio đơn hàng — trang `/studio/{slug}/orders` | Query mới `remedy=REFUND_REQUESTED` (`parseOrderRemedyFilter`, kết hợp `status`); `listOrders` trả thêm `refundRequested: boolean`, mỗi item kèm `entitlement { remedyStatus, remedyChosenAt }` |
+| Studio đơn hàng — trang `/studio/{slug}/orders` | Query mới `remedy=REFUND_REQUESTED` (`parseOrderRemedyFilter`, kết hợp `status`); `listOrders` trả thêm `refundRequested: boolean`, mỗi item kèm `entitlement { remedyStatus, remedyChosenAt }`. **Từ ADR-046** trang dùng `listOrdersPage` (§23), `remedy=REFUND_REQUESTED` giữ nguyên; `listOrders` đã xoá (ADR-047, §23.4) |
 | Checkout — `initiateOrderCheckout`, `applyCouponToOrder` | `PRODUCT_UNAVAILABLE` 409 khi tenant không `ACTIVE` hoặc sản phẩm không `PUBLISHED` |
 | Thư viện — `LibraryEntitlement` | Thêm `remedyStatus`, `refundAvailable`, `remedyChosenAt`, `remedyResolvedAt`, `finalDownloadFileCount`, `orderCode` |
 | `TenantNavItem` (sidebar Studio) | Thêm `badge?: { text, srText, urgent? }` |
@@ -863,7 +870,8 @@ Trang `/account/email/xac-nhan?token=…` — GET chỉ đọc (`previewEmailCha
 
 ## 22. Dashboard Tổng quan gian hàng — loader + kỳ thống kê (ADR-043) ✅
 
-Đối chiếu working tree 2026-10-18 (**chưa commit/deploy**). **Không có `route.ts`/Server Action mới** — trang `/studio/{tenantSlug}` (route
+Đối chiếu code 2026-10-18: ADR-043 + bổ sung lần 1–2 đã commit (`e5d63d0`), deploy ❓; **"Bổ sung ADR-043 lần 3"** (3 mốc "… trước", so sánh
+trọn kỳ, `displayFrom/To`) còn ở working tree, chưa commit ✅ `git status`. **Không có `route.ts`/Server Action mới** — trang `/studio/{tenantSlug}` (route
 group `studio/[tenantSlug]/(tong-quan)/`) là Server Component gọi loader trực tiếp. Nghiệp vụ:
 [[02-System-Specs/Studio-Dashboard-Specs|Studio-Dashboard-Specs]].
 
@@ -873,7 +881,7 @@ group `studio/[tenantSlug]/(tong-quan)/`) là Server Component gọi loader tr�
 | :-- | :-- |
 | `resolveDashboardRange(input?: DashboardRangeInput) → DashboardRange` | `input = { ky?, tu?, den?, now? }` — giá trị thô từ `searchParams` (`string \| string[] \| undefined`, lấy phần tử đầu). Hàm thuần, không ném; sai → `30-ngay` + `invalid: true` |
 | `listDashboardBuckets(range) → DashboardBucket[]` | Trục đủ điểm cũ → mới; `DashboardBucket = { key, start: Date, label, future }` (`key` = giờ VN `YYYY-MM-DDTHH:MM`) |
-| `DASHBOARD_PRESETS` | `hom-nay`, `hom-qua`, `7-ngay`, `30-ngay`, `tuan-nay`, `thang-nay`, `quy-nay`, `nam-nay`, `tuy-chon` |
+| `DASHBOARD_PRESETS` (12, đúng thứ tự — cũng là thứ tự danh sách mốc của picker) | `hom-nay`, `hom-qua`, `tuan-nay`, `tuan-truoc`, `thang-nay`, `thang-truoc`, `quy-nay`, `quy-truoc`, `nam-nay`, `7-ngay`, `30-ngay`, `tuy-chon`. Ba key `tuan-truoc`/`thang-truoc`/`quy-truoc` thêm ở "Bổ sung ADR-043 lần 3" — key cũ giữ nguyên, URL cũ vẫn hợp lệ |
 | `DEFAULT_DASHBOARD_PRESET` = `"30-ngay"`, `DASHBOARD_CUSTOM_MAX_DAYS` = `366`, `DASHBOARD_PRESET_LABELS` | Hằng |
 | Kiểu `DashboardPreset`, `DashboardGranularity` (`hour`/`day`/`week`/`month`), `DashboardRangeInput`, `DashboardRange`, `DashboardBucket` | |
 
@@ -881,13 +889,18 @@ group `studio/[tenantSlug]/(tong-quan)/`) là Server Component gọi loader tr�
 interface DashboardRange {
   key: DashboardPreset; label: string; prevLabel: string;     // "30 ngày qua" / "30 ngày trước đó"
   start: Date; end: Date;                                    // UTC, [start, end)
-  prevStart: Date; prevEnd: Date;                            // UTC, cùng độ dài, không vượt start
+  prevStart: Date; prevEnd: Date;                            // UTC; cùng độ dài, không vượt start — TRỪ tuan-truoc/thang-truoc/quy-truoc: trọn kỳ trước (prevEnd = start)
   periodEnd: Date;                                           // cuối danh nghĩa của kỳ (dựng trục biểu đồ)
   granularity: DashboardGranularity;
   customFrom: string | null; customTo: string | null;        // YYYY-MM-DD khi tuy-chon hợp lệ
+  displayFrom: string; displayTo: string;                    // (lần 3) YYYY-MM-DD giờ VN, ngày đầu / ngày cuối BAO GỒM; luôn có
   invalid: boolean;
 }
 ```
+
+Quy tắc kỳ + bảng 12 mốc: [[02-System-Specs/Studio-Dashboard-Specs|Studio-Dashboard-Specs]] §3. Ba mốc đã kết thúc có `end` cố định (`≤ now`),
+không có bucket `future`. Với `thang-truoc`/`quy-truoc`, kỳ so sánh có thể dài hơn kỳ hiện tại (vd tháng 8 = 31 ngày > tháng 9 = 30 ngày) — JSDoc
+`prevStart/prevEnd` đã ghi đúng điều này (Quốc sửa 2026-10-18 ✅ đọc code).
 
 ### 22.2. `apps/web/lib/tenant-dashboard.ts`
 
@@ -898,7 +911,7 @@ toàn → `AppError INTERNAL_ERROR` (500).
 ```ts
 interface DashboardCompared<T = number> { current: T; previous: T }
 interface TenantDashboard {
-  range: TenantDashboardRangeView;   // như DashboardRange nhưng thời điểm là chuỗi ISO UTC, không có periodEnd
+  range: TenantDashboardRangeView;   // như DashboardRange nhưng thời điểm là chuỗi ISO UTC, không có periodEnd; CÓ displayFrom/displayTo (lần 3)
   generatedAt: string;               // ISO UTC — "Cập nhật lúc"
   sales: {
     grossRevenueVnd, netRevenueVnd, refundedVnd, refundedOrders, paidOrders,
@@ -928,16 +941,181 @@ Tiền là `number` nguyên VND (khác `admin-stats.ts` trả chuỗi BIGINT). H
 
 | Trang | Guard | Query string | Ghi chú |
 | :-- | :-- | :-- | :-- |
-| `/studio/{tenantSlug}` | `requireTenantMemberPage` (OWNER) | `ky` (§22.1), `tu`/`den` khi `ky=tuy-chon`, `chi-so` = `gop` (mặc định, mọi giá trị khác) \| `thuc-nhan` — `parseStudioChartMetric` (`_ui/dashboard-format.ts`) | `loading.tsx`/`error.tsx` riêng trong route group. Bố cục: [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §19 |
+| `/studio/{tenantSlug}` | `requireTenantMemberPage` (OWNER) | `ky` (§22.1), `tu`/`den` khi `ky=tuy-chon`, `chi-so` = `gop` (mặc định, mọi giá trị khác) \| `thuc-nhan` — `parseStudioChartMetric` (`_ui/dashboard-format.ts`) | `loading.tsx`/`error.tsx` riêng trong route group. Từ lần 3 `ky`/`tu`/`den` được date range picker (client) dựng bằng `dashboardHref` và giữ `chi-so`; contract query string **không đổi** ngoài 3 key mới. Bố cục: [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §19 |
 
-`apps/web/lib/order.ts` `getOrderDashboardStats` (thẻ "Doanh thu 30 ngày" cũ) **không còn nơi gọi** ✅ grep — chưa xoá (BACKLOG).
+`apps/web/lib/order.ts` `getOrderDashboardStats` (thẻ "Doanh thu 30 ngày" cũ) — **đã xoá** trong đợt ADR-048 ✅ `git diff` + grep 2026-10-23.
 
 ---
 
-## 23. Nội bộ (`/api/internal`) — 1 route (ADR-045 Storage Gateway) ✅
+## 23. Trang Đơn hàng Studio — loader, tham số URL, quy ước escape, ghi chú nội bộ (ADR-046, ADR-047) ✅
+
+Đối chiếu code working tree 2026-10-18, **chưa commit** ✅ `git status`. **Không có `route.ts` mới** — hai trang là Server Component gọi
+loader trực tiếp; thao tác tiền dùng lại action cũ ở `studio/[tenantSlug]/orders/[orderId]/actions.ts` (`confirmOrderManuallyAction`,
+`cancelOrderAction`, `markOrderRefundedAction`, `grantExtraDownloadsAction`, `revokeEntitlementAction` — không đổi). **ADR-047** thêm đúng 2 Server
+Action ghi chú (§23.5). Nghiệp vụ: [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]].
+
+### 23.1. `apps/web/lib/order.ts` — export mới
+
+| Export | Ghi chú |
+| :-- | :-- |
+| `listOrdersPage(tenantId, sp: OrderListSearchParams) → Promise<OrderListPage>` | **Không tự kiểm quyền** — nơi gọi `requireTenantMember(slug)` (OWNER) và truyền `tenant.id` từ guard. Một `withTenant` + `tenantId` tường minh |
+| `getOrderDetailView(tenantId, orderId, viewerId = null) → Promise<OrderDetailView>` | Tiền điều kiện như trên. Không thấy đơn → `AppError` 404 (`notFound`) — trang đổi thành `notFound()`. `viewerId` (ADR-047) = user đang xem, quyết định `notes[].canDelete` |
+| `parseOrderListQuery(sp, now?) → OrderListQuery` | Parse phòng thủ, không ném (§23.2) |
+| `buildOrderListSearch(query, patch?) → string` | Query string không có `?`; bỏ giá trị mặc định; đổi bộ lọc không truyền `page` → trang 1 |
+| `normalizeOrderSearchQuery(value) → string \| null` | NFC, bỏ ký tự điều khiển, gộp khoảng trắng, cắt 100 |
+| `orderAllowedActions({ status, expiresAt }, now?) → OrderRowAction[]` | `view` + `confirm`/`cancel`/`refund` theo luật cũ ([[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]] §2.4) |
+| Hằng `ORDER_LIST_STATUSES` (6), `ORDER_LIST_SORTS` (4), `ORDER_LIST_DEFAULT_SORT = "moi-nhat"`, `ORDER_LIST_PAGE_SIZES = [10,20,50,100]`, `ORDER_LIST_DEFAULT_PAGE_SIZE = 20`, `ORDER_LIST_Q_MAX = 100` | |
+| Kiểu `OrderListSort`, `OrderRowAction`, `OrderListQuery`, `OrderListItem`, `OrderStatusCounts`, `OrderListPage`, `OrderListSearchParams`, `OrderPaymentChannel`, `OrderDetailLine`, `OrderTimelineEvent`, `OrderDetailView` | Đọc chi tiết trong file |
+
+```ts
+type OrderRowAction = "confirm" | "cancel" | "refund" | "view";
+interface OrderListPage {
+  items: OrderListItem[];            // { id, code, createdAt, paidAt, status (hiệu lực), totalVnd, customer: { fullName | null, email },
+                                     //   items: { productTitle }[], refundRequested, refundRequestedAt, refundOverdue, allowedActions }
+  total: number; page: number; pageSize: number; pageCount: number;   // page đã kẹp; pageCount ≥ 1
+  statusCounts: Record<OrderStatus | "ALL", number>;                  // áp mọi bộ lọc TRỪ trạng thái
+  refundRequestCount: number; refundRequestOverdueCount: number;      // toàn gian hàng, không áp bộ lọc
+  products: { id: string; title: string }[];                          // sản phẩm đã có trong ≥ 1 đơn
+  customer: { userId: string; fullName: string | null; email: string } | null;   // ADR-048 — khách đang lọc (?khach=), đã kiểm thuộc gian hàng
+  query: OrderListQuery;                                              // đã chuẩn hoá (productId/customerId đã kiểm thuộc gian hàng, page thực tế)
+}
+interface OrderDetailView {
+  id; code; status /* hiệu lực */; createdAt; paidAt; expiresAt; subtotalVnd; discountVnd; totalVnd; couponCode; confirmNote;
+  paymentChannel: { kind: "PROVIDER"; provider; providerTxnId; at } | { kind: "MANUAL"; provider | null } | { kind: "FREE" }
+                | { kind: "UNKNOWN"; provider | null } | { kind: "UNPAID"; provider | null };
+  customer: { fullName: string | null; email: string };               // KHÔNG SĐT/địa chỉ (ADR-041)
+  lines: { id; productId; productTitle; unitPriceVnd /* đơn giá lúc mua */; discountVnd; couponCode | null; finalPriceVnd;
+           entitlement: { id; downloadsUsed; downloadLimit /* 0 = không giới hạn */; revokedAt; remedyStatus;
+                          remedyRequestedAt; remedyChosenAt; remedyResolvedAt } | null }[];
+  transactions: { id; provider; providerTxnId; amountVnd; matchStatus: "MATCHED" | "UNMATCHED" | "MISMATCH_AMOUNT"; createdAt }[];  // không rawPayload
+  customerHistory: { orders; spentVnd; refundedVnd; avgOrderVnd: number | null };                 // chỉ đơn > 0đ có paidAt
+  refundRequested; refundRequestedAt; refundOverdue;
+  timeline: { at: Date; kind: "created" | "payment_txn" | "paid" | "expired" | "canceled" | "audit" | "remedy_opened" | "email"
+                          | "note" /* ADR-047 */;
+              label: string; detail?: string; noteId?: string /* chỉ kind "note" */ }[];       // cũ → mới
+  allowedActions: OrderRowAction[];
+  notes: OrderNoteView[];            // ADR-047 — cũ → mới, tối đa 200; [] khi notesAvailable = false
+  notesAvailable: boolean;           // false = bảng order_notes chưa có (code lên trước migration)
+}
+interface OrderNoteView {            // apps/web/lib/order-note.ts
+  id: string; body: string; createdAt: Date;
+  author: { name: string | null; email: string } | null;   // null = tài khoản tác giả đã xoá; UI hiện name ?? email
+  canDelete: boolean;                                       // true khi viewerId là tác giả
+}
+```
+
+Tiền là `number` nguyên VND.
+
+### 23.2. Trang & tham số URL
+
+| Trang | Guard | Query string |
+| :-- | :-- | :-- |
+| `/studio/{tenantSlug}/orders` | `requireTenantMemberPage` (OWNER) | `trang-thai` (alias `status`), `remedy=REFUND_REQUESTED`, `q`, `ky`/`tu`/`den` (như §22.1; không có `ky` = mọi thời gian; lọc `createdAt`), `san-pham`, `khach` (userId — ADR-048; bỏ nếu khách không có đơn nào tại gian hàng), `sap-xep` (`moi-nhat`\|`cu-nhat`\|`tong-giam`\|`tong-tang`), `trang`, `so-dong` (10/20/50/100). Bảng đầy đủ: [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]] §2.1 |
+| `/studio/{tenantSlug}/orders/{orderId}` | `requireTenantMemberPage` (OWNER) | `back` — query string của danh sách; `orderListBackHref` chỉ giữ 12 khoá đã biết (`q`, `trang-thai`, `status`, `remedy`, `san-pham`, `khach` (ADR-048), `ky`, `tu`, `den`, `sap-xep`, `trang`, `so-dong`), cắt chuỗi 1000 / giá trị 200 ký tự, luôn ghép vào đường dẫn danh sách cố định → không open redirect |
+
+Link vào trang: dashboard Tổng quan → `?trang-thai=PENDING` (trước là `?status=` — alias vẫn nhận); email ADR-039 + dashboard → `?remedy=REFUND_REQUESTED`
+(không đổi) ✅ grep.
+
+### 23.3. Quy ước escape cho Prisma `contains` (mới)
+
+- `escapeContainsValue(value)` — `apps/web/lib/prisma-contains.ts`: escape `\`, `%`, `_` bằng `\`. **Bắt buộc** cho mọi input người dùng đưa vào
+  Prisma `contains`/`startsWith`/`endsWith` (Prisma không escape wildcard LIKE). Đang áp: `lib/home.ts` (3 chỗ), `app/admin/users/page.tsx` ✅ grep
+  2026-10-18. (`lib/order.ts` từng dùng ở ADR-046; từ ADR-047 chuyển sang SQL thô — dòng dưới.)
+- SQL thô: `escapeLikePattern` (`lib/shop.ts`) + `ESCAPE '\'` tường minh (có từ ADR-035). **ADR-047:** `listOrdersPage` tìm `q` **không dấu, không
+  phân biệt hoa thường** bằng `public.gieochu_unaccent(lower(col)) LIKE '%' || public.gieochu_unaccent(lower($q)) || '%' ESCAPE '\'` trên `orders.code`,
+  `users.email`, `user_profiles.fullName` (2 bảng sau qua `EXISTS`), tham số hoá; lọc + đếm + lấy id trang bằng `$queryRaw` trong **cùng một `withTenant`**,
+  rồi Prisma nạp đúng các đơn của trang theo id (≤ 100) ✅ code. Trạng thái hiệu lực trong SQL: `effectiveStatusSql` (nội bộ).
+
+### 23.4. Hàm cũ — đã xoá (ADR-047 mục 4) ✅
+
+`listOrders`, `getOrderDetail`, `effectiveStatusWhere` **đã xoá** khỏi `lib/order.ts` (grep 2026-10-18: không còn trong `apps/`, `packages/`). Giữ
+`OrderListFilters` + `parseOrderRemedyFilter`. Đợt ADR-048 xoá thêm `listTenantCustomers` (trang Khách hàng cũ, thay bằng `listCustomersPage` §24) và
+`getOrderDashboardStats` (§22.3) ✅ `git diff` + grep 2026-10-23.
+
+### 23.5. Ghi chú nội bộ đơn (ADR-047 mục 2) ✅
+
+`apps/web/lib/order-note.ts` — mọi hàm chạy dưới `withTenant` (bảng L2 `order_notes`, xem [[Database-Schema-Reference]] §3.2/§7); nơi gọi đã
+`requireTenantMember` (OWNER) và truyền `tenant.id` từ guard.
+
+| Export | Hành vi |
+| :-- | :-- |
+| `listOrderNotes(tenantId, orderId, viewerId) → { available, notes: OrderNoteView[] }` | Cũ → mới, tối đa 200; transaction **riêng** (không gộp transaction đọc đơn). Bảng chưa có (P2021/42P01) → `{ available: false, notes: [] }` |
+| `addOrderNote(tenantId, orderId, authorId, body: unknown) → { id }` | `body` NFC + trim, 1–1000 ký tự (sai → `VALIDATION_ERROR` 400); đơn không thuộc tenant → 404 `notFound`; audit `ORDER_NOTE_ADDED` sau commit |
+| `deleteOrderNote(tenantId, orderId, noteId, actorId) → void` | `deleteMany` với `authorId = actorId` trong WHERE (không đọc-rồi-xoá); 0 dòng → đọc lại: không có / khác tenant / khác đơn → `ORDER_NOTE_NOT_FOUND` 404, có nhưng không phải tác giả → `ORDER_NOTE_FORBIDDEN` 403; audit `ORDER_NOTE_DELETED` |
+| `isOrderNotesTableMissing(error)`, hằng `ORDER_NOTE_MAX_LENGTH = 1000` | Bản sao hằng phía UI: `ORDER_NOTE_MAX_LENGTH_UI` (`orders/_ui/order-format.ts`) |
+
+Bảng chưa có khi thêm/xoá → `AppError` `ORDER_NOTES_UNAVAILABLE` **503**. Mã lỗi mới là chuỗi tại chỗ, **không** thêm vào `ErrorCodes`
+(`packages/core/src/errors.ts`) ✅ grep.
+
+**Server Action** (`studio/[tenantSlug]/orders/[orderId]/actions.ts`), cả hai `requireTenantMember(tenantSlug)` (OWNER) → bắt `AppError` trả
+`{ error: message }` (không trả `code`), thành công `revalidatePath` trang chi tiết:
+
+| Action | Tham số |
+| :-- | :-- |
+| `addOrderNoteAction(tenantSlug, orderId, prevState, formData)` | Trường form `body` |
+| `deleteOrderNoteAction(tenantSlug, orderId, noteId)` | `orderId` từ URL phải khớp đơn của ghi chú |
+
+Không có route/đường đọc nào cho khách, public hay System Admin (RLS không có nhánh customer/public/admin) ✅ đọc SQL.
+
+---
+
+## 24. Trang Khách hàng Studio — loader, tham số URL, ghi chú khách (ADR-048) ✅
+
+Đối chiếu code working tree 2026-10-23, **chưa commit** ✅ `git status`. **Không `route.ts` mới, không migration.** Trang
+`/studio/{tenantSlug}/customers` là Server Component gọi loader trực tiếp. Nghiệp vụ: [[02-System-Specs/Studio-Customers-Specs|Studio-Customers-Specs]].
+
+### 24.1. `apps/web/lib/customer-list.ts` (mới)
+
+| Export | Ghi chú |
+| :-- | :-- |
+| `listCustomersPage(tenantId, sp: CustomerListSearchParams) → Promise<CustomerListPage>` | **Không tự kiểm quyền** — nơi gọi `requireTenantMember(slug)` (OWNER), truyền `tenant.id` từ guard. Một `withTenant`: 1 Prisma (dropdown tài liệu) + 2 `$queryRaw` tham số hoá dùng chung CTE |
+| `parseCustomerListQuery(sp, now?) → CustomerListQuery` | Parse phòng thủ, không ném (§24.2) |
+| `buildCustomerListSearch(query, patch?) → string` | Query string không `?`; bỏ mặc định (`nhom=tat-ca`, `theo=mua-dau`, `sap-xep=gan-nhat`, trang 1, 20 dòng); `theo` chỉ ghi khi có kỳ; `patch.range` dạng URL `{ ky, tu?, den? }` hoặc `null` |
+| `updateCustomerNote(tenantId, userId, note: unknown, actorId = null) → Promise<{ note: string \| null }>` | NFC + trim, ≤ 500 (sai → `VALIDATION_ERROR` 400); rỗng → `null`; `userId` sai định dạng / không có dòng `tenant_customers` dưới `withTenant` → 404 `notFound`; audit `CUSTOMER_NOTE_UPDATED` sau commit khi nội dung đổi |
+| Hằng `CUSTOMER_GROUPS` (6), `CUSTOMER_DATE_FIELDS` (2), `CUSTOMER_DEFAULT_DATE_FIELD = "mua-dau"`, `CUSTOMER_LIST_SORTS` (4), `CUSTOMER_LIST_DEFAULT_SORT = "gan-nhat"`, `CUSTOMER_LIST_PAGE_SIZES = [10,20,50,100]`, `CUSTOMER_LIST_DEFAULT_PAGE_SIZE = 20`, `NEW_CUSTOMER_DEFAULT_PRESET = "30-ngay"`; re-export `CUSTOMER_NOTE_MAX_LENGTH`, `INACTIVE_CUSTOMER_DAYS` | |
+
+```ts
+interface CustomerListPage {
+  items: CustomerListItem[];      // { userId, fullName | null, email, paidOrders, freeClaims, spentVnd, refundedVnd,
+                                  //   firstOrderAt, lastOrderAt, hasRefundRequest, inactive, note | null }   — số liệu luỹ kế
+  total: number; page: number; pageSize: number; pageCount: number;   // page đã kẹp; pageCount ≥ 1
+  stats: {                        // chỉ áp kỳ (ky + theo); không áp q / nhom / san-pham
+    scope: { range: CustomerListRange | null; dateField: "mua-dau" | "mua-gan-nhat"; newCustomersRange: CustomerListRange };
+    totalCustomers; newCustomers; returningCustomers; payingCustomers;
+    returningCustomerRate: number | null;            // returning ÷ paying
+    spentVnd; refundedVnd; avgSpentPerPayingCustomer: number | null; freeOnlyCustomers;
+  };
+  groupCounts: Record<CustomerGroup, number>;        // áp kỳ + q + san-pham, không áp nhom
+  products: { id: string; title: string }[];         // tài liệu có trong ≥ 1 đơn đã thanh toán
+  query: CustomerListQuery;                          // đã chuẩn hoá (productId đã kiểm, page thực tế)
+}
+```
+
+Tiền là `number` nguyên VND; BIGINT vượt `Number.MAX_SAFE_INTEGER` → `AppError` `INTERNAL_ERROR` 500.
+
+### 24.2. Trang & tham số URL
+
+| Trang | Guard | Query string |
+| :-- | :-- | :-- |
+| `/studio/{tenantSlug}/customers` | `requireTenantMemberPage` (OWNER) | `q` (không dấu, ≤ 100), `nhom` (`tat-ca`\|`moi`\|`quay-lai`\|`mien-phi`\|`hoan-tien`\|`lau-chua-quay-lai`), `ky`/`tu`/`den` (như §22.1; không có `ky` = mọi thời gian), `theo` (`mua-dau`\|`mua-gan-nhat`), `san-pham`, `sap-xep` (`gan-nhat`\|`moi-nhat`\|`chi-tieu-giam`\|`so-don-giam`), `trang`, `so-dong`. Bảng đầy đủ: [[02-System-Specs/Studio-Customers-Specs|Studio-Customers-Specs]] §3 |
+
+### 24.3. Server Action
+
+`studio/[tenantSlug]/customers/actions.ts` — `saveCustomerNoteAction(tenantSlug, userId, prevState, formData) → { ok?: boolean; error?: string }`:
+`requireTenantMember(tenantSlug)` (OWNER) → `updateCustomerNote(tenant.id, userId, formData.get("note"), user.userId)`; `AppError` → `{ error: message }`
+(không trả `code`); thành công `revalidatePath("/studio/{slug}/customers")`. Trang bind `tenantSlug`, client bind `userId`. Trường form: `note`.
+
+### 24.4. Subpath `@gieochu/core/customer-list` (mới)
+
+`packages/core/src/customer/customer-list.ts` — file thuần cho Client Component: `CUSTOMER_NOTE_MAX_LENGTH = 500`, `INACTIVE_CUSTOMER_DAYS = 90`.
+**Không** re-export ở barrel `@gieochu/core` ✅ grep `index.ts` — chỉ import qua subpath.
+
+---
+
+## 25. Nội bộ (`/api/internal`) — 1 route (ADR-045 Storage Gateway) ✅
 
 Đối chiếu `apps/web/app/api/internal/storage/ticket/route.ts` + `docker/nginx/gieochu-storage-gateway.conf.example` working tree 2026-10-22
-(**chưa commit/deploy**). Định dạng vé: [[02-System-Specs/File-Storage-And-Downloads-Specs|File-Storage-And-Downloads-Specs]] §9; vận hành:
+(nay đã commit `4ab5a3b` — deploy ❓). Định dạng vé: [[02-System-Specs/File-Storage-And-Downloads-Specs|File-Storage-And-Downloads-Specs]] §9; vận hành:
 [[04-Operations-Runbooks/Storage-Gateway-VPS-Runbook|Storage-Gateway-VPS-Runbook]].
 
 | Method | Endpoint | Truy cập | Mô tả |
@@ -961,7 +1139,7 @@ Trình duyệt **không** thấy các response này trực tiếp: theo file m�
 
 ---
 
-## 24. Tài Liệu Tham Chiếu & Liên Kết
+## 26. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * [[Database-Schema-Reference]] — Lược đồ dữ liệu ([Database-Schema-Reference.md](./Database-Schema-Reference.md))
@@ -978,6 +1156,8 @@ Trình duyệt **không** thấy các response này trực tiếp: theo file m�
 * [[02-System-Specs/Tenant-Stats-Specs|Tenant-Stats-Specs]] — thống kê hằng ngày M12b (ADR-037) ([Tenant-Stats-Specs.md](../02-System-Specs/Tenant-Stats-Specs.md))
 * [[02-System-Specs/Studio-Dashboard-Specs|Studio-Dashboard-Specs]] — dashboard Tổng quan gian hàng (ADR-043) ([Studio-Dashboard-Specs.md](../02-System-Specs/Studio-Dashboard-Specs.md)) · [[01-Architecture-Decisions/ADR-029-Studio-Dashboard-Period-Gross-Net-Revenue|ADR-029 (≙ ADR-043)]]
 * [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]] — báo cáo vi phạm M12c + quyền lợi người mua (ADR-038/039) ([Abuse-Reports-Specs.md](../02-System-Specs/Abuse-Reports-Specs.md))
+* [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]] — trang Đơn hàng Studio (ADR-046) ([Studio-Orders-Specs.md](../02-System-Specs/Studio-Orders-Specs.md)) · [[01-Architecture-Decisions/ADR-031-Studio-Orders-List-Detail-Upgrade|ADR-031 (≙ ADR-046)]]
+* [[02-System-Specs/Studio-Customers-Specs|Studio-Customers-Specs]] — trang Khách hàng Studio (ADR-048) ([Studio-Customers-Specs.md](../02-System-Specs/Studio-Customers-Specs.md)) · [[01-Architecture-Decisions/ADR-033-Studio-Customers-List-Upgrade|ADR-033 (≙ ADR-048)]]
 * [[02-System-Specs/Pricing-Page-Specs|Pricing-Page-Specs]] ([Pricing-Page-Specs.md](../02-System-Specs/Pricing-Page-Specs.md)) · [[02-System-Specs/Account-Profile-Specs|Account-Profile-Specs]] ([Account-Profile-Specs.md](../02-System-Specs/Account-Profile-Specs.md)) · [[01-Architecture-Decisions/ADR-027-Account-Upgrade-Pricing-Profile-Refund|ADR-027 (≙ ADR-041)]] ([ADR-027-Account-Upgrade-Pricing-Profile-Refund.md](../01-Architecture-Decisions/ADR-027-Account-Upgrade-Pricing-Profile-Refund.md))
 * [[02-System-Specs/Shop-Marketplace-Specs|Shop-Marketplace-Specs]] ([Shop-Marketplace-Specs.md](../02-System-Specs/Shop-Marketplace-Specs.md)) · [[01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First|ADR-021 (≙ ADR-035)]] ([ADR-021-Shop-Marketplace-Cms-First.md](../01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First.md))
 * [[01-Architecture-Decisions/ADR-030-Storage-Gateway-Encrypted-Ticket-Nginx|ADR-030 (≙ ADR-045)]] — Storage Gateway ([ADR-030-Storage-Gateway-Encrypted-Ticket-Nginx.md](../01-Architecture-Decisions/ADR-030-Storage-Gateway-Encrypted-Ticket-Nginx.md)) · [[04-Operations-Runbooks/Storage-Gateway-VPS-Runbook|Storage-Gateway-VPS-Runbook]] ([Storage-Gateway-VPS-Runbook.md](../04-Operations-Runbooks/Storage-Gateway-VPS-Runbook.md))

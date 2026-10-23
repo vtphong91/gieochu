@@ -148,7 +148,7 @@ Nạp HTML vào Tiptap (`content`, vd `post.body` trong editor) **không cần**
 
 ### 6.1. Báo cáo vi phạm & khoá kiểm duyệt (M12c, ADR-038 — 2026-10-17) ✅
 
-Đối chiếu code working tree (chưa commit/deploy). Nghiệp vụ chung: [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]].
+Đối chiếu code working tree 2026-10-17 (nay đã commit `36103fb`, deploy ❓). Nghiệp vụ chung: [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]].
 - Trang bài viết công khai `/{tenantSlug}/posts/{postId}` có nút **"Báo cáo vi phạm"** (`targetType = "POST"`).
 - Admin quyết định `HIDE_CONTENT` → `status = HIDDEN`, `hiddenReason` = nhãn loại vi phạm, **bỏ ghim**, + `moderationLockedAt`/
   `moderationReason`. CHECK `posts_moderation_shape`: khoá ⇒ `HIDDEN`.
@@ -169,7 +169,7 @@ Nạp HTML vào Tiptap (`content`, vd `post.body` trong editor) **không cần**
 | Verify thủ công M10b (theo brief: "verify thủ công") | 🟡 (Long chưa tự chạy) |
 | Upload ảnh bài viết lên Cloudinary thật + tính hạn mức | ❓ |
 | `prisma migrate dev` không làm mất partial unique index | ❓ (cảnh báo theo ADR, chưa thử) |
-| Báo cáo vi phạm / luồng đặt `HIDDEN` — có từ M12c (§6.1), chưa commit/deploy; audit log bài viết vẫn chưa có | ✅ (đọc code 2026-10-17) |
+| Báo cáo vi phạm / luồng đặt `HIDDEN` — có từ M12c (§6.1), đã commit `36103fb`; audit log bài viết vẫn chưa có | ✅ (đọc code 2026-10-17) |
 | Trigger `posts_guard_moderation` chặn tenant trên DB thật | 🟡 (Quốc kiểm bằng `gieochu_app`, rollback, 2026-10-16) · chưa có test ❓ |
 
 ## 8. Liên Kết

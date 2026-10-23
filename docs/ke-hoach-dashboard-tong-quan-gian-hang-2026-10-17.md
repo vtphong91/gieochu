@@ -3,11 +3,11 @@ tags: [ke-hoach, studio, dashboard, thong-ke, tenant]
 date: 2026-10-17
 ---
 
-# Kế hoạch: Dashboard Tổng quan gian hàng (`/studio/{tenantSlug}`) — ĐÃ CHỐT (ADR-043) — GĐ1 + GĐ2 XONG CODE
+# Kế hoạch: Dashboard Tổng quan gian hàng (`/studio/{tenantSlug}`) — ĐÃ CHỐT (ADR-043) — GĐ1 + GĐ2 ĐÃ COMMIT, BỔ SUNG LẦN 3 XONG CODE
 
 > **Tiến độ (Long ghi 2026-10-18 theo brief Quốc):** chủ dự án chốt §9 ngày 2026-10-18 → **ADR-043** + "Bổ sung ADR-043" trong
 > [`DECISIONS.md`](DECISIONS.md). **GĐ0 ✅ · GĐ1 (dữ liệu, Hiếu) ✅ xong code · GĐ2 (UI, Phong) ✅ xong code · GĐ3 (tài liệu) ✅ Long ghi KB** —
-> chưa commit/deploy, không migration. Quốc chạy lại lint/typecheck/build 2026-10-18 đạt; `pnpm test:count` = 94/94 unit, 55/55 integration.
+> **đã commit `e5d63d0`** (2026-10-18; deploy ❓ chờ chủ dự án xác nhận), không migration. Quốc chạy lại lint/typecheck/build 2026-10-18 đạt; `pnpm test:count` = 94/94 unit, 55/55 integration.
 > Chưa kiểm phiên OWNER thật, `/admin` sau refactor, bàn phím/trình đọc màn hình (BACKLOG mục "Phát sinh trong đợt ADR-043").
 >
 > **Kết quả chốt khác đề xuất ở thân tài liệu** (thân giữ nguyên làm lịch sử; nguồn đúng là ADR-043 + code + KB
@@ -20,6 +20,13 @@ date: 2026-10-17
 > - Q7: khách quay lại = **≥ 2 đơn đã thanh toán** (> 0đ) tính tới hết kỳ — không phải "mua trước kỳ" (K3).
 > - **Bổ sung ADR-043:** mọi số liệu tiền/đơn/khách mua **chỉ tính đơn > 0đ**; đơn 0đ thành thẻ "Lượt nhận tài liệu miễn phí"; top 5 bán chạy
 >   loại đơn đã hoàn (vẫn gồm đơn 0đ).
+> - **Bổ sung ADR-043 lần 2 (Quốc):** top 5 bán chạy gồm cả lượt nhận miễn phí; "khách quay lại" đếm cả đơn > 0đ đã hoàn tiền.
+> - **Bổ sung ADR-043 lần 3 (2026-10-18, chủ dự án yêu cầu; code chưa commit):** bộ lọc kỳ (§5 của thân tài liệu) đổi từ chip + form tuỳ chọn
+>   sang **date range picker** (ô `dd/mm/yyyy - dd/mm/yyyy` + popup: mốc bên trái, lịch có số tuần, Thứ Hai đầu tuần, ngày tương lai vô hiệu;
+>   cần JS — Quốc chấp nhận). Thêm 3 mốc `tuan-truoc`, `thang-truoc`, `quy-truoc` (tổng 12 mốc) — ba mốc này so với **trọn** kỳ liền trước,
+>   ngoại lệ có chủ đích của Q4 "so cùng độ dài". Range có `displayFrom`/`displayTo`. Thẻ thống kê hiện **số đầy đủ** `vi-VN`, không rút
+>   gọn (chỉ trục Y biểu đồ rút gọn) — áp cả `/admin`. Test chỉ thêm assertion, vẫn 94/55. Chi tiết: KB `Studio-Dashboard-Specs.md` §3,
+>   `UI-Design-System.md` §19.5–§19.6.
 > - Contract §8 thực tế: `latestOrders` (không phải `recentOrders`), tiền là `number` nguyên VND (không phải chuỗi BigInt), thêm `freeClaims`,
 >   `netRevenueVnd`/`grossRevenueVnd` dạng `{ current, previous }`; không có B5 (giảm giá đã áp) và B6 (tỷ lệ thanh toán) trong bản đầu.
 >   Xem `obsidian-knowledge-base/03-API-Contracts/Endpoint-Directory.md` §22.

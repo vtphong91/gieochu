@@ -14,7 +14,7 @@ describe("ADR-043 studio dashboard range", () => {
       "2026-10-16T17:00:00.000Z",
       "2026-10-17T03:00:00.000Z",
     ]);
-    expect(today.granularity).toBe("hour");
+    expect([today.granularity, today.displayFrom, today.displayTo]).toEqual(["hour", "2026-10-18", "2026-10-18"]);
     const hours = listDashboardBuckets(today);
     expect(hours).toHaveLength(24);
     expect(hours[0]).toMatchObject({ key: "2026-10-18T00:00", label: "00:00", future: false });
@@ -47,14 +47,29 @@ describe("ADR-043 studio dashboard range", () => {
     ]);
     expect(quarter.prevEnd.getTime() - quarter.prevStart.getTime()).toBe(quarter.end.getTime() - quarter.start.getTime());
 
+    // Kỳ đã kết thúc (ADR-043 lần 3): so với trọn kỳ trước nữa, không có cột tương lai, ngày hiển thị gồm ngày cuối.
+    const ended = [
+      ["tuan-truoc", "Tuần trước", "tuần trước nữa", "2026-10-04T17:00:00.000Z", "2026-10-11T17:00:00.000Z", "2026-09-27T17:00:00.000Z", "2026-10-04T17:00:00.000Z", "day", "2026-10-05", "2026-10-11", 7],
+      ["thang-truoc", "Tháng trước", "tháng trước nữa", "2026-08-31T17:00:00.000Z", "2026-09-30T17:00:00.000Z", "2026-07-31T17:00:00.000Z", "2026-08-31T17:00:00.000Z", "day", "2026-09-01", "2026-09-30", 30],
+      ["quy-truoc", "Quý trước", "quý trước nữa", "2026-06-30T17:00:00.000Z", "2026-09-30T17:00:00.000Z", "2026-03-31T17:00:00.000Z", "2026-06-30T17:00:00.000Z", "week", "2026-07-01", "2026-09-30", 14],
+    ] as const;
+    for (const [ky, ...expected] of ended) {
+      const r = resolveDashboardRange({ ky, now });
+      const buckets = listDashboardBuckets(r);
+      expect([r.label, r.prevLabel, iso(r.start), iso(r.end), iso(r.prevStart), iso(r.prevEnd), r.granularity, r.displayFrom, r.displayTo, buckets.length]).toEqual(expected);
+      expect([r.key, r.invalid, buckets.some((b) => b.future)]).toEqual([ky, false, false]);
+    }
+
     const custom = resolveDashboardRange({ ky: "tuy-chon", tu: "2026-10-01", den: "2026-10-10", now });
-    expect([iso(custom.start), iso(custom.end), iso(custom.prevStart), iso(custom.prevEnd), custom.granularity, custom.invalid]).toEqual([
+    expect([iso(custom.start), iso(custom.end), iso(custom.prevStart), iso(custom.prevEnd), custom.granularity, custom.invalid, custom.displayFrom, custom.displayTo]).toEqual([
       "2026-09-30T17:00:00.000Z",
       "2026-10-10T17:00:00.000Z",
       "2026-09-20T17:00:00.000Z",
       "2026-09-30T17:00:00.000Z",
       "day",
       false,
+      "2026-10-01",
+      "2026-10-10",
     ]);
 
     // Quá 366 ngày, `den` sau hôm nay, hoặc `ky` lạ → mặc định 30 ngày qua + cờ lỗi; không có `ky` → mặc định, không lỗi.

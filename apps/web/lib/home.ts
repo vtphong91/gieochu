@@ -11,6 +11,7 @@ import {
 import { cloudinaryDeliveryUrl } from "@gieochu/core/cloudinary-url";
 import { Prisma, withPublic } from "@gieochu/db";
 import { getPublicBucketBaseUrl } from "./product-cover";
+import { escapeContainsValue } from "./prisma-contains";
 import { PUBLIC_PRODUCT_SELECT, toPublicProducts, type PublicProduct } from "./storefront";
 
 /**
@@ -322,7 +323,7 @@ export async function listHomeTenantOptions(query: HomePinOptionsQuery = {}): Pr
         where: {
           status: "ACTIVE",
           products: { some: { status: "PUBLISHED" } },
-          ...(search ? { name: { contains: search, mode: "insensitive" as const } } : {}),
+          ...(search ? { name: { contains: escapeContainsValue(search), mode: "insensitive" as const } } : {}),
         },
         select,
         orderBy: { name: "asc" },
@@ -361,7 +362,7 @@ export async function listHomeProductOptions(query: HomePinOptionsQuery = {}): P
   const rows = await withPublic(async (tx) => {
     const [latest, pinned] = await Promise.all([
       tx.product.findMany({
-        where: { ...PUBLIC_PRODUCT_WHERE, ...(search ? { title: { contains: search, mode: "insensitive" as const } } : {}) },
+        where: { ...PUBLIC_PRODUCT_WHERE, ...(search ? { title: { contains: escapeContainsValue(search), mode: "insensitive" as const } } : {}) },
         select,
         orderBy: [{ createdAt: "desc" }, { id: "asc" }],
         take: HOME_PIN_OPTIONS_MAX,
@@ -418,7 +419,7 @@ export async function listCategoryPinOptions(query: CategoryPinOptionsQuery = {}
   const rows = await withPublic(async (tx) => {
     const [active, selected] = await Promise.all([
       tx.documentCategory.findMany({
-        where: { isActive: true, ...(search ? { name: { contains: search, mode: "insensitive" as const } } : {}) },
+        where: { isActive: true, ...(search ? { name: { contains: escapeContainsValue(search), mode: "insensitive" as const } } : {}) },
         select,
         orderBy: [{ name: "asc" }, { id: "asc" }],
         take: HOME_PIN_OPTIONS_MAX,

@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
-import { getPrismaClient, withSystemJob, withTenant } from "@gieochu/db";
+import { getPrismaClient, withCustomer, withPublic, withSystemJob, withTenant } from "@gieochu/db";
 import type { CheckoutQrResult } from "@gieochu/payments";
 import { QUEUE_NAMES } from "@gieochu/jobs";
 import { getStartedQueue } from "../../lib/jobs";
@@ -11,12 +11,14 @@ import {
   applyCouponToOrder,
   confirmOrderManually,
   createOrder,
-  getOrderDetail,
+  getOrderDetailView,
   getOrderForCustomer,
   initiateOrderCheckout,
-  listOrders,
+  listOrdersPage,
   runOrderSweep,
 } from "../../lib/order";
+import { addOrderNote, deleteOrderNote } from "../../lib/order-note";
+import { listCustomersPage, updateCustomerNote } from "../../lib/customer-list";
 import { processPaymentEvent } from "../../lib/payment-process";
 import { POST as tenantWebhook } from "../../app/api/webhooks/tenants/[tenantId]/[provider]/route";
 import type { CurrentUser } from "../../lib/session";
@@ -27,7 +29,7 @@ let emailCounter = 0;
 
 function nextEmail(): string {
   emailCounter += 1;
-  return `${RUN_PREFIX}_${emailCounter}@example.com`;
+  return `${RUN_PREFIX}_${emailCounter}@example.test`;
 }
 
 async function createActiveUser(email: string) {
@@ -128,13 +130,14 @@ describe("M8 checkout and orders", () => {
 
     await confirmOrderManually(tenant.id, order.id, "Đã đối chiếu sao kê ngân hàng lúc 10:30");
 
-    const fulfilled = await getOrderDetail(tenant.id, order.id);
+    const fulfilled = await getOrderDetailView(tenant.id, order.id);
     expect(fulfilled.status).toBe("FULFILLED");
     expect(fulfilled.paidAt).not.toBeNull();
     expect(fulfilled.confirmNote).toContain("đối chiếu");
+    expect(fulfilled.allowedActions).toEqual(["view", "refund"]);
 
     const entitlement = await withTenant(tenant.id, (tx) =>
-      tx.entitlement.findUnique({ where: { orderItemId: fulfilled.items[0]!.id } }),
+      tx.entitlement.findUnique({ where: { orderItemId: fulfilled.lines[0]!.id } }),
     );
     expect(entitlement?.userId).toBe(buyer.id);
     expect(entitlement?.downloadLimit).toBe(product.downloadLimit);
@@ -202,7 +205,7 @@ describe("M8 checkout and orders", () => {
       rawPayload: { test: true },
     });
 
-    const fulfilled = await getOrderDetail(tenant.id, order.id);
+    const fulfilled = await getOrderDetailView(tenant.id, order.id);
     expect(fulfilled.status).toBe("FULFILLED");
     expect(fulfilled.transactions.some((t) => t.matchStatus === "MATCHED")).toBe(true);
   });
@@ -223,7 +226,7 @@ describe("M8 checkout and orders", () => {
       rawPayload: { test: true },
     });
 
-    const fulfilled = await getOrderDetail(tenant.id, order.id);
+    const fulfilled = await getOrderDetailView(tenant.id, order.id);
     expect(fulfilled.status).toBe("FULFILLED");
   });
 
@@ -243,8 +246,9 @@ describe("M8 checkout and orders", () => {
       rawPayload: { test: true },
     });
 
-    const stillPending = await getOrderDetail(tenant.id, order.id);
+    const stillPending = await getOrderDetailView(tenant.id, order.id);
     expect(stillPending.status).toBe("PENDING");
+    expect(stillPending.allowedActions).toEqual(["view", "confirm", "cancel"]);
     expect(stillPending.transactions.some((t) => t.matchStatus === "MISMATCH_AMOUNT")).toBe(true);
   });
 
@@ -260,25 +264,90 @@ describe("M8 checkout and orders", () => {
 
     await runOrderSweep();
 
-    const expired = await getOrderDetail(tenant.id, order.id);
+    const expired = await getOrderDetailView(tenant.id, order.id);
     expect(expired.status).toBe("EXPIRED");
+    // Vừa quá hạn (< 24 giờ) → vẫn xác nhận tay được, không huỷ được.
+    expect(expired.allowedActions).toEqual(["view", "confirm"]);
 
     const coupon = await withTenant(tenant.id, (tx) => tx.coupon.findFirstOrThrow({ where: { tenantId: tenant.id, code: "SWEEP10" } }));
     expect(coupon.usedCount).toBe(0);
   });
 
   it("tenant A cannot read tenant B's orders, and a customer cannot read another customer's order", async () => {
-    const { tenant: tenantA } = await createOwnerAndTenant("Isolation A", "isoa");
-    const { tenant: tenantB } = await createOwnerAndTenant("Isolation B", "isob");
+    const { owner: ownerA, tenant: tenantA } = await createOwnerAndTenant("Isolation A", "isoa");
+    const { owner: ownerB, tenant: tenantB } = await createOwnerAndTenant("Isolation B", "isob");
     const productA = await createPublishedProduct(tenantA.id, "de-thi", 20_000);
     const buyer1 = await createActiveUser(nextEmail());
     const buyer2 = await createActiveUser(nextEmail());
 
     const order = await createOrder(buyer1.id, tenantA.slug, productA.id);
 
-    await expect(getOrderDetail(tenantB.id, order.id)).rejects.toMatchObject({ httpStatus: 404 });
-    const tenantBOrders = await listOrders(tenantB.id);
-    expect(tenantBOrders.some((o) => o.id === order.id)).toBe(false);
+    await expect(getOrderDetailView(tenantB.id, order.id)).rejects.toMatchObject({ httpStatus: 404 });
+    const tenantBOrders = await listOrdersPage(tenantB.id, {});
+    expect(tenantBOrders.items.some((o) => o.id === order.id)).toBe(false);
+    expect(tenantBOrders.total).toBe(0);
+    expect((await listOrdersPage(tenantB.id, { q: order.code })).total).toBe(0);
+
+    const tenantAByCode = await listOrdersPage(tenantA.id, { q: order.code.toLowerCase() });
+    expect(tenantAByCode.items.map((o) => o.id)).toEqual([order.id]);
+    expect(tenantAByCode.items[0]!.allowedActions).toEqual(["view", "confirm", "cancel"]);
+    // `%`/`_` là ký tự thường, không phải wildcard: "%" không khớp mọi đơn; "m8tes_" không khớp email "m8test_...".
+    expect((await listOrdersPage(tenantA.id, { q: "%" })).total).toBe(0);
+    expect((await listOrdersPage(tenantA.id, { q: "m8tes_" })).total).toBe(0);
+    expect((await listOrdersPage(tenantA.id, { q: "m8test_" })).total).toBe(1);
+    // ADR-047 mục 1: tìm không dấu / không phân biệt hoa thường theo họ tên khách (user_profiles, L1).
+    await prisma.userProfile.create({ data: { userId: buyer1.id, fullName: "Nguyễn Văn Thử", consentAt: new Date() } });
+    expect((await listOrdersPage(tenantA.id, { q: "nguyen van thu" })).items.map((o) => o.id)).toEqual([order.id]);
+    expect((await listOrdersPage(tenantA.id, { q: "NGUYỄN" })).total).toBe(1);
+    expect((await listOrdersPage(tenantB.id, { q: "nguyen" })).total).toBe(0);
+
+    // ADR-047 mục 2: ghi chú nội bộ — RLS tenant, khách/public không đọc được, chỉ tác giả xoá, không sửa.
+    const note = await addOrderNote(tenantA.id, order.id, ownerA.id, "  Khách hỏi xuất hoá đơn  ");
+    const asOwner = await getOrderDetailView(tenantA.id, order.id, ownerA.id);
+    expect(asOwner.notesAvailable).toBe(true);
+    expect(asOwner.notes.map((n) => [n.id, n.body, n.canDelete])).toEqual([[note.id, "Khách hỏi xuất hoá đơn", true]]);
+    expect(asOwner.timeline.some((e) => e.kind === "note" && e.noteId === note.id)).toBe(true);
+    expect((await getOrderDetailView(tenantA.id, order.id, buyer1.id)).notes[0]!.canDelete).toBe(false);
+    await expect(addOrderNote(tenantA.id, order.id, ownerA.id, "   ")).rejects.toMatchObject({ httpStatus: 400 });
+    await expect(addOrderNote(tenantB.id, order.id, ownerB.id, "x")).rejects.toMatchObject({ httpStatus: 404 });
+    await expect(
+      withTenant(tenantB.id, (tx) => tx.orderNote.create({ data: { tenantId: tenantB.id, orderId: order.id, authorId: ownerB.id, body: "x" } })),
+    ).rejects.toThrow();
+    expect(await withCustomer(buyer1.id, (tx) => tx.orderNote.count({ where: { orderId: order.id } }))).toBe(0);
+    expect(await withPublic((tx) => tx.orderNote.count({ where: { orderId: order.id } }))).toBe(0);
+    expect(await withTenant(tenantB.id, (tx) => tx.orderNote.count({ where: { orderId: order.id } }))).toBe(0);
+    await expect(
+      withTenant(tenantA.id, (tx) => tx.orderNote.updateMany({ where: { id: note.id }, data: { body: "đã sửa" } })),
+    ).rejects.toThrow();
+    await expect(deleteOrderNote(tenantB.id, order.id, note.id, ownerB.id)).rejects.toMatchObject({ httpStatus: 404 });
+    await expect(deleteOrderNote(tenantA.id, order.id, note.id, buyer1.id)).rejects.toMatchObject({ httpStatus: 403 });
+    await deleteOrderNote(tenantA.id, order.id, note.id, ownerA.id);
+    expect((await getOrderDetailView(tenantA.id, order.id, ownerA.id)).notes).toEqual([]);
+
+    // ADR-048: khách chỉ xuất hiện khi có đơn đã thanh toán; tenant B không thấy khách của A; ghi chú khách bị chặn chéo tenant.
+    expect((await listCustomersPage(tenantA.id, {})).total).toBe(0);
+    await confirmOrderManually(tenantA.id, order.id, "Đã đối chiếu sao kê");
+    const customersA = await listCustomersPage(tenantA.id, { q: "nguyen van thu" });
+    expect(customersA.items.map((c) => [c.userId, c.paidOrders, c.freeClaims, c.spentVnd, c.refundedVnd])).toEqual([[buyer1.id, 1, 0, 20_000, 0]]);
+    expect(customersA.stats).toMatchObject({ totalCustomers: 1, payingCustomers: 1, returningCustomers: 0, spentVnd: 20_000, freeOnlyCustomers: 0 });
+    expect(customersA.groupCounts).toMatchObject({ "tat-ca": 1, moi: 1, "quay-lai": 0, "mien-phi": 0 });
+    expect((await listCustomersPage(tenantA.id, { q: "%" })).total).toBe(0);
+    const customersB = await listCustomersPage(tenantB.id, {});
+    expect(customersB.total).toBe(0);
+    expect(customersB.stats.totalCustomers).toBe(0);
+    expect((await listCustomersPage(tenantB.id, { q: "nguyen" })).items).toEqual([]);
+    await expect(updateCustomerNote(tenantB.id, buyer1.id, "x", ownerB.id)).rejects.toMatchObject({ httpStatus: 404 });
+    await expect(updateCustomerNote(tenantA.id, buyer1.id, "a".repeat(501), ownerA.id)).rejects.toMatchObject({ httpStatus: 400 });
+    expect(await updateCustomerNote(tenantA.id, buyer1.id, "  Khách quen  ", ownerA.id)).toEqual({ note: "Khách quen" });
+    expect((await listCustomersPage(tenantA.id, {})).items[0]!.note).toBe("Khách quen");
+    expect(await withTenant(tenantB.id, (tx) => tx.tenantCustomer.count({ where: { userId: buyer1.id } }))).toBe(0);
+    expect(await updateCustomerNote(tenantA.id, buyer1.id, "   ", ownerA.id)).toEqual({ note: null });
+    // ADR-048: trang Đơn hàng lọc theo khách — chỉ khách thuộc gian hàng.
+    const byCustomer = await listOrdersPage(tenantA.id, { khach: buyer1.id });
+    expect([byCustomer.total, byCustomer.customer?.userId, byCustomer.query.customerId]).toEqual([1, buyer1.id, buyer1.id]);
+    expect((await listOrdersPage(tenantA.id, { khach: buyer2.id })).query.customerId).toBeNull();
+    const crossTenant = await listOrdersPage(tenantB.id, { khach: buyer1.id });
+    expect([crossTenant.total, crossTenant.customer]).toEqual([0, null]);
 
     await expect(getOrderForCustomer(buyer2.id, order.code)).rejects.toMatchObject({ httpStatus: 404 });
     const ownOrder = await getOrderForCustomer(buyer1.id, order.code);
@@ -305,7 +374,7 @@ describe("M8 checkout and orders", () => {
       confirmOrderManually(tenant.id, order2.id, "confirm 2"),
     ]);
 
-    const [fulfilled1, fulfilled2] = await Promise.all([getOrderDetail(tenant.id, order1.id), getOrderDetail(tenant.id, order2.id)]);
+    const [fulfilled1, fulfilled2] = await Promise.all([getOrderDetailView(tenant.id, order1.id), getOrderDetailView(tenant.id, order2.id)]);
     expect(fulfilled1.status).toBe("FULFILLED");
     expect(fulfilled2.status).toBe("FULFILLED");
 

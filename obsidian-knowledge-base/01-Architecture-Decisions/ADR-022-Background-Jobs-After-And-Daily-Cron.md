@@ -17,7 +17,7 @@ status: Accepted (Chốt — Áp dụng chính thức)
 (2026-10-16)" và "Làm rõ (2026-10-16)". Bản trích ghi vào thư mục này theo duyệt của Quốc ngày 2026-10-16.
 Đặc tả sống: [[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]].
 
-Tiến độ (2026-10-16): xong code, chưa commit/deploy 🟡 (theo `docs/PLAN.md`).
+Tiến độ (2026-10-16): xong code; **đã commit `9a3208f`** (2026-10-16) ✅ `git log`; deploy ❓ chờ chủ dự án xác nhận.
 
 Mức xác minh: ✅ Long đã đối chiếu code (2026-10-16) · 🟡 theo `docs/DECISIONS.md`/brief của Quốc · ❓ cần môi trường thật (Vercel).
 
