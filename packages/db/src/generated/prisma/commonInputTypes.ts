@@ -875,6 +875,40 @@ export type EnumAbuseReportDecisionNullableWithAggregatesFilter<$PrismaModel = n
   _max?: Prisma.NestedEnumAbuseReportDecisionNullableFilter<$PrismaModel>
 }
 
+export type EnumLegalDocumentVersionStatusFilter<$PrismaModel = never> = {
+  equals?: $Enums.LegalDocumentVersionStatus | Prisma.EnumLegalDocumentVersionStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.LegalDocumentVersionStatus[] | Prisma.ListEnumLegalDocumentVersionStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.LegalDocumentVersionStatus[] | Prisma.ListEnumLegalDocumentVersionStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumLegalDocumentVersionStatusFilter<$PrismaModel> | $Enums.LegalDocumentVersionStatus
+}
+
+export type EnumLegalReviewStatusFilter<$PrismaModel = never> = {
+  equals?: $Enums.LegalReviewStatus | Prisma.EnumLegalReviewStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.LegalReviewStatus[] | Prisma.ListEnumLegalReviewStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.LegalReviewStatus[] | Prisma.ListEnumLegalReviewStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumLegalReviewStatusFilter<$PrismaModel> | $Enums.LegalReviewStatus
+}
+
+export type EnumLegalDocumentVersionStatusWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.LegalDocumentVersionStatus | Prisma.EnumLegalDocumentVersionStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.LegalDocumentVersionStatus[] | Prisma.ListEnumLegalDocumentVersionStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.LegalDocumentVersionStatus[] | Prisma.ListEnumLegalDocumentVersionStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumLegalDocumentVersionStatusWithAggregatesFilter<$PrismaModel> | $Enums.LegalDocumentVersionStatus
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumLegalDocumentVersionStatusFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumLegalDocumentVersionStatusFilter<$PrismaModel>
+}
+
+export type EnumLegalReviewStatusWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.LegalReviewStatus | Prisma.EnumLegalReviewStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.LegalReviewStatus[] | Prisma.ListEnumLegalReviewStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.LegalReviewStatus[] | Prisma.ListEnumLegalReviewStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumLegalReviewStatusWithAggregatesFilter<$PrismaModel> | $Enums.LegalReviewStatus
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumLegalReviewStatusFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumLegalReviewStatusFilter<$PrismaModel>
+}
+
 export type NestedStringFilter<$PrismaModel = never> = {
   equals?: string | Prisma.StringFieldRefInput<$PrismaModel>
   in?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
@@ -1693,6 +1727,40 @@ export type NestedEnumAbuseReportDecisionNullableWithAggregatesFilter<$PrismaMod
   _count?: Prisma.NestedIntNullableFilter<$PrismaModel>
   _min?: Prisma.NestedEnumAbuseReportDecisionNullableFilter<$PrismaModel>
   _max?: Prisma.NestedEnumAbuseReportDecisionNullableFilter<$PrismaModel>
+}
+
+export type NestedEnumLegalDocumentVersionStatusFilter<$PrismaModel = never> = {
+  equals?: $Enums.LegalDocumentVersionStatus | Prisma.EnumLegalDocumentVersionStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.LegalDocumentVersionStatus[] | Prisma.ListEnumLegalDocumentVersionStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.LegalDocumentVersionStatus[] | Prisma.ListEnumLegalDocumentVersionStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumLegalDocumentVersionStatusFilter<$PrismaModel> | $Enums.LegalDocumentVersionStatus
+}
+
+export type NestedEnumLegalReviewStatusFilter<$PrismaModel = never> = {
+  equals?: $Enums.LegalReviewStatus | Prisma.EnumLegalReviewStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.LegalReviewStatus[] | Prisma.ListEnumLegalReviewStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.LegalReviewStatus[] | Prisma.ListEnumLegalReviewStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumLegalReviewStatusFilter<$PrismaModel> | $Enums.LegalReviewStatus
+}
+
+export type NestedEnumLegalDocumentVersionStatusWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.LegalDocumentVersionStatus | Prisma.EnumLegalDocumentVersionStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.LegalDocumentVersionStatus[] | Prisma.ListEnumLegalDocumentVersionStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.LegalDocumentVersionStatus[] | Prisma.ListEnumLegalDocumentVersionStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumLegalDocumentVersionStatusWithAggregatesFilter<$PrismaModel> | $Enums.LegalDocumentVersionStatus
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumLegalDocumentVersionStatusFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumLegalDocumentVersionStatusFilter<$PrismaModel>
+}
+
+export type NestedEnumLegalReviewStatusWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.LegalReviewStatus | Prisma.EnumLegalReviewStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.LegalReviewStatus[] | Prisma.ListEnumLegalReviewStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.LegalReviewStatus[] | Prisma.ListEnumLegalReviewStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumLegalReviewStatusWithAggregatesFilter<$PrismaModel> | $Enums.LegalReviewStatus
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumLegalReviewStatusFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumLegalReviewStatusFilter<$PrismaModel>
 }
 
 

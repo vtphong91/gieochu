@@ -52,7 +52,11 @@ tenant nơi giáo viên/coach bán tài liệu số cho học viên.
   204 + `X-Storage-Target` / 403 `STORAGE_TICKET_REJECTED` / 404 khi gateway tắt) — 23 `route.ts` dưới `/api`, 24 toàn app; ghi chú ở §6, §7:
   URL trả về của `downloads/[token]` (302), `share-links/[token]/download` (`{url}`), `uploads/presign`, `uploads/cover-presign` có thể là
   `/_s/<vé>` khi bật Storage Gateway — shape không đổi.
-- `[[Database-Schema-Reference]]` — Lược đồ 47 model + 31 enum trong `packages/db/prisma/schema.prisma`, phân
+  §3.1 + §26 ADR-050 đợt 1 (chưa commit) — `POST /api/auth/register` thêm `termsVersionId` tuỳ chọn, lỗi 409 `LEGAL_TERMS_CHANGED`, ghi chấp thuận
+  Điều khoản trong cùng transaction; Server Action/loader menu header/footer (`saveMenuDraftAction`… `SiteMenuView`), trang chủ (chữ ký đổi
+  `(sections, seo)`, `getHomePageContent`, `getHomeCmsEditorData`), văn bản pháp lý (5 action `/admin/cms/phap-ly`, `lib/legal.ts`), subpath
+  `@gieochu/core/site-menu`, `/seo`, `/cms-content-guard`, `/legal`, `/brand-token` — không thêm `route.ts` (23 dưới `/api`, 24 toàn app).
+- `[[Database-Schema-Reference]]` — Lược đồ 50 model + 33 enum (ADR-050 thêm 3 bảng L1 pháp lý + 2 enum) trong `packages/db/prisma/schema.prisma`, phân
   theo layer L1 (System) / L2 (Tenant, RLS) / L3 (góc nhìn Customer trên bảng L2), cùng quy ước cuid2 (ADR-001),
   mã hoá secret AES-256-GCM (§7.3 CLAUDE.md), và bảng RBAC `Role`/`Permission`/`RolePermission` (ADR-022); §7 ghi RLS tách đọc/ghi 7 bảng, quy tắc bảng L2 mới và mẫu
   trigger giới hạn cột theo scope (ADR-029); migration M10b bảng `posts` (partial unique index ghim, 2 trigger); migration M12a bảng L1 `audit_logs` (chỉ-INSERT: quyền `gieochu_app` + 3 trigger, cờ purge — ADR-037); migration M12b bảng L1 `tenant_daily_stats` (unique `tenantId+date`, FK tenant Cascade, không RLS — ADR-037). Migration M12c bảng L1 `abuse_reports` + khoá kiểm duyệt (trigger `*_guard_moderation`) + cam kết bản quyền (ADR-038); migration ADR-039 cột `entitlements.remedy*` + trigger `entitlements_guard_remedy`; ghi chú sửa lỗi đọc `orders` không scope (email đơn hàng). Migration ADR-041: `VerificationTokenType.EMAIL_CHANGE` + `verification_tokens.newEmail`; `SubscriptionInvoiceStatus.REFUNDED` + bảng L1 `subscription_refund_requests` (3 CHECK, `payoutEncrypted` AES-256-GCM). Migration ADR-047 (thư mục `…_adr045_order_notes` giữ số cũ): bảng L2 `order_notes` (RLS tách theo lệnh chỉ tenant + `system_job`, không UPDATE, CHECK 1–1000 ký tự) — 47 model / 31 enum.

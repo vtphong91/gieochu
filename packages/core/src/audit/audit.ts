@@ -63,6 +63,14 @@ export const AUDIT_ACTIONS = [
   "ORDER_NOTE_DELETED",
   // ADR-048 (ghi chú khách tại gian hàng — metadata chỉ customerUserId, không nội dung)
   "CUSTOMER_NOTE_UPDATED",
+  // ADR-050 (metadata chỉ loại thao tác)
+  "HOME_CMS_UPDATED",
+  "MENU_CMS_UPDATED",
+  "LEGAL_VERSION_CREATED",
+  "LEGAL_VERSION_UPDATED",
+  "LEGAL_REVIEW_STATUS_CHANGED",
+  "LEGAL_VERSION_PUBLISHED",
+  "LEGAL_VERSION_ARCHIVED",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -121,6 +129,13 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   ORDER_NOTE_ADDED: "Thêm ghi chú nội bộ cho đơn",
   ORDER_NOTE_DELETED: "Xoá ghi chú nội bộ của đơn",
   CUSTOMER_NOTE_UPDATED: "Cập nhật ghi chú khách hàng",
+  HOME_CMS_UPDATED: "Cập nhật trang chủ",
+  MENU_CMS_UPDATED: "Cập nhật menu header/footer",
+  LEGAL_VERSION_CREATED: "Tạo phiên bản văn bản pháp lý",
+  LEGAL_VERSION_UPDATED: "Sửa bản nháp văn bản pháp lý",
+  LEGAL_REVIEW_STATUS_CHANGED: "Đổi trạng thái rà soát pháp lý",
+  LEGAL_VERSION_PUBLISHED: "Xuất bản văn bản pháp lý",
+  LEGAL_VERSION_ARCHIVED: "Lưu trữ văn bản pháp lý",
 };
 
 export const AUDIT_SCOPE_LABELS: Record<AuditScopeValue, string> = {

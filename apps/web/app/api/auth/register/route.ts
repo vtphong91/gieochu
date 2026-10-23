@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createVerificationToken, isValidPassword, hashPassword, normalizeEmail } from "@gieochu/auth";
-import { AppError, conflict, logger } from "@gieochu/core";
+import { AppError, conflict, LEGAL_DOCUMENT_DEFS, logger } from "@gieochu/core";
 import { getEnv } from "@gieochu/config";
 import { getPrismaClient } from "@gieochu/db";
 import { renderVerifyEmailTemplate } from "@gieochu/email";
@@ -11,6 +11,7 @@ import { getClientIp } from "../../../../lib/request-meta";
 import { sendEmailNow } from "../../../../lib/email-dispatch";
 import { getEffectiveBrand } from "../../../../lib/branding";
 import { getSystemSettings } from "../../../../lib/system-settings";
+import { getEffectiveLegalVersion, recordLegalAcceptance, resolveRegistrationTermsVersion } from "../../../../lib/legal";
 
 const registerSchema = z.object({
   email: z.string().email("Email không hợp lệ."),
@@ -24,6 +25,9 @@ const registerSchema = z.object({
   // chủ). Trở thành Tenant vẫn là một hành động riêng, tự nguyện (tạo Tenant
   // row qua /studio) — trường này không gán role/tạo bản ghi gì cả.
   accountType: z.enum(["TENANT", "CUSTOMER"]),
+  // ADR-050 mục 3: id phiên bản Điều khoản người dùng thấy trên form (tuỳ chọn — server tự xác định bản hiệu lực,
+  // chỉ dùng để phát hiện Điều khoản vừa đổi giữa lúc mở form và lúc gửi).
+  termsVersionId: z.string().trim().min(1).max(64).optional(),
 });
 
 const EMAIL_VERIFY_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
@@ -58,6 +62,12 @@ export async function POST(request: Request) {
     const env = getEnv();
     const settings = await getSystemSettings();
     const verification = createVerificationToken(settings.emailVerifyTtlHours, now);
+    // ADR-050 mục 3: có bản Điều khoản đang hiệu lực → ghi chấp thuận đúng phiên bản đó trong cùng giao dịch tạo user;
+    // chưa có → đăng ký như trước (chỉ `consentAt`).
+    const termsVersionId = resolveRegistrationTermsVersion(
+      await getEffectiveLegalVersion(LEGAL_DOCUMENT_DEFS.terms.key, now),
+      body.termsVersionId,
+    );
 
     const user = await prisma.$transaction(async (tx) => {
       const created = await tx.user.create({
@@ -78,6 +88,7 @@ export async function POST(request: Request) {
           expiresAt: verification.expiresAt,
         },
       });
+      if (termsVersionId) await recordLegalAcceptance(tx, created.id, termsVersionId, now);
       return created;
     });
 

@@ -283,6 +283,8 @@ const ADMIN_GROUPS: SidebarNavGroup[] = [
       { href: "/admin/cms", label: "Trang CMS", icon: "doc" },
       { href: "/admin/cms/shop", label: "Trang Cửa hàng", icon: "shoppingBag" },
       { href: "/admin/cms/pricing", label: "Trang Bảng giá", icon: "package" },
+      { href: "/admin/cms/menu", label: "Menu & chân trang", icon: "doc" },
+      { href: "/admin/cms/phap-ly", label: "Văn bản pháp lý", icon: "doc" },
       { href: "/admin/categories", label: "Danh mục tài liệu", icon: "tag" },
     ],
   },

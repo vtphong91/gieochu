@@ -6,7 +6,7 @@ tags:
   - rollback
   - status/living
 date: 2026-07-02
-updated: 2026-10-22
+updated: 2026-10-23
 author: System Architect
 ---
 
@@ -71,14 +71,21 @@ pnpm install
 pnpm lint            # ESLint flat config, --max-warnings=0
 pnpm typecheck        # tsc --noEmit mọi package
 pnpm test             # Jest (unit, packages/*) + Vitest (integration, apps/web/tests/integration)
-pnpm test:count        # đối chiếu số test case: trần gốc mục 9 là 91/50, trần hiện 94/55 (ADR-026 + ADR-037)
+pnpm test:count        # đối chiếu số test case: trần gốc mục 9 là 91/50, trần hiện 95/57 (ADR-026 + ADR-037 + ADR-050)
 pnpm build            # build tất cả package/app qua Turborepo
 ```
 
-**Số test (chạy `pnpm test:count` 2026-10-18, sau ADR-043) ✅:** thực **94 / 94 unit**, **55 / 55 integration** — **chạm trần**. Trần
+**Số test (chạy `pnpm test:count` 2026-10-23, sau ADR-050) ✅:** thực **95 / 95 unit**, **57 / 57 integration** — **chạm trần**. Trần
 gốc ở đặc tả mục 9 là 91/50, nâng lên 94/53 theo ADR-026; ADR-027…036 không nâng trần; ADR-037 mục 6 nâng trần integration 53 → **55**
 cho đúng 2 test M12 (M12a — `audit.test.ts`; M12b — `stats.test.ts`). ADR-043 dùng nốt 1 unit (`dashboard-range.test.ts`) + 1 integration
-(`studio-dashboard.test.ts`) còn trống, không nâng trần — test mới từ nay cần chủ dự án duyệt nâng trần. Lưu ý: dòng `audit_logs` do integration test tạo không xoá
+(`studio-dashboard.test.ts`) còn trống, không nâng trần. **ADR-050** (chủ dự án duyệt) nâng trần **94/55 → 95/57**: +1 unit
+`packages/core/src/admin/site-menu.test.ts` (parse menu/section trang chủ + link không an toàn), +2 integration `apps/web/tests/integration/legal.test.ts`
+(chấp thuận theo phiên bản; chặn xuất bản khi còn placeholder/chưa duyệt). Test mới từ nay cần chủ dự án duyệt nâng trần.
+
+**Integration đang lỗi do dữ liệu dùng chung (2026-10-23)** 🟡 (Quốc báo; Long không chạy `pnpm test`): **4 test** — 3 test lỗi
+`PRODUCT_LIMIT_REACHED` vì Plan FREE trên DB dùng chung đang `maxProducts = 1` (❓ giá trị thật cần đọc DB), 1 test đơn hàng **timeout**. Vấn đề **tồn tại,
+chưa xử lý** — không phải do ADR-050. Đừng "sửa" bằng cách đổi Plan FREE trên DB dùng chung (là cấu hình production — ADR-034); chờ Quốc quyết hướng
+(xem `docs/PLAN.md` và [[00-Index/KB-Audit-2026-09-26|KB-Audit]] §31). Lưu ý: dòng `audit_logs` do integration test tạo không xoá
 được (12 tháng) — xem [[04-Operations-Runbooks/Deploy-Vercel-Runbook|Deploy-Vercel-Runbook]] §9.6. Script
 `scripts/count-tests.mjs` báo lỗi khi vượt trần. Không tự thêm/bớt test case khi chưa hỏi chủ dự án.
 

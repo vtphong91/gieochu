@@ -97,7 +97,10 @@ export const ModelName = {
   Post: 'Post',
   AuditLog: 'AuditLog',
   TenantDailyStat: 'TenantDailyStat',
-  AbuseReport: 'AbuseReport'
+  AbuseReport: 'AbuseReport',
+  LegalDocument: 'LegalDocument',
+  LegalDocumentVersion: 'LegalDocumentVersion',
+  UserLegalAcceptance: 'UserLegalAcceptance'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -877,6 +880,47 @@ export const AbuseReportScalarFieldEnum = {
 } as const
 
 export type AbuseReportScalarFieldEnum = (typeof AbuseReportScalarFieldEnum)[keyof typeof AbuseReportScalarFieldEnum]
+
+
+export const LegalDocumentScalarFieldEnum = {
+  id: 'id',
+  key: 'key',
+  slug: 'slug',
+  title: 'title',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type LegalDocumentScalarFieldEnum = (typeof LegalDocumentScalarFieldEnum)[keyof typeof LegalDocumentScalarFieldEnum]
+
+
+export const LegalDocumentVersionScalarFieldEnum = {
+  id: 'id',
+  documentId: 'documentId',
+  version: 'version',
+  status: 'status',
+  reviewStatus: 'reviewStatus',
+  contentHtml: 'contentHtml',
+  changeSummary: 'changeSummary',
+  effectiveAt: 'effectiveAt',
+  publishedAt: 'publishedAt',
+  publishedById: 'publishedById',
+  createdById: 'createdById',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type LegalDocumentVersionScalarFieldEnum = (typeof LegalDocumentVersionScalarFieldEnum)[keyof typeof LegalDocumentVersionScalarFieldEnum]
+
+
+export const UserLegalAcceptanceScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  versionId: 'versionId',
+  acceptedAt: 'acceptedAt'
+} as const
+
+export type UserLegalAcceptanceScalarFieldEnum = (typeof UserLegalAcceptanceScalarFieldEnum)[keyof typeof UserLegalAcceptanceScalarFieldEnum]
 
 
 export const SortOrder = {

@@ -1012,6 +1012,38 @@ Câu hỏi mở: production chạy VPS hay Vercel — Quốc đang hỏi chủ d
 - Tài liệu: bản trích `01-Architecture-Decisions/ADR-030` (≙ ADR-045), `02-System-Specs/File-Storage-And-Downloads-Specs.md` §9,
   `03-API-Contracts/Endpoint-Directory.md` §25, `04-Operations-Runbooks/Storage-Gateway-VPS-Runbook.md`, `00-Index/KB-Audit-2026-09-26.md` §27, §29.
 
+## Kế hoạch: Trang chủ + Pháp lý + Menu CMS + SEO — đợt 1 đã chốt theo ADR-050 (2026-10-23)
+
+**Chủ dự án chốt đợt 1 (ADR-050)** — theo thứ tự, mỗi hạng mục CMS trước, UI sau: (1) CMS menu header/footer
+(`/admin/cms/menu`, slug hệ thống `menu`, không migration, sửa ADR-025); (2) trang chủ theo brief + SEO trang chủ
+(`home-sections` thêm `steps`/`faq`/`community`, bỏ số liệu/giá/sao gõ cứng, ô `seoTitle/seoDescription` + `generateMetadata`,
+không migration); (3) Điều khoản sử dụng có phiên bản + ghi nhận chấp thuận khi đăng ký (bảng L1 `legal_documents`,
+`legal_document_versions`, `user_legal_acceptances`, không lưu IP/User-Agent; `/phap-ly/dieu-khoan-su-dung`; migration
+expand-only — Hiếu viết, Quốc duyệt, chủ dự án chạy). Test: trần nâng +1 unit, +2 integration (94/55 → 95/57).
+**Hoãn sang giai đoạn pháp lý:** các trang pháp lý khác, hub `/phap-ly`, mở rộng `abuse_reports`, chấp thuận khi mở gian
+hàng/xuất bản, công bố bản dự thảo, xoá tài khoản, thông tin pháp nhân; SEO còn lại (OG, noindex, sitemap, robots, JSON-LD).
+Dự thảo Điều khoản: `docs/legal/drafts/dieu-khoan-su-dung.md` (Long, chưa được luật sư rà soát, còn placeholder).
+**Trạng thái code đợt 1 (2026-10-23): phần CMS/logic cả 3 hạng mục xong + verify (working tree, chưa commit); phần UI (Phong) đang làm.** Migration `20261023090000_adr050_legal_documents` đã chạy trên DB dùng chung; chưa có bản Điều khoản nào được xuất bản (dự thảo còn placeholder). Test: `test:count` 95/95 unit, 57/57 integration (thêm `site-menu.test.ts`, `legal.test.ts`). **Vấn đề tồn tại, chưa xử lý:** 4 integration test lỗi do dữ liệu dùng chung (Plan FREE `maxProducts=1` → 3 test `PRODUCT_LIMIT_REACHED`; 1 test đơn hàng timeout). Tài liệu: `02-System-Specs/System-Cms-Menu-Home-Seo-Specs.md`, `02-System-Specs/Legal-Documents-Specs.md`, `04-Operations-Runbooks/Legal-Terms-Publishing-Runbook.md`, bản trích `01-Architecture-Decisions/ADR-035` (≙ ADR-050), `03-API-Contracts/Endpoint-Directory.md` §3.1, §26, `00-Index/KB-Audit-2026-09-26.md` §31.
+
+Kế hoạch gốc (A–D dưới đây là đề xuất ban đầu; chỗ khác ADR-050 thì theo ADR-050) — lúc soạn kế hoạch chưa code, chưa migration (trạng thái hiện hành: đoạn trên). Đầu vào: `docs/GIEOCHU_HOMEPAGE_CONTENT_BRIEF.md`,
+`docs/claude-code-gieochu-legal-pages-implementation-brief.md`; đề xuất UX của Phong `docs/de-xuat-ux-home-legal-menu-2026-10-23.md`.
+Kế hoạch tổng (audit ✅/🟡/❓, bước Ai · Phụ thuộc · Tiêu chí, migration, rủi ro, 29+ câu hỏi mở): `docs/ke-hoach-home-legal-menu-seo-2026-10-23.md`.
+Checklist pháp lý: `docs/legal/LEGAL_REVIEW_CHECKLIST.md`.
+
+- **A. Trang chủ theo brief** — không DDL (JSON `cms_pages` slug `home`): section mới `steps`, `faq`, `community` (thay
+  `testimonials`, bắt buộc xác nhận đồng ý), CTA cho gian hàng/tài liệu nổi bật, ô SEO trang chủ, nội dung mặc định khi
+  chưa có CMS; gỡ số liệu/giá minh hoạ cứng ("500+", "10.000+", "149.000đ", 5 sao cố định).
+- **B. Trang pháp lý** — đề xuất bảng L1 mới có phiên bản + DRAFT/PUBLISHED/ARCHIVED + `effectiveAt` + chấp thuận theo
+  phiên bản (`UserLegalAcceptance`); URL tiền tố `/phap-ly/*` + `/bao-cao-vi-pham` + `/lien-he`; mở rộng `abuse_reports`
+  (ADR-038), không xây hệ thứ hai; chặn Publish khi còn placeholder.
+- **C. Menu header/footer bằng CMS** — không DDL (slug hệ thống `menu`), sửa ADR-025.
+- **D. SEO** — helper metadata chung, `sitemap.ts`, `robots.ts`, JSON-LD (Organization, WebSite, BreadcrumbList, Product);
+  cột `cms_pages.ogImageUrl`, `noindex`.
+- **Migration dự kiến (expand-only, Quốc duyệt, chủ dự án chạy):** M-L (pháp lý), M-R (báo cáo vi phạm), M-S (SEO).
+- **Test:** lúc soạn kế hoạch `test:count` 94/94 unit, 55/55 integration — đã chạm trần; chủ dự án đã duyệt nâng +1 unit +2 integration (ADR-050) → nay 95/95, 57/57.
+- **Thứ tự đề xuất:** (1) chốt câu hỏi + dự thảo pháp lý ∥ menu CMS → (2) trang chủ + metadata/sitemap/robots → (3) pháp lý
+  (M-L) + chấp thuận → (4) báo cáo vi phạm (M-R) → (5) ô SEO đầy đủ (M-S) + JSON-LD.
+
 ## Câu hỏi còn mở (đã chọn phương án an toàn, xem ADR tương ứng)
 
 - ID strategy: cuid2 (ADR-001).

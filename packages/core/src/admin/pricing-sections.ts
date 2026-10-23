@@ -2,6 +2,7 @@ import { z } from "zod";
 import { PLAN_FEATURE_KEYS, type PlanFeatureKey } from "../billing/feature-gate";
 import { PLAN_LIMIT_FIELD_LABELS, PLAN_LIMIT_FIELDS, type PlanLimitField } from "../billing/plan-limits";
 import { HOME_STAT_DEFAULT_LABELS, HOME_STAT_KEYS, type HomeStatKey } from "./home-sections";
+import { cmsSeoSchema, SEO_DESCRIPTION_MAX, SEO_TITLE_MAX, type CmsSeoInput } from "./seo";
 
 /**
  * ADR-041 A — cấu hình trang Bảng giá `/pricing`, lưu ở `CmsPage.slug = "pricing"` (`blocks` = live, `blocksDraft` =
@@ -48,15 +49,13 @@ export const PRICING_WHY_US_MAX = 6;
 
 // ───────────── SEO (cột `CmsPage.seoTitle/seoDescription`, không thuộc `blocks`) ─────────────
 
-export const PRICING_SEO_TITLE_MAX = 120;
-export const PRICING_SEO_DESCRIPTION_MAX = 320;
+// ADR-050: dùng bộ giới hạn SEO chung (`./seo`) — giữ tên cũ để không đổi nơi gọi, giá trị không đổi (120/320).
+export const PRICING_SEO_TITLE_MAX = SEO_TITLE_MAX;
+export const PRICING_SEO_DESCRIPTION_MAX = SEO_DESCRIPTION_MAX;
 
 /** SEO trang Bảng giá: trim, để trống = dùng mặc định của route (lưu `null`). */
-export const pricingSeoSchema = z.object({
-  seoTitle: z.string().trim().max(PRICING_SEO_TITLE_MAX, `Tiêu đề SEO tối đa ${PRICING_SEO_TITLE_MAX} ký tự.`),
-  seoDescription: z.string().trim().max(PRICING_SEO_DESCRIPTION_MAX, `Mô tả SEO tối đa ${PRICING_SEO_DESCRIPTION_MAX} ký tự.`),
-});
-export type PricingSeoInput = z.infer<typeof pricingSeoSchema>;
+export const pricingSeoSchema = cmsSeoSchema;
+export type PricingSeoInput = CmsSeoInput;
 export const PRICING_WHY_US_TITLE_MAX = 80;
 export const PRICING_WHY_US_DESCRIPTION_MAX = 240;
 export const PRICING_FAQ_MAX = 20;

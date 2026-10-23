@@ -295,3 +295,20 @@ export const AbuseReportDecision = {
 } as const
 
 export type AbuseReportDecision = (typeof AbuseReportDecision)[keyof typeof AbuseReportDecision]
+
+
+export const LegalDocumentVersionStatus = {
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+  ARCHIVED: 'ARCHIVED'
+} as const
+
+export type LegalDocumentVersionStatus = (typeof LegalDocumentVersionStatus)[keyof typeof LegalDocumentVersionStatus]
+
+
+export const LegalReviewStatus = {
+  PENDING_LEGAL_REVIEW: 'PENDING_LEGAL_REVIEW',
+  APPROVED: 'APPROVED'
+} as const
+
+export type LegalReviewStatus = (typeof LegalReviewStatus)[keyof typeof LegalReviewStatus]

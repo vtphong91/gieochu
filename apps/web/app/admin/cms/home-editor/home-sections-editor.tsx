@@ -1,21 +1,37 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 // Import trực tiếp từ subpath (không qua barrel "@gieochu/core") — đây là
 // "use client" component, còn barrel index.ts kéo theo cả code server-only
 // (argon2) khiến Next cố bundle cho browser rồi lỗi "Module not found: fs".
 import {
+  HOME_BODY_PARAGRAPHS_MAX,
+  HOME_COMMUNITY_ITEMS_MAX,
+  HOME_COMMUNITY_MODE_LABELS,
+  HOME_COMMUNITY_MODES,
+  HOME_FAQ_ANSWER_MAX,
+  HOME_FAQ_MAX,
+  HOME_FAQ_QUESTION_MAX,
   HOME_FEATURED_LIMIT_MAX,
   HOME_FEATURED_LIMIT_MIN,
+  HOME_MIN_TO_SHOW_MIN,
   HOME_PINNED_MAX,
   HOME_SECTION_LABELS,
   HOME_STAT_KEYS,
+  HOME_STEPS_MAX,
+  HOME_STEPS_MIN,
+  homePublishIssues,
+  type HomeCommunityMode,
+  type HomeCta,
   type HomeSection,
+  type HomeSectionData,
   type HomeStatKey,
 } from "@gieochu/core/home-sections";
-import { GhostButton, PrimaryButton, SelectField, TextField, Toggle } from "../../_ui/kit";
-import { IconChevronDown, IconCheckCircle } from "../../_ui/icons";
+import { collectStrings, findContentClaimWarnings } from "@gieochu/core/cms-content-guard";
+import { SEO_DESCRIPTION_MAX, SEO_TITLE_MAX, seoLengthWarning } from "@gieochu/core/seo";
+import { GhostButton, Notice, PrimaryButton, SelectField, TextField, Toggle } from "../../_ui/kit";
+import { IconCheckCircle, IconChevronDown, IconPlus, IconTrash } from "../../_ui/icons";
 import { ArrayObjectEditor } from "./array-object-editor";
 import { ImageUploadField } from "../../_ui/image-upload-field";
 import {
@@ -24,9 +40,15 @@ import {
   saveHomeDraftAction,
   searchHomeProductOptionsAction,
   searchHomeTenantOptionsAction,
+  type HomeEditorActionState,
 } from "./actions";
 import { PinPicker, type PinOption } from "./pin-picker";
 import { toProductPinOption, toTenantPinOption } from "./pin-options";
+
+const INK = "#12213A";
+const LINE = "#E5E7EB";
+const TEXTAREA_CLASS =
+  "mt-1.5 w-full rounded-lg border bg-white px-3.5 py-2.5 text-[15px] outline-none focus:border-[#0F3B82] focus:ring-2 focus:ring-[#0F3B82]/15";
 
 /** Tên ô số liệu trong editor (không phải nhãn hiển thị — nhãn hiển thị sửa được). */
 const STAT_EDITOR_NAMES: Record<HomeStatKey, string> = {
@@ -46,6 +68,10 @@ async function searchProductPins(query: string, includeIds: string[]): Promise<P
 
 const LIMIT_CHOICES = Array.from({ length: HOME_FEATURED_LIMIT_MAX - HOME_FEATURED_LIMIT_MIN + 1 }, (_, i) => HOME_FEATURED_LIMIT_MIN + i);
 
+function newId(prefix: string): string {
+  return `${prefix}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+}
+
 /** Chọn số thẻ bằng danh sách cố định (3–12) — không có trạng thái nhập sai/kẹp giá trị khi đang gõ. */
 function LimitField({ id, value, onChange }: { id: string; value: number; onChange: (v: number) => void }) {
   return (
@@ -57,6 +83,26 @@ function LimitField({ id, value, onChange }: { id: string; value: number; onChan
       onChange={(e) => onChange(Number(e.target.value))}
     >
       {LIMIT_CHOICES.map((n) => (
+        <option key={n} value={n}>
+          {n} thẻ
+        </option>
+      ))}
+    </SelectField>
+  );
+}
+
+/** ADR-050: ngưỡng tối thiểu — ít hơn số thẻ đủ điều kiện này thì section không hiện. */
+function MinToShowField({ id, value, limit, onChange }: { id: string; value: number; limit: number; onChange: (v: number) => void }) {
+  const choices = Array.from({ length: limit - HOME_MIN_TO_SHOW_MIN + 1 }, (_, i) => HOME_MIN_TO_SHOW_MIN + i);
+  return (
+    <SelectField
+      id={id}
+      label="Chỉ hiện khi có ít nhất"
+      hint="Ít hơn số này (dữ liệu thật) thì section tự ẩn ngoài trang chủ."
+      value={Math.min(value, limit)}
+      onChange={(e) => onChange(Number(e.target.value))}
+    >
+      {choices.map((n) => (
         <option key={n} value={n}>
           {n} thẻ
         </option>
@@ -79,24 +125,82 @@ export interface HomeEditorPinOptions {
   products: PinOption[];
 }
 
-function CtaEditor({ label, value, onChange }: { label: string; value: { label: string; href: string }; onChange: (v: { label: string; href: string }) => void }) {
+export interface HomeSeoValue {
+  seoTitle: string;
+  seoDescription: string;
+}
+
+function CtaEditor({ id, label, value, onChange }: { id: string; label: string; value: HomeCta; onChange: (v: HomeCta) => void }) {
   return (
-    <div className="rounded-lg border p-3.5" style={{ borderColor: "#E5E7EB" }}>
-      <p className="mb-2.5 text-sm font-medium" style={{ color: "#12213A" }}>
+    <div className="rounded-lg border p-3.5" style={{ borderColor: LINE }}>
+      <p className="mb-2.5 text-sm font-medium" style={{ color: INK }}>
         {label}
       </p>
       <div className="grid gap-2.5 sm:grid-cols-2">
-        <TextField id={`${label}-label`} label="Label" value={value.label} onChange={(e) => onChange({ ...value, label: e.target.value })} />
-        <TextField id={`${label}-href`} label="Href" value={value.href} onChange={(e) => onChange({ ...value, href: e.target.value })} />
+        <TextField id={`${id}-label`} label="Nhãn nút" value={value.label} onChange={(e) => onChange({ ...value, label: e.target.value })} />
+        <TextField id={`${id}-href`} label="Đích (/… hoặc https://…)" value={value.href} onChange={(e) => onChange({ ...value, href: e.target.value })} />
       </div>
     </div>
   );
 }
 
+/** CTA tuỳ chọn: để trống cả nhãn và đích = không có nút. */
+function OptionalCtaEditor({ id, label, value, onChange }: { id: string; label: string; value: HomeCta | undefined; onChange: (v: HomeCta | undefined) => void }) {
+  const current = value ?? { label: "", href: "" };
+  return (
+    <div className="rounded-lg border p-3.5" style={{ borderColor: LINE }}>
+      <p className="mb-2.5 text-sm font-medium" style={{ color: INK }}>
+        {label} <span className="font-normal text-gray-500">(không bắt buộc — để trống cả hai ô = không có nút)</span>
+      </p>
+      <div className="grid gap-2.5 sm:grid-cols-2">
+        <TextField
+          id={`${id}-label`}
+          label="Nhãn nút"
+          value={current.label}
+          onChange={(e) => {
+            const next = { ...current, label: e.target.value };
+            onChange(next.label || next.href ? next : undefined);
+          }}
+        />
+        <TextField
+          id={`${id}-href`}
+          label="Đích (/… hoặc https://…)"
+          value={current.href}
+          onChange={(e) => {
+            const next = { ...current, href: e.target.value };
+            onChange(next.label || next.href ? next : undefined);
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function TextAreaField({ id, label, value, rows = 3, maxLength, hint, onChange }: { id: string; label: string; value: string; rows?: number; maxLength?: number; hint?: string; onChange: (v: string) => void }) {
+  return (
+    <div>
+      <label htmlFor={id} className="block text-sm font-medium" style={{ color: INK }}>
+        {label}
+      </label>
+      <textarea id={id} rows={rows} value={value} maxLength={maxLength} onChange={(e) => onChange(e.target.value)} aria-describedby={hint ? `${id}-hint` : undefined} className={TEXTAREA_CLASS} style={{ borderColor: LINE }} />
+      {hint ? (
+        <p id={`${id}-hint`} className="mt-1.5 text-xs text-gray-500">
+          {hint}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** Ô chữ tuỳ chọn: chuỗi rỗng lưu thành `undefined`. */
+function optional(value: string): string | undefined {
+  return value.length > 0 ? value : undefined;
+}
+
 function LinesField({ id, label, value, onChange }: { id: string; label: string; value: string[]; onChange: (v: string[]) => void }) {
   return (
     <div>
-      <label htmlFor={id} className="block text-sm font-medium" style={{ color: "#12213A" }}>
+      <label htmlFor={id} className="block text-sm font-medium" style={{ color: INK }}>
         {label}
       </label>
       <textarea
@@ -104,11 +208,86 @@ function LinesField({ id, label, value, onChange }: { id: string; label: string;
         rows={Math.max(3, value.length)}
         value={value.join("\n")}
         onChange={(e) => onChange(e.target.value.split("\n").map((v) => v.trim()).filter(Boolean))}
-        className="mt-1.5 w-full rounded-lg border bg-white px-3.5 py-2.5 text-[15px] outline-none focus:border-[#0F3B82] focus:ring-2 focus:ring-[#0F3B82]/15"
-        style={{ borderColor: "#E5E7EB" }}
+        className={TEXTAREA_CLASS}
+        style={{ borderColor: LINE }}
       />
-      <p className="mt-1.5 text-xs text-gray-500">Mỗi dòng = 1 mục.</p>
+      <p className="mt-1.5 text-xs text-gray-500">Mỗi dòng = 1 mục. Để trống = không có bullet.</p>
     </div>
+  );
+}
+
+/** Danh sách mục có id: Lên/Xuống/Xoá + Thêm. */
+function ItemList<T extends { id: string }>({
+  label,
+  items,
+  min = 0,
+  max,
+  itemName,
+  create,
+  onChange,
+  render,
+}: {
+  label: string;
+  items: T[];
+  min?: number;
+  max: number;
+  itemName: string;
+  create: () => T;
+  onChange: (items: T[]) => void;
+  render: (item: T, index: number, update: (next: T) => void) => React.ReactNode;
+}) {
+  function moveItem(index: number, dir: -1 | 1) {
+    const target = index + dir;
+    if (target < 0 || target >= items.length) return;
+    const next = [...items];
+    const [item] = next.splice(index, 1);
+    next.splice(target, 0, item!);
+    onChange(next);
+  }
+  return (
+    <div>
+      <p className="text-sm font-medium" style={{ color: INK }}>
+        {label} ({items.length}/{max})
+      </p>
+      <div className="mt-1.5 space-y-3">
+        {items.map((item, index) => (
+          <div key={item.id} className="rounded-lg border p-3.5" style={{ borderColor: LINE }}>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-gray-500">
+                {itemName} {index + 1}
+              </p>
+              <div className="flex items-center gap-1">
+                <button type="button" disabled={index === 0} onClick={() => moveItem(index, -1)} aria-label={`Đưa ${itemName} ${index + 1} lên`} className="rounded p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-30">
+                  <IconChevronDown className="h-3.5 w-3.5 rotate-180" />
+                </button>
+                <button type="button" disabled={index === items.length - 1} onClick={() => moveItem(index, 1)} aria-label={`Đưa ${itemName} ${index + 1} xuống`} className="rounded p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-30">
+                  <IconChevronDown className="h-3.5 w-3.5" />
+                </button>
+                <button type="button" disabled={items.length <= min} onClick={() => onChange(items.filter((_, i) => i !== index))} aria-label={`Xoá ${itemName} ${index + 1}`} className="rounded p-2 hover:bg-red-50 disabled:opacity-30" style={{ color: "#DC2626" }}>
+                  <IconTrash className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+            {render(item, index, (next) => onChange(items.map((it, i) => (i === index ? next : it))))}
+          </div>
+        ))}
+      </div>
+      <div className="mt-2.5">
+        <GhostButton disabled={items.length >= max} onClick={() => onChange([...items, create()])}>
+          <IconPlus className="h-4 w-4" /> Thêm {itemName.toLowerCase()}
+        </GhostButton>
+      </div>
+    </div>
+  );
+}
+
+function FeaturedExtraFields({ prefix, data, onChange }: { prefix: string; data: HomeSectionData<"coaches"> | HomeSectionData<"documents">; onChange: (next: { eyebrow?: string; cta?: HomeCta; minToShow?: number }) => void }) {
+  return (
+    <>
+      <TextField id={`${prefix}-eyebrow`} label="Eyebrow (dòng nhỏ trên tiêu đề, không bắt buộc)" value={data.eyebrow ?? ""} onChange={(e) => onChange({ eyebrow: optional(e.target.value) })} />
+      <MinToShowField id={`${prefix}-min`} value={data.minToShow} limit={data.limit} onChange={(minToShow) => onChange({ minToShow })} />
+      <OptionalCtaEditor id={`${prefix}-cta`} label="Nút xem tất cả" value={data.cta} onChange={(cta) => onChange({ cta })} />
+    </>
   );
 }
 
@@ -128,22 +307,26 @@ function SectionFields({
         <div className="space-y-4">
           <TextField id="hero-badge" label="Badge (dòng nhỏ trên tiêu đề)" value={d.badge} onChange={(e) => onChange({ ...d, badge: e.target.value })} />
           <TextField id="hero-title" label="Tiêu đề (H1)" value={d.title} onChange={(e) => onChange({ ...d, title: e.target.value })} />
-          <div>
-            <label htmlFor="hero-subtitle" className="block text-sm font-medium" style={{ color: "#12213A" }}>
-              Đoạn mô tả
-            </label>
-            <textarea
-              id="hero-subtitle"
-              rows={3}
-              value={d.subtitle}
-              onChange={(e) => onChange({ ...d, subtitle: e.target.value })}
-              className="mt-1.5 w-full rounded-lg border bg-white px-3.5 py-2.5 text-[15px] outline-none focus:border-[#0F3B82] focus:ring-2 focus:ring-[#0F3B82]/15"
-              style={{ borderColor: "#E5E7EB" }}
-            />
-          </div>
-          <CtaEditor label="CTA chính" value={d.primaryCta} onChange={(v) => onChange({ ...d, primaryCta: v })} />
-          <CtaEditor label="CTA phụ" value={d.secondaryCta} onChange={(v) => onChange({ ...d, secondaryCta: v })} />
-          <ImageUploadField label="Ảnh minh hoạ (trống = dùng mock mặc định)" value={d.imageUrl ?? ""} onChange={(url) => onChange({ ...d, imageUrl: url })} />
+          <TextAreaField id="hero-subtitle" label="Đoạn mô tả" value={d.subtitle} onChange={(subtitle) => onChange({ ...d, subtitle })} />
+          <CtaEditor id="hero-primary" label="CTA chính" value={d.primaryCta} onChange={(v) => onChange({ ...d, primaryCta: v })} />
+          <CtaEditor id="hero-secondary" label="CTA phụ" value={d.secondaryCta} onChange={(v) => onChange({ ...d, secondaryCta: v })} />
+          <TextField
+            id="hero-brand-message"
+            label="Thông điệp dưới nút (không bắt buộc)"
+            hint="Để trống = dùng slogan thương hiệu."
+            maxLength={80}
+            value={d.brandMessage ?? ""}
+            onChange={(e) => onChange({ ...d, brandMessage: optional(e.target.value) })}
+          />
+          <ImageUploadField label="Ảnh minh hoạ (trống = dùng minh hoạ mặc định)" value={d.imageUrl ?? ""} onChange={(url) => onChange({ ...d, imageUrl: url })} />
+          <TextField
+            id="hero-image-alt"
+            label="Mô tả ảnh (alt, không bắt buộc)"
+            hint="Ảnh có nội dung thì mô tả ngắn; để trống = ảnh trang trí."
+            maxLength={160}
+            value={d.imageAlt ?? ""}
+            onChange={(e) => onChange({ ...d, imageAlt: optional(e.target.value) })}
+          />
         </div>
       );
     }
@@ -160,9 +343,9 @@ function SectionFields({
               const metric = d.metrics[key];
               const labelError = metric.label.trim() ? undefined : "Nhập nhãn hiển thị (tối đa 60 ký tự).";
               return (
-                <li key={key} className="rounded-lg border p-3.5" style={{ borderColor: "#E5E7EB", background: metric.enabled ? "white" : "#F9FAFB" }}>
+                <li key={key} className="rounded-lg border p-3.5" style={{ borderColor: LINE, background: metric.enabled ? "white" : "#F9FAFB" }}>
                   <div className="mb-3 flex items-start justify-between gap-3">
-                    <p className="text-sm font-semibold" style={{ color: "#12213A" }}>
+                    <p className="text-sm font-semibold" style={{ color: INK }}>
                       <span className="mr-1.5 tabular-nums" style={{ color: "#6B7280" }}>
                         {index + 1}.
                       </span>
@@ -195,6 +378,7 @@ function SectionFields({
       const d = section.data;
       return (
         <div className="space-y-4">
+          <TextField id="search-eyebrow" label="Eyebrow (không bắt buộc)" value={d.eyebrow ?? ""} onChange={(e) => onChange({ ...d, eyebrow: optional(e.target.value) })} />
           <TextField id="search-title" label="Tiêu đề" value={d.title} onChange={(e) => onChange({ ...d, title: e.target.value })} />
           <TextField id="search-subtitle" label="Mô tả" value={d.subtitle} onChange={(e) => onChange({ ...d, subtitle: e.target.value })} />
           <TextField
@@ -204,6 +388,7 @@ function SectionFields({
             value={d.placeholder}
             onChange={(e) => onChange({ ...d, placeholder: e.target.value })}
           />
+          <TextField id="search-submit" label="Nhãn nút tìm" maxLength={20} value={d.submitLabel} onChange={(e) => onChange({ ...d, submitLabel: e.target.value })} />
           <LiveDataNote>Chip danh mục lấy tự động từ danh mục đang hoạt động có ít nhất 1 tài liệu công khai (nhiều tài liệu xếp trước).</LiveDataNote>
         </div>
       );
@@ -214,9 +399,9 @@ function SectionFields({
         <div className="space-y-4">
           <TextField id="benefits-eyebrow" label="Eyebrow (dòng nhỏ)" value={d.eyebrow} onChange={(e) => onChange({ ...d, eyebrow: e.target.value })} />
           <TextField id="benefits-title" label="Tiêu đề" value={d.title} onChange={(e) => onChange({ ...d, title: e.target.value })} />
-          <TextField id="benefits-description" label="Mô tả" value={d.description} onChange={(e) => onChange({ ...d, description: e.target.value })} />
+          <TextAreaField id="benefits-description" label="Mô tả" value={d.description} onChange={(description) => onChange({ ...d, description })} />
           <ArrayObjectEditor
-            label="4 lợi ích"
+            label="Lợi ích (1–4) — đối chiếu với tính năng đang chạy trước khi xuất bản"
             items={d.items}
             fields={[
               { key: "title", label: "Tiêu đề" },
@@ -234,8 +419,9 @@ function SectionFields({
         <div className="space-y-4">
           <LiveDataNote>Thẻ lấy từ gian hàng đang hoạt động có tài liệu công khai: tên, logo, số tài liệu, điểm đánh giá, số đã bán.</LiveDataNote>
           <TextField id="coaches-title" label="Tiêu đề" value={d.title} onChange={(e) => onChange({ ...d, title: e.target.value })} />
-          <TextField id="coaches-subtitle" label="Mô tả" value={d.subtitle} onChange={(e) => onChange({ ...d, subtitle: e.target.value })} />
-          <LimitField id="coaches-limit" value={d.limit} onChange={(limit) => onChange({ ...d, limit })} />
+          <TextAreaField id="coaches-subtitle" label="Mô tả" value={d.subtitle} onChange={(subtitle) => onChange({ ...d, subtitle })} />
+          <LimitField id="coaches-limit" value={d.limit} onChange={(limit) => onChange({ ...d, limit, minToShow: Math.min(d.minToShow, limit) })} />
+          <FeaturedExtraFields prefix="coaches" data={d} onChange={(next) => onChange({ ...d, ...next })} />
           <PinPicker
             id="coaches-pins"
             label="Giáo viên / Coach ghim trước"
@@ -257,8 +443,9 @@ function SectionFields({
         <div className="space-y-4">
           <LiveDataNote>Thẻ lấy từ tài liệu công khai: ảnh bìa, tên, gian hàng, giá hiệu lực (khuyến mãi), điểm đánh giá, số đã bán.</LiveDataNote>
           <TextField id="documents-title" label="Tiêu đề" value={d.title} onChange={(e) => onChange({ ...d, title: e.target.value })} />
-          <TextField id="documents-subtitle" label="Mô tả" value={d.subtitle} onChange={(e) => onChange({ ...d, subtitle: e.target.value })} />
-          <LimitField id="documents-limit" value={d.limit} onChange={(limit) => onChange({ ...d, limit })} />
+          <TextAreaField id="documents-subtitle" label="Mô tả" value={d.subtitle} onChange={(subtitle) => onChange({ ...d, subtitle })} />
+          <LimitField id="documents-limit" value={d.limit} onChange={(limit) => onChange({ ...d, limit, minToShow: Math.min(d.minToShow, limit) })} />
+          <FeaturedExtraFields prefix="documents" data={d} onChange={(next) => onChange({ ...d, ...next })} />
           <PinPicker
             id="documents-pins"
             label="Tài liệu ghim trước"
@@ -280,26 +467,147 @@ function SectionFields({
         <div className="space-y-4">
           <TextField id="bs-eyebrow" label="Eyebrow" value={d.eyebrow} onChange={(e) => onChange({ ...d, eyebrow: e.target.value })} />
           <TextField id="bs-title" label="Tiêu đề (phần đầu)" value={d.title} onChange={(e) => onChange({ ...d, title: e.target.value })} />
-          <TextField id="bs-highlight" label="Từ được highlight (phần sau, màu vàng)" value={d.highlight} onChange={(e) => onChange({ ...d, highlight: e.target.value })} />
-          <LinesField id="bs-bullets" label="Bullet points" value={d.bullets} onChange={(bullets) => onChange({ ...d, bullets })} />
-          <CtaEditor label="CTA" value={d.cta} onChange={(v) => onChange({ ...d, cta: v })} />
+          <TextField id="bs-highlight" label="Phần highlight sau tiêu đề (không bắt buộc)" value={d.highlight} onChange={(e) => onChange({ ...d, highlight: e.target.value })} />
+          <div className="space-y-3">
+            <p className="text-sm font-medium" style={{ color: INK }}>
+              Đoạn văn ({d.body.length}/{HOME_BODY_PARAGRAPHS_MAX})
+            </p>
+            {d.body.map((paragraph, index) => (
+              <div key={index} className="flex items-start gap-2">
+                <div className="grow">
+                  <TextAreaField id={`bs-body-${index}`} label={`Đoạn ${index + 1}`} value={paragraph} maxLength={600} onChange={(v) => onChange({ ...d, body: d.body.map((p, i) => (i === index ? v : p)) })} />
+                </div>
+                <button type="button" onClick={() => onChange({ ...d, body: d.body.filter((_, i) => i !== index) })} aria-label={`Xoá đoạn ${index + 1}`} className="mt-7 rounded p-2 hover:bg-red-50" style={{ color: "#DC2626" }}>
+                  <IconTrash className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+            <GhostButton disabled={d.body.length >= HOME_BODY_PARAGRAPHS_MAX} onClick={() => onChange({ ...d, body: [...d.body, ""] })}>
+              <IconPlus className="h-4 w-4" /> Thêm đoạn
+            </GhostButton>
+          </div>
+          <LinesField id="bs-bullets" label="Bullet points (không bắt buộc)" value={d.bullets} onChange={(bullets) => onChange({ ...d, bullets })} />
+          <CtaEditor id="bs-cta" label="CTA chính" value={d.cta} onChange={(v) => onChange({ ...d, cta: v })} />
+          <OptionalCtaEditor id="bs-secondary" label="CTA phụ" value={d.secondaryCta} onChange={(v) => onChange({ ...d, secondaryCta: v })} />
         </div>
       );
     }
-    case "testimonials": {
+    case "steps": {
       const d = section.data;
       return (
-        <ArrayObjectEditor
-          label="Cảm nhận người dùng (nhập tay, về nền tảng)"
-          items={d.items}
-          fields={[
-            { key: "quote", label: "Nội dung cảm nhận" },
-            { key: "name", label: "Tên" },
-            { key: "role", label: "Vai trò / khu vực" },
-          ]}
-          emptyItem={{ quote: "", name: "", role: "" }}
-          onChange={(items) => onChange({ ...d, items })}
-        />
+        <div className="space-y-4">
+          <TextField id="steps-eyebrow" label="Eyebrow (không bắt buộc)" value={d.eyebrow ?? ""} onChange={(e) => onChange({ ...d, eyebrow: optional(e.target.value) })} />
+          <TextField id="steps-title" label="Tiêu đề (H2)" value={d.title} onChange={(e) => onChange({ ...d, title: e.target.value })} />
+          <ItemList
+            label={`Các bước (${HOME_STEPS_MIN}–${HOME_STEPS_MAX})`}
+            items={d.items}
+            min={HOME_STEPS_MIN}
+            max={HOME_STEPS_MAX}
+            itemName="Bước"
+            create={() => ({ id: newId("step"), title: "", description: "" })}
+            onChange={(items) => onChange({ ...d, items })}
+            render={(item, index, update) => (
+              <div className="grid gap-2.5">
+                <TextField id={`step-${item.id}-title`} label="Tiêu đề bước" value={item.title} onChange={(e) => update({ ...item, title: e.target.value })} />
+                <TextAreaField id={`step-${item.id}-desc`} label="Mô tả" rows={2} value={item.description} onChange={(description) => update({ ...item, description })} />
+                <span className="sr-only">Bước {index + 1}</span>
+              </div>
+            )}
+          />
+          <OptionalCtaEditor id="steps-cta" label="Nút cuối section" value={d.cta} onChange={(cta) => onChange({ ...d, cta })} />
+        </div>
+      );
+    }
+    case "community": {
+      const d = section.data;
+      const unconsented = d.testimonials.filter((item) => !item.consentConfirmed).length;
+      return (
+        <div className="space-y-4">
+          <SelectField id="community-mode" label="Chế độ hiển thị" value={d.mode} onChange={(e) => onChange({ ...d, mode: e.target.value as HomeCommunityMode })}>
+            {HOME_COMMUNITY_MODES.map((mode) => (
+              <option key={mode} value={mode}>
+                {HOME_COMMUNITY_MODE_LABELS[mode]}
+              </option>
+            ))}
+          </SelectField>
+          <LiveDataNote>
+            Chế độ chứng thực chỉ hiện mục đã tích “đã có đồng ý”; không còn mục nào (hoặc nhật ký trống) thì tự hiện lời mời bên dưới.
+          </LiveDataNote>
+          <TextField id="community-eyebrow" label="Eyebrow (không bắt buộc)" value={d.eyebrow ?? ""} onChange={(e) => onChange({ ...d, eyebrow: optional(e.target.value) })} />
+          <TextField id="community-title" label="Tiêu đề (H2)" value={d.title} onChange={(e) => onChange({ ...d, title: e.target.value })} />
+          <TextAreaField id="community-description" label="Mô tả (không bắt buộc)" value={d.description ?? ""} onChange={(v) => onChange({ ...d, description: optional(v) })} />
+
+          {unconsented > 0 ? (
+            <Notice tone="warning">
+              {unconsented} lời chứng thực chưa được xác nhận đồng ý — không hiển thị ngoài trang chủ và sẽ chặn Xuất bản cho tới khi tích xác nhận hoặc xoá.
+            </Notice>
+          ) : null}
+          <ItemList
+            label="Lời chứng thực"
+            items={d.testimonials}
+            max={HOME_COMMUNITY_ITEMS_MAX}
+            itemName="Lời chứng thực"
+            create={() => ({ id: newId("testimonial"), quote: "", name: "", role: "", consentConfirmed: false })}
+            onChange={(testimonials) => onChange({ ...d, testimonials })}
+            render={(item, _index, update) => (
+              <div className="grid gap-2.5">
+                <TextAreaField id={`tm-${item.id}-quote`} label="Nội dung (trích nguyên văn)" rows={2} value={item.quote} onChange={(quote) => update({ ...item, quote })} />
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  <TextField id={`tm-${item.id}-name`} label="Tên" value={item.name} onChange={(e) => update({ ...item, name: e.target.value })} />
+                  <TextField id={`tm-${item.id}-role`} label="Vai trò / khu vực" value={item.role} onChange={(e) => update({ ...item, role: e.target.value })} />
+                </div>
+                <label className="flex min-h-11 items-center gap-2 text-sm" style={{ color: item.consentConfirmed ? INK : "#B45309" }}>
+                  <input type="checkbox" className="h-4 w-4" checked={item.consentConfirmed} onChange={(e) => update({ ...item, consentConfirmed: e.target.checked })} />
+                  Người này đã đồng ý cho đăng tên và nội dung
+                </label>
+              </div>
+            )}
+          />
+          <ItemList
+            label="Nhật ký phát triển"
+            items={d.devlog}
+            max={HOME_COMMUNITY_ITEMS_MAX}
+            itemName="Mục nhật ký"
+            create={(): HomeSectionData<"community">["devlog"][number] => ({ id: newId("devlog"), date: "", title: "", summary: "" })}
+            onChange={(devlog) => onChange({ ...d, devlog })}
+            render={(item, _index, update) => (
+              <div className="grid gap-2.5 sm:grid-cols-2">
+                <TextField id={`dl-${item.id}-date`} type="date" label="Ngày" value={item.date} onChange={(e) => update({ ...item, date: e.target.value })} />
+                <TextField id={`dl-${item.id}-title`} label="Tiêu đề" value={item.title} onChange={(e) => update({ ...item, title: e.target.value })} />
+                <div className="sm:col-span-2">
+                  <TextAreaField id={`dl-${item.id}-summary`} label="Tóm tắt" rows={2} value={item.summary} onChange={(summary) => update({ ...item, summary })} />
+                </div>
+                <TextField id={`dl-${item.id}-href`} label="Link “Đọc thêm” (không bắt buộc)" value={item.href ?? ""} onChange={(e) => update({ ...item, href: optional(e.target.value) })} />
+              </div>
+            )}
+          />
+          <TextAreaField id="community-invite" label="Lời mời tham gia thử nghiệm" value={d.invite.text} maxLength={600} onChange={(text) => onChange({ ...d, invite: { ...d.invite, text } })} />
+          <OptionalCtaEditor id="community-invite-cta" label="Nút của lời mời" value={d.invite.cta} onChange={(cta) => onChange({ ...d, invite: { ...d.invite, cta } })} />
+        </div>
+      );
+    }
+    case "faq": {
+      const d = section.data;
+      return (
+        <div className="space-y-4">
+          <TextField id="faq-eyebrow" label="Eyebrow (không bắt buộc)" value={d.eyebrow ?? ""} onChange={(e) => onChange({ ...d, eyebrow: optional(e.target.value) })} />
+          <TextField id="faq-title" label="Tiêu đề (H2)" value={d.title} onChange={(e) => onChange({ ...d, title: e.target.value })} />
+          <ItemList
+            label="Câu hỏi"
+            items={d.items}
+            min={1}
+            max={HOME_FAQ_MAX}
+            itemName="Câu hỏi"
+            create={() => ({ id: newId("faq"), question: "", answer: "" })}
+            onChange={(items) => onChange({ ...d, items })}
+            render={(item, _index, update) => (
+              <div className="grid gap-2.5">
+                <TextField id={`faq-${item.id}-q`} label="Câu hỏi" maxLength={HOME_FAQ_QUESTION_MAX} value={item.question} onChange={(e) => update({ ...item, question: e.target.value })} />
+                <TextAreaField id={`faq-${item.id}-a`} label="Trả lời (văn bản thuần)" maxLength={HOME_FAQ_ANSWER_MAX} value={item.answer} onChange={(answer) => update({ ...item, answer })} />
+              </div>
+            )}
+          />
+        </div>
       );
     }
     case "finalCta": {
@@ -307,32 +615,58 @@ function SectionFields({
       return (
         <div className="space-y-4">
           <TextField id="fc-title" label="Tiêu đề" value={d.title} onChange={(e) => onChange({ ...d, title: e.target.value })} />
-          <TextField id="fc-subtitle" label="Mô tả" value={d.subtitle} onChange={(e) => onChange({ ...d, subtitle: e.target.value })} />
-          <CtaEditor label="CTA" value={d.cta} onChange={(v) => onChange({ ...d, cta: v })} />
+          <TextAreaField id="fc-subtitle" label="Mô tả" value={d.subtitle} onChange={(subtitle) => onChange({ ...d, subtitle })} />
+          <CtaEditor id="fc-cta" label="CTA chính" value={d.cta} onChange={(v) => onChange({ ...d, cta: v })} />
+          <OptionalCtaEditor id="fc-secondary" label="CTA phụ" value={d.secondaryCta} onChange={(v) => onChange({ ...d, secondaryCta: v })} />
+          <label className="flex min-h-11 items-center gap-2 text-sm" style={{ color: INK }}>
+            <input type="checkbox" className="h-4 w-4" checked={d.showSlogan} onChange={(e) => onChange({ ...d, showSlogan: e.target.checked })} />
+            Hiện slogan thương hiệu dưới nút
+          </label>
         </div>
       );
     }
   }
 }
 
+type Status = "NONE" | "DRAFT" | "PUBLISHED";
+
 export function HomeSectionsEditor({
-  pageId,
   live,
-  draft,
+  initialSections,
+  initialHasDraft,
+  initialStatus,
+  initialSeo,
   pinOptions,
 }: {
-  pageId: string;
   live: HomeSection[];
-  draft: HomeSection[] | null;
+  initialSections: HomeSection[];
+  initialHasDraft: boolean;
+  initialStatus: Status;
+  initialSeo: HomeSeoValue;
   pinOptions: HomeEditorPinOptions;
 }) {
-  const [sections, setSections] = useState<HomeSection[]>(draft ?? live);
-  const [hasDraft, setHasDraft] = useState(draft !== null);
+  const [sections, setSections] = useState<HomeSection[]>(initialSections);
+  const [seo, setSeo] = useState<HomeSeoValue>(initialSeo);
+  const [savedSeo, setSavedSeo] = useState<HomeSeoValue>(initialSeo);
+  const [hasDraft, setHasDraft] = useState(initialHasDraft);
+  const [status, setStatus] = useState<Status>(initialStatus);
   const [selectedId, setSelectedId] = useState<string>(sections[0]?.id ?? "");
   const [isPending, startTransition] = useTransition();
-  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [message, setMessage] = useState<{ ok: boolean; text: string; issues?: HomeEditorActionState["issues"] } | null>(null);
 
   const selected = sections.find((s) => s.id === selectedId) ?? sections[0];
+
+  // Cảnh báo mềm brief §8 (không chặn) theo từng section + ô SEO; luật cứng khi xuất bản (báo trước, server kiểm lại).
+  const warningsBySection = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const section of sections) {
+      const rules = findContentClaimWarnings(collectStrings(section.data));
+      if (rules.length > 0) map.set(section.id, rules.map((rule) => rule.message));
+    }
+    return map;
+  }, [sections]);
+  const seoWarnings = useMemo(() => findContentClaimWarnings([seo.seoTitle, seo.seoDescription]).map((rule) => rule.message), [seo]);
+  const blockingIssues = useMemo(() => homePublishIssues(sections), [sections]);
 
   function updateSelectedData(data: HomeSection["data"]) {
     setSections((prev) => prev.map((s) => (s.id === selectedId ? ({ ...s, data } as HomeSection) : s)));
@@ -354,111 +688,221 @@ export function HomeSectionsEditor({
     });
   }
 
+  function showResult(result: HomeEditorActionState, okText: string) {
+    setMessage(result.success ? { ok: true, text: okText } : { ok: false, text: result.error ?? "Thao tác thất bại.", issues: result.issues });
+  }
+
   function saveDraft() {
+    const submittedSeo = seo;
     startTransition(async () => {
-      const result = await saveHomeDraftAction(pageId, sections);
-      setHasDraft(true);
-      setMessage(result.success ? { ok: true, text: "Đã lưu bản nháp." } : { ok: false, text: result.error ?? "Lưu thất bại." });
+      const result = await saveHomeDraftAction(sections, submittedSeo);
+      if (result.success) {
+        setHasDraft(true);
+        setSavedSeo(submittedSeo);
+        if (status === "NONE") setStatus("DRAFT");
+      }
+      showResult(result, "Đã lưu bản nháp.");
     });
   }
 
   function publish() {
+    const submittedSeo = seo;
     startTransition(async () => {
-      const result = await publishHomeAction(pageId, sections);
-      if (result.success) setHasDraft(false);
-      setMessage(result.success ? { ok: true, text: "Đã publish — trang chủ đã cập nhật." } : { ok: false, text: result.error ?? "Publish thất bại." });
+      const result = await publishHomeAction(sections, submittedSeo);
+      if (result.success) {
+        setHasDraft(false);
+        setSavedSeo(submittedSeo);
+        setStatus("PUBLISHED");
+      }
+      showResult(result, "Đã xuất bản — trang chủ đã cập nhật.");
     });
   }
 
   function restoreLive() {
     startTransition(async () => {
-      await restoreLiveHomeAction(pageId);
-      setSections(live);
-      setHasDraft(false);
-      setMessage({ ok: true, text: "Đã khôi phục về bản đang chạy (live)." });
+      const result = await restoreLiveHomeAction();
+      if (result.success) {
+        setSections(live);
+        setSeo(savedSeo);
+        setHasDraft(false);
+      }
+      showResult(result, "Đã khôi phục về bản đang hiển thị.");
     });
   }
 
+  const sectionLabelOf = (id: string) => {
+    const section = sections.find((s) => s.id === id);
+    return section ? HOME_SECTION_LABELS[section.type] : id;
+  };
+
+  const titleWarning = seoLengthWarning("title", seo.seoTitle);
+  const descriptionWarning = seoLengthWarning("description", seo.seoDescription);
+
   return (
-    <div className="mt-6 grid gap-6 lg:grid-cols-[300px_1fr]">
-      <aside className="rounded-2xl border bg-white p-4" style={{ borderColor: "#E5E7EB" }}>
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-xs font-semibold tracking-wide text-gray-500">SECTIONS ({sections.length})</p>
-          {hasDraft ? (
-            <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: "#FFFBEB", color: "#B45309" }}>
-              Có nháp chưa publish
-            </span>
+    <div className="mt-6 space-y-6">
+      {status !== "PUBLISHED" ? (
+        <Notice tone="info">
+          {status === "NONE" ? "Chưa lưu lần nào" : "Chưa xuất bản"} — trang chủ đang hiển thị nội dung mặc định (soạn theo brief nội dung trang chủ).
+        </Notice>
+      ) : null}
+
+      <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
+        <aside className="rounded-2xl border bg-white p-4" style={{ borderColor: LINE }}>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs font-semibold tracking-wide text-gray-500">SECTIONS ({sections.length})</p>
+            {hasDraft ? (
+              <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: "#FFFBEB", color: "#B45309" }}>
+                Có nháp chưa xuất bản
+              </span>
+            ) : null}
+          </div>
+          <div className="space-y-1.5">
+            {sections.map((s, i) => (
+              <div
+                key={s.id}
+                className="flex items-center gap-2 rounded-lg border px-2.5 py-2 transition"
+                style={{
+                  borderColor: s.id === selectedId ? "#D97706" : LINE,
+                  background: s.id === selectedId ? "rgba(217,119,6,0.08)" : "white",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={s.visible}
+                  onChange={() => toggleVisible(s.id)}
+                  className="h-4 w-4 shrink-0 rounded"
+                  title="Hiện/ẩn section"
+                  aria-label={`Hiển thị section ${HOME_SECTION_LABELS[s.type]}`}
+                />
+                <button type="button" onClick={() => setSelectedId(s.id)} className="min-w-0 flex-1 truncate text-left text-sm font-medium" style={{ color: s.visible ? INK : "#9CA3AF" }}>
+                  {HOME_SECTION_LABELS[s.type]}
+                  {warningsBySection.has(s.id) ? <span className="ml-1 text-xs" style={{ color: "#B45309" }}>(cần xác minh)</span> : null}
+                </button>
+                <div className="flex shrink-0 flex-col">
+                  <button type="button" disabled={i === 0} onClick={() => move(s.id, -1)} aria-label={`Đưa ${HOME_SECTION_LABELS[s.type]} lên`} className="text-gray-500 hover:text-gray-700 disabled:opacity-30">
+                    <IconChevronDown className="h-3 w-3 rotate-180" />
+                  </button>
+                  <button type="button" disabled={i === sections.length - 1} onClick={() => move(s.id, 1)} aria-label={`Đưa ${HOME_SECTION_LABELS[s.type]} xuống`} className="text-gray-500 hover:text-gray-700 disabled:opacity-30">
+                    <IconChevronDown className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </aside>
+
+        <section className="rounded-2xl border bg-white p-5 sm:p-6" style={{ borderColor: LINE }}>
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b pb-4" style={{ borderColor: LINE }}>
+            <div>
+              <h2 className="font-[family-name:var(--font-heading)] font-semibold" style={{ color: INK }}>
+                Chỉnh sửa: {selected ? HOME_SECTION_LABELS[selected.type] : ""}
+              </h2>
+              <p className="text-xs text-gray-400">id: {selected?.id}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/" target="_blank" rel="noreferrer">
+                <GhostButton type="button">Xem trang chủ ↗</GhostButton>
+              </Link>
+              <GhostButton onClick={restoreLive} disabled={isPending || !hasDraft}>
+                Khôi phục bản đang hiển thị
+              </GhostButton>
+              <GhostButton onClick={saveDraft} disabled={isPending}>
+                {isPending ? "Đang lưu..." : "Lưu bản nháp"}
+              </GhostButton>
+              <PrimaryButton type="button" onClick={publish} disabled={isPending}>
+                <IconCheckCircle className="h-4 w-4" /> Xuất bản
+              </PrimaryButton>
+            </div>
+          </div>
+
+          {message ? (
+            <div
+              role={message.ok ? "status" : "alert"}
+              className="mb-4 rounded-lg border px-3.5 py-2.5 text-sm"
+              style={message.ok ? { background: "#F0FDF4", borderColor: "#BBF7D0", color: "#166534" } : { background: "#FEF2F2", borderColor: "#FCA5A5", color: "#B91C1C" }}
+            >
+              <p>{message.text}</p>
+              {message.issues && message.issues.length > 1 ? (
+                <ul className="mt-1.5 list-disc pl-5">
+                  {message.issues.map((issue, index) => (
+                    <li key={index}>
+                      {sectionLabelOf(issue.sectionId)}: {issue.message}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
+
+          {blockingIssues.length > 0 ? (
+            <div className="mb-4">
+              <Notice tone="warning">
+                <span className="font-semibold">Chưa xuất bản được ({blockingIssues.length}):</span>
+                <ul className="mt-1 list-disc pl-5">
+                  {blockingIssues.slice(0, 10).map((issue, index) => (
+                    <li key={index}>
+                      <button type="button" className="underline" onClick={() => setSelectedId(issue.sectionId)}>
+                        {sectionLabelOf(issue.sectionId)}
+                      </button>
+                      : {issue.message}
+                    </li>
+                  ))}
+                </ul>
+              </Notice>
+            </div>
+          ) : null}
+
+          {selected && warningsBySection.has(selected.id) ? (
+            <div className="mb-4">
+              <Notice tone="warning">
+                <span className="font-semibold">Cần xác minh trước khi xuất bản (không chặn):</span>
+                <ul className="mt-1 list-disc pl-5">
+                  {warningsBySection.get(selected.id)!.map((text) => (
+                    <li key={text}>{text}</li>
+                  ))}
+                </ul>
+              </Notice>
+            </div>
+          ) : null}
+
+          {selected ? <SectionFields key={selected.id} section={selected} pinOptions={pinOptions} onChange={updateSelectedData} /> : null}
+        </section>
+      </div>
+
+      <section className="rounded-2xl border bg-white p-4 sm:p-6" style={{ borderColor: LINE }} aria-labelledby="home-seo-heading">
+        <h2 id="home-seo-heading" className="font-[family-name:var(--font-heading)] text-lg font-semibold" style={{ color: INK }}>
+          SEO trang chủ
+        </h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Không bắt buộc — để trống dùng tiêu đề/mô tả mặc định. Dùng {"{brand}"} cho tên nền tảng. SEO không có bản nháp: lưu xong là áp dụng ngay nếu trang chủ đã xuất bản.
+        </p>
+        <div className="mt-4 space-y-4">
+          <TextField
+            id="home-seo-title"
+            label={`Tiêu đề SEO (${seo.seoTitle.length}/${SEO_TITLE_MAX})`}
+            value={seo.seoTitle}
+            maxLength={SEO_TITLE_MAX}
+            hint={titleWarning ?? "Khuyến nghị ≤ 60 ký tự."}
+            onChange={(event) => setSeo((prev) => ({ ...prev, seoTitle: event.target.value }))}
+          />
+          <TextAreaField
+            id="home-seo-description"
+            label={`Mô tả SEO (${seo.seoDescription.length}/${SEO_DESCRIPTION_MAX})`}
+            value={seo.seoDescription}
+            maxLength={SEO_DESCRIPTION_MAX}
+            hint={descriptionWarning ?? "Khuyến nghị ≤ 160 ký tự."}
+            onChange={(seoDescription) => setSeo((prev) => ({ ...prev, seoDescription }))}
+          />
+          {seoWarnings.length > 0 ? (
+            <Notice tone="warning">
+              <ul className="list-disc pl-5">
+                {seoWarnings.map((text) => (
+                  <li key={text}>{text}</li>
+                ))}
+              </ul>
+            </Notice>
           ) : null}
         </div>
-        <div className="space-y-1.5">
-          {sections.map((s, i) => (
-            <div
-              key={s.id}
-              className="flex items-center gap-2 rounded-lg border px-2.5 py-2 transition"
-              style={{
-                borderColor: s.id === selectedId ? "#D97706" : "#E5E7EB",
-                background: s.id === selectedId ? "rgba(217,119,6,0.08)" : "white",
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={s.visible}
-                onChange={() => toggleVisible(s.id)}
-                className="h-4 w-4 shrink-0 rounded"
-                title="Hiện/ẩn section"
-                aria-label={`Hiển thị section ${HOME_SECTION_LABELS[s.type]}`}
-              />
-              <button type="button" onClick={() => setSelectedId(s.id)} className="min-w-0 flex-1 truncate text-left text-sm font-medium" style={{ color: "#12213A" }}>
-                {HOME_SECTION_LABELS[s.type]}
-              </button>
-              <div className="flex shrink-0 flex-col">
-                <button type="button" disabled={i === 0} onClick={() => move(s.id, -1)} aria-label={`Đưa ${HOME_SECTION_LABELS[s.type]} lên`} className="text-gray-500 hover:text-gray-700 disabled:opacity-30">
-                  <IconChevronDown className="h-3 w-3 rotate-180" />
-                </button>
-                <button type="button" disabled={i === sections.length - 1} onClick={() => move(s.id, 1)} aria-label={`Đưa ${HOME_SECTION_LABELS[s.type]} xuống`} className="text-gray-500 hover:text-gray-700 disabled:opacity-30">
-                  <IconChevronDown className="h-3 w-3" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </aside>
-
-      <section className="rounded-2xl border bg-white p-5 sm:p-6" style={{ borderColor: "#E5E7EB" }}>
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b pb-4" style={{ borderColor: "#E5E7EB" }}>
-          <div>
-            <h2 className="font-[family-name:var(--font-heading)] font-semibold" style={{ color: "#12213A" }}>
-              Chỉnh sửa: {selected ? HOME_SECTION_LABELS[selected.type] : ""}
-            </h2>
-            <p className="text-xs text-gray-400">id: {selected?.id}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/" target="_blank" rel="noreferrer">
-              <GhostButton type="button">Xem trang chủ ↗</GhostButton>
-            </Link>
-            <GhostButton onClick={restoreLive} disabled={isPending || !hasDraft}>
-              Khôi phục live
-            </GhostButton>
-            <GhostButton onClick={saveDraft} disabled={isPending}>
-              {isPending ? "Đang lưu..." : "Lưu bản nháp"}
-            </GhostButton>
-            <PrimaryButton type="button" onClick={publish} disabled={isPending}>
-              <IconCheckCircle className="h-4 w-4" /> Publish
-            </PrimaryButton>
-          </div>
-        </div>
-
-        {message ? (
-          <p
-            role={message.ok ? "status" : "alert"}
-            className="mb-4 rounded-lg border px-3.5 py-2.5 text-sm"
-            style={message.ok ? { background: "#F0FDF4", borderColor: "#BBF7D0", color: "#16A34A" } : { background: "#FEF2F2", borderColor: "#FCA5A5", color: "#DC2626" }}
-          >
-            {message.text}
-          </p>
-        ) : null}
-
-        {selected ? <SectionFields key={selected.id} section={selected} pinOptions={pinOptions} onChange={updateSelectedData} /> : null}
       </section>
     </div>
   );

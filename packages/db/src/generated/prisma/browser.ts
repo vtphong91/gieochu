@@ -444,3 +444,22 @@ export type TenantDailyStat = Prisma.TenantDailyStatModel
  * giới hạn 5 báo cáo/giờ/IP, xoá (SET NULL) sau 12 tháng bởi cron hằng ngày. Thời gian lưu UTC.
  */
 export type AbuseReport = Prisma.AbuseReportModel
+/**
+ * Model LegalDocument
+ * ADR-050 mục 3 — văn bản pháp lý hệ thống (L1, không `tenantId`, không RLS). Một dòng/văn bản; đợt 1 chỉ `key = "terms"`
+ * (Điều khoản sử dụng, `/phap-ly/dieu-khoan-su-dung`). Ghi chỉ qua Server Action `requireRole("SYSTEM_ADMIN")` + audit.
+ */
+export type LegalDocument = Prisma.LegalDocumentModel
+/**
+ * Model LegalDocumentVersion
+ * ADR-050 mục 3 — phiên bản văn bản. `version` số nguyên tăng dần theo văn bản (hiển thị nhãn ở UI). `contentHtml` đã
+ * qua `sanitizeRichTextHtml` khi lưu; token `{brand}` thay lúc render (escape). Bản đang hiệu lực = PUBLISHED có
+ * `effectiveAt <= now()` mới nhất. Thời gian lưu UTC.
+ */
+export type LegalDocumentVersion = Prisma.LegalDocumentVersionModel
+/**
+ * Model UserLegalAcceptance
+ * ADR-050 mục 3 — người dùng chấp thuận đúng một phiên bản (ghi trong cùng giao dịch tạo tài khoản lúc đăng ký).
+ * L1, append-only với `gieochu_app` (không UPDATE). **Không lưu IP/User-Agent** (chủ dự án chốt). Xoá user → Cascade.
+ */
+export type UserLegalAcceptance = Prisma.UserLegalAcceptanceModel

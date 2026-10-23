@@ -6,7 +6,7 @@ tags:
   - security
   - status/living
 date: 2026-09-26
-updated: 2026-10-17
+updated: 2026-10-23
 author: System Architect
 ---
 
@@ -118,6 +118,15 @@ Không có bảng `SessionRecord` đa thiết bị trong Gieo Chữ. Cơ chế b
   khẩu**) cho tới khi người dùng tự đặt lại qua `/forgot-password`. Không liên quan `UserStatus` (đó là khoá
   admin/email chưa xác minh — hai concern khác nhau).
 
+### 3.4. Chính sách: không xoá user, chỉ khoá (chủ dự án chốt 2026-10-23 — "Bổ sung ADR-050" (a))
+
+- Người dùng vi phạm hoặc ngừng dùng **chỉ bị khoá** (deactivate — `UserStatus = LOCKED`, chặn thao tác, **giữ nguyên dữ liệu**) để tránh xoá nhầm.
+  Không có luồng nghiệp vụ nào xoá dòng `users` ✅ grep `apps/web` (2026-10-23): ngoài test chỉ có script **dev** `apps/web/scripts/demo-reviews.ts`
+  (`demo:clean`, xoá đúng các email demo — [[04-Operations-Runbooks/Dev-Demo-Data-Runbook|Dev-Demo-Data-Runbook]]).
+- FK `ON DELETE CASCADE` từ bảng con tới `users` (vd `user_legal_acceptances`, ADR-050) chỉ phục vụ dọn dữ liệu test, **không** phải đường nghiệp vụ.
+- Hạng mục "xoá tài khoản" trong giai đoạn pháp lý (hoãn ở ADR-050) phải có ADR riêng và không được mâu thuẫn chính sách này mà không có quyết định
+  mới của chủ dự án. Xem [[01-Architecture-Decisions/ADR-035-Menu-Home-Seo-Versioned-Terms|ADR-035 KB (≙ ADR-050)]].
+
 ---
 
 ## 4. Bảo Mật Phiên Đăng Nhập — Cơ Chế Thật (Refresh Token Rotation, Không Phải Multi-Device Session)
@@ -141,7 +150,7 @@ không có bảng `SessionRecord` liệt kê từng thiết bị:
 | :--- | :--- | :--- |
 | `/admin/plans` | CRUD gói dịch vụ, `isFree`/`features` JSON | `createPlanAction`/`updatePlanAction`, `packages/core/src/admin/plan-validation.ts` |
 | `/admin/tenants` | `lockTenantAction`/`unlockTenantAction` (`TenantStatus.LOCKED` ↔ `ACTIVE`, qua `lib/tenant-lock.ts` từ M12a/M12c) — **không** đọc order/customer của tenant. Từ ADR-039: badge "N hoàn tiền quá hạn" = **chỉ số đếm** yêu cầu hoàn tiền quá 7 ngày (`countOverdueRefundRequestsByTenant`), không id đơn/khách | `apps/web/app/admin/tenants/actions.ts`, `apps/web/lib/entitlement-remedy.ts` |
-| `/admin/cms` | CRUD trang CMS marketing, `blocksDraft` (nháp) tách khỏi `blocks` (live). Trang chủ (`slug=home`) dùng schema riêng `homeSectionsSchema`; từ ADR-033 bốn section `stats`/`search`/`coaches`/`documents` lấy dữ liệu thật, CMS chỉ lưu nhãn/`limit`/id ghim (ô chọn ghim `PinPicker`) | `packages/core/src/admin/cms-blocks.ts`, `packages/core/src/admin/home-sections.ts`, `apps/web/lib/home.ts` — xem [[01-Architecture-Decisions/ADR-019-Home-Page-Real-Data-Sold-Count|ADR-019 (≙ ADR-033)]] |
+| `/admin/cms` | CRUD trang CMS marketing, `blocksDraft` (nháp) tách khỏi `blocks` (live). Trang chủ (`slug=home`) dùng schema riêng `homeSectionsSchema`; từ ADR-033 bốn section `stats`/`search`/`coaches`/`documents` lấy dữ liệu thật, CMS chỉ lưu nhãn/`limit`/id ghim (ô chọn ghim `PinPicker`) | `packages/core/src/admin/cms-blocks.ts`, `packages/core/src/admin/home-sections.ts`, `apps/web/lib/home.ts` — xem [[01-Architecture-Decisions/ADR-019-Home-Page-Real-Data-Sold-Count|ADR-019 (≙ ADR-033)]]. Từ ADR-050: thêm slug hệ thống `menu` (`/admin/cms/menu` — menu header/footer), trang chủ thêm section `steps`/`faq`/`community` + ô SEO, editor văn bản pháp lý `/admin/cms/phap-ly` — xem [[02-System-Specs/System-Cms-Menu-Home-Seo-Specs|System-Cms-Menu-Home-Seo-Specs]], [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]] |
 | `/admin/categories` | Danh mục tài liệu (metadata sản phẩm, không phải dữ liệu riêng tư của tenant) | `apps/web/app/admin/categories/*` |
 | `/admin/billing/payment` | Cấu hình `PlatformPaymentConfig` (Manual QR/SePay/MoMo) | xem [[Payment-And-Billing]] |
 | `/admin/billing/invoices` | Duyệt `SubscriptionInvoice` chuyển khoản thủ công | `subscription-billing.ts` |

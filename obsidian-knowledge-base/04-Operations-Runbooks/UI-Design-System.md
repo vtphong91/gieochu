@@ -71,8 +71,8 @@ lập) là nợ kỹ thuật đã biết — nếu tách `apps/web/app/admin` sa
 - **Phần tử sticky trong trang** (ví dụ khối mua ở trang chi tiết sản phẩm) dùng **`top-[112px]`** = header 88px +
   24px, để không chui dưới header.
 - Skip-link "Bỏ qua tới nội dung chính" → `#noi-dung` đặt trước `SiteHeader` ở storefront, chi tiết sản phẩm,
-  checkout; **trang chủ chưa có** skip-link (cũng không có `<main id="noi-dung">`) — đã có trong `docs/BACKLOG.md`.
-  Skip-link hiện nằm ở từng trang, không nằm trong `SiteHeader`.
+  checkout và — từ ADR-050 — **trang chủ** (`app/page.tsx`: skip-link `sr-only focus:not-sr-only` + `<main id="noi-dung" tabIndex={-1}>`) ✅ đọc code
+  2026-10-23; mục BACKLOG tương ứng đã đánh dấu xong. Skip-link hiện nằm ở từng trang, không nằm trong `SiteHeader`.
 - Trang đang dùng: trang chủ (`app/page.tsx`), storefront `/[tenantSlug]`, chi tiết sản phẩm, checkout, Cửa hàng (`app/cua-hang/layout.tsx`,
   ADR-035), Bảng giá (`app/pricing/layout.tsx`, ADR-041 — §18.4). `/p/[slug]` **chưa** chuyển — xem §4.6.
 - **Điều hướng (ADR-035 GĐ2)** ✅ đọc code 2026-10-15:
@@ -85,6 +85,23 @@ lập) là nợ kỹ thuật đã biết — nếu tách `apps/web/app/admin` sa
     đăng nhập — nút "Đăng nhập" ở header bị ẩn dưới `sm`).
   - Footer cột "Khám phá": link **"Cửa hàng"** → `/cua-hang` thay dòng chữ "Tài liệu"; "Bảng giá" thành link có `FOOTER_LINK` (chữ trắng
     60%, hover/focus trắng hẳn + gạch chân, focus ring trắng); "Giáo viên & Coach" vẫn là chữ.
+  - *(Mô tả trên là trạng thái ADR-035; từ ADR-050 mục menu không còn gõ cứng — xem ngay dưới.)*
+
+#### 1.1.1. Menu từ CMS (ADR-050) — header, dropdown, mobile, footer
+
+> Nguồn: báo cáo UI của Phong qua brief Quốc 2026-10-23, Long đối chiếu code working tree (chưa commit). Dữ liệu menu và luật link:
+> [[02-System-Specs/System-Cms-Menu-Home-Seo-Specs|System-Cms-Menu-Home-Seo-Specs]] §2; contract render `SiteMenuView`: [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §26.2.
+
+- **Nguồn dữ liệu:** `SiteHeader`/`SiteFooter` đọc `getSiteMenu()` (CMS slug `menu`, `cache()` theo request); **bố cục** vẫn cố định trong code,
+  chỉ nhãn/đích/thứ tự/ẩn-hiện do System Admin cấu hình. "Đăng nhập" và menu tài khoản vẫn do hệ thống tự hiện ✅.
+- **`apps/web/app/_ui/nav-link.tsx`** ✅: `NavLinkAnchor` (dùng `<Link>` cho đường dẫn nội bộ, `<a>` cho `external`), `NavLinkLabel` (chữ + chỉ báo),
+  `newTabProps`. Mục đang mở có `aria-current="page"`. Link **ngoài / email / tab mới** có icon (`aria-hidden`) kèm chữ ẩn (`sr-only`, vd
+  "(mở trong tab mới)"); tab mới luôn `target="_blank"` + `rel="noopener noreferrer"`.
+- **`apps/web/app/_ui/nav-dropdown.tsx`** (`NavDropdown`, client) ✅: mục nhóm có menu con 1 cấp theo **pattern disclosure của WAI** (không phải
+  `role="menu"`): nút bấm để mở/đóng, `aria-expanded`, **Esc** đóng và trả focus về nút.
+- **Mobile** (`MobileNav`, §14.6): items dựng từ cùng `menu.header.items`; mục có menu con hiển thị dạng **accordion** ✅ `site-header.tsx`, `mobile-nav.tsx`.
+- **Footer** ✅ `site-footer.tsx`: phần tử gốc class `site-footer`; các cột nằm trong `<nav aria-label="Liên kết chân trang">`, **1–4 cột**, tiêu đề cột
+  là **H2**; mô tả (trống = slogan) và dòng bản quyền (`{năm}` theo giờ VN, `{brand}`) đã thay ở server.
 
 ---
 
@@ -912,6 +929,23 @@ Từ ADR-042 (2026-10-17 ✅): `AdminSidebarNav` là lớp cấu hình trên `Si
 * Editor CMS trang chủ: "Xem trang chủ ↗" là `<Link>` bọc `<button>` (phần tử tương tác lồng nhau).
 * ~~Chip/ô tìm trang chủ chưa thành link~~ — ✅ xong ở ADR-035 GĐ2 (§12.3).
 
+### 12.9. Trang chủ theo brief (ADR-050) — section mới, minh hoạ, tương phản ✅ đọc code 2026-10-23 (chưa commit)
+
+> Nguồn: báo cáo UI của Phong qua brief Quốc; Long đối chiếu `app/_home-sections.tsx`, `app/page.tsx`. Dữ liệu/schema section:
+> [[02-System-Specs/System-Cms-Menu-Home-Seo-Specs|System-Cms-Menu-Home-Seo-Specs]] §3.
+
+* **Cách bắt đầu (`steps`):** `<ol>` thật (trình đọc màn hình đọc "danh sách N mục"); số bước hiển thị là trang trí (`aria-hidden`), tiêu đề mỗi
+  bước là **H3** có tiền tố ẩn "Bước n:". Mobile: dòng thời gian dọc (vòng số + vạch nối); `sm+`: thẻ.
+* **Cùng nhau phát triển (`community`)** — 3 chế độ theo `HomeCommunityView` đã resolve ở server: **lời nhận xét** (`<figure>`/`<blockquote>`,
+  **không sao**, chỉ mục đã xác nhận đồng ý), **nhật ký phát triển** (dòng thời gian, ngày trong `<time>`), **lời mời** (chữ + CTA tuỳ chọn).
+* **FAQ:** `<details>/<summary>` gốc (Enter/Space mở, không cần JS); câu hỏi là H3 trong `<summary>`.
+* **Minh hoạ** Hero (khi chưa có ảnh) và "Kêu gọi mở gian hàng": dựng bằng CSS, `aria-hidden`, **không số liệu, không giá, không sao, không chữ**
+  (đã gỡ "500+", "10.000+", "149.000đ", 5 sao cố định).
+* **H1 dự phòng:** khi section hero bị ẩn, trang vẫn có `<h1 className="sr-only">` (ẩn thị giác) — trang luôn có đúng một H1.
+* **Tương phản đã sửa:** chữ eyebrow dùng `color-mix(in srgb, <accent> 72%, black)` (hằng `AMBER_TEXT`); chữ trên nút CTA nền cam (`AMBER`) đổi sang
+  `#241503`.
+* Skip-link + `<main id="noi-dung">`: §1.1.
+
 ---
 
 ## 13. Editor CMS Cửa Hàng (ADR-035 GĐ1) ✅
@@ -992,6 +1026,16 @@ Lỗi luôn hiện dưới ô (`role="alert"`) + `aria-invalid`/`aria-describedb
 * `<main>` lồng: 20 file trong `app/admin/**` (các `page.tsx` + `error.tsx`) vẫn bọc `<main>` riêng trong khi `admin/layout.tsx` đã có
   `<main>` ✅ (grep 2026-10-15); editor Cửa hàng đã dùng `<div>`.
 * Editor CMS trang chủ chưa đạt target 44px và focus ring như editor Cửa hàng.
+
+### 13.7. Editor menu và editor văn bản pháp lý (ADR-050)
+
+* `/admin/cms/menu` (`menu-editor.tsx`) và `/admin/cms/phap-ly` (`legal-editor.tsx`) dùng **pattern §13.3** (thanh trạng thái, Lưu nháp / Xuất bản /
+  Khôi phục, tóm tắt lỗi, `loading.tsx` cùng khung) 🟡 theo báo cáo Phong; cả hai có `loading.tsx` ✅ `ls`.
+* **Đường dẫn lỗi → id ô:** lỗi từ schema/server (`issues[].path` chấm, vd `header.items.0.target`) được ánh xạ sang `id` của ô nhập để nút trong khung
+  tóm tắt nhảy focus đúng chỗ ✅ `menu-editor.tsx` (editor pháp lý 🟡 — chưa thấy hàm ánh xạ khi grep, theo báo cáo Phong).
+* Editor pháp lý: ô tích "Đã rà soát pháp lý phiên bản này" bị `disabled` khi còn thay đổi chưa lưu (nhãn thêm "(lưu nháp trước)"); ô
+  `datetime-local` "Ngày giờ hiệu lực (giờ Việt Nam)"; Xuất bản và Lưu trữ hỏi `window.confirm` (lưu trữ bản đang hiệu lực có cảnh báo 404) ✅.
+  Quy trình: [[04-Operations-Runbooks/Legal-Terms-Publishing-Runbook|Legal-Terms-Publishing-Runbook]].
 
 ---
 
@@ -1810,7 +1854,38 @@ Form vẫn nằm ở `orders/_ui/order-filter-form.tsx` (trang Khách hàng impo
 
 ---
 
-## 22. Tài Liệu Tham Chiếu & Liên Kết
+## 22. Trang Văn Bản Pháp Lý `/phap-ly/[slug]` + Form Đăng Ký (ADR-050) ✅ đọc code 2026-10-23 (chưa commit)
+
+> Nguồn: báo cáo UI của Phong qua brief Quốc + "Bổ sung ADR-050 lần 2" (`docs/DECISIONS.md`). Nghiệp vụ: [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]].
+
+### 22.1. Bố cục
+
+* `container-page` + lưới `lg:grid-cols-[220px_minmax(0,768px)] lg:justify-center` (cột đọc = độ rộng `container-prose`) — **hợp ADR-024**: khung
+  trang vẫn là utility chuẩn, chỉ cột nội dung giới hạn độ rộng đọc; **không** thêm `container-doc` ("Bổ sung ADR-050 lần 2"). Không có mục lục →
+  lưới một cột `minmax(0,768px)`.
+* **Mục lục dựng từ H2:** `lg+` là cột trái 220px, `<nav aria-labelledby="muc-luc">` **dính** `sticky top-[112px]` (header 88px + 24px, §1.1), cuộn riêng
+  khi dài; dưới `lg` là `<details>` đóng sẵn ngay dưới dòng meta.
+* Meta: "Phiên bản n.0 · Có hiệu lực từ dd/mm/yyyy" (giờ VN).
+
+### 22.2. `buildLegalToc` (`app/phap-ly/[slug]/_ui/legal-toc.ts`)
+
+* Đọc HTML **đã sanitize** (sau đó mới thay `{brand}`), **hạ mọi `<h1>` trong nội dung xuống `<h2>`** (trang chỉ có một H1 là tiêu đề văn bản), gắn `id`
+  slug không dấu cho từng `<h2>` (chống trùng bằng hậu tố, rỗng → `muc-n`; id chỉ `[a-z0-9-]` nên chèn HTML an toàn), trả danh sách mục cho TOC (nhãn
+  dạng text, React escape).
+
+### 22.3. Nội dung và in
+
+* Class nội dung `.gieochu-legal-content` (`globals.css`: nhịp H2, đoạn, danh sách).
+* **In:** `@media print` ẩn `.site-header`, `.site-footer`, `.no-print` (mục lục) khi trang có `.legal-doc`.
+
+### 22.4. Form đăng ký
+
+* Có bản Điều khoản đang hiệu lực → nhãn checkbox chấp thuận chứa link "Điều khoản sử dụng" tới `/phap-ly/dieu-khoan-su-dung`, **mở tab mới**
+  (`target="_blank"` + `rel="noopener noreferrer"` + chữ ẩn "(mở trong tab mới)"); chưa có → chữ cũ, không link ✅ `register-form.tsx`.
+
+---
+
+## 23. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * `apps/web/app/admin/_ui/kit.tsx`, `apps/web/app/admin/_ui/kit-interactive.tsx`, `apps/web/app/admin/_ui/icons.tsx`
@@ -1837,6 +1912,7 @@ Form vẫn nằm ở `orders/_ui/order-filter-form.tsx` (trang Khách hàng impo
 * `apps/web/app/studio/[tenantSlug]/(tong-quan)/**` (gồm `_ui/dashboard-range-picker.tsx`), `apps/web/app/admin/_ui/{stats-chart,date-range-picker}.tsx`, `apps/web/app/globals.css` (`.range-picker`) (§19) · [[02-System-Specs/Studio-Dashboard-Specs|Studio-Dashboard-Specs]] ([Studio-Dashboard-Specs.md](../02-System-Specs/Studio-Dashboard-Specs.md)) · [[01-Architecture-Decisions/ADR-029-Studio-Dashboard-Period-Gross-Net-Revenue|ADR-029 (≙ ADR-043)]]
 * `apps/web/app/studio/[tenantSlug]/orders/**` (gồm `_ui/{order-list,order-filter-form,order-row-actions,order-detail-parts,order-format,order-skeleton}.ts(x)`), `apps/web/app/admin/_ui/{kit,link-pagination}.tsx` (§20) · [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]] ([Studio-Orders-Specs.md](../02-System-Specs/Studio-Orders-Specs.md)) · [[01-Architecture-Decisions/ADR-031-Studio-Orders-List-Detail-Upgrade|ADR-031 (≙ ADR-046)]]
 * `apps/web/app/studio/[tenantSlug]/customers/**` (gồm `_ui/{customer-list,customer-row-actions,customer-format,customer-skeleton}.ts(x)`), `apps/web/app/studio/[tenantSlug]/orders/_ui/order-filter-form.tsx` (prop `label`) (§21) · [[02-System-Specs/Studio-Customers-Specs|Studio-Customers-Specs]] ([Studio-Customers-Specs.md](../02-System-Specs/Studio-Customers-Specs.md)) · [[01-Architecture-Decisions/ADR-033-Studio-Customers-List-Upgrade|ADR-033 (≙ ADR-048)]]
+* `apps/web/app/_ui/{nav-link,nav-dropdown,mobile-nav,site-header,site-footer}.tsx` (§1.1.1), `apps/web/app/_home-sections.tsx` (§12.9), `apps/web/app/admin/cms/{menu,phap-ly}/*` (§13.7), `apps/web/app/phap-ly/[slug]/{page.tsx,_ui/legal-toc.ts}` (§22) · [[02-System-Specs/System-Cms-Menu-Home-Seo-Specs|System-Cms-Menu-Home-Seo-Specs]] · [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]] · [[01-Architecture-Decisions/ADR-035-Menu-Home-Seo-Versioned-Terms|ADR-035 (≙ ADR-050)]]
 * [[04-Operations-Runbooks/README|Quay lại danh mục Operations Runbooks]]
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

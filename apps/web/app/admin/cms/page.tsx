@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { HOME_CMS_SLUG, isSystemCmsSlug, PRICING_CMS_SLUG, SHOP_CMS_SLUG } from "@gieochu/core";
+import { HOME_CMS_SLUG, isSystemCmsSlug, MENU_CMS_SLUG, PRICING_CMS_SLUG, SHOP_CMS_SLUG } from "@gieochu/core";
 import { getPrismaClient } from "@gieochu/db";
 import { requireAdminAccess } from "../../../lib/page-guards";
 import { AdminPageHeader, Badge, DataTable, EmptyState, PrimaryButton, Td, Tr } from "../_ui/kit";
@@ -13,6 +13,7 @@ function publicPathOf(slug: string): string {
   if (slug === HOME_CMS_SLUG) return "/";
   if (slug === SHOP_CMS_SLUG) return "/cua-hang";
   if (slug === PRICING_CMS_SLUG) return "/pricing";
+  if (slug === MENU_CMS_SLUG) return "(header/footer mọi trang)";
   return `/p/${slug}`;
 }
 
@@ -21,6 +22,7 @@ function editPathOf(slug: string): string | null {
   if (slug === HOME_CMS_SLUG) return "/admin/cms/home";
   if (slug === SHOP_CMS_SLUG) return "/admin/cms/shop";
   if (slug === PRICING_CMS_SLUG) return "/admin/cms/pricing";
+  if (slug === MENU_CMS_SLUG) return "/admin/cms/menu";
   return isSystemCmsSlug(slug) ? null : `/admin/cms/${slug}`;
 }
 

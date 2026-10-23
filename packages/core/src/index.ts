@@ -230,9 +230,94 @@ export {
   DEFAULT_HOME_SEARCH_DATA,
   DEFAULT_HOME_COACHES_TEXT,
   DEFAULT_HOME_DOCUMENTS_TEXT,
+  DEFAULT_HOME_SEO,
+  defaultHomeSections,
+  withMissingHomeSections,
+  replaceBrandToken,
+  resolveCommunityView,
+  homePublishIssues,
+  HOME_SECTION_TYPES,
+  HOME_COMMUNITY_MODES,
+  HOME_COMMUNITY_MODE_LABELS,
+  HOME_MIN_TO_SHOW_DEFAULT,
 } from "./admin/home-sections";
-export type { HomeSection, HomeSectionType, HomeStatKey } from "./admin/home-sections";
-export { HOME_CMS_SLUG, isSystemCmsSlug, PRICING_CMS_SLUG, SHOP_CMS_SLUG, SYSTEM_CMS_SLUGS } from "./admin/cms-slugs";
+export type {
+  HomeCommunityMode,
+  HomeCommunityView,
+  HomeCta,
+  HomePublishIssue,
+  HomeSection,
+  HomeSectionData,
+  HomeSectionType,
+  HomeStatKey,
+} from "./admin/home-sections";
+export {
+  HOME_CMS_SLUG,
+  isSystemCmsSlug,
+  MENU_CMS_SLUG,
+  PRICING_CMS_SLUG,
+  SHOP_CMS_SLUG,
+  SYSTEM_CMS_SLUGS,
+} from "./admin/cms-slugs";
+export {
+  applyCopyrightTokens,
+  DEFAULT_HEADER_CTA_LABEL,
+  DEFAULT_HEADER_CTA_LABEL_FREE,
+  defaultSiteMenu,
+  NAV_PAGE_LABELS,
+  NAV_PAGE_PATHS,
+  navPagePath,
+  navTargetError,
+  parseSiteMenu,
+  resolveNavLinkHref,
+  siteMenuSchema,
+} from "./admin/site-menu";
+export type { NavCta, NavFooterColumn, NavItem, NavLink, NavLinkKind, NavPageKey, SiteMenu } from "./admin/site-menu";
+export {
+  cmsSeoSchema,
+  SEO_DESCRIPTION_MAX,
+  SEO_DESCRIPTION_RECOMMENDED_MAX,
+  SEO_TITLE_MAX,
+  SEO_TITLE_RECOMMENDED_MAX,
+  seoLengthWarning,
+} from "./admin/seo";
+export type { CmsSeoInput } from "./admin/seo";
+export {
+  collectStrings,
+  CONTENT_CLAIM_RULES,
+  findContentClaimWarnings,
+  isSafeEmailAddress,
+  isSafeExternalUrl,
+  isSafeInternalPath,
+  isSafePublicHref,
+  UNSAFE_HREF_MESSAGE,
+} from "./admin/cms-content-guard";
+export type { ContentClaimRule } from "./admin/cms-content-guard";
+export { escapeHtmlText, replaceBrandTokenInHtml } from "./content/brand-token";
+export {
+  isLegalDocumentKey,
+  isLegalReviewStatus,
+  LEGAL_BASE_PATH,
+  LEGAL_CHANGE_SUMMARY_MAX,
+  LEGAL_CONTENT_MAX,
+  LEGAL_DOCUMENT_DEFS,
+  LEGAL_DOCUMENT_KEYS,
+  LEGAL_EFFECTIVE_BACKDATE_TOLERANCE_MS,
+  LEGAL_ERROR_CODES,
+  LEGAL_PLACEHOLDER_MARKER,
+  LEGAL_PUBLISH_BLOCKER_MESSAGES,
+  LEGAL_REVIEW_STATUS_LABELS,
+  LEGAL_REVIEW_STATUSES,
+  LEGAL_VERSION_STATUS_LABELS,
+  LEGAL_VERSION_STATUSES,
+  legalDocumentPath,
+  legalKeyFromSlug,
+  legalPublishBlockers,
+  legalVersionLabel,
+  parseVnDateTimeLocal,
+  pickEffectiveLegalVersion,
+} from "./legal/legal-document";
+export type { LegalDocumentKey, LegalPublishBlocker, LegalReviewStatusValue, LegalVersionStatusValue } from "./legal/legal-document";
 export type { SystemCmsSlug } from "./admin/cms-slugs";
 export {
   defaultShopSectionData,

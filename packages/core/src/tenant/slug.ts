@@ -26,6 +26,8 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "tim-kiem",
   "giao-vien",
   "kham-pha",
+  // ADR-050 mục 3: văn bản pháp lý `/phap-ly/{slug}` — route tĩnh cấp gốc thắng `app/[tenantSlug]`.
+  "phap-ly",
 ]);
 
 export function isReservedSlug(slug: string): boolean {

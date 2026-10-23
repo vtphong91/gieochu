@@ -10,6 +10,7 @@ tags:
 date: 2026-10-15
 decider: vtphong91
 status: Accepted (Chốt — Áp dụng chính thức)
+updated: 2026-10-23
 ---
 
 # 🏛️ ADR-019: Trang Chủ Hệ Thống Dùng Dữ Liệu Thật (Số Liệu, Danh Mục, Giáo Viên, Tài Liệu Nổi Bật, Số Đã Bán)
@@ -81,7 +82,14 @@ tạo); dòng đơn FULFILLED thiếu entitlement vẫn tính đã bán; tính l
   "Đã bán" (thẻ storefront tenant chưa render trường này) ✅.
 
 ### 4.2. Schema CMS trang chủ (`@gieochu/core/home-sections` → `packages/core/src/admin/home-sections.ts`) ✅
-* 9 loại section: `hero`, `stats`, `search`, `benefits`, `coaches`, `documents`, `becomeSeller`, `testimonials`, `finalCta`.
+
+> [!NOTE] Cập nhật ADR-050 (2026-10-23)
+> Danh sách section dưới đây là trạng thái ADR-033. Từ ADR-050: **11 loại** — thêm `steps`, `faq`, `community` (thay `testimonials`; dữ liệu
+> `testimonials` cũ được parse sang `community` với `consentConfirmed = false` nên tự ẩn), thêm `minToShow` cho `coaches`/`documents`, CTA phụ,
+> nội dung mặc định khi chưa xuất bản, ô SEO. Xem [[02-System-Specs/System-Cms-Menu-Home-Seo-Specs|System-Cms-Menu-Home-Seo-Specs]] §3 và
+> [[01-Architecture-Decisions/ADR-035-Menu-Home-Seo-Versioned-Terms|ADR-035 KB (≙ ADR-050)]].
+
+* 9 loại section (trước ADR-050): `hero`, `stats`, `search`, `benefits`, `coaches`, `documents`, `becomeSeller`, `testimonials`, `finalCta`.
   4 section dữ liệu thật:
 
   | Section | `data` lưu trong CMS |

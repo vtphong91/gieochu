@@ -47,6 +47,10 @@ viên.
   `CRON_SECRET` ≥ 32 ký tự, SQL dọn job `docs/ops/2026-10-16-pgboss-cleanup.sql` do chủ dự án chạy, `worker.ts` không deploy), 5 sự cố đã gặp (gồm 500 production 2026-10-15), rủi ro client
   Prisma commit lệch schema, §9 một DB duy nhất (ADR-034) — migration expand → contract, kỷ luật thao tác DB, dọn demo trước go-live; §9.5 migration Cửa hàng ADR-035 (`unaccent`) đã áp trước deploy + quét slug dành riêng; §9.6 migration Audit log M12a (ADR-037) đã áp
   2026-10-16, quyền chỉ-INSERT, dòng audit do test tạo không xoá được; cron thêm bước `audit.purge` (§6.1); §9.7 migration Thống kê M12b (`tenant_daily_stats`) đã áp 2026-10-16, cron thêm bước `stats.aggregate`, bấm Run cron sau deploy để backfill (§6.2 bước 6); §9.8 migration M12c + ADR-039 đã áp 2026-10-16 — **bắt buộc trước code** (code lên trước → P2022/500), cron thêm bước `abuse_report.ip_purge`, sau deploy email đơn hàng `order_paid`/`new_sale` gửi thật lần đầu, checkout chặn `PRODUCT_UNAVAILABLE`. §9.9 migration ADR-041 (`EMAIL_CHANGE`/`newEmail` — bắt buộc trước code; hoàn tiền gói) đã áp 2026-10-17, deploy được; §7.6 lỗi build `workStore` ở máy dev. Bản ADR-032/033 chưa deploy ❓ ([Deploy-Vercel-Runbook.md](./Deploy-Vercel-Runbook.md)).
+- `[[Legal-Terms-Publishing-Runbook]]`: Xuất bản Điều khoản sử dụng (ADR-050) — điều kiện trước (migration, rà soát pháp lý thật, một DB dùng chung),
+  5 bước tạo nháp → soạn/rà soát → điền placeholder `[[CẦN XÁC NHẬN` → tích "Đã rà soát pháp lý" → xuất bản kèm ngày hiệu lực (giờ VN, không lùi);
+  ⚠️ bản đầu tiên làm form đăng ký bắt đầu ghi chấp thuận; phát hành bản mới, lưu trữ bản cũ, sửa sai sau xuất bản
+  ([Legal-Terms-Publishing-Runbook.md](./Legal-Terms-Publishing-Runbook.md)). Migration tương ứng: `Deploy-Vercel-Runbook` §9.11.
 - `[[Dev-Demo-Data-Runbook]]`: **Công cụ chỉ cho dev** — script `apps/web/scripts/demo-reviews.ts`
   (`ALLOW_DEMO_SEED=1 pnpm --filter @gieochu/db run demo:seed|demo:clean`): chốt an toàn, dữ liệu demo đánh giá trên tenant
   `phongweb` (3 sản phẩm, 5 khách, 11 đơn FULFILLED, 9 đánh giá), cách nhận diện và dọn

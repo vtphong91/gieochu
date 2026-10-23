@@ -9,6 +9,8 @@
 // image-host unit tests; image quota signature refusal + register folder check integration tests).
 // ADR-037 mục 6 (M12): integration cap 53 -> 55 for exactly the 2 M12 tests of §9 (audit log append-only — M12a;
 // daily stats without personal data + admin dashboard — M12b). Unit cap stays 94.
+// ADR-050 (owner-approved +1/+2): unit 94 -> 95 (CMS menu/home-sections parse + unsafe links), integration 55 -> 57
+// (legal acceptance recorded per published version + publish blocked while placeholders remain).
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
@@ -51,10 +53,10 @@ const integrationFiles = walk(join(ROOT, "apps", "web", "tests", "integration"),
 const unitCount = countCases(unitFiles);
 const integrationCount = countCases(integrationFiles);
 
-console.log(`Jest unit test cases (packages/*):        ${unitCount} / 94`);
-console.log(`Vitest integration test cases (apps/web):  ${integrationCount} / 55`);
+console.log(`Jest unit test cases (packages/*):        ${unitCount} / 95`);
+console.log(`Vitest integration test cases (apps/web):  ${integrationCount} / 57`);
 
-if (unitCount > 94 || integrationCount > 55) {
+if (unitCount > 95 || integrationCount > 57) {
   console.error("\nTest count exceeds the target in docs/GIEOCHU_PROMPT_MVP_PHASE1.md §9 — check before adding more.");
   process.exitCode = 1;
 }

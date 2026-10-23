@@ -52,6 +52,9 @@ author: System Architect
 > có thể là `/_s/<vé>` khi bật gateway — **shape JSON không đổi**.
 > Đợt ADR-048 (Khách hàng Studio, 2026-10-23 đối chiếu, đã commit `dd349b9`, deploy ❓) **không thêm `route.ts`** (đếm lại 2026-10-23 trên working tree trước khi pull nhánh vuong: vẫn 22 dưới `/api`, 23 toàn
 > app ✅; sau khi gộp ADR-045 Storage Gateway: **23 dưới `/api`, 24 toàn app** ✅ đếm lại 2026-10-23) — loader + 1 Server Action ghi chú khách + subpath `@gieochu/core/customer-list` ở §24; tham số `?khach=` trang Đơn hàng ở §23.2.
+> Đợt ADR-050 đợt 1 (menu CMS, trang chủ + SEO, Điều khoản có phiên bản — 2026-10-23, chưa commit) **không thêm `route.ts`** (đếm lại 2026-10-23: vẫn
+> **23 dưới `/api`, 24 toàn app** ✅) — `POST /api/auth/register` thêm `termsVersionId` + lỗi 409 `LEGAL_TERMS_CHANGED` (§3.1); Server Action/loader
+> menu, trang chủ (đổi chữ ký), văn bản pháp lý ở §26; §26 cũ (Liên kết) nay là §27.
 
 ## 1. Quy Ước Chung
 
@@ -99,7 +102,7 @@ Không có tầng "Store Factory" hay middleware auth toàn cục cho API — m�
 
 | Method | Endpoint | Truy cập | Mô tả |
 | :-- | :-- | :-- | :-- |
-| `POST` | `/api/auth/register` | Public | Tạo `User` (status `PENDING`) + `UserProfile`, phát `VerificationToken` (`EMAIL_VERIFY`), gửi email kích hoạt qua `sendEmailNow()`. Không tạo `Tenant` — trở thành tenant là hành động riêng, tự nguyện qua `/studio`. |
+| `POST` | `/api/auth/register` | Public | Tạo `User` (status `PENDING`) + `UserProfile`, phát `VerificationToken` (`EMAIL_VERIFY`), gửi email kích hoạt qua `sendEmailNow()`. Không tạo `Tenant` — trở thành tenant là hành động riêng, tự nguyện qua `/studio`. Từ ADR-050: body thêm `termsVersionId` tuỳ chọn, ghi chấp thuận Điều khoản trong cùng transaction, lỗi mới 409 `LEGAL_TERMS_CHANGED` — §3.1. |
 | `POST` | `/api/auth/login` | Public | Xác thực email/mật khẩu, rate-limit 10 lần/15 phút theo email. Sai 5 lần liên tiếp (chỉ tính khi email tồn tại) → đặt `passwordResetRequired=true`, khoá đăng nhập tới khi qua `/forgot-password`. Thành công: set cookie `at`/`rt`. |
 | `POST` | `/api/auth/logout` | Public (đọc cookie `rt` nếu có) | Revoke toàn bộ `RefreshToken` cùng `familyId`, xoá cookie `at`/`rt`. |
 | `POST` | `/api/auth/refresh` | Public (bắt buộc cookie `rt` hợp lệ) | Xoay refresh token (rotate-on-use); phát hiện **reuse** token đã bị thay thế → revoke cả `familyId`, trả `401 AUTH_REFRESH_REUSE`. |
@@ -107,6 +110,33 @@ Không có tầng "Store Factory" hay middleware auth toàn cục cho API — m�
 | `POST` | `/api/auth/resend-verification` | Public | Gửi lại token kích hoạt nếu `User.status === PENDING`; rate-limit 3 lần/giờ theo email; phản hồi giống nhau bất kể email tồn tại hay không (chống dò email). |
 | `POST` | `/api/auth/forgot-password` | Public | Luôn trả `200` với thông báo chung (chống dò email); nếu email tồn tại và `status=ACTIVE`, phát `VerificationToken` (`PASSWORD_RESET`) và gửi email. Rate-limit 5 lần/giờ theo email. |
 | `POST` | `/api/auth/reset-password` | Public | Tiêu thụ `VerificationToken` (`PASSWORD_RESET`), đặt mật khẩu mới, reset `failedLoginAttempts`/`passwordResetRequired`, **revoke mọi `RefreshToken`** đang hoạt động của user. |
+
+### 3.1. `POST /api/auth/register` — chấp thuận Điều khoản theo phiên bản (ADR-050) ✅ đọc `git diff` 2026-10-23
+
+Body (zod `registerSchema`):
+
+```ts
+{
+  email: string;            // email hợp lệ
+  password: string;         // kiểm thêm isValidPassword → 400 WEAK_PASSWORD
+  fullName: string;         // trim, ≥ 1
+  consent: true;            // bắt buộc như cũ
+  accountType: "TENANT" | "CUSTOMER";
+  termsVersionId?: string;  // MỚI — trim, 1–64; id phiên bản Điều khoản người dùng thấy trên form
+}
+```
+
+- Server **tự** xác định bản Điều khoản đang hiệu lực (`getEffectiveLegalVersion("terms", now)`); `termsVersionId` chỉ dùng để phát hiện Điều khoản
+  vừa đổi giữa lúc mở form và lúc gửi.
+- Không có bản hiệu lực → đăng ký như trước ADR-050 (chỉ `UserProfile.consentAt`), `termsVersionId` (nếu có) bị bỏ qua.
+- Có bản hiệu lực + `termsVersionId` **khác** bản đó → **`409 { error: { code: "LEGAL_TERMS_CHANGED", message: "Điều khoản sử dụng vừa được cập
+  nhật. Vui lòng tải lại trang, đọc bản mới rồi đăng ký lại.", requestId } }`**. Form hiện `error.message` ✅ `register-form.tsx`.
+- Có bản hiệu lực + không gửi `termsVersionId` (form cũ còn cache) → ghi chấp thuận bản đang hiệu lực.
+- Ghi `user_legal_acceptances { userId, versionId, acceptedAt = now }` **trong cùng `prisma.$transaction`** tạo `User` + `UserProfile` + `VerificationToken`.
+  Không lưu IP/User-Agent.
+- Thứ tự kiểm: rate-limit → email đã đăng ký (409 `EMAIL_ALREADY_REGISTERED`) → hash mật khẩu → xác định phiên bản Điều khoản → transaction.
+  Response thành công không đổi (`201 { message }`).
+- Trang `app/(auth)/register/page.tsx` truyền `terms = { versionId, href: "/phap-ly/dieu-khoan-su-dung", title } | null` cho `RegisterForm`.
 
 ## 4. Tài khoản khách hàng (`/api/me`) — 1 route
 
@@ -507,7 +537,7 @@ quyết định: [[01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First|
 
 ### 15.3. `@gieochu/core` — CMS slug và subpath `@gieochu/core/shop-sections`
 
-* `packages/core/src/admin/cms-slugs.ts` (re-export từ `@gieochu/core`): `SYSTEM_CMS_SLUGS` (`["home","shop"]`), `HOME_CMS_SLUG`,
+* `packages/core/src/admin/cms-slugs.ts` (re-export từ `@gieochu/core`): `SYSTEM_CMS_SLUGS` (`["home","shop"]` lúc ADR-035; nay `["home","shop","pricing","menu"]` — §26), `HOME_CMS_SLUG`,
   `SHOP_CMS_SLUG`, `isSystemCmsSlug(slug)`, kiểu `SystemCmsSlug`.
 * Subpath `@gieochu/core/shop-sections` (`packages/core/package.json` exports → `src/admin/shop-sections.ts`) — chỉ zod + helper
   thuần, **client component phải import qua subpath này** (barrel `@gieochu/core` kéo code server-only): `shopSectionSchema`,
@@ -1139,9 +1169,95 @@ Trình duyệt **không** thấy các response này trực tiếp: theo file m�
 
 ---
 
-## 26. Tài Liệu Tham Chiếu & Liên Kết
+## 26. CMS menu, CMS trang chủ + SEO, văn bản pháp lý (ADR-050 đợt 1) ✅
+
+Đối chiếu working tree 2026-10-23 (chưa commit). **Không thêm `route.ts`** — đếm lại: 23 dưới `/api`, 24 toàn app ✅; route có sẵn đổi contract:
+`POST /api/auth/register` (§3.1). Nghiệp vụ: [[02-System-Specs/System-Cms-Menu-Home-Seo-Specs|System-Cms-Menu-Home-Seo-Specs]],
+[[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]]; quyết định [[01-Architecture-Decisions/ADR-035-Menu-Home-Seo-Versioned-Terms|ADR-035 KB (≙ ADR-050)]].
+
+### 26.1. Server Actions — menu (`app/admin/cms/menu/actions.ts`)
+
+| Action | Guard | Input → Output |
+| :-- | :-- | :-- |
+| `saveMenuDraftAction(menu)` | `requireRole("SYSTEM_ADMIN")` | `menu: unknown` validate bằng `siteMenuSchema` → ghi `blocksDraft` (chưa có dòng → tạo `DRAFT`, `blocks` = `defaultSiteMenu()`, title "Menu header/footer") |
+| `publishMenuAction(menu)` | như trên | validate → `blocks` = menu, `blocksDraft = NULL`, `status = PUBLISHED`; `revalidatePath("/", "layout")` |
+| `restoreLiveMenuAction()` | như trên | xoá `blocksDraft`; chưa có dòng → không làm gì (không audit) |
+
+Cả 3 trả `MenuEditorActionState { success?, error?, issues?: { path, message }[] }` (`path` chấm trong menu, tối đa 20); `AppError` `expose` → `{ error }`,
+lỗi khác ném lại. Audit `MENU_CMS_UPDATED` `{ operation: "SAVE_DRAFT" | "PUBLISH" | "RESTORE_LIVE" }`, `targetType: "CmsPage"`, `targetId: "menu"`.
+
+### 26.2. Loader menu (`apps/web/lib/site-menu.ts`) — contract render cho UI
+
+| Export | Ghi chú |
+| :-- | :-- |
+| `getSiteMenu(): Promise<SiteMenuView>` | `cache()` theo request — dùng ở `SiteHeader` + `SiteFooter` |
+| `getPublishedSiteMenu(): Promise<SiteMenu>` | `cache()`; PUBLISHED hoặc mặc định (CTA mặc định có chữ "miễn phí" chỉ khi có `Plan` `isActive && isFree`) |
+| `resolveSiteMenu(menu, { brandName, slogan, year })` | Thuần — dùng chung trang công khai và xem trước |
+| `currentDisplayYear(now?)` | Năm theo `DISPLAY_TIME_ZONE` |
+| `getSiteMenuEditorData(): Promise<SiteMenuEditorData>` | `{ menu (nháp ?? live ?? mặc định), live, hasDraft, status: "NONE"\|"DRAFT"\|"PUBLISHED", updatedAt }` — caller gác SYSTEM_ADMIN |
+
+```ts
+interface SiteNavLinkView { id: string; label: string; href: string; newTab: boolean; external: boolean } // external = https:// hoặc mailto:
+interface SiteNavItemView { id: string; label: string; href: string | null; newTab: boolean; external: boolean; children: SiteNavLinkView[] } // href null = mục nhóm
+interface SiteFooterColumnView { id: string; title: string; links: SiteNavLinkView[] }
+interface SiteMenuView {
+  header: { items: SiteNavItemView[]; cta: SiteNavLinkView | null };   // cta null = ẩn
+  footer: { description: string; columns: SiteFooterColumnView[]; copyright: string }; // đã thay {năm}/{brand}
+}
+```
+
+Subpath client `@gieochu/core/site-menu`: `siteMenuSchema`, `navLinkSchema`, `navItemSchema`, `navCtaSchema`, `navFooterColumnSchema`, `parseSiteMenu`,
+`defaultSiteMenu`, `resolveNavLinkHref`, `navTargetError`, `navPagePath`, `applyCopyrightTokens`, `NAV_*` (giới hạn, `NAV_LINK_KINDS`,
+`NAV_LINK_KIND_LABELS`, `NAV_PAGE_PATHS`, `NAV_PAGE_LABELS`), `DEFAULT_HEADER_CTA_LABEL(_FREE)`, `MENU_CMS_SLUG`.
+Subpath `@gieochu/core/cms-content-guard`: `isSafePublicHref`, `isSafeInternalPath`, `isSafeExternalUrl`, `isSafeEmailAddress`, `UNSAFE_HREF_MESSAGE`,
+`SAFE_HREF_MAX_LENGTH`, `CONTENT_CLAIM_RULES`, `findContentClaimWarnings`, `normalizeForClaims`, `collectStrings`.
+
+### 26.3. Server Actions + loader — trang chủ (`app/admin/cms/home-editor/actions.ts`, `apps/web/lib/home-cms.ts`)
+
+| Action / hàm | Input → Output |
+| :-- | :-- |
+| `saveHomeDraftAction(sections, seo)` | **Đổi chữ ký** (HEAD: `(pageId, sections)` theo id dòng; nay theo slug `home` bằng `upsert`, bỏ `pageId`, thêm `seo`) — `seo = { seoTitle, seoDescription }` qua `cmsSeoSchema`; sections qua `homeSectionsSchema` → ghi `blocksDraft` + 2 cột SEO (rỗng → `null`); chưa có dòng → tạo `DRAFT`, `blocks` = `defaultHomeSections()` |
+| `publishHomeAction(sections, seo)` | (HEAD: `(pageId, sections)`) Như trên + `homePublishIssues` (chặn) → `blocks`, `blocksDraft = NULL`, `PUBLISHED`, 2 cột SEO |
+| `restoreLiveHomeAction()` | (HEAD: `(pageId)`) Xoá `blocksDraft`; chưa có dòng → không làm gì |
+| `searchHomeTenantOptionsAction`, `searchHomeProductOptionsAction` | Không đổi (§14.1) |
+| `getHomePageContent(): Promise<HomePageContent>` | `{ sections, isDefault, seoTitle, seoDescription }` — chỉ PUBLISHED; SEO `null` khi chưa PUBLISHED hoặc rỗng. `cache()` — dùng cả ở page lẫn `generateMetadata` |
+| `getHomeCmsEditorData(): Promise<HomeCmsEditorData>` | `{ sections (nháp ?? live, đã `withMissingHomeSections`), live, hasDraft, status, seoTitle, seoDescription, pinOptions }` — thay phần nạp dữ liệu inline cũ ở `app/admin/cms/[slug]/page.tsx` |
+
+Mọi action `requireRole("SYSTEM_ADMIN")`, trả `HomeEditorActionState { error?, success?, issues?: HomePublishIssue[] }` (`{ sectionId, field, message }`), audit
+`HOME_CMS_UPDATED` `{ operation }`. Subpath `@gieochu/core/home-sections` thêm: `defaultHomeSections`, `withMissingHomeSections`, `replaceBrandToken`,
+`resolveCommunityView`, `homePublishIssues`, `DEFAULT_HOME_SEO`, `HOME_SECTION_TYPES`, `HOME_COMMUNITY_MODES(_LABELS)`, `HOME_MIN_TO_SHOW_DEFAULT`, các
+hằng `HOME_*_MAX`; kiểu `HomeCta`, `HomeCommunityView`, `HomePublishIssue`, `HomeSectionData`. Subpath `@gieochu/core/seo`: `cmsSeoSchema`,
+`SEO_TITLE_MAX` (120), `SEO_DESCRIPTION_MAX` (320), `SEO_TITLE_RECOMMENDED_MAX` (60), `SEO_DESCRIPTION_RECOMMENDED_MAX` (160), `seoLengthWarning`.
+
+### 26.4. Server Actions + hàm lib — văn bản pháp lý (`app/admin/cms/phap-ly/actions.ts`, `apps/web/lib/legal.ts`)
+
+| Action | Input → Output | Audit |
+| :-- | :-- | :-- |
+| `createLegalDraftAction(key, contentHtml, changeSummary)` | → `{ success, versionId }` | `LEGAL_VERSION_CREATED` |
+| `updateLegalDraftAction(key, versionId, contentHtml, changeSummary)` | chỉ bản DRAFT; đổi nội dung → review về PENDING | `LEGAL_VERSION_UPDATED` |
+| `setLegalReviewStatusAction(key, versionId, reviewStatus)` | `"PENDING_LEGAL_REVIEW" \| "APPROVED"`, chỉ DRAFT | `LEGAL_REVIEW_STATUS_CHANGED` (+`reviewStatus`) |
+| `publishLegalVersionAction(key, versionId, effectiveAtLocal)` | `datetime-local` giờ VN, trống = ngay; cổng xuất bản + không lùi ngày | `LEGAL_VERSION_PUBLISHED` (+`effectiveAt` ISO) |
+| `archiveLegalVersionAction(key, versionId)` | chỉ bản PUBLISHED | `LEGAL_VERSION_ARCHIVED` |
+
+Mọi action `requireRole("SYSTEM_ADMIN")`; `key` phải là khoá trong `LEGAL_DOCUMENT_DEFS` (đợt 1 chỉ `"terms"`), `versionId` chuỗi 1–64; trả `LegalActionState
+{ success?, error?, versionId? }`. Audit scope `SYSTEM`, `targetType: "LegalDocumentVersion"`, metadata `{ key, version, … }` — không nội dung. Mã lỗi:
+[[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]] §8.
+
+Hàm lib (`lib/legal.ts`, không tự kiểm quyền): `sanitizeLegalHtml`, `ensureLegalDocument`, `listLegalVersions(key)`, `getEffectiveLegalVersion(key, now?)` →
+`EffectiveLegalVersion | null`, `createLegalDraft`, `updateLegalDraft`, `setLegalReviewStatus`, `publishLegalVersion`, `archiveLegalVersion`,
+`resolveRegistrationTermsVersion(effective, submittedId)`, `recordLegalAcceptance(tx, userId, versionId, acceptedAt)`. Subpath `@gieochu/core/legal`
+(hằng + luật thuần: `LEGAL_DOCUMENT_DEFS`, `legalDocumentPath`, `legalKeyFromSlug`, `LEGAL_PLACEHOLDER_MARKER`, `legalPublishBlockers`,
+`pickEffectiveLegalVersion`, `parseVnDateTimeLocal`, `legalVersionLabel`, `LEGAL_ERROR_CODES`…); `@gieochu/core/brand-token`
+(`escapeHtmlText`, `replaceBrandTokenInHtml`).
+
+Trang mới: `/admin/cms/menu`, `/admin/cms/phap-ly` (System Center), `/phap-ly/[slug]` (công khai — 404 khi chưa có bản hiệu lực).
+
+---
+
+## 27. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
+* [[02-System-Specs/System-Cms-Menu-Home-Seo-Specs|System-Cms-Menu-Home-Seo-Specs]] ([System-Cms-Menu-Home-Seo-Specs.md](../02-System-Specs/System-Cms-Menu-Home-Seo-Specs.md)) · [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]] ([Legal-Documents-Specs.md](../02-System-Specs/Legal-Documents-Specs.md)) · [[01-Architecture-Decisions/ADR-035-Menu-Home-Seo-Versioned-Terms|ADR-035 (≙ ADR-050)]]
 * [[Database-Schema-Reference]] — Lược đồ dữ liệu ([Database-Schema-Reference.md](./Database-Schema-Reference.md))
 * [[03-API-Contracts/README|README]] — Giới thiệu thư mục ([README.md](./README.md))
 * [[02-System-Specs/Product-Editor-And-Publishing-Specs|Product-Editor-And-Publishing-Specs]] ([Product-Editor-And-Publishing-Specs.md](../02-System-Specs/Product-Editor-And-Publishing-Specs.md))

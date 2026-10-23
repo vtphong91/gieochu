@@ -6,7 +6,7 @@ tags:
   - product
   - status/living
 date: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-23
 author: Long (tài liệu)
 ---
 
@@ -234,7 +234,7 @@ Chi tiết contract: [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] 
 - Ô chọn danh mục (`listCategoryPinOptions`, `apps/web/lib/home.ts`, `withPublic`): danh mục `isActive` A→Z tối đa 200 + id đang chọn
   (kể cả đã tắt) xếp trước; `productCount` = tài liệu Công khai; `eligible = isActive && productCount > 0`; trả kèm tối đa 14 id đang
   chọn (= 8 chip + 6 khối). Editor nạp sẵn option cho id ở **cả bản đang soạn lẫn bản live**.
-- **Slug CMS hệ thống** (`packages/core/src/admin/cms-slugs.ts`): `SYSTEM_CMS_SLUGS = ["home","shop"]`, `isSystemCmsSlug` (trim + chữ
+- **Slug CMS hệ thống** (`packages/core/src/admin/cms-slugs.ts`): `SYSTEM_CMS_SLUGS = ["home","shop"]` (trạng thái ADR-035; nay 4 slug `home`/`shop`/`pricing`/`menu` — ADR-041, ADR-050), `isSystemCmsSlug` (trim + chữ
   thường). Form CMS chung từ chối; `/p/home`, `/p/shop` → 404; `/admin/cms/[slug]` với slug hệ thống khác `home` → 404; danh sách
   `/admin/cms` hiện đường dẫn `/` / `/cua-hang` và link editor riêng.
 - ⚠️ Editor vẫn để hằng `PUBLIC_PAGE_READY = false` (`shop-sections-editor.tsx`) → còn hiện ghi chú "Trang công khai /cua-hang có ở giai

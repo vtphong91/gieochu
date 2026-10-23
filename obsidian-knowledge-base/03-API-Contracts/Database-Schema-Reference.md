@@ -13,7 +13,7 @@ author: System Architect
 
 > [!NOTE] Nguồn sinh tài liệu
 > Danh mục §2–§3 được đối chiếu trực tiếp với `packages/db/prisma/schema.prisma` ngày 2026-09-26:
-> **47 model + 31 enum** (`grep -c "^model " / "^enum "`, đếm lại 2026-10-18 ✅ sau migration ADR-047 — +`OrderNote` (không thêm enum); trước đó 2026-10-17 sau 2 migration ADR-041 — +`SubscriptionRefundRequest`, +`SubscriptionRefundStatus`, giá trị enum `VerificationTokenType.EMAIL_CHANGE`, `SubscriptionInvoiceStatus.REFUNDED`; trước đó migration M12c/ADR-038 — +`AbuseReport`, +`AbuseTargetType`, +`AbuseReportType`, +`AbuseReportStatus`, +`AbuseReportDecision` — và ADR-039 — +`EntitlementRemedyStatus`; trước đó M12b/ADR-037 — +`TenantDailyStat` (không thêm enum); trước đó M12a — +`AuditLog`, +`AuditScope`; trước đó 2026-09-28 sau M10b/ADR-029 — +`Post`, +`PostStatus` (và giá trị enum `TenantMediaUsage.POST`); trước đó M10a +`Review`, +`ReviewStatus`, +`ReviewHiddenReason`; trước đó ADR-028 +`TenantMediaAsset`, +`TenantMediaUsage`; trước đó ADR-026/027 +`ProductFileSource`; trước đó +`StorefrontMessage`, +`StorefrontMessageStatus` ở Storefront CMS), mỗi model đều được phân loại theo layer L1/L2/L3
+> **50 model + 33 enum** (`grep -c "^model " / "^enum "`, đếm lại 2026-10-23 ✅ sau migration ADR-050 — +`LegalDocument`, +`LegalDocumentVersion`, +`UserLegalAcceptance`, +`LegalDocumentVersionStatus`, +`LegalReviewStatus`; trước đó 2026-10-18 sau migration ADR-047 — +`OrderNote` (không thêm enum); trước đó 2026-10-17 sau 2 migration ADR-041 — +`SubscriptionRefundRequest`, +`SubscriptionRefundStatus`, giá trị enum `VerificationTokenType.EMAIL_CHANGE`, `SubscriptionInvoiceStatus.REFUNDED`; trước đó migration M12c/ADR-038 — +`AbuseReport`, +`AbuseTargetType`, +`AbuseReportType`, +`AbuseReportStatus`, +`AbuseReportDecision` — và ADR-039 — +`EntitlementRemedyStatus`; trước đó M12b/ADR-037 — +`TenantDailyStat` (không thêm enum); trước đó M12a — +`AuditLog`, +`AuditScope`; trước đó 2026-09-28 sau M10b/ADR-029 — +`Post`, +`PostStatus` (và giá trị enum `TenantMediaUsage.POST`); trước đó M10a +`Review`, +`ReviewStatus`, +`ReviewHiddenReason`; trước đó ADR-028 +`TenantMediaAsset`, +`TenantMediaUsage`; trước đó ADR-026/027 +`ProductFileSource`; trước đó +`StorefrontMessage`, +`StorefrontMessageStatus` ở Storefront CMS), mỗi model đều được phân loại theo layer L1/L2/L3
 > (không sót). Danh sách bảng thật sự có RLS được đối chiếu với `packages/db/prisma/migrations/*_rls_*/migration.sql`
 > (`ALTER TABLE ... ENABLE ROW LEVEL SECURITY`) — không suy đoán từ comment trong schema. Chi tiết field/kiểu/
 > constraint: mở thẳng [schema.prisma](../../packages/db/prisma/schema.prisma), file này chỉ là bản đồ.
@@ -99,13 +99,13 @@ erDiagram
 
 ---
 
-## 3. Danh Mục 47 Model Theo Layer
+## 3. Danh Mục 50 Model Theo Layer
 
 ### 3.1. L1 — System (không `tenantId`, không RLS, truy cập qua `getPrismaClient()` thẳng)
 
 | Model | Mục đích | Quan hệ tới | Enum |
 | :-- | :-- | :-- | :-- |
-| `User` | Tài khoản mọi actor (customer/tenant owner/system admin dùng chung 1 bảng, phân biệt bằng `systemRole`), khoá tạm sau 5 lần sai mật khẩu (`passwordResetRequired`) | UserProfile, RefreshToken, VerificationToken, Tenant (owner), TenantMember, Order, Entitlement, TenantCustomer, DownloadToken, DownloadEvent | `SystemRole`, `UserStatus` |
+| `User` | Tài khoản mọi actor (customer/tenant owner/system admin dùng chung 1 bảng, phân biệt bằng `systemRole`), khoá tạm sau 5 lần sai mật khẩu (`passwordResetRequired`) | UserProfile, RefreshToken, VerificationToken, Tenant (owner), TenantMember, Order, Entitlement, TenantCustomer, DownloadToken, DownloadEvent, UserLegalAcceptance (ADR-050, Cascade — chỉ dọn test; không xoá user, chỉ khoá) | `SystemRole`, `UserStatus` |
 | `UserProfile` | Hồ sơ mở rộng 1-1 (`fullName`, `phone`, `avatarKey`, `consentAt`) — tạo ngay lúc đăng ký, không còn là cổng bắt buộc trước khi dùng hệ thống. ADR-041 C (không đổi schema) ✅: `phone`/`province` **tuỳ chọn**, dữ liệu cá nhân, chỉ chủ tài khoản + admin thấy; `province` lưu đúng chuỗi trong `VN_PROVINCES` (34 đơn vị); `avatarKey` = `public_id` Cloudinary hệ thống `<root>/users/<userId>/avatar/<24 hex>` | User | — |
 | `RefreshToken` | Refresh token xoay theo `familyId` (rotate-on-use); reuse token đã bị thay thế → revoke cả family (§7.1 CLAUDE.md) | User | — |
 | `VerificationToken` | Token kích hoạt email + reset mật khẩu + **đổi email** (ADR-041), chỉ lưu `tokenHash` (SHA-256). `newEmail String?` (ADR-041) — email đích đã chuẩn hoá, chỉ có giá trị với `EMAIL_CHANGE`, **dữ liệu cá nhân** ✅ | User | `VerificationTokenType` |
@@ -113,7 +113,7 @@ erDiagram
 | `Role` | Nguồn sự thật RBAC cho "tier này làm được gì" (ADR-022) — định nghĩa toàn cục theo `code`, đối chiếu với `User.systemRole`/`TenantMember.role` (vẫn giữ làm nhãn định danh, không đổi thành FK) | RolePermission | `RoleScope` |
 | `Permission` | 1 row / hành động cấp quyền được, namespace kiểu `system:manage_users`, `tenant:manage_products` | RolePermission | — |
 | `RolePermission` | Bảng nối N-N `Role` ↔ `Permission` | Role, Permission | — |
-| `CmsPage` | Nội dung trang marketing (`blocks` = bản live, `blocksDraft` = bản đang sửa — publish copy draft → live). Slug hệ thống `SYSTEM_CMS_SLUGS` = `home` (trang chủ, ADR-033), `shop` (Cửa hàng, ADR-035) và `pricing` (Bảng giá, ADR-041) — `shop`/`pricing` tạo dòng bằng `upsert` ở lần lưu đầu — lưu mảng section riêng, có editor riêng; form CMS chung và `/p/[slug]` không nhận ba slug này ✅ | — | `CmsPageStatus` |
+| `CmsPage` | Nội dung trang marketing (`blocks` = bản live, `blocksDraft` = bản đang sửa — publish copy draft → live). Slug hệ thống `SYSTEM_CMS_SLUGS` = `home` (trang chủ, ADR-033), `shop` (Cửa hàng, ADR-035), `pricing` (Bảng giá, ADR-041) và `menu` (menu header/footer, ADR-050 — `blocks` là object `SiteMenu`, không phải mảng) — `shop`/`pricing`/`menu` (và `home` từ ADR-050) tạo dòng bằng `upsert` ở lần lưu đầu — lưu mảng section riêng, có editor riêng; form CMS chung và `/p/[slug]` không nhận các slug này ✅. Cột có sẵn `seoTitle`/`seoDescription` từ ADR-050 có ô sửa ở editor trang chủ (giới hạn chung 120/320 — `@gieochu/core/seo`) ✅ | — | `CmsPageStatus` |
 | `Subscription` | Subscription SaaS của 1 tenant — có `tenantId` nhưng **không** RLS (không nằm trong danh sách §4): billing là nghiệp vụ system-managed, quyền đọc gác ở app layer (`requireTenantMember` cho owner, `requireRole SYSTEM_ADMIN` cho admin), cùng nhóm với `Plan`/`SubscriptionInvoice` | Tenant, Plan, SubscriptionInvoice | `SubscriptionStatus` |
 | `TenantSlugHistory` | Lịch sử đổi slug tenant (redirect 301 slug cũ → mới), có `tenantId` nhưng không RLS | Tenant | — |
 | `SystemSettings` | (ADR-032) Cấu hình hệ thống 1 dòng `id="default"` (`@@map("system_settings")`): `supportEmail String?` + 11 khoá `Int` có default — `accessTokenTtlMinutes` 15, `refreshTokenTtlDays` 7, `emailVerifyTtlHours` 24, `passwordResetTtlMinutes` 30, `presignUploadTtlSeconds` 600, `presignDownloadTtlSeconds` 600, `trialDays` 14 (chưa dùng), `graceDays` 7, `orderPendingTtlMinutes` 60, `invoicePendingTtlHours` 24, `defaultDownloadLimit` 5 — giới hạn ở `SYSTEM_SETTINGS_BOUNDS` (app, không có CHECK ở DB); `updatedById String?` (không FK), `updatedAt`. **`platformName` đã bỏ khỏi schema** ✅ nhưng cột còn trên DB production sau sự cố 2026-10-15 🟡 (§7). Đọc qua `getSystemSettings()`, sửa ở `/admin/settings/general` + `/admin/settings` (`supportEmail`) | — | — |
@@ -133,6 +133,9 @@ erDiagram
 | `AuditLog` | (ADR-037, M12a — `@@map("audit_logs")`) Nhật ký hành động: `actorId?`, `scope`, `tenantId?`, `action` (**chuỗi**, danh sách hợp lệ ở hằng `AUDIT_ACTIONS` — không enum DB), `targetType?`, `targetId?`, `metadata Json @default("{}")` (đã lọc khoá nhạy cảm), `ip?`, `userAgent?`, `createdAt`. Có `tenantId` nhưng **không RLS** (cùng kiểu `Subscription`); **không khoá ngoại** tới users/tenants. Index `(createdAt)`, `(tenantId, createdAt)`, `(actorId, createdAt)`. **Chỉ INSERT** (quyền + trigger, §7), giữ 12 tháng. Đọc qua `apps/web/lib/audit-query.ts` (owner chỉ thấy dòng `tenantId` của mình — quyền gác ở loader) ✅ | — (không FK) | `AuditScope` |
 | `TenantDailyStat` | (ADR-037, M12b — `@@map("tenant_daily_stats")`) Số liệu tổng hợp theo tenant + **ngày giờ VN** (`date DATE`): `ordersPaid Int`, `gmvVnd BigInt` (GMV gộp — tổng `orders.totalVnd` của đơn có `paidAt` trong ngày, kể cả đơn sau này hoàn tiền), `newCustomers Int`, `downloads Int` (đều `@default(0)`), `updatedAt @updatedAt`. Unique `(tenantId, date)`, index `(date)`. Có `tenantId` + **khoá ngoại tới `tenants` `ON DELETE CASCADE`** (bảng tính lại được — khác `audit_logs`) nhưng **không RLS** (L1 theo đặc tả §5/§7.9). Chỉ chứa số đếm/tổng tiền — không email, tên, mã đơn. Ghi bởi job `stats.aggregate` (`withSystemJob`); admin đọc bằng `getPrismaClient()` qua `apps/web/lib/admin-stats.ts` ✅ | Tenant | — |
 | `AbuseReport` | (ADR-038, M12c — `@@map("abuse_reports")`) Báo cáo vi phạm: `targetType` + `targetId` (không FK — đối tượng có thể bị xoá) + `tenantId` (FK `tenants` `ON DELETE CASCADE`), `type`, `description` (1–2000, CHECK), `evidenceUrls String[] @default([])` (≤5, CHECK), `reporterUserId?` (FK `users` `SET NULL`), `reporterEmail` (3–320, CHECK), `ip?` (xoá sau 12 tháng bởi cron), `status` (mặc định `OPEN`), `decision?`, `resolutionNote?` (nội bộ), `resolvedById?` (FK `users` `SET NULL`), `resolvedAt?`, `createdAt`, `updatedAt`. CHECK `abuse_reports_decision_shape`. 6 index (`status+createdAt`, `targetType+targetId`, `tenantId+createdAt`, `ip+createdAt`, `reporterUserId`, `resolvedById`). Có `tenantId` nhưng **không RLS** (L1, cùng mẫu `audit_logs`); **tenant không có đường đọc nào** — chỉ `apps/web/lib/abuse-report.ts` (System Admin) ✅ | Tenant, User (reporter, resolver) | `AbuseTargetType`, `AbuseReportType`, `AbuseReportStatus`, `AbuseReportDecision` |
+| `LegalDocument` | (ADR-050 — `@@map("legal_documents")`) Văn bản pháp lý hệ thống, 1 dòng/văn bản: `key` unique (khoá ổn định trong code, đợt 1 chỉ `terms`), `slug` unique (segment dưới `/phap-ly/`), `title`. CHECK `legal_documents_key_format` (chữ thường-số-gạch nối cho cả `key`, `slug`). Tạo lười khi admin tạo bản nháp đầu, không seed ✅ | LegalDocumentVersion | — |
+| `LegalDocumentVersion` | (ADR-050 — `@@map("legal_document_versions")`) Phiên bản: `documentId` (FK `Restrict`), `version Int` (unique theo văn bản), `status`, `reviewStatus`, `contentHtml` (đã sanitize, ≤ 200 000), `changeSummary?` (≤ 1000), `effectiveAt?`/`publishedAt?` (bắt buộc khi không `DRAFT` — CHECK `legal_document_versions_shape`), `publishedById?`/`createdById?` (không FK). Index `(documentId, status, effectiveAt)`. **Trigger** `legal_document_versions_freeze_content`: bản không còn `DRAFT` bất biến nội dung — chỉ cho `PUBLISHED → ARCHIVED` và đổi `reviewStatus` ✅ đọc SQL | LegalDocument, UserLegalAcceptance | `LegalDocumentVersionStatus`, `LegalReviewStatus` |
+| `UserLegalAcceptance` | (ADR-050 — `@@map("user_legal_acceptances")`) Người dùng chấp thuận đúng một phiên bản: `userId` (FK `users` Cascade — chỉ phục vụ dọn test, không có luồng xoá user), `versionId` (FK `Restrict`), `acceptedAt`. Unique `(userId, versionId)`, index `versionId`. **Không lưu IP/User-Agent.** Append-only với `gieochu_app` (`REVOKE ALL` → chỉ `SELECT, INSERT, DELETE`) ✅ đọc SQL. Ghi trong cùng transaction tạo user ở `POST /api/auth/register` | User, LegalDocumentVersion | — |
 
 ### 3.2. L2 — Tenant (có `tenantId`, RLS bật thật trên bảng, qua `withTenant`/`withPublic`)
 
@@ -171,7 +174,7 @@ Gieo Chữ không có bảng nào gắn nhãn "L3" tách riêng — L3 là **gó
 
 ---
 
-## 4. Enum (31)
+## 4. Enum (33)
 
 | Enum | Giá trị |
 | :-- | :-- |
@@ -206,6 +209,8 @@ Gieo Chữ không có bảng nào gắn nhãn "L3" tách riêng — L3 là **gó
 | `AbuseReportDecision` | `HIDE_CONTENT` · `ARCHIVE_PRODUCT` · `LOCK_TENANT` · `REJECT` (ADR-038) |
 | `SubscriptionRefundStatus` | `REQUESTED` · `APPROVED_REFUNDED` · `REJECTED` (ADR-041 B — yêu cầu hoàn tiền gói) |
 | `EntitlementRemedyStatus` | `NONE` · `PENDING_CHOICE` · `FINAL_DOWNLOAD` · `REFUND_REQUESTED` · `REFUNDED` (ADR-039 — quyền lợi người mua khi tài liệu bị lưu trữ do vi phạm) |
+| `LegalDocumentVersionStatus` | `DRAFT` (mặc định, sửa được) · `PUBLISHED` · `ARCHIVED` (ADR-050 — hai trạng thái sau bất biến nội dung) |
+| `LegalReviewStatus` | `PENDING_LEGAL_REVIEW` (mặc định) · `APPROVED` (ADR-050 — admin tích "đã rà soát pháp lý"; **là cổng xuất bản** cùng điều kiện hết `[[CẦN XÁC NHẬN` theo "Bổ sung ADR-050" (c); comment `schema.prisma` đã sửa khớp 2026-10-23) |
 
 ---
 
@@ -451,6 +456,13 @@ cả hai. Không secret nào trả plaintext về client (UI chỉ hiện `•�
   - ⚠️ Code trên `master` đã `select` các cột này (`lib/tenant-storage.ts`, `lib/product-upload.ts`…) và Prisma client sinh lại đã có cột → trên DB
     chưa có cột, truy vấn `tenants`/`product_files` dùng các cột này sẽ lỗi "column does not exist" (suy từ code ❓ chưa chạy thật). Theo expand →
     contract (ADR-034 trong `docs/DECISIONS.md`) phải áp migration **trước** khi code lên môi trường dùng DB đó. Nghiệp vụ: [[01-Architecture-Decisions/ADR-034-Dual-Storage-MinIO-R2-Dedicated-Tenant-Bucket|ADR-034 KB (≙ ADR-044)]].
+- **Migration ADR-050 — văn bản pháp lý có phiên bản** ✅ đọc SQL (2026-10-23): `20261023090000_adr050_legal_documents` — loại **expand** (chỉ thêm 2 enum,
+  3 bảng L1 + index + FK + 2 CHECK + trigger + quyền; không đổi bảng cũ — quan hệ mới trên `users` là quan hệ ngược, không thêm cột). Không RLS (L1).
+  Chi tiết nghiệp vụ: [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]] §2.
+  - **Đã chạy trên DB dùng chung** 🟡 (brief Quốc 2026-10-23; Long không chạy lệnh DB). File migration **chưa commit** ✅ `git status`.
+  - Thứ tự: comment đầu SQL ghi "code cần migration chạy TRƯỚC (… bảng chưa có → lỗi P2021 được bắt, đăng ký giữ hành vi cũ)", nhưng
+    `getEffectiveLegalVersion` (`lib/legal.ts`) **không** bắt P2021 — nếu code lên DB chưa có bảng, `/register` và `POST /api/auth/register` sẽ lỗi
+    (suy từ code ❓). Quốc chốt **không sửa** `migration.sql` (đã chạy — sửa làm đổi checksum, "Bổ sung ADR-050 lần 2"); quy tắc: với mọi DB (restore, branch mới) phải `pnpm db:migrate` **trước** deploy code — KB-Audit §31.
 - **Sửa lỗi RLS khi đọc `orders` (2026-10-16)** ✅ đọc `git diff`: `sendOrderPaidEmailsInner` và `resolveUniqueOrderCode`
   (`apps/web/lib/order.ts`) từng đọc `orders` (RLS `FORCE`) bằng `getPrismaClient()` không scope → 0 dòng → email `order_paid`/`new_sale`
   chưa từng gửi, kiểm trùng mã đơn chưa từng chạy. Nay dưới `withSystemJob`. Bài học: **mọi đọc bảng L2 ngoài phạm vi request (sau commit,
@@ -473,7 +485,7 @@ cả hai. Không secret nào trả plaintext về client (UI chỉ hiện `•�
   `storefront_messages`), ADR-026 (`Product.categoryId`, `ProductFile.sourceKind/externalUrl`), ADR-027
   (`Product.summary`, `Product.coverImageUrl`), ADR-028 (`Plan.imageStorageMb`, `tenant_media_assets`), ADR-029 (siết RLS 7 bảng, `reviews`,
   `products.ratingSum/ratingCount`, `posts`, `TenantMediaUsage.POST`), ADR-033 (`products.soldCount`), ADR-035 (`CmsPage` slug `shop`,
-  extension `unaccent` + hàm `gieochu_unaccent`), ADR-037 (`audit_logs`, `AuditScope`, trigger chỉ-INSERT; `tenant_daily_stats` M12b), ADR-038 (`abuse_reports`, khoá kiểm duyệt, cam kết bản quyền), ADR-039 (`entitlements.remedy*`), ADR-041 (`verification_tokens.newEmail`, `subscription_refund_requests`), ADR-044 (`tenants`/`product_files` `.storageBucket/storageProvider` — chưa áp DB), ADR-047 (`order_notes`)
+  extension `unaccent` + hàm `gieochu_unaccent`), ADR-037 (`audit_logs`, `AuditScope`, trigger chỉ-INSERT; `tenant_daily_stats` M12b), ADR-038 (`abuse_reports`, khoá kiểm duyệt, cam kết bản quyền), ADR-039 (`entitlements.remedy*`), ADR-041 (`verification_tokens.newEmail`, `subscription_refund_requests`), ADR-044 (`tenants`/`product_files` `.storageBucket/storageProvider` — chưa áp DB), ADR-047 (`order_notes`), ADR-050 (`legal_documents`, `legal_document_versions`, `user_legal_acceptances`, 2 enum pháp lý; slug CMS `menu`)
 * [[02-System-Specs/Product-Editor-And-Publishing-Specs|Product-Editor-And-Publishing-Specs]] ([Product-Editor-And-Publishing-Specs.md](../02-System-Specs/Product-Editor-And-Publishing-Specs.md)) — nghiệp vụ dùng các cột trên
 * [[02-System-Specs/Reviews-Specs|Reviews-Specs]] ([Reviews-Specs.md](../02-System-Specs/Reviews-Specs.md)) — nghiệp vụ `reviews` (M10a)
 * [[02-System-Specs/Posts-Specs|Posts-Specs]] ([Posts-Specs.md](../02-System-Specs/Posts-Specs.md)) — nghiệp vụ `posts` (M10b)

@@ -303,8 +303,8 @@ lộ ra 2 lỗi cả 2 đều tồn tại từ trước, không riêng module n�
   luôn `null`.
 - **Trang danh sách tài liệu `/[tenantSlug]/products`** chưa có — để bật nút "Xem tất cả" của section products.
 - ~~**Menu mobile cho Studio** chưa có.~~ — **Xong 2026-10-17** (ADR-042: drawer `SidebarDrawer` dưới `lg`).
-- **Trang chủ hệ thống:** chưa có skip-link; mục nav "Giáo viên & Coach" / "Khám phá tài liệu" đang là `<span>`,
-  chưa phải link.
+- ~~**Trang chủ hệ thống:** chưa có skip-link; mục nav "Giáo viên & Coach" / "Khám phá tài liệu" đang là `<span>`,
+  chưa phải link.~~ — **Xong 2026-10-23** (ADR-050: trang chủ có skip-link + `<main id="noi-dung">`; menu từ CMS, mục không có link đã bỏ khỏi menu mặc định).
 - **Chưa verify trang chi tiết sản phẩm / checkout với dữ liệu thật** (DB chưa có sản phẩm).
 
 ## Phát sinh khi tách header/footer hệ thống (ADR-025)

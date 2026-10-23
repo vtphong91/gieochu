@@ -5,7 +5,7 @@ tags:
   - ui-ux
   - status/living
 date: 2026-09-26
-updated: 2026-10-17
+updated: 2026-10-23
 author: Long (A08)
 ---
 
@@ -174,7 +174,7 @@ Nguồn: `.claude/agents/phong.md` ✅ (đối chiếu 2026-09-26).
 ## 5. Ranh giới với quy tắc dự án
 
 Hiến chương này **không thay đổi** quy tắc cứng trong `CLAUDE.md`: trả lời tiếng Việt; không commit trừ khi được
-yêu cầu; Conventional Commits, commit nhỏ theo module; không đổi số lượng test (trần gốc 91/50 (mục 9); trần hiện 94/55 theo ADR-026 + ADR-037; số thực xem `pnpm test:count`); mục
+yêu cầu; Conventional Commits, commit nhỏ theo module; không đổi số lượng test (trần gốc 91/50 (mục 9); trần hiện 95/57 theo ADR-026 + ADR-037 + ADR-050; số thực xem `pnpm test:count`); mục
 "Quy tắc bảo mật" và "Ranh giới layer". Thay đổi duy nhất về điều phối: chính sách delegation chuyển từ
 "Proportional Delegation" (phiên chính tự làm phần lớn, chỉ gọi sub-agent khi cần) sang **giao việc theo vai
 trò** như §2–§3.
@@ -188,7 +188,7 @@ trò** như §2–§3.
 | Architecture style | 3 layer dữ liệu — L1 System / L2 Tenant (RLS theo `tenantId`) / L3 Customer (RLS theo `userId`) — xem [[MOC-Home]] và `docs/ARCHITECTURE.md` |
 | Actors | System Admin (`isSuperAdmin`), Tenant owner/staff (chủ shop, chưa có luồng mời staff thật — xem BACKLOG), Customer (một tài khoản toàn cục, mua hàng từ nhiều tenant) |
 | Critical domains | Auth/session security (cookie httpOnly, JWT, refresh token), RLS/tenant isolation (`withTenant/withCustomer/withPublic/withSystemJob`), payment encryption (AES-256-GCM), billing state machine (Free Forever + Paid Subscription — M3 v2) |
-| Quality gates | `pnpm lint && pnpm typecheck && pnpm test && pnpm build` (bảng lệnh đầy đủ ở `CLAUDE.md`); `pnpm test:count` đối chiếu với trần gốc 91/50 (mục 9); trần hiện 94/55 theo ADR-026 + ADR-037; số thực xem `pnpm test:count` — **không đổi số lượng test nếu chưa hỏi lại người dùng** |
+| Quality gates | `pnpm lint && pnpm typecheck && pnpm test && pnpm build` (bảng lệnh đầy đủ ở `CLAUDE.md`); `pnpm test:count` đối chiếu với trần gốc 91/50 (mục 9); trần hiện 95/57 theo ADR-026 + ADR-037 + ADR-050; số thực xem `pnpm test:count` — **không đổi số lượng test nếu chưa hỏi lại người dùng** |
 | Deployment target | Chưa triển khai thật (chưa có CI chạy thật trên remote, chưa deploy production) — xem `docs/PLAN.md` mục M0 |
 
 ## 🗺️ ACTIVE TEAM MAP
@@ -224,7 +224,7 @@ trò** như §2–§3.
    nhập) — landing path tra theo `Tenant.ownerId` để lấy `tenant.slug`.
 8. **Không hard-code chuỗi thương hiệu** ("Gieo Chữ", slogan...) — đọc qua `getEffectiveBrand()` (DB `SystemBranding`); mặc định
    chỉ khai một chỗ `DEFAULT_BRAND` trong `@gieochu/config/brand` (ADR-032).
-9. **Không thêm/bớt số lượng test case** so với mốc test (trần gốc 91/50 (mục 9); trần hiện 94/55 theo ADR-026 + ADR-037; số thực xem `pnpm test:count`) nếu chưa hỏi lại người dùng.
+9. **Không thêm/bớt số lượng test case** so với mốc test (trần gốc 91/50 (mục 9); trần hiện 95/57 theo ADR-026 + ADR-037 + ADR-050; số thực xem `pnpm test:count`) nếu chưa hỏi lại người dùng.
 10. **Hỏi trước khi code.** Chủ dự án đã nhiều lần yêu cầu xác nhận phạm vi trước khi sửa/viết code (ví dụ:
     chia M5 làm 2 phần vì máy code không có Docker — ADR-014; chuyển cấu hình storage sang System Admin —
     ADR-017; mở rộng RBAC thành bảng `Role`/`Permission` thật — ADR-022). Quốc là người chốt phạm vi với chủ

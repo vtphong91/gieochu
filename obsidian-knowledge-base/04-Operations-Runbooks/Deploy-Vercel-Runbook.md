@@ -13,6 +13,11 @@ author: Long
 
 # 🚀 Cẩm Nang: Deploy Gieo Chữ Lên Vercel (Deploy Vercel Runbook)
 
+> [!NOTE] ADR-049 (2026-10-23)
+> Vercel là môi trường **thử nghiệm**; **production sẽ chạy trên VPS** (cùng nơi MinIO + Storage Gateway). Runbook này vẫn là quy trình hiện hành cho
+> Vercel; runbook deploy VPS, crontab thay Vercel Cron **chưa có** — xem [[01-Architecture-Decisions/ADR-036-Vercel-Testing-VPS-Production|ADR-036 KB (≙ ADR-049)]].
+> Một DB dùng chung (ADR-034) vẫn áp dụng: thao tác dữ liệu trên Vercel thử nghiệm là thao tác trên dữ liệu production.
+
 > Quyết định gốc: **ADR-031** trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md) — bản trích
 > [[01-Architecture-Decisions/ADR-017-Vercel-Deploy-Build-Without-Env|ADR-017 (≙ ADR-031)]]; env runtime rút còn 8 biến theo
 > **ADR-032** — [[01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-From-System-Center|ADR-018 (≙ ADR-032)]]; một DB duy
@@ -500,6 +505,21 @@ cột đã xoá) **không** quay lại được. Point-in-Time Restore ảnh hư
   trước hoặc cùng lúc deploy. Không có migration contract. Rollback code về bản trước: an toàn — bảng mới không ai đọc ✅ theo comment migration.
 * Cùng đợt: tìm đơn không dấu dùng `public.gieochu_unaccent` có sẵn từ migration ADR-035 (§9.5) — **không** cần DDL mới. **Không cần biến env mới.**
 * Nghiệp vụ: [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]] §3.2. Bảng: [[03-API-Contracts/Database-Schema-Reference|Database-Schema-Reference]] §7.
+
+### 9.11. Migration ADR-050 (văn bản pháp lý có phiên bản) — đã chạy 2026-10-23, **bắt buộc trước code**
+
+* `20261023090000_adr050_legal_documents` — chỉ *thêm* (expand): 2 enum (`LegalDocumentVersionStatus`, `LegalReviewStatus`), 3 bảng L1
+  `legal_documents`, `legal_document_versions`, `user_legal_acceptances` + index + FK + 2 CHECK + trigger `legal_document_versions_freeze_content` +
+  quyền (`user_legal_acceptances` chỉ `SELECT, INSERT, DELETE` cho `gieochu_app`) ✅ đọc SQL. Không RLS (L1), không đổi bảng cũ.
+* **Thứ tự:** phải áp **trước** code. Comment đầu SQL nói lỗi P2021 "được bắt", nhưng `getEffectiveLegalVersion` (`lib/legal.ts`) **không** bắt — code lên
+  DB chưa có bảng thì `/register` và `POST /api/auth/register` lỗi (suy từ code ❓, KB-Audit §31). Quốc chốt **không sửa** comment `migration.sql`
+  (migration đã chạy, sửa file đổi checksum) — quy tắc vận hành: **luôn chạy migration trước khi deploy code ADR-050**.
+* **Đã chạy trên DB dùng chung 2026-10-23** 🟡 (brief Quốc; Long không chạy lệnh DB). File migration **chưa commit** ✅ `git status`. Mọi DB khác (restore,
+  branch mới): `pnpm db:migrate` trước deploy. Không migration contract. Rollback code về bản trước: an toàn — code cũ không đọc bảng mới.
+* Cùng đợt (ADR-050 mục 1–2: menu CMS, trang chủ + SEO) **không** DDL — dùng `cms_pages` có sẵn (slug `menu`, `home`, cột `seoTitle/seoDescription`).
+  **Không cần biến env mới** (canonical trang chủ dùng `APP_URL` có sẵn).
+* Sau deploy: chưa có bản Điều khoản PUBLISHED → đăng ký như cũ; xuất bản bản đầu theo [[04-Operations-Runbooks/Legal-Terms-Publishing-Runbook|Legal-Terms-Publishing-Runbook]].
+  Nghiệp vụ: [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]].
 
 ---
 

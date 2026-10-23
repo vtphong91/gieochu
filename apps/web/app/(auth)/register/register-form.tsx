@@ -6,7 +6,8 @@ import { useForm } from "react-hook-form";
 import { AccountTypeSelect, type AccountType } from "../_ui/account-type";
 import { AuthCard } from "../_ui/auth-card";
 import { ErrorBanner, PasswordField, SubmitButton, TextField } from "../_ui/fields";
-import { INK_SOFT } from "../_ui/colors";
+import { IconExternalLink } from "../../admin/_ui/icons";
+import { BLUE, INK_SOFT, LINE } from "../_ui/colors";
 
 // Mirror của packages/auth/src/password.ts isValidPassword — chỉ để phản hồi
 // sớm trên client, quy tắc thật vẫn do server enforce lại.
@@ -20,8 +21,15 @@ interface RegisterFormValues {
   consent: boolean;
 }
 
+/** Bản Điều khoản đang hiệu lực (ADR-050) — `null` = chưa công bố, checkbox giữ chữ như cũ. */
+export interface RegisterTermsInfo {
+  versionId: string;
+  href: string;
+  title: string;
+}
+
 /** Form đăng ký (client). Tên thương hiệu do page (server) đọc từ `getEffectiveBrand()` truyền xuống (ADR-032). */
-export function RegisterForm({ brandName }: { brandName: string }) {
+export function RegisterForm({ brandName, terms }: { brandName: string; terms: RegisterTermsInfo | null }) {
   const [accountType, setAccountType] = useState<AccountType | null>(null);
   const {
     register,
@@ -37,7 +45,7 @@ export function RegisterForm({ brandName }: { brandName: string }) {
     const response = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, accountType }),
+      body: JSON.stringify({ ...data, accountType, ...(terms ? { termsVersionId: terms.versionId } : {}) }),
     });
     if (!response.ok) {
       const body = await response.json();
@@ -106,17 +114,44 @@ export function RegisterForm({ brandName }: { brandName: string }) {
                 validate: (value) => HAS_LETTER_AND_DIGIT.test(value) || "Mật khẩu cần có cả chữ và số.",
               })}
             />
+            {/* Chấp thuận điều khoản (ADR-050): ô 18px nằm trong nhãn cao ≥ 44px (cả dòng bấm được); có bản Điều khoản đang hiệu
+                lực → tên văn bản là link mở tab mới (biểu tượng + chữ ẩn). Lỗi gắn `aria-describedby` + `aria-invalid`. */}
             <div>
-              <label className="flex items-start gap-2.5 text-sm" style={{ color: INK_SOFT }}>
+              <label
+                className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border px-3.5 py-3 text-sm leading-relaxed"
+                style={{ borderColor: errors.consent ? "#DC2626" : LINE, background: "white", color: INK_SOFT }}
+              >
                 <input
                   type="checkbox"
-                  className="mt-0.5 h-4 w-4 shrink-0 rounded"
+                  className="mt-0.5 h-[18px] w-[18px] shrink-0 cursor-pointer rounded accent-[color:var(--brand-primary,#0F3B82)]"
+                  aria-invalid={errors.consent ? true : undefined}
+                  aria-describedby={errors.consent ? "consent-error" : undefined}
                   {...register("consent", { required: true })}
                 />
-                Tôi đồng ý với điều khoản sử dụng và chính sách xử lý dữ liệu cá nhân.
+                <span>
+                  {terms ? (
+                    <>
+                      Tôi đồng ý với{" "}
+                      <Link
+                        href={terms.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-sm font-semibold underline underline-offset-2 outline-offset-2 focus-visible:outline-2"
+                        style={{ color: BLUE, outlineColor: BLUE }}
+                      >
+                        {terms.title}
+                        <IconExternalLink className="ml-1 inline h-3.5 w-3.5 align-[-2px]" />
+                        <span className="sr-only"> (mở trong tab mới)</span>
+                      </Link>{" "}
+                      và chính sách xử lý dữ liệu cá nhân.
+                    </>
+                  ) : (
+                    "Tôi đồng ý với điều khoản sử dụng và chính sách xử lý dữ liệu cá nhân."
+                  )}
+                </span>
               </label>
               {errors.consent ? (
-                <p role="alert" className="mt-1.5 text-sm" style={{ color: "#DC2626" }}>
+                <p id="consent-error" role="alert" className="mt-1.5 text-sm" style={{ color: "#DC2626" }}>
                   Bạn cần đồng ý điều khoản trước khi tiếp tục.
                 </p>
               ) : null}

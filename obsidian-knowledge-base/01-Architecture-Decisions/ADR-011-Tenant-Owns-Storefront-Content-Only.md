@@ -7,6 +7,7 @@ tags:
 date: 2026-09-26
 decider: vtphong91
 status: Accepted (Chốt — Áp dụng chính thức)
+updated: 2026-10-23
 ---
 
 # 🏛️ ADR-011: Tenant Chỉ Sở Hữu Nội Dung Storefront — Header/Footer Và Trang Con Là Của Hệ Thống
@@ -15,6 +16,12 @@ status: Accepted (Chốt — Áp dụng chính thức)
 **ĐÃ PHÊ DUYỆT (Accepted)** — Áp dụng cho mọi trang public. **Thay thế** phần header/footer/menu tenant trong
 [[01-Architecture-Decisions/ADR-009-Storefront-Cms-Contact-Inbox|ADR-009 (≙ ADR-023)]] và phần "trang sản phẩm dùng
 chung khung storefront" của task ADR-024.
+
+> [!WARNING] Sửa đổi bởi ADR-050 (2026-10-23)
+> Header/footer **không còn là chrome cố định**: nội dung menu (mục header ≤ 5, menu con 1 cấp, nút CTA, các cột footer, mô tả, dòng bản quyền)
+> do System Admin cấu hình qua CMS slug hệ thống `menu` (`/admin/cms/menu`); **bố cục** header/footer vẫn cố định trong code, và vẫn là của hệ
+> thống (tenant không có menu riêng — mục 2 dưới đây giữ nguyên). Xem [[01-Architecture-Decisions/ADR-035-Menu-Home-Seo-Versioned-Terms|ADR-035 KB (≙ ADR-050)]]
+> và [[02-System-Specs/System-Cms-Menu-Home-Seo-Specs|System-Cms-Menu-Home-Seo-Specs]] §2. ✅ đối chiếu `site-header.tsx`/`site-footer.tsx` đọc `getSiteMenu()`.
 
 ---
 

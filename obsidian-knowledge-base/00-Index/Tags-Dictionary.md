@@ -54,6 +54,8 @@ giúp phân loại nội dung và tra cứu nhanh cho người và AI agent đ�
 | `#moderation` | Khoá kiểm duyệt nội dung (ADR-038): `moderationLockedAt` trên sản phẩm/đánh giá/bài viết, trigger `*_guard_moderation`, cam kết bản quyền khi xuất bản |
 | `#pricing` | Trang Bảng giá `/pricing` + CMS `pricing` ở System Center (ADR-041 A): thẻ gói, gói năm ghép cặp, bảng so sánh, CTA theo người xem. Khác engine giá tài liệu `packages/core/src/pricing` (M6, dùng `#order`/`#product`) |
 | `#account` | Khu vực tài khoản cá nhân `/account` (ADR-041 C): hồ sơ, ảnh đại diện, đổi mật khẩu, đổi email, menu tài khoản |
+| `#cms` | CMS hệ thống ở System Center lưu nội dung trang công khai trong `cms_pages` (slug hệ thống `home`/`shop`/`pricing`/`menu`): menu header/footer, trang chủ theo brief, nháp/xuất bản/khôi phục (ADR-050, `System-Cms-Menu-Home-Seo-Specs`) |
+| `#legal` | Văn bản pháp lý có phiên bản + ghi nhận chấp thuận theo phiên bản (ADR-050): `legal_documents`, `legal_document_versions`, `user_legal_acceptances`, `/phap-ly/*`, `/admin/cms/phap-ly` (`Legal-Documents-Specs`, `Legal-Terms-Publishing-Runbook`) |
 | `#entitlement` | Quyền tải của người mua (`entitlements`) — lượt tải, thu hồi, quyền lợi khi tài liệu bị gỡ do vi phạm (ADR-039: tải lần cuối / yêu cầu hoàn tiền) |
 
 ---
@@ -69,7 +71,7 @@ giúp phân loại nội dung và tra cứu nhanh cho người và AI agent đ�
 | `#jobs` | Background job/cron qua `packages/jobs` (pg-boss) — từ ADR-036 xử lý trong app bằng `after()` + Vercel Cron `/api/cron/daily` (`Background-Jobs-Specs`) |
 | `#ui-ux` | Giao diện & trải nghiệm: bố cục, component, accessibility, responsive (owner thiết kế: Phong) |
 | `#design-system` | Design token (màu, font trong `theme.ts`), kit component dùng chung `admin/_ui/` |
-| `#seo` | URL công khai/canonical, metadata, sitemap/robots (vd URL tài liệu rút gọn — ADR-030) |
+| `#seo` | URL công khai/canonical, metadata, sitemap/robots (vd URL tài liệu rút gọn — ADR-030; ô SEO CMS + bộ giới hạn SEO chung 120/320 — ADR-050) |
 | `#deployment` | Triển khai production: hosting Vercel, env runtime, migration prod, worker (vd ADR-031, `Deploy-Vercel-Runbook`) |
 | `#dev-tool` | Công cụ/script **chỉ dành cho môi trường dev** (vd dữ liệu demo `demo:seed`) — không chạy trên staging/production |
 

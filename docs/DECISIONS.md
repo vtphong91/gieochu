@@ -1188,3 +1188,47 @@
   reverse proxy, TLS, env); cron thay Vercel Cron (crontab gọi `GET /api/cron/daily` với `CRON_SECRET`, có thể dày hơn);
   cân nhắc chạy `worker.ts` thường trực trên VPS thay cơ chế `after()` của ADR-036 (cần ADR riêng). Quy tắc một DB dùng
   chung (ADR-034) vẫn áp dụng cho tới khi có quyết định tách DB.
+
+## ADR-050 — Đợt 1: CMS menu header/footer, trang chủ theo brief + SEO trang chủ, Điều khoản sử dụng có phiên bản
+
+- **Bối cảnh (2026-10-23, chủ dự án chốt):** kế hoạch `docs/ke-hoach-home-legal-menu-seo-2026-10-23.md` (Long) + đề
+  xuất UX `docs/de-xuat-ux-home-legal-menu-2026-10-23.md` (Phong). Chủ dự án chỉ duyệt **đợt 1** gồm 3 hạng mục, theo
+  thứ tự, mỗi hạng mục **CMS trước, UI sau**:
+  1. **CMS menu header/footer** (System Center `/admin/cms/menu`), không migration: lưu bằng `CmsPage` slug hệ thống
+     `menu` (mẫu ADR-035, nháp/xuất bản). Header ≤5 mục, schema cho phép menu con **1 cấp** (mặc định không dùng); footer
+     1–4 cột; mỗi link: trang có sẵn / nội bộ / ngoài / email, tab mới, ẩn/hiện, Lên/Xuống; nhãn + đích nút CTA header.
+     Chưa xuất bản → menu mặc định = menu hiện tại **bỏ các mục không có link**. Desktop + mobile đọc cùng dữ liệu.
+     **Sửa ADR-025:** header/footer không còn là chrome cố định — nội dung menu do System Admin cấu hình; bố cục vẫn cố
+     định trong code. Năm bản quyền footer lấy theo năm hiện tại (không gõ cứng).
+  2. **Trang chủ theo `docs/GIEOCHU_HOMEPAGE_CONTENT_BRIEF.md`**, không migration: mở rộng `home-sections` (thêm
+     `steps`, `faq`, `community` thay `testimonials`; CTA phụ; `minToShow` = 3 cho gian hàng/tài liệu nổi bật); nội dung
+     mặc định soạn từ brief (token brand, **không số liệu**) khi chưa có bản PUBLISHED; bỏ số liệu/giá/sao gõ cứng
+     ("500+", "10.000+", "149.000đ", 5 sao); lời chứng thực cũ **tự ẩn** tới khi admin tích "đã có đồng ý", giai đoạn này
+     dùng "nhật ký phát triển"; chữ "miễn phí" chỉ giữ khi thực sự có gói miễn phí. Editor cảnh báo mềm tuyên bố brief §8,
+     chặn xuất bản khi lời chứng thực chưa có đồng ý hoặc link không an toàn. **SEO trang chủ:** ô title/description
+     (dùng cột có sẵn `CmsPage.seoTitle/seoDescription`) + `generateMetadata`; một bộ giới hạn SEO dùng chung trong
+     `@gieochu/core` (tối đa 120/320, cảnh báo mềm 60/160). Chưa làm ảnh OG/noindex/sitemap/robots/JSON-LD (đợt sau).
+  3. **Điều khoản sử dụng có phiên bản + ghi nhận chấp thuận**, cần migration expand-only (Hiếu viết, Quốc duyệt,
+     chủ dự án chạy): bảng L1 `legal_documents`, `legal_document_versions` (`version Int`, trạng thái
+     DRAFT/PUBLISHED/ARCHIVED, `effectiveAt`, `reviewStatus`), `user_legal_acceptances` (userId, versionId, acceptedAt —
+     **không lưu IP/User-Agent**). Đợt này chỉ một văn bản `terms` tại `/phap-ly/dieu-khoan-su-dung` (thêm `phap-ly`
+     vào slug dành riêng nếu cần + quét slug trùng). Xuất bản bị chặn khi nội dung còn `[[CẦN XÁC NHẬN`. Đăng ký: checkbox
+     link tới bản đang hiệu lực và lưu chấp thuận theo phiên bản; chưa có bản PUBLISHED → đăng ký như hiện tại. Người
+     dùng cũ **chưa** bị buộc chấp thuận lại (quyết ở giai đoạn pháp lý). Nội dung dự thảo do Long soạn ở
+     `docs/legal/drafts/`, thông tin pháp nhân để placeholder.
+- **Hoãn sang giai đoạn pháp lý (sau khi hệ thống chạy):** các trang pháp lý khác, trang hub, mở rộng báo cáo vi phạm
+  (`abuse_reports`), chấp thuận khi mở gian hàng/xuất bản, công bố bản dự thảo, xoá tài khoản, thông tin pháp nhân.
+- **Test:** chủ dự án duyệt nâng trần **+1 unit, +2 integration** (94/55 → 95/57) cho parse menu/section và ghi chấp
+  thuận theo phiên bản.
+- **Bổ sung ADR-050 (2026-10-23, Quốc — chốt kỹ thuật mục 3 trước migrate):** (a) **không xoá user** (chủ dự án chốt
+  2026-10-23): người dùng vi phạm/ngừng dùng chỉ bị **khoá** (deactivate — chặn thao tác, giữ nguyên dữ liệu) để tránh xoá
+  nhầm; FK `user_legal_acceptances` → `users` để Cascade chỉ phục vụ dọn dữ liệu test, không có luồng nghiệp vụ xoá user; (b) cho phép nhiều
+  bản PUBLISHED, bản hiệu lực = PUBLISHED có `effectiveAt ≤ now` mới nhất (hỗ trợ đặt hiệu lực tương lai); lưu trữ bản cũ là
+  thao tác riêng; (c) Xuất bản yêu cầu **cả** `reviewStatus = APPROVED` (admin tích "đã rà soát pháp lý") **và** không còn
+  `[[CẦN XÁC NHẬN` — không công bố bản chưa duyệt. Gói FREE thật đang bật (ADR-021) → CTA mặc định giữ "miễn phí".
+  `phap-ly` thêm vào `RESERVED_SLUGS` (tenant slug), đã quét DB không trùng.
+- **Bổ sung ADR-050 lần 2 (2026-10-23, Quốc — sau review UI):** trang `/phap-ly/[slug]` dùng `container-page` + lưới
+  `220px (mục lục) | minmax(0,768px)` — hợp ADR-024 (khung trang vẫn là utility chuẩn, chỉ cột nội dung giới hạn độ
+  rộng đọc); không thêm `container-doc`. Lưu trữ bản đang hiệu lực → bản PUBLISHED trước đó (nếu còn) tự hiệu lực lại.
+  Ô SEO trang chủ lưu thẳng, không qua nháp (giống Bảng giá) cho tới khi có quyết định khác. Migration ADR-050 đã chạy
+  nên không sửa comment trong `migration.sql` (đổi checksum).

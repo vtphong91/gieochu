@@ -1,23 +1,12 @@
 import { notFound } from "next/navigation";
 import { getPrismaClient } from "@gieochu/db";
-import { HOME_CMS_SLUG, isSystemCmsSlug, parseHomeSections, type HomeSection } from "@gieochu/core";
-import { listHomeProductOptions, listHomeTenantOptions } from "../../../../lib/home";
+import { HOME_CMS_SLUG, isSystemCmsSlug } from "@gieochu/core";
+import { getHomeCmsEditorData } from "../../../../lib/home-cms";
 import { requireAdminAccess } from "../../../../lib/page-guards";
 import { AdminPageHeader, SettingsGrid } from "../../_ui/kit";
 import { CmsPageForm } from "../cms-page-form";
 import { HomeSectionsEditor } from "../home-editor/home-sections-editor";
 import { toProductPinOption, toTenantPinOption } from "../home-editor/pin-options";
-
-/** Id đang ghim ở mọi section coaches/documents (live + nháp) — để ô chọn luôn hiện được tên. */
-function collectPinnedIds(sections: HomeSection[]): { tenantIds: string[]; productIds: string[] } {
-  const tenantIds = new Set<string>();
-  const productIds = new Set<string>();
-  for (const section of sections) {
-    if (section.type === "coaches") section.data.pinnedTenantIds.forEach((id) => tenantIds.add(id));
-    if (section.type === "documents") section.data.pinnedProductIds.forEach((id) => productIds.add(id));
-  }
-  return { tenantIds: [...tenantIds], productIds: [...productIds] };
-}
 
 export default async function AdminCmsEditPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -25,33 +14,27 @@ export default async function AdminCmsEditPage({ params }: { params: Promise<{ s
   // ADR-035 bổ sung: slug hệ thống khác `home` (vd `shop` — có route tĩnh `/admin/cms/shop`) không mở form JSON chung.
   if (isSystemCmsSlug(slug) && slug !== HOME_CMS_SLUG) notFound();
 
-  const prisma = getPrismaClient();
-  const page = await prisma.cmsPage.findUnique({ where: { slug } });
-  if (!page) notFound();
-
-  if (page.slug === HOME_CMS_SLUG) {
-    // ADR-033 mục 6: parse phòng thủ — dữ liệu nhập tay cũ của stats/search/coaches/documents chuyển sang dạng mới.
-    const live = parseHomeSections(page.blocks);
-    const draft = page.blocksDraft ? parseHomeSections(page.blocksDraft) : null;
-    if (!live) notFound();
-    const pinned = collectPinnedIds([...live, ...(draft ?? [])]);
-    const [tenantOptions, productOptions] = await Promise.all([
-      listHomeTenantOptions({ includeIds: pinned.tenantIds }),
-      listHomeProductOptions({ includeIds: pinned.productIds }),
-    ]);
-
+  if (slug === HOME_CMS_SLUG) {
+    // ADR-050: mở được cả khi chưa có dòng `home` (editor nạp nội dung mặc định, lần lưu đầu tạo dòng).
+    const data = await getHomeCmsEditorData();
     return (
       <main className="px-5 py-8 lg:px-8">
-        <AdminPageHeader title="Landing Page CMS" subtitle="Chỉnh nội dung trang chủ. Lưu nháp trước, Publish khi sẵn sàng." />
+        <AdminPageHeader title="Landing Page CMS" subtitle="Chỉnh nội dung trang chủ. Lưu nháp trước, Xuất bản khi sẵn sàng. Dùng {brand} thay cho tên nền tảng." />
         <HomeSectionsEditor
-          pageId={page.id}
-          live={live}
-          draft={draft}
-          pinOptions={{ tenants: tenantOptions.map(toTenantPinOption), products: productOptions.map(toProductPinOption) }}
+          live={data.live}
+          initialSections={data.sections}
+          initialHasDraft={data.hasDraft}
+          initialStatus={data.status}
+          initialSeo={{ seoTitle: data.seoTitle, seoDescription: data.seoDescription }}
+          pinOptions={{ tenants: data.pinOptions.tenants.map(toTenantPinOption), products: data.pinOptions.products.map(toProductPinOption) }}
         />
       </main>
     );
   }
+
+  const prisma = getPrismaClient();
+  const page = await prisma.cmsPage.findUnique({ where: { slug } });
+  if (!page) notFound();
 
   return (
     <main className="px-5 py-8 lg:px-8">

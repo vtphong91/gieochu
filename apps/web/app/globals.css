@@ -150,6 +150,43 @@ body {
   border-top: 1px solid #e5e7eb;
   margin: 1.2em 0;
 }
+/* Văn bản pháp lý công khai (`app/phap-ly/[slug]`, ADR-050 GĐ2): đọc dài — chữ 16px (17px từ lg), dòng 1.75, H2 có vạch
+   ngăn mục; anchor H2 không bị header dính che nhờ `scroll-padding-top` (html:has(.site-header)). Dùng KÈM
+   `.gieochu-rich-content` (chỉ ghi đè cỡ chữ/khoảng cách). */
+.gieochu-legal-content {
+  font-size: 16px;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+@media (width >= 64rem) {
+  .gieochu-legal-content {
+    font-size: 17px;
+  }
+}
+.gieochu-legal-content h2 {
+  margin-top: 2.2em;
+  padding-top: 1.2em;
+  border-top: 1px solid #e7dfc9;
+}
+.gieochu-legal-content > h2:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+.gieochu-legal-content :is(p, li) {
+  margin: 0.75em 0;
+}
+.gieochu-legal-content li > p {
+  margin: 0.25em 0;
+}
+
+/* In văn bản pháp lý: bỏ header/footer hệ thống, mục lục, breadcrumb — chỉ còn tiêu đề + nội dung. */
+@media print {
+  html:has(.legal-doc) :is(.site-header, .site-footer, .no-print) {
+    display: none !important;
+  }
+}
+
 .gieochu-editor-content p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   color: #9ca3af;

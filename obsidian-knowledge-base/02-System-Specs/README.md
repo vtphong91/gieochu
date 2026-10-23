@@ -93,6 +93,17 @@ bộ nội dung được viết lại từ nguồn thật: `CLAUDE.md`, `docs/AR
   thống kê chỉ áp kỳ; tìm không dấu, 6 nhóm (gồm "lâu chưa quay lại" 90 ngày), kỳ theo mua lần đầu/gần nhất, tài liệu đã mua, sắp xếp, phân trang;
   ghi chú một ô `tenant_customers.note` ≤ 500 ký tự (audit không nội dung); link "Xem đơn của khách"; chỉ OWNER
   ([Studio-Customers-Specs.md](./Studio-Customers-Specs.md)).
+- `[[System-Cms-Menu-Home-Seo-Specs]]`: CMS hệ thống ADR-050 đợt 1 — **CMS/logic xong ở working tree, chưa commit (2026-10-23); UI Phong đang làm; không
+  migration**. Slug hệ thống `menu` (`/admin/cms/menu`): header ≤ 5 mục + menu con 1 cấp ≤ 8, CTA ≤ 24 ký tự, footer 1–4 cột × ≤ 8 link, 4 loại link
+  (trang có sẵn/nội bộ/ngoài/email) qua luật chặn `cms-content-guard.ts`, menu mặc định, CTA "miễn phí" chỉ khi có Plan Free active; trang chủ 11 section
+  (thêm `steps`/`faq`/`community`, `testimonials` cũ → `community` chưa đồng ý = ẩn, `minToShow`, nội dung mặc định theo brief, chặn xuất bản
+  `homePublishIssues`, cảnh báo mềm brief §8); SEO trang chủ + bộ giới hạn SEO chung `@gieochu/core/seo` (120/320, cảnh báo 60/160), `generateMetadata` +
+  canonical từ `APP_URL` ([System-Cms-Menu-Home-Seo-Specs.md](./System-Cms-Menu-Home-Seo-Specs.md)).
+- `[[Legal-Documents-Specs]]`: Điều khoản sử dụng có phiên bản (ADR-050 mục 3) — **code chưa commit (2026-10-23); migration
+  `20261023090000_adr050_legal_documents` đã chạy**. 3 bảng L1 (`legal_documents`, `legal_document_versions`, `user_legal_acceptances` — append-only,
+  không IP/UA), trigger bất biến bản đã phát hành, bản hiệu lực = PUBLISHED `effectiveAt ≤ now` mới nhất, cổng xuất bản (APPROVED + hết `[[CẦN XÁC
+  NHẬN`), không lùi ngày hiệu lực (dung sai 5 phút), sửa nháp → rà soát về PENDING, `{brand}` thay sau sanitize, `/phap-ly/[slug]` 404 khi chưa có
+  bản, editor `/admin/cms/phap-ly`, ghi chấp thuận khi đăng ký trong cùng transaction ([Legal-Documents-Specs.md](./Legal-Documents-Specs.md)).
 
 ## Ghi chú lịch sử
 

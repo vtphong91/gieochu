@@ -443,7 +443,10 @@ export const ModelName = {
   Post: 'Post',
   AuditLog: 'AuditLog',
   TenantDailyStat: 'TenantDailyStat',
-  AbuseReport: 'AbuseReport'
+  AbuseReport: 'AbuseReport',
+  LegalDocument: 'LegalDocument',
+  LegalDocumentVersion: 'LegalDocumentVersion',
+  UserLegalAcceptance: 'UserLegalAcceptance'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -459,7 +462,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userProfile" | "refreshToken" | "verificationToken" | "plan" | "role" | "permission" | "rolePermission" | "cmsPage" | "subscription" | "tenant" | "tenantMember" | "tenantSlugHistory" | "product" | "productFile" | "systemSettings" | "systemStorageConfig" | "systemCloudinaryConfig" | "systemSmtpConfig" | "emailSendLog" | "documentCategory" | "systemBranding" | "tenantPaymentConfig" | "platformPaymentConfig" | "subscriptionInvoice" | "subscriptionRefundRequest" | "platformPaymentTransaction" | "webhookEvent" | "bankBin" | "coupon" | "couponRedemption" | "order" | "orderNote" | "orderItem" | "tenantPaymentTransaction" | "tenantCustomer" | "entitlement" | "downloadToken" | "shareLink" | "downloadEvent" | "storefrontMessage" | "tenantMediaAsset" | "review" | "post" | "auditLog" | "tenantDailyStat" | "abuseReport"
+    modelProps: "user" | "userProfile" | "refreshToken" | "verificationToken" | "plan" | "role" | "permission" | "rolePermission" | "cmsPage" | "subscription" | "tenant" | "tenantMember" | "tenantSlugHistory" | "product" | "productFile" | "systemSettings" | "systemStorageConfig" | "systemCloudinaryConfig" | "systemSmtpConfig" | "emailSendLog" | "documentCategory" | "systemBranding" | "tenantPaymentConfig" | "platformPaymentConfig" | "subscriptionInvoice" | "subscriptionRefundRequest" | "platformPaymentTransaction" | "webhookEvent" | "bankBin" | "coupon" | "couponRedemption" | "order" | "orderNote" | "orderItem" | "tenantPaymentTransaction" | "tenantCustomer" | "entitlement" | "downloadToken" | "shareLink" | "downloadEvent" | "storefrontMessage" | "tenantMediaAsset" | "review" | "post" | "auditLog" | "tenantDailyStat" | "abuseReport" | "legalDocument" | "legalDocumentVersion" | "userLegalAcceptance"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -3941,6 +3944,228 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    LegalDocument: {
+      payload: Prisma.$LegalDocumentPayload<ExtArgs>
+      fields: Prisma.LegalDocumentFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.LegalDocumentFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LegalDocumentPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.LegalDocumentFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LegalDocumentPayload>
+        }
+        findFirst: {
+          args: Prisma.LegalDocumentFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LegalDocumentPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.LegalDocumentFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LegalDocumentPayload>
+        }
+        findMany: {
+          args: Prisma.LegalDocumentFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LegalDocumentPayload>[]
+        }
+        create: {
+          args: Prisma.LegalDocumentCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LegalDocumentPayload>
+        }
+        createMany: {
+          args: Prisma.LegalDocumentCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.LegalDocumentCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LegalDocumentPayload>[]
+        }
+        delete: {
+          args: Prisma.LegalDocumentDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LegalDocumentPayload>
+        }
+        update: {
+          args: Prisma.LegalDocumentUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LegalDocumentPayload>
+        }
+        deleteMany: {
+          args: Prisma.LegalDocumentDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.LegalDocumentUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.LegalDocumentUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LegalDocumentPayload>[]
+        }
+        upsert: {
+          args: Prisma.LegalDocumentUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LegalDocumentPayload>
+        }
+        aggregate: {
+          args: Prisma.LegalDocumentAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateLegalDocument>
+        }
+        groupBy: {
+          args: Prisma.LegalDocumentGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.LegalDocumentGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.LegalDocumentCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.LegalDocumentCountAggregateOutputType> | number
+        }
+      }
+    }
+    LegalDocumentVersion: {
+      payload: Prisma.$LegalDocumentVersionPayload<ExtArgs>
+      fields: Prisma.LegalDocumentVersionFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.LegalDocumentVersionFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LegalDocumentVersionPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.LegalDocumentVersionFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LegalDocumentVersionPayload>
+        }
+        findFirst: {
+          args: Prisma.LegalDocumentVersionFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LegalDocumentVersionPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.LegalDocumentVersionFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LegalDocumentVersionPayload>
+        }
+        findMany: {
+          args: Prisma.LegalDocumentVersionFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LegalDocumentVersionPayload>[]
+        }
+        create: {
+          args: Prisma.LegalDocumentVersionCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LegalDocumentVersionPayload>
+        }
+        createMany: {
+          args: Prisma.LegalDocumentVersionCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.LegalDocumentVersionCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LegalDocumentVersionPayload>[]
+        }
+        delete: {
+          args: Prisma.LegalDocumentVersionDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LegalDocumentVersionPayload>
+        }
+        update: {
+          args: Prisma.LegalDocumentVersionUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LegalDocumentVersionPayload>
+        }
+        deleteMany: {
+          args: Prisma.LegalDocumentVersionDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.LegalDocumentVersionUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.LegalDocumentVersionUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LegalDocumentVersionPayload>[]
+        }
+        upsert: {
+          args: Prisma.LegalDocumentVersionUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LegalDocumentVersionPayload>
+        }
+        aggregate: {
+          args: Prisma.LegalDocumentVersionAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateLegalDocumentVersion>
+        }
+        groupBy: {
+          args: Prisma.LegalDocumentVersionGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.LegalDocumentVersionGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.LegalDocumentVersionCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.LegalDocumentVersionCountAggregateOutputType> | number
+        }
+      }
+    }
+    UserLegalAcceptance: {
+      payload: Prisma.$UserLegalAcceptancePayload<ExtArgs>
+      fields: Prisma.UserLegalAcceptanceFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.UserLegalAcceptanceFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserLegalAcceptancePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.UserLegalAcceptanceFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserLegalAcceptancePayload>
+        }
+        findFirst: {
+          args: Prisma.UserLegalAcceptanceFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserLegalAcceptancePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.UserLegalAcceptanceFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserLegalAcceptancePayload>
+        }
+        findMany: {
+          args: Prisma.UserLegalAcceptanceFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserLegalAcceptancePayload>[]
+        }
+        create: {
+          args: Prisma.UserLegalAcceptanceCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserLegalAcceptancePayload>
+        }
+        createMany: {
+          args: Prisma.UserLegalAcceptanceCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.UserLegalAcceptanceCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserLegalAcceptancePayload>[]
+        }
+        delete: {
+          args: Prisma.UserLegalAcceptanceDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserLegalAcceptancePayload>
+        }
+        update: {
+          args: Prisma.UserLegalAcceptanceUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserLegalAcceptancePayload>
+        }
+        deleteMany: {
+          args: Prisma.UserLegalAcceptanceDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.UserLegalAcceptanceUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.UserLegalAcceptanceUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserLegalAcceptancePayload>[]
+        }
+        upsert: {
+          args: Prisma.UserLegalAcceptanceUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserLegalAcceptancePayload>
+        }
+        aggregate: {
+          args: Prisma.UserLegalAcceptanceAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateUserLegalAcceptance>
+        }
+        groupBy: {
+          args: Prisma.UserLegalAcceptanceGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.UserLegalAcceptanceGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.UserLegalAcceptanceCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.UserLegalAcceptanceCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -4743,6 +4968,47 @@ export const AbuseReportScalarFieldEnum = {
 export type AbuseReportScalarFieldEnum = (typeof AbuseReportScalarFieldEnum)[keyof typeof AbuseReportScalarFieldEnum]
 
 
+export const LegalDocumentScalarFieldEnum = {
+  id: 'id',
+  key: 'key',
+  slug: 'slug',
+  title: 'title',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type LegalDocumentScalarFieldEnum = (typeof LegalDocumentScalarFieldEnum)[keyof typeof LegalDocumentScalarFieldEnum]
+
+
+export const LegalDocumentVersionScalarFieldEnum = {
+  id: 'id',
+  documentId: 'documentId',
+  version: 'version',
+  status: 'status',
+  reviewStatus: 'reviewStatus',
+  contentHtml: 'contentHtml',
+  changeSummary: 'changeSummary',
+  effectiveAt: 'effectiveAt',
+  publishedAt: 'publishedAt',
+  publishedById: 'publishedById',
+  createdById: 'createdById',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type LegalDocumentVersionScalarFieldEnum = (typeof LegalDocumentVersionScalarFieldEnum)[keyof typeof LegalDocumentVersionScalarFieldEnum]
+
+
+export const UserLegalAcceptanceScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  versionId: 'versionId',
+  acceptedAt: 'acceptedAt'
+} as const
+
+export type UserLegalAcceptanceScalarFieldEnum = (typeof UserLegalAcceptanceScalarFieldEnum)[keyof typeof UserLegalAcceptanceScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -5309,6 +5575,34 @@ export type ListEnumAbuseReportDecisionFieldRefInput<$PrismaModel> = FieldRefInp
 
 
 /**
+ * Reference to a field of type 'LegalDocumentVersionStatus'
+ */
+export type EnumLegalDocumentVersionStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'LegalDocumentVersionStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'LegalDocumentVersionStatus[]'
+ */
+export type ListEnumLegalDocumentVersionStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'LegalDocumentVersionStatus[]'>
+    
+
+
+/**
+ * Reference to a field of type 'LegalReviewStatus'
+ */
+export type EnumLegalReviewStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'LegalReviewStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'LegalReviewStatus[]'
+ */
+export type ListEnumLegalReviewStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'LegalReviewStatus[]'>
+    
+
+
+/**
  * Reference to a field of type 'Float'
  */
 export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
@@ -5519,6 +5813,9 @@ export type GlobalOmitConfig = {
   auditLog?: Prisma.AuditLogOmit
   tenantDailyStat?: Prisma.TenantDailyStatOmit
   abuseReport?: Prisma.AbuseReportOmit
+  legalDocument?: Prisma.LegalDocumentOmit
+  legalDocumentVersion?: Prisma.LegalDocumentVersionOmit
+  userLegalAcceptance?: Prisma.UserLegalAcceptanceOmit
 }
 
 /* Types for Logging */
