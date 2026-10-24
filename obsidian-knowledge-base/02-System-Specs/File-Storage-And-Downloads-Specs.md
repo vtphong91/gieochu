@@ -74,6 +74,10 @@ sequenceDiagram
   ADR-026 cũng kiểm `isProductObjectKeyFor(..., "cover")`. **Từ ADR-027 editor dùng ảnh bìa Cloudinary**
   (`Product.coverImageUrl`), R2 chỉ còn là fallback cho dữ liệu cũ — xem §6–§7.
 - **Link tài liệu ngoài (ADR-026)** không đi qua upload: không object, không quét, không tính dung lượng.
+- **Xoá file vật lý trên Storage Service (ADR-051 / ADR-037 KB) ✅:**
+  - `removeProductFile`: gỡ file đơn lẻ khỏi sản phẩm -> soft-delete (đánh dấu `removedAt`, không xoá object vật lý trên storage, nhưng có trừ `tenant.storageUsedBytes`).
+  - `deleteProduct` (hoặc `archiveProduct` cho tài liệu chưa có người mua): **xoá triệt để file vật lý trên Storage Service** (`deleteObject`) theo đúng provider/bucket (`storageBucket`, `storageProvider` trên MinIO hoặc Cloudflare R2), xoá `coverImageKey` trên public bucket và trừ `tenant.storageUsedBytes`. Nếu tài liệu đã/đang có người mua thì bị chặn xoá nhằm bảo toàn quyền tải của khách hàng.
+
 
 ---
 

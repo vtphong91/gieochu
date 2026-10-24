@@ -4,6 +4,7 @@ import {
   canPublishProduct,
   isCloudinaryImageUrl,
   isReservedProductSlug,
+  logger,
   normalizeExternalDocumentUrl,
   normalizeProductSummary,
   RESERVED_PRODUCT_SLUGS,
@@ -12,6 +13,8 @@ import {
   type PublishBlock,
   type PublishEligibilityResult,
 } from "@gieochu/core";
+import { createS3Client, deleteObject } from "@gieochu/storage";
+import { getDecryptedSystemStorageConfig, createClientForProvider, type StorageProvider } from "./system-storage";
 import {
   getPrismaClient,
   withTenant,
@@ -445,23 +448,271 @@ export async function unpublishProduct(tenantId: string, productId: string): Pro
   return withTenant(tenantId, (tx) => tx.product.update({ where: { id: productId }, data: { status: "DRAFT" } }));
 }
 
-/** DRAFT/PUBLISHED -> ARCHIVED. Files are untouched — archiving never affects an existing buyer's download rights. */
-export async function archiveProduct(tenantId: string, productId: string, actorId: string | null = null): Promise<Product> {
+export interface ProductPurchaseCheck {
+  canDelete: boolean;
+  reason?: "PENDING_ORDER" | "PURCHASED" | "ORDER_HISTORY";
+  message?: string;
+  orderCode?: string;
+}
+
+/**
+ * Kiểm tra xem tài liệu có người đang mua hoặc đã mua hay không.
+ * - Đang mua: Có đơn hàng trạng thái PENDING.
+ * - Đã mua: Có đơn hàng PAID/FULFILLED/REFUNDED hoặc đã cấp Entitlement.
+ * - Đảm bảo tài liệu có người đang mua, đã mua thì KHÔNG THỂ XÓA.
+ */
+export async function checkProductPurchaseStatus(tenantId: string, productId: string): Promise<ProductPurchaseCheck> {
+  const orderItem = await withTenant(tenantId, (tx) =>
+    tx.orderItem.findFirst({
+      where: { productId },
+      select: {
+        id: true,
+        order: {
+          select: {
+            id: true,
+            code: true,
+            status: true,
+          },
+        },
+      },
+    }),
+  );
+
+  if (orderItem) {
+    const status = orderItem.order.status;
+    const code = orderItem.order.code;
+    if (status === "PENDING") {
+      return {
+        canDelete: false,
+        reason: "PENDING_ORDER",
+        orderCode: code,
+        message: `Tài liệu đang có người đặt mua (đơn hàng #${code} đang chờ xử lý), không thể xoá.`,
+      };
+    }
+    if (status === "PAID" || status === "FULFILLED" || status === "REFUNDED") {
+      return {
+        canDelete: false,
+        reason: "PURCHASED",
+        orderCode: code,
+        message: `Tài liệu đã có người mua (đơn hàng #${code}), không thể xoá để bảo đảm quyền lợi tải tài liệu của khách hàng.`,
+      };
+    }
+    return {
+      canDelete: false,
+      reason: "ORDER_HISTORY",
+      orderCode: code,
+      message: `Tài liệu đã có lịch sử đơn hàng (#${code}), không thể xoá để bảo đảm tính toàn vẹn dữ liệu.`,
+    };
+  }
+
+  const entitlement = await withTenant(tenantId, (tx) =>
+    tx.entitlement.findFirst({
+      where: { productId },
+      select: { id: true },
+    }),
+  );
+
+  if (entitlement) {
+    return {
+      canDelete: false,
+      reason: "PURCHASED",
+      message: "Tài liệu đã có người sở hữu (quyền tải đã cấp), không thể xoá.",
+    };
+  }
+
+  return { canDelete: true };
+}
+
+/**
+ * Xoá vĩnh viễn tài liệu và remove toàn bộ file dữ liệu trong Storage Service (MinIO / R2).
+ * Chặn xoá tuyệt đối nếu tài liệu đang có người mua hoặc đã mua.
+ */
+export async function deleteProduct(tenantId: string, productId: string, actorId: string | null = null): Promise<void> {
   await requireWritableTenant(tenantId);
   const existing = await requireOwnedProduct(tenantId, productId);
-  const archived = await withTenant(tenantId, (tx) => tx.product.update({ where: { id: productId }, data: { status: "ARCHIVED" } }));
-  if (existing.status !== "ARCHIVED") {
-    await audit.log({
-      actorId,
-      scope: "TENANT",
-      tenantId,
-      action: "PRODUCT_ARCHIVED",
-      targetType: "Product",
-      targetId: productId,
-      metadata: { previousStatus: existing.status },
+  assertNotModerationLocked(existing);
+
+  const purchaseCheck = await checkProductPurchaseStatus(tenantId, productId);
+  if (!purchaseCheck.canDelete) {
+    throw new AppError({
+      code: "PRODUCT_CANNOT_BE_DELETED",
+      message: purchaseCheck.message ?? "Không thể xoá tài liệu.",
+      httpStatus: 400,
     });
   }
-  return archived;
+
+  // 1. Lấy danh sách files của sản phẩm để xoá trong storage service
+  const files = await withTenant(tenantId, (tx) =>
+    tx.productFile.findMany({
+      where: { productId, tenantId },
+      select: {
+        id: true,
+        objectKey: true,
+        storageBucket: true,
+        storageProvider: true,
+        sourceKind: true,
+        sizeBytes: true,
+        removedAt: true,
+      },
+    }),
+  );
+
+  // 2. Remove files vật lý trong storage service
+  const storageConfig = await getDecryptedSystemStorageConfig().catch(() => null);
+  let freedStorageBytes = 0;
+
+  if (storageConfig) {
+    for (const file of files) {
+      if (file.sourceKind === "FILE" && file.objectKey) {
+        try {
+          const provider = (file.storageProvider as StorageProvider) || storageConfig.activeProvider;
+          let client;
+          try {
+            const providerClient = await createClientForProvider(provider);
+            client = providerClient.client;
+          } catch {
+            client = createS3Client(storageConfig);
+          }
+          const bucket = file.storageBucket || storageConfig.bucketPrivate;
+          await deleteObject(client, bucket, file.objectKey);
+          if (!file.removedAt) {
+            freedStorageBytes += file.sizeBytes;
+          }
+        } catch (err) {
+          logger.warn({ objectKey: file.objectKey, err }, "deleteProduct: không xoá được file trong storage service");
+        }
+      }
+    }
+
+    if (existing.coverImageKey) {
+      try {
+        const client = createS3Client(storageConfig);
+        await deleteObject(client, storageConfig.bucketPublic, existing.coverImageKey);
+      } catch (err) {
+        logger.warn({ coverImageKey: existing.coverImageKey, err }, "deleteProduct: không xoá được ảnh bìa trong storage service");
+      }
+    }
+  }
+
+  // 3. Cập nhật dung lượng đã dùng của gian hàng
+  if (freedStorageBytes > 0) {
+    try {
+      await getPrismaClient().tenant.update({
+        where: { id: tenantId },
+        data: { storageUsedBytes: { decrement: freedStorageBytes } },
+      });
+    } catch (err) {
+      logger.warn({ tenantId, freedStorageBytes, err }, "deleteProduct: lỗi khi cập nhật storageUsedBytes");
+    }
+  }
+
+  // 4. Xoá bản ghi trong cơ sở dữ liệu
+  await withTenant(tenantId, async (tx) => {
+    await tx.downloadEvent.deleteMany({
+      where: {
+        OR: [{ file: { productId } }, { shareLink: { productId } }],
+      },
+    });
+    await tx.downloadToken.deleteMany({
+      where: { file: { productId } },
+    });
+    await tx.shareLink.deleteMany({
+      where: { productId },
+    });
+    await tx.review.deleteMany({
+      where: { productId },
+    });
+    await tx.productFile.deleteMany({
+      where: { productId },
+    });
+    await tx.post.updateMany({
+      where: { productId },
+      data: { productId: null },
+    });
+    await tx.product.delete({
+      where: { id: productId },
+    });
+  });
+
+  // 5. Audit log
+  await audit.log({
+    actorId,
+    scope: "TENANT",
+    tenantId,
+    action: "PRODUCT_DELETED",
+    targetType: "Product",
+    targetId: productId,
+    metadata: {
+      title: existing.title,
+      slug: existing.slug,
+      deletedFilesCount: files.length,
+      freedStorageBytes,
+    },
+  });
+}
+
+export interface ArchiveProductResult extends Product {
+  isDeleted?: boolean;
+  archiveMessage?: string;
+}
+
+/**
+ * Thao tác Lưu trữ:
+ * - Kích hoạt thêm việc xoá: Nếu tài liệu chưa có người mua và không có đơn đang mua,
+ *   hệ thống sẽ xoá tài liệu và dọn dẹp toàn bộ file trong Storage Service.
+ * - Đảm bảo nếu tài liệu đang có người mua hoặc đã mua thì KHÔNG XÓA, chỉ chuyển trạng thái
+ *   sang ARCHIVED để bảo vệ quyền lợi người mua.
+ */
+export async function archiveProduct(
+  tenantId: string,
+  productId: string,
+  actorId: string | null = null,
+): Promise<ArchiveProductResult> {
+  await requireWritableTenant(tenantId);
+  const existing = await requireOwnedProduct(tenantId, productId);
+  assertNotModerationLocked(existing);
+
+  const purchaseStatus = await checkProductPurchaseStatus(tenantId, productId);
+
+  if (!purchaseStatus.canDelete) {
+    // Có người đang mua hoặc đã mua -> KHÔNG ĐƯỢC XÓA!
+    // Chuyển sang ARCHIVED an toàn, giữ nguyên file trong storage
+    const archived = await withTenant(tenantId, (tx) =>
+      tx.product.update({ where: { id: productId }, data: { status: "ARCHIVED" } }),
+    );
+    if (existing.status !== "ARCHIVED") {
+      await audit.log({
+        actorId,
+        scope: "TENANT",
+        tenantId,
+        action: "PRODUCT_ARCHIVED",
+        targetType: "Product",
+        targetId: productId,
+        metadata: {
+          previousStatus: existing.status,
+          purchaseReason: purchaseStatus.reason,
+          retainedForBuyers: true,
+        },
+      });
+    }
+    return {
+      ...archived,
+      isDeleted: false,
+      archiveMessage:
+        purchaseStatus.reason === "PENDING_ORDER"
+          ? "Tài liệu đang có người đặt mua nên không thể xoá; đã chuyển sang trạng thái Lưu trữ để bảo vệ đơn hàng."
+          : "Tài liệu đã có người mua nên không thể xoá; đã chuyển sang trạng thái Lưu trữ để bảo toàn quyền tải của khách hàng.",
+    };
+  }
+
+  // Chưa có ai mua -> Kích hoạt thêm việc xóa sạch dữ liệu và storage service!
+  await deleteProduct(tenantId, productId, actorId);
+  return {
+    ...existing,
+    status: "ARCHIVED",
+    isDeleted: true,
+    archiveMessage: "Tài liệu chưa có người mua đã được lưu trữ và xoá hoàn toàn khỏi hệ thống, giải phóng bộ nhớ lưu trữ.",
+  };
 }
 
 /** ARCHIVED -> DRAFT — must be re-published explicitly, not restored straight to PUBLISHED. */

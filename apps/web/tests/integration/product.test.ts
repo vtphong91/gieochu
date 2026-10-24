@@ -30,12 +30,17 @@ function toCurrentUser(userId: string): CurrentUser {
   return { userId, familyId: "test-family", role: "USER", emailVerified: true, profileCompleted: true };
 }
 
-describe("M5 product publish eligibility and archiving", () => {
+describe("M5 product publish eligibility and archiving", { timeout: 60000 }, () => {
   afterAll(async () => {
     const tenants = await prisma.tenant.findMany({ where: { slug: { startsWith: RUN_PREFIX } }, select: { id: true } });
     const tenantIds = tenants.map((t) => t.id);
     if (tenantIds.length > 0) {
       await withSystemJob(async (tx) => {
+        await tx.downloadEvent.deleteMany({ where: { tenantId: { in: tenantIds } } });
+        await tx.downloadToken.deleteMany({ where: { entitlement: { tenantId: { in: tenantIds } } } });
+        await tx.entitlement.deleteMany({ where: { tenantId: { in: tenantIds } } });
+        await tx.orderItem.deleteMany({ where: { order: { tenantId: { in: tenantIds } } } });
+        await tx.order.deleteMany({ where: { tenantId: { in: tenantIds } } });
         await tx.productFile.deleteMany({ where: { tenantId: { in: tenantIds } } });
         await tx.product.deleteMany({ where: { tenantId: { in: tenantIds } } });
         await tx.tenantMember.deleteMany({ where: { tenantId: { in: tenantIds } } });
@@ -81,6 +86,40 @@ describe("M5 product publish eligibility and archiving", () => {
         },
       }),
     );
+
+    const customer = await createActiveUser(nextEmail());
+    await withTenant(tenant.id, async (tx) => {
+      const order = await tx.order.create({
+        data: {
+          tenantId: tenant.id,
+          customerId: customer.id,
+          code: `${RUN_PREFIX}-ord-${Date.now()}`,
+          status: "FULFILLED",
+          subtotalVnd: 20_000,
+          totalVnd: 20_000,
+          expiresAt: new Date(Date.now() + 86400_000),
+          paidAt: new Date(),
+        },
+      });
+      const orderItem = await tx.orderItem.create({
+        data: {
+          orderId: order.id,
+          productId: product.id,
+          titleSnapshot: product.title,
+          unitPriceVnd: 20_000,
+          finalPriceVnd: 20_000,
+        },
+      });
+      await tx.entitlement.create({
+        data: {
+          tenantId: tenant.id,
+          userId: customer.id,
+          productId: product.id,
+          orderItemId: orderItem.id,
+          downloadLimit: 5,
+        },
+      });
+    });
 
     const archived = await archiveProduct(tenant.id, product.id);
     expect(archived.status).toBe("ARCHIVED");

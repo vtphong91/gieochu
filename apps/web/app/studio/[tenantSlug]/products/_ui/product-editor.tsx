@@ -8,7 +8,14 @@ import { PRODUCT_SUMMARY_MAX_LENGTH } from "@gieochu/core/product-summary";
 import { productPath } from "@gieochu/core/product-path";
 import { TiptapEditor, type TiptapImageUpload } from "../../../../_ui/editor/tiptap-editor";
 import { getContentImageUploadSignatureAction, registerTenantImageAction } from "../../media-actions";
-import { archiveProductAction, createProductAction, restoreProductAction, updateProductAction, type ProductActionState } from "../actions";
+import {
+  archiveProductAction,
+  createProductAction,
+  deleteProductAction,
+  restoreProductAction,
+  updateProductAction,
+  type ProductActionState,
+} from "../actions";
 import { ConfigCard, SelectField, TextField } from "../../../../admin/_ui/kit";
 import { IconAlertTriangle, IconCard, IconCheckCircle, IconDoc, IconExternalLink, IconEye, IconPackage, IconTag } from "../../../../admin/_ui/icons";
 import { DeliverySourcesCard, type EditorFile, type EditorLink, type EnsureProductResult } from "./delivery-sources";
@@ -345,19 +352,27 @@ export function ProductEditor(props: EditorProps) {
     return promise;
   }
 
-  function runStatus(kind: "archive" | "restore") {
+  function runStatus(kind: "archive" | "restore" | "delete") {
     if (!productId) return;
     const confirmText: Record<typeof kind, string> = {
-      archive: "Lưu trữ sản phẩm? Sản phẩm sẽ ẩn khỏi trang bán; có thể khôi phục về Riêng tư sau.",
+      archive: "Lưu trữ sản phẩm? Nếu tài liệu chưa có người mua, hệ thống sẽ thực hiện xoá và giải phóng file trong bộ nhớ lưu trữ. Tài liệu đã có người mua sẽ được lưu trữ an toàn.",
       restore: "Khôi phục sản phẩm về chế độ Riêng tư?",
+      delete: "Xoá vĩnh viễn tài liệu này? Toàn bộ dữ liệu và file trong bộ lưu trữ sẽ bị xoá hoàn toàn nếu tài liệu chưa có người mua.",
     };
     const extra = dirty ? "\n\nLưu ý: các thay đổi chưa lưu trong form sẽ không được lưu kèm." : "";
     if (!window.confirm(confirmText[kind] + extra)) return;
     setStatusError(null);
-    const action = kind === "archive" ? archiveProductAction : restoreProductAction;
+    const action = kind === "archive" ? archiveProductAction : kind === "restore" ? restoreProductAction : deleteProductAction;
     startStatus(async () => {
       const result = await action(tenantSlug, productId);
-      if (result.error) setStatusError(result.error);
+      if (result.error) {
+        setStatusError(result.error);
+      } else if (result.deleted) {
+        router.push(`/studio/${tenantSlug}/products`);
+        router.refresh();
+      } else {
+        router.refresh();
+      }
     });
   }
 
@@ -930,6 +945,7 @@ export function ProductEditor(props: EditorProps) {
                   publicHref={isEdit ? productPath(tenantSlug, product!.slug) : undefined}
                   onArchive={isEdit && !moderationLock && (status === "DRAFT" || status === "PUBLISHED") ? () => runStatus("archive") : undefined}
                   onRestore={status === "ARCHIVED" && !moderationLock ? () => runStatus("restore") : undefined}
+                  onDelete={isEdit && !moderationLock ? () => runStatus("delete") : undefined}
                   moderationLock={moderationLock}
                   rights={
                     unpublished && !moderationLock

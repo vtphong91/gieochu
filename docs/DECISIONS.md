@@ -1242,3 +1242,26 @@
   - **Tinh chỉnh lần 3 (2026-10-23, Quốc):** dấu "+" chỉ khi số đã bị làm tròn xuống (`isStatRounded`/`floorStatValue`,
     sr-only "Hơn" khớp theo); thẻ có giá trị thật **0 luôn ẩn** (kể cả `minValue` = 0, giống ADR-033); ảnh hero trang chủ
     qua `cloudinaryDeliveryUrl` width 1200 (ADR-028); độ tràn thẻ trái ở `xl` (48px) chấp nhận như code.
+
+## ADR-051 — Cơ chế lưu trữ kích hoạt xoá, bảo toàn quyền lợi người mua và dọn dẹp Storage Service
+
+- **Bối cảnh (2026-10-24, chủ dự án chốt):**
+  1. Khi người bán thực hiện thao tác **Lưu trữ** (Archive) tài liệu số trong Studio, nếu tài liệu đó chưa từng phát sinh người mua thì kích hoạt tự động xoá vĩnh viễn cả tài liệu và các tệp đính kèm trong Storage Service (MinIO/R2) để giải phóng dung lượng lưu trữ cho gian hàng.
+  2. **Bảo toàn quyền lợi người mua:** Tuyệt đối không xoá tài liệu nếu tài liệu đang có người mua (đơn hàng `PENDING`) hoặc đã có người mua (đơn hàng `PAID`, `FULFILLED`, `REFUNDED` hoặc đã cấp `Entitlement`). Lúc này tài liệu chỉ chuyển trạng thái sang `ARCHIVED`, giữ nguyên 100% tệp trên Storage Service để khách hàng đã mua vẫn tiếp tục tải được bình thường.
+  3. Bổ sung nút/action **Xoá tài liệu** độc lập (`deleteProductAction`) trong Studio với cùng cơ chế bảo vệ giao dịch và dọn dẹp storage.
+- **Quyết định kỹ thuật:**
+  1. **Kiểm tra trạng thái mua hàng (`checkProductPurchaseStatus`):**
+     - Đang mua: Có đơn hàng `PENDING` chứa sản phẩm -> `canDelete = false`, lý do `HAS_PENDING_ORDERS`.
+     - Đã mua: Có đơn hàng `PAID`, `FULFILLED`, `REFUNDED` hoặc có bản ghi `Entitlement` tương ứng -> `canDelete = false`, lý do `HAS_PURCHASE_HISTORY`.
+     - Chưa phát sinh đơn: `canDelete = true`.
+  2. **Lưu trữ kích hoạt xoá (`archiveProduct`):**
+     - Nếu `canDelete = false`: Cập nhật `status = 'ARCHIVED'`, giữ nguyên tệp trong Storage Service, ghi audit log `PRODUCT_ARCHIVED` (metadata `retainedForBuyers: true`).
+     - Nếu `canDelete = true`: Kích hoạt `deleteProduct`, xoá sạch bản ghi DB và tệp vật lý trên storage, trả về `isDeleted = true` để UI điều hướng về danh sách sản phẩm.
+  3. **Xoá tài liệu & dọn dẹp Storage Service (`deleteProduct`):**
+     - Chặn xoá với `PRODUCT_CANNOT_BE_DELETED` (HTTP 400) nếu `canDelete = false`.
+     - Đọc danh sách `product_files` của sản phẩm; duyệt từng tệp và gọi `deleteObject()` trên S3 client tương ứng với `storageBucket`/`storageProvider` (MinIO/R2) của từng tệp hoặc cấu hình storage hệ thống.
+     - Xoá ảnh bìa nội bộ `coverImageKey` trên public bucket nếu có.
+     - Cập nhật trừ dung lượng đã dùng của gian hàng (`tenant.storageUsedBytes -= sum(sizeBytes)`).
+     - Xoá cascade dữ liệu DB trong transaction: `downloadEvent`, `downloadToken`, `shareLink`, `review`, `productFile`, gỡ liên kết bài viết (`post.productId = null`) và xoá `product`.
+     - Ghi audit log `PRODUCT_DELETED` (bổ sung vào `AUDIT_ACTIONS` và nhãn `Xoá tài liệu`).
+

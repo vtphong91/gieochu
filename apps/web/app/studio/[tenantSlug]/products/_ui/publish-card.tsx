@@ -78,6 +78,7 @@ export function PublishCard({
   publicHref,
   onArchive,
   onRestore,
+  onDelete,
   rights,
   moderationLock,
 }: {
@@ -102,6 +103,7 @@ export function PublishCard({
   publicHref?: string;
   onArchive?: () => void;
   onRestore?: () => void;
+  onDelete?: () => void;
   rights?: RightsConfirmation;
   moderationLock?: ModerationLock | null;
 }) {
@@ -111,11 +113,26 @@ export function PublishCard({
 
   let footer: ReactNode;
   if (archived) {
-    footer = onRestore ? (
-      <GhostButton onClick={onRestore} disabled={busy} className={`${GHOST_BTN} w-full`}>
-        Khôi phục về Riêng tư
-      </GhostButton>
-    ) : undefined;
+    footer = (
+      <div className="flex flex-col gap-2">
+        {onRestore ? (
+          <GhostButton onClick={onRestore} disabled={busy} className={`${GHOST_BTN} w-full`}>
+            Khôi phục về Riêng tư
+          </GhostButton>
+        ) : null}
+        {onDelete ? (
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={busy}
+            className={`${GHOST_BTN} w-full`}
+            style={{ borderColor: RED_LINE, color: RED }}
+          >
+            Xoá vĩnh viễn tài liệu
+          </button>
+        ) : null}
+      </div>
+    );
   } else if (status) {
     footer = (
       <div className="flex flex-col gap-2">
@@ -140,6 +157,17 @@ export function PublishCard({
             style={{ borderColor: RED_LINE, color: RED }}
           >
             Lưu trữ sản phẩm
+          </button>
+        ) : null}
+        {onDelete ? (
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={busy}
+            className={`${GHOST_BTN} w-full`}
+            style={{ borderColor: RED_LINE, color: RED }}
+          >
+            Xoá tài liệu
           </button>
         ) : null}
       </div>

@@ -35,6 +35,8 @@ author: Long (tài liệu)
   [[03-API-Contracts/Database-Schema-Reference|Database-Schema-Reference]] §3.2, §7.
 - **"Chế độ hiển thị" không phải cột mới** (ADR-027 §1): **Công khai = `PUBLISHED`**, **Riêng tư = `DRAFT`**.
   `ARCHIVED` giữ nguyên nghĩa cũ (UI hiển thị "Đã lưu trữ", không có radio, chỉ "Khôi phục" → `DRAFT`).
+  Từ **ADR-051 (ADR-037 KB)**: Thao tác Lưu trữ kích hoạt tự động xoá vĩnh viễn cả tài liệu và storage nếu chưa có người mua; nếu có người đang mua (`PENDING`) hoặc đã mua (`PAID`/`FULFILLED`/`REFUNDED`/`Entitlement`) thì tuyệt đối không xoá mà chỉ chuyển sang `ARCHIVED` để bảo toàn quyền tải của khách hàng (§6B).
+
 
 ---
 
@@ -235,7 +237,29 @@ sequenceDiagram
 
 ---
 
+## 6B. Vòng Đời Sản Phẩm: Lưu Trữ Kích Hoạt Xoá & Bảo Vệ Quyền Người Mua (ADR-051 / ADR-037 KB) ✅
+
+Nguồn: `apps/web/lib/product.ts`, `apps/web/app/studio/[tenantSlug]/products/actions.ts`.
+
+1. **Quy tắc bảo vệ người mua (`checkProductPurchaseStatus`):**
+   - **Đang mua (`HAS_PENDING_ORDERS`):** Có đơn hàng `PENDING` chứa sản phẩm (`OrderItem.productId === productId`). Chặn xoá vì khách đang tiến hành thanh toán.
+   - **Đã mua (`HAS_PURCHASE_HISTORY`):** Có đơn hàng `PAID`, `FULFILLED`, `REFUNDED` hoặc đã tồn tại bản ghi `Entitlement` sở hữu tài liệu. Chặn xoá nhằm bảo đảm quyền lợi tải tài liệu của khách hàng theo chính sách mua bán sản phẩm số.
+   - Chưa từng phát sinh đơn: `canDelete = true`.
+2. **Cơ chế Lưu trữ thông minh (`archiveProductAction` / `archiveProduct`):**
+   - **Có người mua / đang mua:** Không xoá dữ liệu, chỉ chuyển `status = "ARCHIVED"`. Giữ nguyên 100% tệp trên Storage Service (MinIO/R2) để khách hàng tiếp tục tải bình thường. Ghi audit log `PRODUCT_ARCHIVED` (metadata `retainedForBuyers: true`).
+   - **Chưa từng có người mua:** Kích hoạt tự động `deleteProduct()`, xoá toàn bộ dữ liệu DB và tệp vật lý trên Storage Service, trừ quota `tenant.storageUsedBytes`, trả về `isDeleted = true`. Giao diện Studio tự động điều hướng về danh sách sản phẩm.
+3. **Thao tác Xoá tài liệu trực tiếp (`deleteProductAction` / `deleteProduct`):**
+   - Kiểm tra nghiêm ngặt `checkProductPurchaseStatus`. Nếu vi phạm, ném lỗi `PRODUCT_CANNOT_BE_DELETED` (HTTP 400).
+   - Xoá vật lý file trên Storage Service: quét `product_files`, lấy client tương ứng `storageBucket`/`storageProvider` (hoặc storage hệ thống) và gọi `deleteObject()`.
+   - Xoá ảnh bìa nội bộ `coverImageKey` trên public bucket nếu có.
+   - Cập nhật trừ dung lượng đã dùng: `tenant.storageUsedBytes -= sum(files.sizeBytes)`.
+   - Xoá cascade dữ liệu DB: `downloadEvent`, `downloadToken`, `shareLink`, `review`, `productFile`, gỡ liên kết bài viết (`post.productId = null`) và xoá `product`.
+   - Ghi audit log `PRODUCT_DELETED`.
+
+---
+
 ## 7A. Đường dẫn công khai & slug dành riêng (ADR-030) ✅ code · ❓ trình duyệt
+
 
 > Nguồn: `docs/DECISIONS.md` ADR-030 + "Bổ sung ADR-030 theo triển khai" (2026-09-28). Bản trích:
 > [[01-Architecture-Decisions/ADR-016-Short-Product-Url-No-Sticky-Publish-Card|ADR-016 (≙ ADR-030)]]. ✅ = Long đọc code

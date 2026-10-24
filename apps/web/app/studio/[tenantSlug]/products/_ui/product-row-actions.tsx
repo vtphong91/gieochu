@@ -5,9 +5,10 @@ import { useState, useTransition } from "react";
 import { productPath } from "@gieochu/core/product-path";
 import { brandColors } from "@gieochu/config/theme";
 import { MenuItemButton, MenuItemLink, MenuSeparator, RowMenu } from "../../../../admin/_ui/row-menu";
-import { IconEdit, IconExternalLink, IconEye, IconEyeOff, IconPackage, IconRoute } from "../../../../admin/_ui/icons";
+import { IconEdit, IconExternalLink, IconEye, IconEyeOff, IconPackage, IconRoute, IconTrash } from "../../../../admin/_ui/icons";
 import {
   archiveProductAction,
+  deleteProductAction,
   restoreProductAction,
   unpublishProductAction,
   type ProductActionState,
@@ -16,7 +17,7 @@ import {
 type ProductStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
 
 type StatusAction = {
-  key: "unpublish" | "archive" | "restore";
+  key: "unpublish" | "archive" | "restore" | "delete";
   label: string;
   pending: string;
   confirm?: string;
@@ -26,9 +27,9 @@ type StatusAction = {
 
 /**
  * Cột "Thao tác" của 1 dòng sản phẩm: menu "⋯" (mục đầu là "Sửa") (RowMenu dùng chung với System Center).
- * Không có "Xuất bản" (cần kiểm điều kiện + ô cam kết bản quyền ADR-038 — làm trong editor) và không có "Xoá".
- * ADR-038: sản phẩm bị khoá kiểm duyệt không có mục đổi trạng thái (Khôi phục / Chuyển Riêng tư / Lưu trữ) — server
- * vẫn chặn (409 CONTENT_MODERATION_LOCKED, thông điệp hiện dưới menu nếu xảy ra).
+ * Lưu trữ tài liệu sẽ kích hoạt thêm việc xóa nếu chưa có người mua; tài liệu có người mua/đang mua được bảo toàn.
+ * Có thêm tuỳ chọn "Xoá tài liệu" trực tiếp.
+ * ADR-038: sản phẩm bị khoá kiểm duyệt không có mục đổi trạng thái — server vẫn chặn.
  */
 export function ProductRowActions({
   tenantSlug,
@@ -72,15 +73,31 @@ export function ProductRowActions({
       run: restoreProductAction,
       icon: <IconEyeOff />,
     });
+    statusActions.push({
+      key: "delete",
+      label: "Xoá tài liệu",
+      pending: "Đang xoá…",
+      confirm: `Xoá vĩnh viễn tài liệu "${title}"? Dữ liệu và các file trong bộ nhớ lưu trữ sẽ bị xoá hoàn toàn nếu tài liệu chưa có người mua.`,
+      run: deleteProductAction,
+      icon: <IconTrash />,
+    });
   }
   if (!moderationLocked && (s === "DRAFT" || s === "PUBLISHED")) {
     statusActions.push({
       key: "archive",
       label: "Lưu trữ",
       pending: "Đang lưu trữ…",
-      confirm: `Lưu trữ "${title}"? Tài liệu sẽ bị gỡ khỏi trang bán; bạn có thể khôi phục lại sau.`,
+      confirm: `Lưu trữ "${title}"? Nếu tài liệu chưa có người mua, hệ thống sẽ thực hiện xoá và giải phóng file trong bộ nhớ lưu trữ. Tài liệu đã có người mua sẽ được lưu trữ an toàn.`,
       run: archiveProductAction,
       icon: <IconPackage />,
+    });
+    statusActions.push({
+      key: "delete",
+      label: "Xoá tài liệu",
+      pending: "Đang xoá…",
+      confirm: `Xoá vĩnh viễn tài liệu "${title}"? Dữ liệu và các file trong bộ nhớ lưu trữ sẽ bị xoá hoàn toàn nếu tài liệu chưa có người mua.`,
+      run: deleteProductAction,
+      icon: <IconTrash />,
     });
   }
 

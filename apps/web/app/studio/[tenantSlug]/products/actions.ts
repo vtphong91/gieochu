@@ -13,6 +13,7 @@ import {
   addProductExternalLink,
   archiveProduct,
   createProduct,
+  deleteProduct,
   ProductNotPublishableError,
   publishProduct,
   RIGHTS_CONFIRMATION_REQUIRED,
@@ -51,6 +52,8 @@ export interface ProductActionState {
   saved?: boolean;
   publishReasons?: PublishBlock[];
   published?: boolean;
+  deleted?: boolean;
+  message?: string;
   /** Chỉ có ở `addProductLinkAction`/`updateProductLinkAction` khi thành công: bản ghi link sau thao tác
    * (`createdAt` là ISO string UTC để serialize qua Server Action). */
   link?: ProductLinkState;
@@ -456,13 +459,18 @@ async function runStatusAction(
   fn: (tenantId: string, productId: string, actorId: string) => Promise<unknown>,
 ): Promise<ProductActionState> {
   const { tenant, user } = await requireTenantMember(tenantSlug);
+  let result: unknown;
   try {
-    await fn(tenant.id, productId, user.userId);
+    result = await fn(tenant.id, productId, user.userId);
   } catch (error) {
     if (error instanceof AppError) return appErrorToState(error);
     throw error;
   }
   revalidateProduct(tenantSlug, productId);
+  if (result && typeof result === "object" && "isDeleted" in result) {
+    const isDeleted = Boolean((result as { isDeleted?: boolean }).isDeleted);
+    return { ok: true, deleted: isDeleted, message: (result as { archiveMessage?: string }).archiveMessage };
+  }
   return { ok: true };
 }
 
@@ -489,4 +497,20 @@ export async function archiveProductAction(tenantSlug: string, productId: string
 
 export async function restoreProductAction(tenantSlug: string, productId: string): Promise<ProductActionState> {
   return runStatusAction(tenantSlug, productId, restoreProduct);
+}
+
+/**
+ * Xoá vĩnh viễn tài liệu và xoá file dữ liệu trong storage service (MinIO/R2).
+ * Chặn xoá tuyệt đối nếu tài liệu đang có người mua hoặc đã mua.
+ */
+export async function deleteProductAction(tenantSlug: string, productId: string): Promise<ProductActionState> {
+  const { tenant, user } = await requireTenantMember(tenantSlug);
+  try {
+    await deleteProduct(tenant.id, productId, user.userId);
+  } catch (error) {
+    if (error instanceof AppError) return appErrorToState(error);
+    throw error;
+  }
+  revalidateProduct(tenantSlug, productId);
+  return { ok: true, deleted: true, message: "Đã xoá tài liệu và dọn dẹp dữ liệu trong bộ nhớ lưu trữ." };
 }
