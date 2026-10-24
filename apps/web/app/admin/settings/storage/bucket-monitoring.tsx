@@ -42,7 +42,7 @@ export function BucketMonitoring({ initialTenants = [] }: { initialTenants?: Buc
   const [inspectingTenantId, setInspectingTenantId] = useState<string | null>(null);
   const [reconcilingTenantId, setReconcilingTenantId] = useState<string | null>(null);
   const [isReconcilingAll, setIsReconcilingAll] = useState(false);
-  const [inspectionResults, setInspectionResults] = useState<Record<string, TenantBucketInspectionResult>>({});
+  const [, setInspectionResults] = useState<Record<string, TenantBucketInspectionResult>>({});
   const [isPending, startTransition] = useTransition();
 
   // Helper format dung lượng bytes sang MB / GB

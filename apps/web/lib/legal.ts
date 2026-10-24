@@ -113,32 +113,44 @@ export async function listLegalVersions(key: string): Promise<LegalVersionRow[]>
   return doc?.versions ?? [];
 }
 
+/** Bảng văn bản pháp lý chưa tồn tại (code chạy trước khi áp migration ADR-050). */
+export function isLegalTableMissing(error: unknown): boolean {
+  if (typeof error === "object" && error !== null && (error as { code?: unknown }).code === "P2021") return true;
+  const text = error instanceof Error ? `${error.message} ${String((error as { cause?: unknown }).cause ?? "")}` : String(error);
+  return /42P01|legal_document.*does not exist|does not exist.*legal_document/i.test(text);
+}
+
 /** Bản đang hiệu lực (PUBLISHED, `effectiveAt <= now`, mới nhất); `null` = chưa có. */
 export async function getEffectiveLegalVersion(key: string, now: Date = new Date()): Promise<EffectiveLegalVersion | null> {
-  const row = await getPrismaClient().legalDocumentVersion.findFirst({
-    where: { status: "PUBLISHED", effectiveAt: { lte: now }, document: { key } },
-    orderBy: [{ effectiveAt: "desc" }, { version: "desc" }],
-    select: {
-      id: true,
-      version: true,
-      contentHtml: true,
-      effectiveAt: true,
-      publishedAt: true,
-      document: { select: { id: true, key: true, slug: true, title: true } },
-    },
-  });
-  if (!row || !row.effectiveAt) return null;
-  return {
-    documentId: row.document.id,
-    key: row.document.key,
-    slug: row.document.slug,
-    title: row.document.title,
-    versionId: row.id,
-    version: row.version,
-    contentHtml: row.contentHtml,
-    effectiveAt: row.effectiveAt,
-    publishedAt: row.publishedAt,
-  };
+  try {
+    const row = await getPrismaClient().legalDocumentVersion.findFirst({
+      where: { status: "PUBLISHED", effectiveAt: { lte: now }, document: { key } },
+      orderBy: [{ effectiveAt: "desc" }, { version: "desc" }],
+      select: {
+        id: true,
+        version: true,
+        contentHtml: true,
+        effectiveAt: true,
+        publishedAt: true,
+        document: { select: { id: true, key: true, slug: true, title: true } },
+      },
+    });
+    if (!row || !row.effectiveAt) return null;
+    return {
+      documentId: row.document.id,
+      key: row.document.key,
+      slug: row.document.slug,
+      title: row.document.title,
+      versionId: row.id,
+      version: row.version,
+      contentHtml: row.contentHtml,
+      effectiveAt: row.effectiveAt,
+      publishedAt: row.publishedAt,
+    };
+  } catch (error) {
+    if (isLegalTableMissing(error)) return null;
+    throw error;
+  }
 }
 
 /** Tạo phiên bản nháp mới (số = lớn nhất + 1). Nội dung trống được phép (soạn dần). */

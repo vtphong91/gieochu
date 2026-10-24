@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { brandColors } from "@gieochu/config/theme";
 import {
   addProductLinkAction,
+  getProductFilePreviewAction,
   removeProductFileAction,
   removeProductLinkAction,
   updateProductLinkAction,
@@ -12,9 +13,10 @@ import {
   type ProductLinkState,
 } from "../actions";
 import { Badge, ConfigCard, EmptyState, TextField } from "../../../../admin/_ui/kit";
-import { IconExternalLink, IconFile, IconTrash, IconUpload } from "../../../../admin/_ui/icons";
+import { IconExternalLink, IconEye, IconFile, IconTrash, IconUpload } from "../../../../admin/_ui/icons";
 import { IconLinkChain } from "../../../../_ui/editor/toolbar-icons";
 import { formatBytes, uploadProductFile, type UploadedProductFile } from "./upload-client";
+import { ViewDocsModal } from "../../../../_ui/view-docs";
 import { GHOST_BTN, GREEN_TEXT, PRIMARY_BTN, ProgressBar, ROW_BTN, UploadError, WarningNote } from "./editor-bits";
 import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 
@@ -279,6 +281,7 @@ function FileUploader({
   const [isPreview, setIsPreview] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [announcement, setAnnouncement] = useState("");
+  const [previewDoc, setPreviewDoc] = useState<{ file: File; fileName: string; sizeBytes?: number } | null>(null);
   const runningRef = useRef(false);
   const previewId = useId();
   const hintId = useId();
@@ -444,6 +447,15 @@ function FileUploader({
                   {formatBytes(item.file.size)}
                 </span>
                 {item.isPreview ? <Badge tone="info">Xem trước</Badge> : null}
+                <button
+                  type="button"
+                  onClick={() => setPreviewDoc({ file: item.file, fileName: item.file.name, sizeBytes: item.file.size })}
+                  className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                  title="Xem trước nội dung file"
+                >
+                  <IconEye className="h-3.5 w-3.5 text-gray-500" />
+                  <span>Xem trước</span>
+                </button>
               </div>
               <div className="mt-2">
                 {item.status === "error" ? (
@@ -464,6 +476,14 @@ function FileUploader({
           ))}
         </ul>
       ) : null}
+
+      <ViewDocsModal
+        open={!!previewDoc}
+        onClose={() => setPreviewDoc(null)}
+        file={previewDoc?.file}
+        fileName={previewDoc?.fileName ?? ""}
+        sizeBytes={previewDoc?.sizeBytes}
+      />
     </div>
   );
 }
@@ -481,7 +501,31 @@ function FileList({
 }) {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<{ url: string; fileName: string; sizeBytes?: number; mimeType?: string | null } | null>(null);
+  const [loadingPreviewId, setLoadingPreviewId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
+
+  async function handlePreviewFile(file: EditorFile) {
+    setError(null);
+    setLoadingPreviewId(file.id);
+    try {
+      const res = await getProductFilePreviewAction(tenantSlug, productId, file.id);
+      if (!res.ok || !res.url) {
+        setError(res.error || "Không thể lấy liên kết xem trước tài liệu.");
+      } else {
+        setPreviewDoc({
+          url: res.url,
+          fileName: file.fileName,
+          sizeBytes: file.sizeBytes,
+          mimeType: res.mimeType,
+        });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Đã xảy ra lỗi khi mở tài liệu xem trước.");
+    } finally {
+      setLoadingPreviewId(null);
+    }
+  }
 
   function remove(file: EditorFile) {
     if (!window.confirm(`Gỡ file "${file.fileName}" khỏi sản phẩm? Khách mua sau sẽ không nhận file này.`)) return;
@@ -530,21 +574,47 @@ function FileList({
                   </p>
                 ) : null}
               </div>
-              <button
-                type="button"
-                onClick={() => remove(file)}
-                disabled={pendingId === file.id}
-                aria-label={`Gỡ file ${file.fileName}`}
-                className={ROW_BTN}
-                style={{ background: "#FEF2F2", color: RED }}
-              >
-                <IconTrash className="h-4 w-4" />
-                <span className="hidden sm:inline">{pendingId === file.id ? "Đang gỡ..." : "Gỡ"}</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handlePreviewFile(file)}
+                  disabled={loadingPreviewId === file.id}
+                  aria-label={`Xem trước file ${file.fileName}`}
+                  className={ROW_BTN}
+                  style={{ background: "#F0FDF4", color: "#166534", border: "1px solid #BBF7D0" }}
+                >
+                  {loadingPreviewId === file.id ? (
+                    <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
+                  ) : (
+                    <IconEye className="h-4 w-4" />
+                  )}
+                  <span className="hidden sm:inline">{loadingPreviewId === file.id ? "Đang mở..." : "Xem trước"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => remove(file)}
+                  disabled={pendingId === file.id}
+                  aria-label={`Gỡ file ${file.fileName}`}
+                  className={ROW_BTN}
+                  style={{ background: "#FEF2F2", color: RED }}
+                >
+                  <IconTrash className="h-4 w-4" />
+                  <span className="hidden sm:inline">{pendingId === file.id ? "Đang gỡ..." : "Gỡ"}</span>
+                </button>
+              </div>
             </li>
           );
         })}
       </ul>
+
+      <ViewDocsModal
+        open={!!previewDoc}
+        onClose={() => setPreviewDoc(null)}
+        url={previewDoc?.url}
+        fileName={previewDoc?.fileName ?? ""}
+        sizeBytes={previewDoc?.sizeBytes}
+        mimeType={previewDoc?.mimeType}
+      />
     </section>
   );
 }

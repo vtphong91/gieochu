@@ -17,6 +17,7 @@ import {
   ProductNotPublishableError,
   publishProduct,
   RIGHTS_CONFIRMATION_REQUIRED,
+  getProductFilePreviewUrl,
   removeProductExternalLink,
   removeProductFile,
   restoreProduct,
@@ -388,6 +389,31 @@ export async function removeProductFileAction(tenantSlug: string, productId: str
   }
   revalidateProduct(tenantSlug, productId);
   return { ok: true };
+}
+
+export interface ProductFilePreviewState {
+  ok?: boolean;
+  error?: string;
+  url?: string;
+  fileName?: string;
+  mimeType?: string | null;
+  sizeBytes?: number;
+  isExternal?: boolean;
+}
+
+export async function getProductFilePreviewAction(
+  tenantSlug: string,
+  productId: string,
+  fileId: string,
+): Promise<ProductFilePreviewState> {
+  const { tenant } = await requireTenantMember(tenantSlug);
+  try {
+    const result = await getProductFilePreviewUrl(tenant.id, productId, fileId);
+    return { ok: true, ...result };
+  } catch (error) {
+    if (error instanceof AppError) return { ok: false, error: error.message };
+    return { ok: false, error: "Không thể lấy liên kết xem trước tài liệu." };
+  }
 }
 
 function linkInput(formData: FormData): { label: string; url: string } {

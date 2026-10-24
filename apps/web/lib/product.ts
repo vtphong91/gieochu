@@ -284,6 +284,76 @@ export async function removeProductFile(tenantId: string, productId: string, fil
   await getPrismaClient().tenant.update({ where: { id: tenantId }, data: { storageUsedBytes: { decrement: file.sizeBytes } } });
 }
 
+export interface ProductFilePreviewResult {
+  url: string;
+  fileName: string;
+  mimeType: string | null;
+  sizeBytes: number;
+  isExternal: boolean;
+}
+
+/**
+ * Lấy URL xem trước tài liệu có chữ ký số (presigned) dành riêng cho thành viên của tenant trong Studio.
+ */
+export async function getProductFilePreviewUrl(tenantId: string, productId: string, fileId: string): Promise<ProductFilePreviewResult> {
+  await requireOwnedProduct(tenantId, productId);
+  const row = await withTenant(tenantId, (tx) => tx.productFile.findUnique({ where: { id: fileId } }));
+  if (!row || row.tenantId !== tenantId || row.productId !== productId || row.removedAt) {
+    throw new AppError({ code: "PRODUCT_FILE_NOT_FOUND", message: "Không tìm thấy file.", httpStatus: 404 });
+  }
+
+  if (row.sourceKind === "EXTERNAL_URL") {
+    return {
+      url: row.externalUrl ?? "",
+      fileName: row.fileName,
+      mimeType: null,
+      sizeBytes: 0,
+      isExternal: true,
+    };
+  }
+
+  if (!row.objectKey) {
+    throw new AppError({ code: "PRODUCT_FILE_INVALID", message: "File chưa có dữ liệu lưu trữ.", httpStatus: 400 });
+  }
+
+  const { requireStorageConfig } = await import("./product-upload");
+  const { createPresignedDownload, clampDownloadTtlSeconds } = await import("@gieochu/storage");
+  const { toClientStorageUrl } = await import("./storage-gateway");
+
+  const storageConfig = await requireStorageConfig();
+  let client = createS3Client(storageConfig);
+  let signingProvider: StorageProvider = storageConfig.activeProvider;
+  const bucket = row.storageBucket || storageConfig.bucketPrivate;
+
+  if (row.storageProvider && row.storageProvider !== storageConfig.activeProvider) {
+    try {
+      const providerClient = await createClientForProvider(row.storageProvider as StorageProvider);
+      client = providerClient.client;
+      signingProvider = row.storageProvider as StorageProvider;
+    } catch {
+      // fallback
+    }
+  }
+
+  const settings = await getSystemSettings();
+  const ttlSeconds = clampDownloadTtlSeconds(settings.presignDownloadTtlSeconds);
+  const presignedUrl = await createPresignedDownload(client, {
+    bucket,
+    key: row.objectKey,
+    fileName: row.fileName,
+    ttlSeconds,
+  });
+
+  const url = toClientStorageUrl({ presignedUrl, provider: signingProvider, method: "GET", ttlSeconds });
+  return {
+    url,
+    fileName: row.fileName,
+    mimeType: row.mimeType,
+    sizeBytes: row.sizeBytes,
+    isExternal: false,
+  };
+}
+
 export interface ExternalLinkInput {
   label: string;
   url: string;
