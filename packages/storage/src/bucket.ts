@@ -1,4 +1,10 @@
-import { CreateBucketCommand, HeadBucketCommand, type S3Client } from "@aws-sdk/client-s3";
+import {
+  CreateBucketCommand,
+  HeadBucketCommand,
+  ListObjectsV2Command,
+  type ListObjectsV2CommandOutput,
+  type S3Client,
+} from "@aws-sdk/client-s3";
 
 /**
  * Validates S3 / MinIO bucket naming rules:
@@ -84,4 +90,47 @@ export async function ensureBucketExists(client: S3Client, bucket: string): Prom
   if (!exists) {
     await createBucket(client, bucket);
   }
+}
+
+export interface BucketStats {
+  exists: boolean;
+  totalObjects: number;
+  totalBytes: number;
+}
+
+/**
+ * Calculates total object count and cumulative bytes in a bucket (optionally scoped to a prefix).
+ */
+export async function getBucketStats(
+  client: S3Client,
+  bucket: string,
+  prefix?: string,
+): Promise<BucketStats> {
+  const exists = await headBucket(client, bucket);
+  if (!exists) {
+    return { exists: false, totalObjects: 0, totalBytes: 0 };
+  }
+
+  let totalObjects = 0;
+  let totalBytes = 0;
+  let continuationToken: string | undefined = undefined;
+
+  do {
+    const res: ListObjectsV2CommandOutput = await client.send(
+      new ListObjectsV2Command({
+        Bucket: bucket,
+        Prefix: prefix || undefined,
+        ContinuationToken: continuationToken,
+      }),
+    );
+    if (res.Contents) {
+      for (const item of res.Contents) {
+        totalObjects += 1;
+        totalBytes += item.Size || 0;
+      }
+    }
+    continuationToken = res.NextContinuationToken;
+  } while (continuationToken);
+
+  return { exists: true, totalObjects, totalBytes };
 }

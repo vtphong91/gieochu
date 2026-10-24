@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { getPrismaClient } from "@gieochu/db";
 import { logger } from "@gieochu/core";
 import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 import { requireAdminAccess } from "../../../../lib/page-guards";
 import { getSystemStorageConfig } from "../../../../lib/system-storage";
+import { getTenantStorageMonitoringList } from "../../../../lib/tenant-storage";
 import { AdminPageHeader } from "../../_ui/kit";
 import { IconDatabase, IconLayers, IconRefresh } from "../../_ui/icons";
 import { StorageForm, type StorageFormInitial } from "./storage-form";
@@ -25,62 +25,28 @@ export default async function AdminStorageSettingsPage({ searchParams }: PagePro
   const currentTab = tab === "buckets" ? "buckets" : tab === "sync" ? "sync" : "config";
 
   const config = await getSystemStorageConfig();
-  const prisma = getPrismaClient();
 
-  // Load tenant list for bucket monitoring & sync panel (bọc try-catch phòng thủ)
-  type RawTenantItem = Awaited<ReturnType<typeof prisma.tenant.findMany>>[number] & {
-    subscription?: { plan: { code: string; name: string; storageMb: number } | null } | null;
-    _count?: { products: number };
-  };
-  let rawTenants: RawTenantItem[] = [];
+  // Load danh sách tenant từ hàm giám sát lưu trữ chuyên dụng (đếm đúng số tệp ProductFile hợp lệ)
+  let tenants: BucketMonitoringTenant[] = [];
 
   try {
-    rawTenants = (await prisma.tenant.findMany({
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        storageBucket: true,
-        storageProvider: true,
-        storageUsedBytes: true,
-        status: true,
-        subscription: {
-          select: {
-            plan: {
-              select: {
-                code: true,
-                name: true,
-                storageMb: true,
-              },
-            },
-          },
-        },
-        _count: {
-          select: {
-            products: true,
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    })) as unknown as RawTenantItem[];
+    const monitoringList = await getTenantStorageMonitoringList();
+    tenants = monitoringList.map((t) => ({
+      id: t.id,
+      name: t.name,
+      slug: t.slug,
+      storageBucket: t.storageBucket,
+      storageProvider: t.storageProvider,
+      storageUsedBytes: t.storageUsedBytes,
+      planCode: t.planCode,
+      planName: t.planName,
+      planStorageMb: t.planStorageMb,
+      fileCount: t.fileCount, // Đếm chính xác số tệp tài liệu trong ProductFile
+      status: t.status,
+    }));
   } catch (err) {
-    logger.warn({ err }, "AdminStorageSettingsPage: không thể tải danh sách tenant");
+    logger.warn({ err }, "AdminStorageSettingsPage: không thể tải danh sách tenant storage monitoring");
   }
-
-  const tenants: BucketMonitoringTenant[] = rawTenants.map((t) => ({
-    id: t.id,
-    name: t.name,
-    slug: t.slug,
-    storageBucket: t.storageBucket,
-    storageProvider: t.storageProvider,
-    storageUsedBytes: t.storageUsedBytes,
-    planCode: t.subscription?.plan?.code,
-    planName: t.subscription?.plan?.name,
-    planStorageMb: t.subscription?.plan?.storageMb ?? 500,
-    fileCount: t._count?.products ?? 0,
-    status: t.status,
-  }));
 
   // Parse enriched config or map legacy config
   const rawPublicConfig = config?.publicConfig as unknown as {

@@ -228,10 +228,11 @@ export function PrimaryButton({ children, loading, ...rest }: ComponentProps<"bu
   );
 }
 
-export function GhostButton({ children, ...rest }: ComponentProps<"button">) {
+export function GhostButton({ children, loading, ...rest }: ComponentProps<"button"> & { loading?: boolean }) {
   return (
     <button
       type="button"
+      disabled={loading || rest.disabled}
       className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F3B82] disabled:cursor-not-allowed disabled:opacity-60 lg:min-h-0"
       style={{ borderColor: GRAY_LINE, color: INK }}
       {...rest}

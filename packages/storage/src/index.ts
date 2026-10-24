@@ -30,11 +30,12 @@ export type {
 export {
   createBucket,
   ensureBucketExists,
+  getBucketStats,
   headBucket,
   isValidBucketName,
   resolveMinioEndpoint,
 } from "./bucket";
-export type { ResolveMinioEndpointParams } from "./bucket";
+export type { BucketStats, ResolveMinioEndpointParams } from "./bucket";
 
 export { copyObjectBetweenClients } from "./stream-copy";
 export type { CopyObjectBetweenClientsArgs, CopyObjectBetweenClientsResult } from "./stream-copy";

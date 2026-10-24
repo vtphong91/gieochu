@@ -7,9 +7,16 @@ import {
   IconServer,
   IconDatabase,
   IconPlus,
+  IconRefresh,
 } from "../../_ui/icons";
 
-import { provisionTenantBucketAction } from "./actions";
+import {
+  provisionTenantBucketAction,
+  inspectTenantBucketAction,
+  reconcileTenantStorageAction,
+  reconcileAllTenantsStorageAction,
+} from "./actions";
+import type { TenantBucketInspectionResult } from "../../../../lib/tenant-storage";
 
 export interface BucketMonitoringTenant {
   id: string;
@@ -32,6 +39,10 @@ export function BucketMonitoring({ initialTenants = [] }: { initialTenants?: Buc
   const [statusFilter, setStatusFilter] = useState<"ALL" | "READY" | "PENDING" | "WARNING">("ALL");
   const [actionMessage, setActionMessage] = useState<{ ok: boolean; message: string } | null>(null);
   const [pendingTenantId, setPendingTenantId] = useState<string | null>(null);
+  const [inspectingTenantId, setInspectingTenantId] = useState<string | null>(null);
+  const [reconcilingTenantId, setReconcilingTenantId] = useState<string | null>(null);
+  const [isReconcilingAll, setIsReconcilingAll] = useState(false);
+  const [inspectionResults, setInspectionResults] = useState<Record<string, TenantBucketInspectionResult>>({});
   const [isPending, startTransition] = useTransition();
 
   // Helper format dung lượng bytes sang MB / GB
@@ -121,7 +132,67 @@ export function BucketMonitoring({ initialTenants = [] }: { initialTenants?: Buc
         );
       }
     });
+  }
 
+  // Kiểm tra sức khỏe & số liệu thực tế của Bucket trên Storage (MinIO / R2)
+  function handleInspectBucket(tenantId: string) {
+    setInspectingTenantId(tenantId);
+    setActionMessage(null);
+
+    startTransition(async () => {
+      const result = await inspectTenantBucketAction(tenantId);
+      setInspectionResults((prev) => ({ ...prev, [tenantId]: result }));
+      setActionMessage({
+        ok: result.ok,
+        message: result.message,
+      });
+      setInspectingTenantId(null);
+    });
+  }
+
+  // Đối soát & cập nhật dung lượng DB theo số liệu thực tế trên Storage
+  function handleReconcileTenant(tenantId: string) {
+    setReconcilingTenantId(tenantId);
+    setActionMessage(null);
+
+    startTransition(async () => {
+      const result = await reconcileTenantStorageAction(tenantId);
+      setInspectionResults((prev) => ({ ...prev, [tenantId]: result }));
+      setActionMessage({
+        ok: result.ok,
+        message: result.message,
+      });
+      setReconcilingTenantId(null);
+
+      if (result.ok && result.bucketExists) {
+        setTenants((prev) =>
+          prev.map((t) =>
+            t.id === tenantId
+              ? {
+                  ...t,
+                  storageUsedBytes: result.storageTotalBytes,
+                  fileCount: result.dbFilesCount,
+                }
+              : t
+          )
+        );
+      }
+    });
+  }
+
+  // Quét và đồng bộ toàn bộ gian hàng
+  function handleReconcileAll() {
+    setIsReconcilingAll(true);
+    setActionMessage(null);
+
+    startTransition(async () => {
+      const result = await reconcileAllTenantsStorageAction();
+      setActionMessage({
+        ok: result.ok,
+        message: result.message,
+      });
+      setIsReconcilingAll(false);
+    });
   }
 
   return (
@@ -200,6 +271,16 @@ export function BucketMonitoring({ initialTenants = [] }: { initialTenants?: Buc
             <option value="WARNING">Sắp đầy / Quá tải</option>
             <option value="PENDING">Chưa cấp phát</option>
           </select>
+
+          <GhostButton
+            loading={isReconcilingAll}
+            onClick={handleReconcileAll}
+          >
+            <span className="inline-flex items-center gap-1.5 text-xs text-[#0F3B82] font-semibold whitespace-nowrap">
+              <IconRefresh className="w-3.5 h-3.5" />
+              <span>Khớp dữ liệu Storage</span>
+            </span>
+          </GhostButton>
         </div>
       </div>
 
@@ -318,9 +399,24 @@ export function BucketMonitoring({ initialTenants = [] }: { initialTenants?: Buc
                               </span>
                             </PrimaryButton>
                           ) : (
-                            <GhostButton onClick={() => setActionMessage({ ok: true, message: `Bucket ${t.storageBucket} đang hoạt động bình thường.` })}>
-                              <span className="text-xs">Kiểm tra</span>
-                            </GhostButton>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <GhostButton
+                                loading={isPending && inspectingTenantId === t.id}
+                                onClick={() => handleInspectBucket(t.id)}
+                              >
+                                <span className="text-xs">Kiểm tra</span>
+                              </GhostButton>
+                              <GhostButton
+                                loading={isPending && reconcilingTenantId === t.id}
+                                onClick={() => handleReconcileTenant(t.id)}
+                                title="Đồng bộ lại dung lượng thực tế từ Storage vào Database"
+                              >
+                                <span className="inline-flex items-center gap-1 text-xs text-[#0F3B82]">
+                                  <IconRefresh className="w-3 h-3" />
+                                  <span>Đồng bộ</span>
+                                </span>
+                              </GhostButton>
+                            </div>
                           )}
                         </td>
                       </tr>
@@ -384,7 +480,7 @@ export function BucketMonitoring({ initialTenants = [] }: { initialTenants?: Buc
                       </div>
                     </div>
 
-                    <div className="pt-1 flex items-center justify-between">
+                    <div className="pt-1 flex items-center justify-between gap-2">
                       <span className="text-xs text-gray-500">{t.fileCount ?? 0} tệp đã lưu</span>
                       {!hasBucket ? (
                         <PrimaryButton
@@ -394,7 +490,20 @@ export function BucketMonitoring({ initialTenants = [] }: { initialTenants?: Buc
                           <span className="text-xs">Khởi tạo bucket</span>
                         </PrimaryButton>
                       ) : (
-                        <Badge tone="success">Sẵn sàng</Badge>
+                        <div className="flex items-center gap-1.5">
+                          <GhostButton
+                            loading={isPending && inspectingTenantId === t.id}
+                            onClick={() => handleInspectBucket(t.id)}
+                          >
+                            <span className="text-xs">Kiểm tra</span>
+                          </GhostButton>
+                          <GhostButton
+                            loading={isPending && reconcilingTenantId === t.id}
+                            onClick={() => handleReconcileTenant(t.id)}
+                          >
+                            <span className="text-xs text-[#0F3B82]">Đồng bộ</span>
+                          </GhostButton>
+                        </div>
                       )}
                     </div>
                   </div>

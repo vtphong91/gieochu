@@ -1,10 +1,11 @@
 import { AppError } from "@gieochu/core";
-import { ensureBucketExists, isValidBucketName } from "@gieochu/storage";
+import { ensureBucketExists, getBucketStats, isValidBucketName } from "@gieochu/storage";
 import { getPrismaClient } from "@gieochu/db";
 import {
   createClientForProvider,
   BUCKET_PREFIX_MAX_LENGTH,
   getDecryptedSystemStorageConfig,
+  normalizePublicStorageConfig,
   isValidBucketPrefix,
   type StorageProvider,
 } from "./system-storage";
@@ -222,4 +223,181 @@ export async function getTenantStorageMonitoringList(): Promise<TenantStorageMon
       fileCount,
     };
   });
+}
+
+export interface TenantBucketInspectionResult {
+  ok: boolean;
+  tenantId: string;
+  tenantName: string;
+  bucket: string;
+  provider: string;
+  isDedicated: boolean;
+  bucketExists: boolean;
+  storageObjectsCount: number;
+  storageTotalBytes: number;
+  dbFilesCount: number;
+  dbUsedBytes: number;
+  isSynced: boolean;
+  message: string;
+}
+
+/**
+ * Inspects a tenant's bucket or shared storage prefix directly on the target provider (MinIO / Cloudflare R2).
+ * Verifies bucket existence, real object count, and actual cumulative bytes.
+ */
+export async function inspectTenantBucket(tenantId: string): Promise<TenantBucketInspectionResult> {
+  const prisma = getPrismaClient();
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: {
+      id: true,
+      name: true,
+      storageBucket: true,
+      storageProvider: true,
+      storageUsedBytes: true,
+    },
+  });
+
+  if (!tenant) {
+    throw new AppError({ code: "TENANT_NOT_FOUND", message: "Không tìm thấy gian hàng.", httpStatus: 404 });
+  }
+
+  const sysConfigRow = await prisma.systemStorageConfig.findUnique({ where: { id: "default" } });
+  if (!sysConfigRow) {
+    throw new AppError({ code: "STORAGE_NOT_CONFIGURED", message: "Hệ thống lưu trữ chưa được cấu hình.", httpStatus: 503 });
+  }
+  const publicConfig = normalizePublicStorageConfig(sysConfigRow.publicConfig as Record<string, unknown>);
+
+  const provider = (tenant.storageProvider as StorageProvider) || publicConfig.activeProvider;
+  let bucket: string;
+  let prefix: string | undefined = undefined;
+  const isDedicated = Boolean(tenant.storageBucket);
+
+  if (tenant.storageBucket) {
+    bucket = tenant.storageBucket;
+  } else {
+    // Shared private bucket with tenant prefix
+    if (provider === "MINIO") {
+      const minioPrefix = publicConfig.minio.bucketPrefix || "gc-";
+      bucket = `${minioPrefix}private`;
+    } else {
+      bucket = publicConfig.r2.bucketPrivate;
+    }
+    prefix = `tenants/${tenant.id}/`;
+  }
+
+  // Count active DB files
+  const dbFilesCount = await prisma.productFile.count({
+    where: { tenantId: tenant.id, sourceKind: "FILE", removedAt: null },
+  });
+
+  try {
+    const { client } = await createClientForProvider(provider);
+    const stats = await getBucketStats(client, bucket, prefix);
+
+    if (!stats.exists) {
+      return {
+        ok: false,
+        tenantId: tenant.id,
+        tenantName: tenant.name,
+        bucket,
+        provider,
+        isDedicated,
+        bucketExists: false,
+        storageObjectsCount: 0,
+        storageTotalBytes: 0,
+        dbFilesCount,
+        dbUsedBytes: tenant.storageUsedBytes,
+        isSynced: false,
+        message: `Bucket "${bucket}" chưa tồn tại trên nền tảng ${provider}.`,
+      };
+    }
+
+    const isSynced = stats.totalBytes === tenant.storageUsedBytes;
+    const formatMb = (b: number) => (b / (1024 * 1024)).toFixed(2);
+
+    return {
+      ok: true,
+      tenantId: tenant.id,
+      tenantName: tenant.name,
+      bucket,
+      provider,
+      isDedicated,
+      bucketExists: true,
+      storageObjectsCount: stats.totalObjects,
+      storageTotalBytes: stats.totalBytes,
+      dbFilesCount,
+      dbUsedBytes: tenant.storageUsedBytes,
+      isSynced,
+      message: isSynced
+        ? `Bucket "${bucket}" (${provider}) hoạt động tốt: ${stats.totalObjects} tệp vật lý (${formatMb(stats.totalBytes)} MB). Dữ liệu đã khớp với DB.`
+        : `Lệch dữ liệu trên ${provider}: Storage thực tế có ${stats.totalObjects} tệp (${formatMb(stats.totalBytes)} MB), nhưng DB ghi nhận ${formatMb(tenant.storageUsedBytes)} MB.`,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      tenantId: tenant.id,
+      tenantName: tenant.name,
+      bucket,
+      provider,
+      isDedicated,
+      bucketExists: false,
+      storageObjectsCount: 0,
+      storageTotalBytes: 0,
+      dbFilesCount,
+      dbUsedBytes: tenant.storageUsedBytes,
+      isSynced: false,
+      message: `Lỗi kết nối tới nền tảng ${provider}: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+}
+
+/**
+ * Reconciles the tenant's recorded storageUsedBytes in PostgreSQL with the real bytes
+ * currently stored on the object storage provider (MinIO / Cloudflare R2).
+ */
+export async function reconcileTenantStorage(tenantId: string): Promise<TenantBucketInspectionResult> {
+  const result = await inspectTenantBucket(tenantId);
+  if (!result.ok || !result.bucketExists) {
+    return result;
+  }
+
+  const prisma = getPrismaClient();
+  await prisma.tenant.update({
+    where: { id: tenantId },
+    data: {
+      storageUsedBytes: result.storageTotalBytes,
+    },
+  });
+
+  result.dbUsedBytes = result.storageTotalBytes;
+  result.isSynced = true;
+  result.message = `Đã cập nhật đồng bộ dung lượng DB theo thực tế: ${(result.storageTotalBytes / (1024 * 1024)).toFixed(2)} MB (${result.storageObjectsCount} tệp trên ${result.provider}).`;
+  return result;
+}
+
+/**
+ * Reconciles all tenants in DB against storage providers.
+ */
+export async function reconcileAllTenantsStorage(): Promise<{
+  total: number;
+  synced: number;
+  failed: number;
+  results: TenantBucketInspectionResult[];
+}> {
+  const prisma = getPrismaClient();
+  const tenants = await prisma.tenant.findMany({ select: { id: true } });
+
+  const results: TenantBucketInspectionResult[] = [];
+  let synced = 0;
+  let failed = 0;
+
+  for (const t of tenants) {
+    const res = await reconcileTenantStorage(t.id);
+    results.push(res);
+    if (res.ok) synced++;
+    else failed++;
+  }
+
+  return { total: tenants.length, synced, failed, results };
 }

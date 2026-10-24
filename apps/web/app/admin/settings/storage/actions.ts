@@ -14,6 +14,10 @@ import {
 import {
   getOrCreateTenantBucket,
   getTenantStorageMonitoringList,
+  inspectTenantBucket,
+  reconcileTenantStorage,
+  reconcileAllTenantsStorage,
+  type TenantBucketInspectionResult,
   type TenantStorageMonitoringItem,
 } from "../../../../lib/tenant-storage";
 import {
@@ -257,3 +261,123 @@ export async function getStorageMonitoringDataAction(): Promise<TenantStorageMon
   await requireRole("SYSTEM_ADMIN");
   return getTenantStorageMonitoringList();
 }
+
+export async function inspectTenantBucketAction(
+  tenantId: string,
+): Promise<TenantBucketInspectionResult> {
+  await requireRole("SYSTEM_ADMIN");
+  if (!tenantId?.trim()) {
+    return {
+      ok: false,
+      tenantId: "",
+      tenantName: "",
+      bucket: "",
+      provider: "",
+      isDedicated: false,
+      bucketExists: false,
+      storageObjectsCount: 0,
+      storageTotalBytes: 0,
+      dbFilesCount: 0,
+      dbUsedBytes: 0,
+      isSynced: false,
+      message: "Thiếu ID gian hàng.",
+    };
+  }
+
+  try {
+    return await inspectTenantBucket(tenantId.trim());
+  } catch (error) {
+    return {
+      ok: false,
+      tenantId: tenantId.trim(),
+      tenantName: "",
+      bucket: "",
+      provider: "",
+      isDedicated: false,
+      bucketExists: false,
+      storageObjectsCount: 0,
+      storageTotalBytes: 0,
+      dbFilesCount: 0,
+      dbUsedBytes: 0,
+      isSynced: false,
+      message: error instanceof Error ? error.message : "Lỗi khi kiểm tra bucket.",
+    };
+  }
+}
+
+export async function reconcileTenantStorageAction(
+  tenantId: string,
+): Promise<TenantBucketInspectionResult> {
+  await requireRole("SYSTEM_ADMIN");
+  if (!tenantId?.trim()) {
+    return {
+      ok: false,
+      tenantId: "",
+      tenantName: "",
+      bucket: "",
+      provider: "",
+      isDedicated: false,
+      bucketExists: false,
+      storageObjectsCount: 0,
+      storageTotalBytes: 0,
+      dbFilesCount: 0,
+      dbUsedBytes: 0,
+      isSynced: false,
+      message: "Thiếu ID gian hàng.",
+    };
+  }
+
+  try {
+    const result = await reconcileTenantStorage(tenantId.trim());
+    revalidatePath("/admin/settings/storage");
+    revalidatePath("/admin/settings/storage/buckets");
+    return result;
+  } catch (error) {
+    return {
+      ok: false,
+      tenantId: tenantId.trim(),
+      tenantName: "",
+      bucket: "",
+      provider: "",
+      isDedicated: false,
+      bucketExists: false,
+      storageObjectsCount: 0,
+      storageTotalBytes: 0,
+      dbFilesCount: 0,
+      dbUsedBytes: 0,
+      isSynced: false,
+      message: error instanceof Error ? error.message : "Lỗi khi đồng bộ dung lượng.",
+    };
+  }
+}
+
+export async function reconcileAllTenantsStorageAction(): Promise<{
+  ok: boolean;
+  message: string;
+  total: number;
+  synced: number;
+  failed: number;
+}> {
+  await requireRole("SYSTEM_ADMIN");
+  try {
+    const res = await reconcileAllTenantsStorage();
+    revalidatePath("/admin/settings/storage");
+    revalidatePath("/admin/settings/storage/buckets");
+    return {
+      ok: true,
+      message: `Đã quét và đồng bộ ${res.synced}/${res.total} gian hàng (${res.failed} lỗi).`,
+      total: res.total,
+      synced: res.synced,
+      failed: res.failed,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "Lỗi đồng bộ dữ liệu toàn bộ gian hàng.",
+      total: 0,
+      synced: 0,
+      failed: 0,
+    };
+  }
+}
+

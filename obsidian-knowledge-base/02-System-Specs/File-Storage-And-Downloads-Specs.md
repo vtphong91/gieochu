@@ -445,14 +445,30 @@ Quy trình kiểm: [[04-Operations-Runbooks/Storage-Gateway-VPS-Runbook|Storage-
 
 ---
 
-## 10. Tài Liệu Tham Chiếu & Liên Kết
+## 10. Giám Sát Dung Lượng Bucket & Cơ Chế Đối Soát Thực Tế (ADR-038 / ADR-052)
+
+Tại tab `/admin/settings/storage?tab=buckets`:
+1. **Nguồn dữ liệu chuẩn (`getTenantStorageMonitoringList`):**
+   - Đếm đúng số tệp tài liệu hợp lệ trong bảng `product_files` (`where: { sourceKind: "FILE", removedAt: null }`), tách bạch với số lượng bản ghi `products`.
+2. **Quét số liệu vật lý thực tế (`getBucketStats`):**
+   - Sử dụng S3 `ListObjectsV2Command` để duyệt toàn bộ object trong dedicated bucket hoặc prefix `tenants/<tenantId>/`.
+   - Trả về số lượng object thực tế và tổng dung lượng bytes tích lũy trên MinIO hoặc Cloudflare R2.
+3. **Đối soát & Đồng bộ dung lượng (`reconcileTenantStorageAction`):**
+   - Cho phép System Admin kiểm tra tình trạng kết nối tới bucket thật và đồng bộ lại `Tenant.storageUsedBytes` trong PostgreSQL khi phát hiện sai lệch.
+   - Hỗ trợ đối soát hàng loạt qua `reconcileAllTenantsStorageAction`.
+
+---
+
+## 11. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[Architecture-Overview]] — Tổng quan kiến trúc hệ thống ([Architecture-Overview.md](./Architecture-Overview.md))
 * [[Order-State-Machine]] — `Entitlement` được tạo khi đơn `FULFILLED` ([Order-State-Machine.md](./Order-State-Machine.md))
 * [docs/DECISIONS.md](../../docs/DECISIONS.md) — ADR-014 (chia 2 phần M5), ADR-017 (storage qua System Admin),
-  ADR-018 (file.scan chưa có ClamAV), ADR-020 (RLS/argon2 share link), ADR-028 (ảnh Cloudinary hệ thống)
-* Mã nguồn: `packages/storage/src/*.ts`, `apps/web/lib/{product-upload,file-scan,download,share-link,system-storage,system-cloudinary,tenant-media}.ts`,
+  ADR-018 (file.scan chưa có ClamAV), ADR-020 (RLS/argon2 share link), ADR-028 (ảnh Cloudinary hệ thống),
+  ADR-034 (dual-storage MinIO/R2), ADR-051 (lưu trữ kích hoạt xoá), ADR-052 (đối soát storage).
+* Mã nguồn: `packages/storage/src/*.ts`, `apps/web/lib/{product-upload,file-scan,download,share-link,system-storage,system-cloudinary,tenant-storage,tenant-media}.ts`,
   `packages/core/src/download/*.ts`
+* [[01-Architecture-Decisions/ADR-038-Realtime-Storage-Monitoring-And-Reconciliation|ADR-038: Giám sát dung lượng bucket thực tế & Đối soát dữ liệu]]
 * [[02-System-Specs/Product-Editor-And-Publishing-Specs|Product-Editor-And-Publishing-Specs]] — ADR-026/027 ([Product-Editor-And-Publishing-Specs.md](./Product-Editor-And-Publishing-Specs.md))
 * [[01-Architecture-Decisions/ADR-014-System-Cloudinary-Image-Quota|ADR-014 (≙ ADR-028)]] — ảnh Cloudinary hệ thống + hạn mức ([ADR-014-System-Cloudinary-Image-Quota.md](../01-Architecture-Decisions/ADR-014-System-Cloudinary-Image-Quota.md))
 * [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]] — ADR-038/039, quyền lợi người mua ([Abuse-Reports-Specs.md](./Abuse-Reports-Specs.md))

@@ -1265,3 +1265,16 @@
      - Xoá cascade dữ liệu DB trong transaction: `downloadEvent`, `downloadToken`, `shareLink`, `review`, `productFile`, gỡ liên kết bài viết (`post.productId = null`) và xoá `product`.
      - Ghi audit log `PRODUCT_DELETED` (bổ sung vào `AUDIT_ACTIONS` và nhãn `Xoá tài liệu`).
 
+## ADR-052 — Giám sát dung lượng bucket thực tế và cơ chế đối soát storage (Storage Reconciliation)
+
+- **Bối cảnh (2026-10-24, chủ dự án chốt):**
+  1. Trang quản trị `/admin/settings/storage?tab=buckets` gặp lỗi hiển thị: Cột "Số tệp" đếm nhầm `_count.products` (số sản phẩm) thay vì số lượng tệp thật. Cột dung lượng chỉ đọc tĩnh `tenant.storageUsedBytes`, không phản ánh được tình trạng thực tế của object storage khi có file mồ côi hoặc sai lệch sau di chuyển/đồng bộ dữ liệu giữa MinIO và Cloudflare R2.
+  2. Nút "Kiểm tra" trên từng bucket chưa có kết nối thật với hạ tầng MinIO/R2.
+- **Quyết định kỹ thuật:**
+  1. **Chuẩn hóa thống kê:** Nạp dữ liệu qua `getTenantStorageMonitoringList()`, đếm đúng số tệp `product_files` (`where: { sourceKind: "FILE", removedAt: null }`).
+  2. **Hàm quét thống kê S3 (`getBucketStats`):** Bổ sung vào `@gieochu/storage`, duyệt `ListObjectsV2Command` để tính tổng số object và tổng dung lượng bytes thực tế của dedicated bucket hoặc prefix `tenants/<tenantId>/`.
+  3. **Cơ chế kiểm tra & đối soát (`inspectTenantBucketAction`, `reconcileTenantStorageAction`):**
+     - Cho phép kiểm tra trạng thái sức khỏe, số tệp và dung lượng thực tế trên provider tương ứng (MinIO/R2).
+     - Cho phép ghi đè/đồng bộ lại `tenant.storageUsedBytes` theo số liệu thực tế trên storage vật lý khi phát hiện sai lệch.
+     - Bổ sung nút "Kiểm tra", nút "Đồng bộ", và nút "Khớp dữ liệu Storage" toàn hệ thống (`reconcileAllTenantsStorageAction`).
+     - Hỗ trợ `loading` prop trên `GhostButton` trong bộ UI kit quản trị.
