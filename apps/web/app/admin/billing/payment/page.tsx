@@ -4,7 +4,7 @@ import { buildWebhookNotifyUrl } from "@gieochu/payments";
 import { requireAdminAccess } from "../../../../lib/page-guards";
 import { listBankBins } from "../../../../lib/tenant-payment";
 import { listPlatformProviderConfigs } from "../../../../lib/platform-payment";
-import { AdminPageHeader, Badge, SettingsGrid } from "../../_ui/kit";
+import { AdminPageHeader, Badge } from "../../_ui/kit";
 import { ManualQrForm } from "./manual-qr-form";
 import { SepayForm } from "./sepay-form";
 import { MomoForm } from "./momo-form";
@@ -29,13 +29,16 @@ export default async function AdminBillingPaymentPage() {
   const webhookUrl = buildWebhookNotifyUrl(env.APP_URL, { kind: "PLATFORM" }, "SEPAY");
 
   return (
-    <main className="px-5 py-8 lg:px-8">
+    // Wrapper <div>: layout admin đã có <main>.
+    <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader
         title="Tài khoản thu phí SaaS"
         subtitle={`Tài khoản ngân hàng của ${brand.name} dùng để thu phí gói dịch vụ từ các tenant — hoàn toàn khác với thanh toán khách hàng ↔ tenant (cấu hình riêng theo từng tenant).`}
       />
 
-      <SettingsGrid>
+      {/* ADR-058 (task 1.11): mỗi cổng là một khối thu gọn (cổng đang bật mở sẵn) — xếp 1 cột để khối thu gọn không lệch
+          hàng với khối đang mở; giới hạn bề ngang cho dễ đọc form. */}
+      <div className="mt-6 max-w-5xl space-y-4">
         <ManualQrForm
           banks={banks}
           initial={{
@@ -74,7 +77,7 @@ export default async function AdminBillingPaymentPage() {
         />
 
         {COMING_SOON.map((p) => (
-          <section key={p.name} className="rounded-2xl border border-dashed bg-white/60 p-5 sm:p-6" style={{ borderColor: "#E5E7EB" }}>
+          <section key={p.name} className="rounded-2xl border border-dashed bg-white/60 px-4 py-4 sm:px-6" style={{ borderColor: "#E5E7EB" }}>
             <div className="flex items-center gap-2">
               <h2 className="font-[family-name:var(--font-heading)] font-semibold text-gray-500">{p.name}</h2>
               <Badge tone="neutral">Sắp ra mắt</Badge>
@@ -82,7 +85,7 @@ export default async function AdminBillingPaymentPage() {
             <p className="mt-1.5 text-sm text-gray-400">{p.desc}</p>
           </section>
         ))}
-      </SettingsGrid>
+      </div>
 
       <div className="mt-8 rounded-2xl border bg-gray-50 p-5 text-sm text-gray-600" style={{ borderColor: "#E5E7EB" }}>
         <p className="font-medium text-gray-800">Bảo mật thông tin</p>
@@ -91,6 +94,6 @@ export default async function AdminBillingPaymentPage() {
           <li>Key đã lưu không bao giờ hiển thị lại — hệ thống chỉ cho biết đã cấu hình hay chưa. Nhập key mới để ghi đè.</li>
         </ul>
       </div>
-    </main>
+    </div>
   );
 }

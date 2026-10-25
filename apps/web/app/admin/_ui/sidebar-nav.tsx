@@ -26,6 +26,8 @@ import {
   IconTag,
   IconUsers,
 } from "./icons";
+import { pickActiveHref } from "./nav-match";
+import { useLeaveGuard } from "./unsaved-changes";
 
 type IconComponent = ComponentType<{ className?: string }>;
 
@@ -60,7 +62,11 @@ export type SidebarNavIcon = keyof typeof NAV_ICONS;
  * `urgent` = có việc quá hạn → nền đỏ + icon cảnh báo (không chỉ bằng màu) — nên ghi cả "quá hạn" trong `srText`.
  */
 export type SidebarNavBadge = { count: number; srText: string; urgent?: boolean };
-export type SidebarNavLeaf = { href: string; label: string; icon: SidebarNavIcon; badge?: SidebarNavBadge };
+/**
+ * `match` (ADR-058): đường dẫn khác cũng làm mục này sáng — dùng khi một mục đại diện cho cả nhóm tab cùng chức năng.
+ * Chuỗi thường = khớp tiền tố, `=` ở đầu = khớp đúng; mục khớp dài nhất thắng (luật ở `nav-match.ts`).
+ */
+export type SidebarNavLeaf = { href: string; label: string; icon: SidebarNavIcon; badge?: SidebarNavBadge; match?: string[] };
 export type SidebarNavGroup = { id: string; label: string; icon: SidebarNavIcon; items: SidebarNavLeaf[] };
 
 /** Đỏ đạt 6.5:1 với chữ trắng (cùng giá trị nút nguy hiểm toàn app). */
@@ -69,19 +75,6 @@ const DANGER = "#B91C1C";
 const ACTIVE_BG = `color-mix(in srgb, ${brandColors.accent} 18%, transparent)`;
 const ACTIVE_FG = `color-mix(in srgb, ${brandColors.accent} 45%, white)`;
 const FOCUS_CLASS = "outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-white";
-
-function isMatch(pathname: string, href: string, rootHref: string) {
-  return href === rootHref ? pathname === rootHref : pathname === href || pathname.startsWith(`${href}/`);
-}
-
-// Gốc khu vực (`/admin`, `/studio/{slug}`) và `/admin/settings` là tiền tố của chính các mục khác, nên không thể chỉ dùng
-// isMatch cho từng mục riêng lẻ — phải chọn href khớp DÀI NHẤT trong toàn bộ menu, nếu không mục cha lẫn mục con cùng
-// sáng đèn active một lúc.
-function activeHref(pathname: string, all: SidebarNavLeaf[], rootHref: string): string | null {
-  const candidates = all.filter((item) => isMatch(pathname, item.href, rootHref));
-  if (candidates.length === 0) return null;
-  return candidates.reduce((best, item) => (item.href.length > best.href.length ? item : best)).href;
-}
 
 // Nhóm đang mở (chỉ là trạng thái giao diện, không phải token) đọc từ localStorage qua useSyncExternalStore thay vì
 // useEffect+setState (React hooks lint cấm setState đồng bộ trong effect). Kiểu accordion — 1 nhóm mở một lúc — nên giá
@@ -145,8 +138,10 @@ export function SidebarNav({
 }) {
   const pathname = usePathname();
   const baseId = useId();
+  // ADR-058 mục 5: còn thay đổi chưa lưu → hỏi lại trước khi điều hướng client.
+  const guardLeave = useLeaveGuard();
   const all = [...standalone, ...groups.flatMap((g) => g.items)];
-  const currentActiveHref = activeHref(pathname, all, rootHref);
+  const currentActiveHref = pickActiveHref(pathname, all, rootHref);
   const activeGroupId = groups.find((g) => g.items.some((item) => item.href === currentActiveHref))?.id ?? null;
   const savedExpandedId = useSyncExternalStore(
     subscribe,
@@ -172,6 +167,7 @@ export function SidebarNav({
             <li key={item.href}>
               <Link
                 href={item.href}
+                onNavigate={guardLeave}
                 aria-current={active ? "page" : undefined}
                 className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none lg:min-h-0 ${
                   active ? "font-semibold" : "font-medium hover:bg-white/10"
@@ -230,6 +226,7 @@ export function SidebarNav({
                     <li key={item.href}>
                       <Link
                         href={item.href}
+                        onNavigate={guardLeave}
                         aria-current={active ? "page" : undefined}
                         className={`flex min-h-11 items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] transition-colors motion-reduce:transition-none lg:min-h-0 ${
                           active ? "font-semibold" : "font-medium hover:bg-white/10"
@@ -281,11 +278,13 @@ const ADMIN_GROUPS: SidebarNavGroup[] = [
     label: "Nội dung",
     icon: "doc",
     items: [
-      { href: "/admin/cms", label: "Trang CMS", icon: "doc" },
+      // ADR-058: "Trang CMS" = nhóm tab Trang chủ · Header & Footer (sáng ở cả 2 tab). "Trang tuỳ chỉnh" = danh sách
+      // `/p/[slug]` — href `/admin/cms` khớp tiền tố cả `/new`, `/{slug}`; home/menu/shop/pricing/phap-ly dài hơn nên thắng.
+      { href: "/admin/cms/home", label: "Trang CMS", icon: "doc", match: ["/admin/cms/menu"] },
+      { href: "/admin/cms", label: "Trang tuỳ chỉnh", icon: "posts" },
       { href: "/admin/cms/shop", label: "Trang Cửa hàng", icon: "shoppingBag" },
       { href: "/admin/cms/pricing", label: "Trang Bảng giá", icon: "package" },
-      { href: "/admin/cms/menu", label: "Menu & chân trang", icon: "doc" },
-      { href: "/admin/cms/phap-ly", label: "Văn bản pháp lý", icon: "doc" },
+      { href: "/admin/cms/phap-ly", label: "Chính sách sử dụng", icon: "doc" },
       { href: "/admin/categories", label: "Danh mục tài liệu", icon: "tag" },
     ],
   },
@@ -304,12 +303,12 @@ const ADMIN_GROUPS: SidebarNavGroup[] = [
     label: "Cấu hình hệ thống",
     icon: "gear",
     items: [
-      { href: "/admin/settings/general", label: "Cấu hình chung", icon: "gear" },
-      { href: "/admin/settings", label: "Email hỗ trợ", icon: "mail" },
+      // ADR-058 mục 3: "Cấu hình chung" = nhóm tab Cấu hình chung · Email hỗ trợ · Cấu hình Email (SMTP). `/admin/settings` là
+      // tiền tố của mọi trang cấu hình nên khớp ĐÚNG (`=`), không khớp tiền tố.
+      { href: "/admin/settings/general", label: "Cấu hình chung", icon: "gear", match: ["=/admin/settings", "/admin/settings/smtp"] },
       { href: "/admin/settings/branding", label: "Nhận diện thương hiệu", icon: "layers" },
       { href: "/admin/settings/storage", label: "Lưu trữ file", icon: "database" },
       { href: "/admin/settings/cloudinary", label: "Cloudinary Upload", icon: "database" },
-      { href: "/admin/settings/smtp", label: "Cấu hình Mail", icon: "mail" },
     ],
   },
   {

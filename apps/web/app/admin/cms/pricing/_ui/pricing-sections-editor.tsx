@@ -13,7 +13,9 @@ import {
 } from "@gieochu/core/pricing-sections";
 import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 import { Badge, GhostButton, Notice, PrimaryButton, TextField } from "../../../_ui/kit";
-import { IconAlertTriangle, IconCheckCircle, IconChevronDown, IconExternalLink, IconEye, IconEyeOff } from "../../../_ui/icons";
+import { IconAlertTriangle, IconCheckCircle, IconChevronDown, IconExternalLink, IconEye, IconEyeOff, IconGlobe } from "../../../_ui/icons";
+import { CollapsibleSection, sectionStatus } from "../../../_ui/collapsible-section";
+import { useUnsavedChanges } from "../../../_ui/unsaved-changes";
 import { publishPricingAction, restoreLivePricingAction, savePricingDraftAction } from "../actions";
 import { PricingSectionFields, type PricingFormContext } from "./pricing-section-forms";
 import {
@@ -97,7 +99,8 @@ export function PricingSectionsEditor({
   const editorHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const planRefs = ctx.plans.map((plan) => ({ id: plan.id, isFree: plan.isFree }));
-  const isDirty = JSON.stringify(sections) !== savedSnapshot || seo.seoTitle !== savedSeo.seoTitle || seo.seoDescription !== savedSeo.seoDescription;
+  const seoDirty = seo.seoTitle !== savedSeo.seoTitle || seo.seoDescription !== savedSeo.seoDescription;
+  const isDirty = JSON.stringify(sections) !== savedSnapshot || seoDirty;
   const clientIssues: PricingFieldIssue[] = attempted ? validatePricingSections(sections, planRefs) : [];
   const issues = serverIssues.length > 0 ? mergeServerIssues(clientIssues, serverIssues, sections) : clientIssues;
   const errorMap = toPricingErrorMap(issues);
@@ -105,12 +108,8 @@ export function PricingSectionsEditor({
   const visibleCount = sections.filter((s) => s.visible).length;
   const planName = (planId: string) => ctx.plans.find((plan) => plan.id === planId)?.name;
 
-  useEffect(() => {
-    if (!isDirty) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [isDirty]);
+  // ADR-058 mục 5: cờ "chưa lưu" đăng ký với provider của layout (beforeunload chung + chặn sidebar/tab).
+  useUnsavedChanges(isDirty, "Trang Bảng giá có thay đổi chưa lưu. Rời trang và bỏ thay đổi?");
 
   useEffect(() => {
     if (!focusRequest) return;
@@ -247,7 +246,7 @@ export function PricingSectionsEditor({
               <Badge tone="neutral">Chưa lưu · cấu hình mặc định</Badge>
             )}
             {hasDraft ? <Badge tone="warning">Có nháp chưa xuất bản</Badge> : null}
-            {isDirty ? <Badge tone="info">Có thay đổi chưa lưu</Badge> : null}
+            {isDirty ? <Badge tone="warning">Có thay đổi chưa lưu</Badge> : null}
             {savedLabel ? (
               <span className="text-xs" style={{ color: INK_SOFT }}>
                 Lưu lần cuối: {savedLabel}
@@ -426,12 +425,21 @@ export function PricingSectionsEditor({
         </section>
       </div>
 
-      <section className="rounded-2xl border bg-white p-4 sm:p-6" style={{ borderColor: LINE }} aria-labelledby="pricing-seo-heading">
-        <h2 id="pricing-seo-heading" className="font-[family-name:var(--font-heading)] text-lg font-semibold" style={{ color: INK }}>
-          SEO trang Bảng giá
-        </h2>
-        <p className="mt-1 mb-4 text-xs" style={{ color: INK_SOFT }}>
-          Không bắt buộc. Để trống sẽ dùng tiêu đề và mô tả mặc định. SEO không có bản nháp: lưu xong là áp dụng ngay nếu trang đã xuất bản.
+      {/* ADR-058: khối SEO luôn thu gọn, kiểu section Rank Math (tiêu đề + badge trạng thái có chữ + chevron). */}
+      <CollapsibleSection
+        id="seo"
+        title="SEO trang Bảng giá"
+        description="Không bắt buộc — để trống dùng tiêu đề/mô tả mặc định."
+        icon={<IconGlobe className="h-5 w-5" />}
+        status={sectionStatus({
+          dirty: seoDirty,
+          empty: seo.seoTitle.trim() === "" && seo.seoDescription.trim() === "",
+          emptyLabel: "Dùng mặc định",
+        })}
+      >
+        <p className="text-xs" style={{ color: INK_SOFT }}>
+          SEO không có bản nháp: bấm <strong>Lưu nháp</strong> hoặc <strong>Xuất bản</strong> đều ghi SEO và áp dụng ngay cho trang
+          công khai (nếu trang đã xuất bản).
         </p>
         <div className="space-y-4">
           <TextField
@@ -461,7 +469,7 @@ export function PricingSectionsEditor({
             </p>
           </div>
         </div>
-      </section>
+      </CollapsibleSection>
     </div>
   );
 }

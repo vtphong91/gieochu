@@ -4,8 +4,13 @@ import { useActionState, useState, useTransition } from "react";
 import { saveCloudinaryConfigAction, testCloudinaryConnectionAction, type CloudinaryActionState } from "./actions";
 import { Badge, ConfigCard, FormBanner, GhostButton, PasswordField, PrimaryButton, TextField, Toggle } from "../../_ui/kit";
 import { IconDatabase } from "../../_ui/icons";
+import { useFormDraft } from "../../_ui/use-form-draft";
+import { useUnsavedChanges } from "../../_ui/unsaved-changes";
 
 const initialState: CloudinaryActionState = {};
+const FIELDS = ["isEnabled", "cloudName", "uploadFolder"] as const;
+/** Không bao giờ ghi lại sau khi lưu lỗi — để trống = giữ key/secret đã lưu. */
+const SECRET_FIELDS = ["apiKey", "apiSecret"] as const;
 
 export interface CloudinaryFormInitial {
   cloudName: string;
@@ -20,9 +25,16 @@ export function CloudinaryForm({ initial }: { initial: CloudinaryFormInitial }) 
   const [state, formAction, isPending] = useActionState(saveCloudinaryConfigAction, initialState);
   const [testResult, setTestResult] = useState<{ ok: boolean; message?: string } | null>(null);
   const [isTesting, startTest] = useTransition();
+  // Task 1.12b: lưu lỗi giữ giá trị đã nhập (trừ API key/secret) + cảnh báo rời trang. Form dựng lại theo dữ liệu server
+  // sau khi lưu (key) để Toggle khớp trạng thái thật — kể cả khi bị tự tắt; `lastVerifiedAt` không vào key (bấm "Kiểm tra
+  // kết nối" không xoá dữ liệu đang gõ).
+  const saved = { isEnabled: initial.isEnabled, cloudName: initial.cloudName, uploadFolder: initial.uploadFolder || "gieochu" };
+  const formKey = JSON.stringify({ ...initial, lastVerifiedAt: null });
+  const { dirty, formProps } = useFormDraft({ names: FIELDS, secretNames: SECRET_FIELDS, initial: saved, resetKey: formKey, failed: Boolean(state.error) });
+  useUnsavedChanges(dirty, "Cấu hình Cloudinary có thay đổi chưa lưu. Rời trang và bỏ thay đổi?");
 
   return (
-    <form action={formAction}>
+    <form key={formKey} action={formAction} {...formProps}>
       <ConfigCard
         icon={<IconDatabase className="h-5 w-5" />}
         title="Cloudinary (upload ảnh CMS)"
@@ -30,6 +42,7 @@ export function CloudinaryForm({ initial }: { initial: CloudinaryFormInitial }) 
           <>
             <Badge tone={initial.isEnabled ? "success" : "neutral"}>{initial.isEnabled ? "Đang bật" : "Đang tắt"}</Badge>
             {initial.lastVerifiedAt ? <Badge tone="info">Đã xác minh</Badge> : null}
+            {dirty ? <Badge tone="warning">Có thay đổi chưa lưu</Badge> : null}
           </>
         }
         description={

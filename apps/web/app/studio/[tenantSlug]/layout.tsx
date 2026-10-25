@@ -12,6 +12,7 @@ import { AppSidebarPanel, SIDEBAR_FOOTER_LINK_CLASS } from "../../admin/_ui/app-
 import { IconChevronLeft, IconExternalLink } from "../../admin/_ui/icons";
 import { SidebarDrawer } from "../../admin/_ui/sidebar-drawer";
 import { SidebarNav, type SidebarNavGroup, type SidebarNavLeaf } from "../../admin/_ui/sidebar-nav";
+import { GuardedLink, UnsavedChangesProvider } from "../../admin/_ui/unsaved-changes";
 
 const beVietnamPro = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
@@ -113,15 +114,17 @@ export default async function StudioLayout({
             <IconExternalLink className="h-3.5 w-3.5 shrink-0" /> Xem trang công khai
             <span className="sr-only">(mở tab mới)</span>
           </Link>
-          <Link href="/" className={SIDEBAR_FOOTER_LINK_CLASS}>
+          <GuardedLink href="/" className={SIDEBAR_FOOTER_LINK_CLASS}>
             <IconChevronLeft className="h-3.5 w-3.5 shrink-0" /> Về trang chủ
-          </Link>
+          </GuardedLink>
         </>
       }
     />
   );
 
+  // ADR-058 mục 5: cảnh báo rời trang khi editor còn thay đổi chưa lưu (sidebar, tab, link "Về trang chủ").
   return (
+    <UnsavedChangesProvider>
     <div className={`${beVietnamPro.variable} ${inter.variable} flex min-h-screen font-[family-name:var(--font-body)]`} style={{ background: "#F5F6F8" }}>
       <aside className="sticky top-0 hidden h-dvh w-[288px] shrink-0 lg:block">{panel}</aside>
 
@@ -149,5 +152,6 @@ export default async function StudioLayout({
         </footer>
       </div>
     </div>
+    </UnsavedChangesProvider>
   );
 }

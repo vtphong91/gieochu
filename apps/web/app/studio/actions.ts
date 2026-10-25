@@ -5,7 +5,7 @@ import { z } from "zod";
 import { AppError, LEGAL_DOCUMENT_DEFS, logger } from "@gieochu/core";
 import { requireVerified } from "../../lib/session";
 import { createTenantForUser } from "../../lib/create-tenant";
-import { getEffectiveLegalVersion, resolveSellerPolicyAcceptance } from "../../lib/legal";
+import { getAcceptanceLegalVersion, resolveSellerPolicyAcceptance } from "../../lib/legal";
 import { getOrCreateTenantBucket } from "../../lib/tenant-storage";
 
 const createTenantSchema = z.object({
@@ -41,7 +41,7 @@ export async function createTenantAction(
   let tenant;
   try {
     // Server tự xác định bản hiệu lực — không tin việc client có hiện checkbox hay không.
-    const sellerPolicyVersionId = resolveSellerPolicyAcceptance(await getEffectiveLegalVersion(LEGAL_DOCUMENT_DEFS.seller.key), {
+    const sellerPolicyVersionId = resolveSellerPolicyAcceptance(await getAcceptanceLegalVersion(LEGAL_DOCUMENT_DEFS.seller.key), {
       accepted: parsed.data.sellerPolicyAccepted,
       submittedVersionId: parsed.data.sellerPolicyVersionId,
     });

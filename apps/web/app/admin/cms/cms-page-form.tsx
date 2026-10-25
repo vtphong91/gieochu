@@ -2,8 +2,11 @@
 
 import { useActionState } from "react";
 import { saveCmsPageAction, type CmsActionState } from "./actions";
-import { ConfigCard, FormBanner, PrimaryButton, SelectField, TextField } from "../_ui/kit";
-import { IconDoc } from "../_ui/icons";
+import { FormBanner, PrimaryButton, SelectField, TextField } from "../_ui/kit";
+import { IconDoc, IconGlobe } from "../_ui/icons";
+import { CollapsibleSection, sectionStatus } from "../_ui/collapsible-section";
+import { useFormDraft } from "../_ui/use-form-draft";
+import { useUnsavedChanges } from "../_ui/unsaved-changes";
 
 const initialState: CmsActionState = {};
 
@@ -16,12 +19,34 @@ export interface CmsPageFormValues {
   status: "DRAFT" | "PUBLISHED";
 }
 
+const CONTENT_FIELDS = ["slug", "title", "blocksJson", "status"] as const;
+const SEO_FIELDS = ["seoTitle", "seoDescription"] as const;
+
+/**
+ * Form trang tuỳ chỉnh (`/p/[slug]`). ADR-058 (task 1.12a): khối Nội dung trang mở, khối SEO luôn thu gọn (kiểu Rank Math).
+ * Lưu lỗi giữ giá trị đã nhập (`useFormDraft`), cảnh báo rời trang khi chưa lưu. Không đổi action.
+ */
 export function CmsPageForm({ initial, slugEditable }: { initial: CmsPageFormValues; slugEditable: boolean }) {
   const [state, formAction, isPending] = useActionState(saveCmsPageAction, initialState);
+  const { dirty, dirtyOf, formProps } = useFormDraft({
+    names: [...CONTENT_FIELDS, ...SEO_FIELDS],
+    initial: { ...initial },
+    resetKey: JSON.stringify(initial),
+    failed: Boolean(state.error),
+  });
+  useUnsavedChanges(dirty, "Trang tuỳ chỉnh có thay đổi chưa lưu. Rời trang và bỏ thay đổi?");
+  const seoDirty = dirtyOf(SEO_FIELDS);
 
   return (
-    <form action={formAction}>
-      <ConfigCard icon={<IconDoc className="h-5 w-5" />} title="Nội dung trang" description={'Chỉ hiển thị công khai khi trạng thái là "Xuất bản".'}>
+    <form action={formAction} className="space-y-4" {...formProps}>
+      <CollapsibleSection
+        id="trang-noi-dung"
+        defaultOpen
+        icon={<IconDoc className="h-5 w-5" />}
+        title="Nội dung trang"
+        description={'Chỉ hiển thị công khai khi trạng thái là "Xuất bản".'}
+        status={sectionStatus({ dirty: dirtyOf(CONTENT_FIELDS) })}
+      >
 
         <TextField
           id="cms-slug"
@@ -48,6 +73,20 @@ export function CmsPageForm({ initial, slugEditable }: { initial: CmsPageFormVal
           />
           <p className="mt-1.5 text-xs text-gray-500">hero / features / stats / testimonials / pricingTable / faq / richText / cta</p>
         </div>
+        <SelectField id="cms-status" label="Trạng thái" name="status" defaultValue={initial.status}>
+          <option value="DRAFT">Nháp</option>
+          <option value="PUBLISHED">Xuất bản</option>
+        </SelectField>
+      </CollapsibleSection>
+
+      {/* SEO luôn thu gọn, kiểu section Rank Math. */}
+      <CollapsibleSection
+        id="seo"
+        icon={<IconGlobe className="h-5 w-5" />}
+        title="SEO"
+        description="Không bắt buộc — để trống dùng tiêu đề trang."
+        status={sectionStatus({ dirty: seoDirty, empty: initial.seoTitle === "" && initial.seoDescription === "" && !seoDirty, emptyLabel: "Dùng mặc định" })}
+      >
         <TextField id="cms-seoTitle" label="SEO title" name="seoTitle" defaultValue={initial.seoTitle} />
         <div>
           <label htmlFor="cms-seoDescription" className="block text-sm font-medium" style={{ color: "#12213A" }}>
@@ -62,13 +101,12 @@ export function CmsPageForm({ initial, slugEditable }: { initial: CmsPageFormVal
             style={{ borderColor: "#E5E7EB" }}
           />
         </div>
-        <SelectField id="cms-status" label="Trạng thái" name="status" defaultValue={initial.status}>
-          <option value="DRAFT">Nháp</option>
-          <option value="PUBLISHED">Xuất bản</option>
-        </SelectField>
+      </CollapsibleSection>
+
+      <div className="space-y-3">
         <FormBanner ok={false} message={state.error} />
         <PrimaryButton loading={isPending}>{isPending ? "Đang lưu..." : "Lưu"}</PrimaryButton>
-      </ConfigCard>
+      </div>
     </form>
   );
 }

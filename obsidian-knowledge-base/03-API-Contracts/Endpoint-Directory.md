@@ -131,15 +131,16 @@ Body (zod `registerSchema`):
 }
 ```
 
-- Server **tự** xác định bản Điều khoản đang hiệu lực (`getEffectiveLegalVersion("terms", now)`); `termsVersionId` chỉ dùng để phát hiện Điều khoản
+- **Bổ sung ADR-057 ✅ (đọc code 2026-10-25):** khi văn bản đã có bản **chính thức**, `termsVersionId` / `privacyVersionId` **thành bắt buộc** — thiếu hoặc lệch đều 409 (Điều khoản `LEGAL_TERMS_CHANGED`, Chính sách bảo mật `LEGAL_DOCUMENT_CHANGED`). Văn bản chưa có bản chính thức hoặc đang hiển thị **bản dự thảo** → trường bị bỏ qua, không ghi chấp thuận văn bản đó.
+- Server **tự** xác định bản Điều khoản **chính thức** đang hiệu lực (từ ADR-057: `getAcceptanceLegalVersion("terms", now)` — bản dự thảo coi như chưa có, chỉ ghi `consentAt`); `termsVersionId` chỉ dùng để phát hiện Điều khoản
   vừa đổi giữa lúc mở form và lúc gửi.
 - Không có bản hiệu lực → đăng ký như trước ADR-050 (chỉ `UserProfile.consentAt`), `termsVersionId` (nếu có) bị bỏ qua.
 - Có bản hiệu lực + `termsVersionId` **khác** bản đó → **`409 { error: { code: "LEGAL_TERMS_CHANGED", message: "Điều khoản sử dụng vừa được cập
   nhật. Vui lòng tải lại trang, đọc bản mới rồi đăng ký lại.", requestId } }`**. Form hiện `error.message` ✅ `register-form.tsx`.
-- Có bản hiệu lực + không gửi `termsVersionId` (form cũ còn cache) → ghi chấp thuận bản đang hiệu lực.
+- Có bản hiệu lực + không gửi `termsVersionId` → ~~ghi chấp thuận bản đang hiệu lực~~ **409 `LEGAL_TERMS_CHANGED`** (bổ sung ADR-057: bắt buộc id khớp ✅ — `Legal-Documents-Specs` §5.4).
 - **ADR-054:** Chính sách bảo mật xử lý độc lập cùng luật (`getEffectiveLegalVersion("privacy", now)` + `resolveRegistrationPrivacyVersion`): chưa có bản
   hiệu lực → bỏ qua; `privacyVersionId` khác bản hiệu lực → **`409 LEGAL_DOCUMENT_CHANGED`** ("Chính sách bảo mật vừa được cập nhật. Vui lòng tải lại
-  trang…"); không gửi → dùng bản hiệu lực.
+  trang…"); không gửi → cũng 409 `LEGAL_DOCUMENT_CHANGED` (bổ sung ADR-057 ✅). Bản dự thảo: form **không gửi** `termsVersionId`/`privacyVersionId` (`versionId = null`), server bỏ qua văn bản đó.
 - Ghi `user_legal_acceptances { userId, versionId, acceptedAt = now }` cho mọi id đã chọn (0–2 dòng, `recordLegalAcceptances` — `createMany … skipDuplicates`)
   **trong cùng `prisma.$transaction`** tạo `User` + `UserProfile` + `VerificationToken`. Không lưu IP/User-Agent.
 - Thứ tự kiểm: rate-limit → email đã đăng ký (409 `EMAIL_ALREADY_REGISTERED`) → hash mật khẩu → xác định phiên bản Điều khoản → transaction.
@@ -1295,16 +1296,21 @@ hằng `HOME_*_MAX`; kiểu `HomeCta`, `HomeCommunityView`, `HomePublishIssue`, 
 
 | Action | Input → Output | Audit |
 | :-- | :-- | :-- |
-| `createLegalDraftAction(key, contentHtml, changeSummary)` | → `{ success, versionId }` | `LEGAL_VERSION_CREATED` |
-| `updateLegalDraftAction(key, versionId, contentHtml, changeSummary)` | chỉ bản DRAFT; đổi nội dung → review về PENDING | `LEGAL_VERSION_UPDATED` |
-| `setLegalReviewStatusAction(key, versionId, reviewStatus)` | `"PENDING_LEGAL_REVIEW" \| "APPROVED"`, chỉ DRAFT | `LEGAL_REVIEW_STATUS_CHANGED` (+`reviewStatus`) |
-| `publishLegalVersionAction(key, versionId, effectiveAtLocal)` | `datetime-local` giờ VN, trống = ngay; cổng xuất bản + không lùi ngày | `LEGAL_VERSION_PUBLISHED` (+`effectiveAt` ISO) |
-| `archiveLegalVersionAction(key, versionId)` | chỉ bản PUBLISHED | `LEGAL_VERSION_ARCHIVED` |
+| `saveLegalDraftAction(key, contentHtml, expectedUpdatedAt)` (Bổ sung ADR-057) | Sửa **bản nháp làm việc** (DRAFT mới nhất có nội dung — `pickWorkingLegalDraft`), chưa có thì tạo DRAFT mới; đổi nội dung → review về PENDING; chưa có nháp và nội dung trùng bản PUBLISHED mới nhất → `{ success, unchanged: true }` | `LEGAL_VERSION_UPDATED` / `LEGAL_VERSION_CREATED` |
+| `setLegalReviewAction(key, approved: boolean, expectedUpdatedAt)` | Tích/bỏ "Đã rà soát nội dung" trên bản nháp làm việc; chưa có nháp → `LEGAL_VERSION_NOT_DRAFT` 409 | `LEGAL_REVIEW_STATUS_CHANGED` (+`reviewStatus`) |
+| `publishLegalAction(key, { effectiveAtLocal, asDraftRelease }, expectedUpdatedAt)` | `datetime-local` giờ VN, trống = ngay; bản chính thức qua cổng ADR-050; `asDraftRelease: true` (ADR-057 mục 3) bỏ qua cổng placeholder + rà soát, lưu `isDraftRelease` | `LEGAL_VERSION_PUBLISHED` (+`effectiveAt` ISO, `isDraftRelease`) |
+
+> Bổ sung ADR-057 (2026-10-25, working tree chưa commit ✅ đọc code): **đã bỏ** `createLegalDraftAction`, `updateLegalDraftAction`, `setLegalReviewStatusAction`,
+> `publishLegalVersionAction`, `archiveLegalVersionAction` — client không còn chọn `versionId`. `expectedUpdatedAt` = `updatedAt` (ISO) của bản nháp editor đã nạp,
+> `null` khi chưa có nháp; lệch → `LEGAL_VERSION_CONFLICT` 409. `LegalActionState` thêm `code?`, `reviewStatus?`, `updatedAt?`, `unchanged?`. Hàm lib mới:
+> `getLegalEditorData`, `saveLegalWorkingDraft`, `setLegalWorkingDraftReview`, `publishLegalWorkingDraft`, `getLegalVersionForPreview`, `getAcceptanceLegalVersion`
+> (bản dự thảo → `null`, không ghi chấp thuận). `archiveLegalVersion` còn trong lib nhưng không có action gọi. Quyết định:
+> [[01-Architecture-Decisions/ADR-042-Legal-Drafts-Import-Preview-Draft-Release|ADR-042 KB (≙ ADR-057)]].
 
 | `saveLegalDocumentMetaAction(key, input)` (ADR-054) | `input = { summary, seoTitle, seoDescription }` (chuỗi; `cmsSeoSchema` 120/320 + `summary` ≤ 320; rỗng → `null`); lưu thẳng, không nháp; revalidate `/admin/cms/phap-ly` + `/{slug}` | `LEGAL_DOCUMENT_META_UPDATED` (`targetType: "LegalDocument"`, `targetId` = khoá, metadata `{ key, hasSummary, hasSeoTitle, hasSeoDescription }`) |
 
 Mọi action `requireRole("SYSTEM_ADMIN")`; `key` phải là khoá trong `LEGAL_DOCUMENT_DEFS` (đợt 1 chỉ `"terms"`; từ ADR-054 7 khoá), `versionId` chuỗi 1–64; trả `LegalActionState
-{ success?, error?, versionId? }`. 5 action phiên bản revalidate `/admin/cms/phap-ly`, `/{slug}`, `/register`, `/studio` và `revalidatePath("/", "layout")` (ADR-054). Audit scope `SYSTEM`, `targetType: "LegalDocumentVersion"`, metadata `{ key, version, … }` — không nội dung. Mã lỗi:
+{ success?, error?, versionId? }`. 3 action bản nháp làm việc (trước Bổ sung ADR-057: 5 action phiên bản) revalidate `/admin/cms/phap-ly`, `/{slug}`, `/register`, `/studio` và `revalidatePath("/", "layout")` (ADR-054). Audit scope `SYSTEM`, `targetType: "LegalDocumentVersion"`, metadata `{ key, version, … }` — không nội dung. Mã lỗi:
 [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]] §9.
 
 Hàm lib (`lib/legal.ts`, không tự kiểm quyền): `sanitizeLegalHtml`, `ensureLegalDocument`, `listLegalVersions(key)`, `getEffectiveLegalVersion(key, now?)` →
@@ -1325,9 +1331,11 @@ Trang mới: `/admin/cms/menu`, `/admin/cms/phap-ly` (System Center — từ ADR
 ### 26.5. Server Action — mở gian hàng có đồng ý Chính sách người bán (ADR-054 mục 5) ✅ đọc `git diff` 2026-10-24
 
 `createTenantAction` (`app/studio/actions.ts`) — form `StudioOnboardingForm` thêm 2 ô: `sellerPolicyAccepted` (checkbox, `"on"` → `true`) và
-`sellerPolicyVersionId` (hidden, trim 1–64, tuỳ chọn). Hai ô chỉ hiện khi `seller` có bản hiệu lực (`app/studio/page.tsx` truyền
-`sellerPolicy = { versionId, href: "/chinh-sach-nguoi-ban", title } | null`). Server **tự** đọc bản hiệu lực rồi `resolveSellerPolicyAcceptance`:
-- chưa có bản → bỏ qua; có bản mà không tích → `AppError` 400 **`LEGAL_ACCEPTANCE_REQUIRED`**; id gửi lên khác bản hiệu lực → 409 **`LEGAL_DOCUMENT_CHANGED`**;
+`sellerPolicyVersionId` (hidden, trim 1–64; schema vẫn tuỳ chọn nhưng **bắt buộc trên thực tế** khi có bản chính thức — bổ sung ADR-057). Hai ô chỉ hiện khi `seller`
+có bản **chính thức** (`app/studio/page.tsx` dùng `getAcceptanceLegalVersion` — bản dự thảo → ẩn ô, truyền `sellerPolicy = { versionId, href: "/chinh-sach-nguoi-ban",
+title } | null`). Server **tự** đọc `getAcceptanceLegalVersion("seller")` rồi `resolveSellerPolicyAcceptance`:
+- chưa có bản chính thức / đang là bản dự thảo → bỏ qua; có bản mà không tích → `AppError` 400 **`LEGAL_ACCEPTANCE_REQUIRED`**; id gửi lên khác bản hiệu lực
+  **hoặc không gửi id** → 409 **`LEGAL_DOCUMENT_CHANGED`** (bổ sung ADR-057 ✅ đọc code 2026-10-25);
   action trả `{ error: message }` như các lỗi `AppError` khác.
 - `createTenantForUser(user, { name, slug, bio, acceptedLegalVersionIds })` (`lib/create-tenant.ts`, tham số mới tuỳ chọn) ghi `user_legal_acceptances`
   trong **cùng transaction** tạo tenant (L1, không RLS; lỗi → rollback cả tenant).

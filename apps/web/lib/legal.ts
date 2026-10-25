@@ -7,6 +7,10 @@ import {
   isLegalDocumentKey,
   LEGAL_CHANGE_SUMMARY_MAX,
   LEGAL_CONTENT_MAX,
+  LEGAL_DOCUMENT_DEFS,
+  legalDocumentPath,
+  legalPreviewPath,
+  pickEffectiveLegalVersion,
   LEGAL_EFFECTIVE_BACKDATE_TOLERANCE_MS,
   LEGAL_ERROR_CODES,
   LEGAL_PUBLISH_BLOCKER_MESSAGES,
@@ -47,6 +51,8 @@ export interface LegalVersionRow {
   changeSummary: string | null;
   effectiveAt: Date | null;
   publishedAt: Date | null;
+  /** ADR-057: bản xuất bản dạng "Bản dự thảo" (luôn `false` với DRAFT chưa xuất bản). */
+  isDraftRelease: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -62,6 +68,8 @@ export interface EffectiveLegalVersion {
   contentHtml: string;
   effectiveAt: Date;
   publishedAt: Date | null;
+  /** ADR-057: bản hiển thị là "Bản dự thảo" — hiển thị công khai được nhưng KHÔNG dùng để ghi nhận đồng ý. */
+  isDraftRelease: boolean;
 }
 
 const VERSION_SELECT = {
@@ -73,6 +81,7 @@ const VERSION_SELECT = {
   changeSummary: true,
   effectiveAt: true,
   publishedAt: true,
+  isDraftRelease: true,
   createdAt: true,
   updatedAt: true,
 } as const;
@@ -139,7 +148,10 @@ export function isLegalTableMissing(error: unknown): boolean {
   return /42P01|legal_document.*does not exist|does not exist.*legal_document/i.test(text);
 }
 
-/** Bản đang hiệu lực (PUBLISHED, `effectiveAt <= now`, mới nhất); `null` = chưa có. */
+/**
+ * Bản HIỂN THỊ (PUBLISHED, `effectiveAt <= now`, mới nhất — kể cả bản dự thảo ADR-057); `null` = chưa có. Dùng cho trang
+ * công khai, link menu/footer. KHÔNG dùng trực tiếp để ghi chấp thuận — dùng `getAcceptanceLegalVersion`.
+ */
 export async function getEffectiveLegalVersion(key: string, now: Date = new Date()): Promise<EffectiveLegalVersion | null> {
   try {
     const row = await getPrismaClient().legalDocumentVersion.findFirst({
@@ -151,6 +163,7 @@ export async function getEffectiveLegalVersion(key: string, now: Date = new Date
         contentHtml: true,
         effectiveAt: true,
         publishedAt: true,
+        isDraftRelease: true,
         document: { select: { id: true, key: true, slug: true, title: true } },
       },
     });
@@ -165,11 +178,56 @@ export async function getEffectiveLegalVersion(key: string, now: Date = new Date
       contentHtml: row.contentHtml,
       effectiveAt: row.effectiveAt,
       publishedAt: row.publishedAt,
+      isDraftRelease: row.isDraftRelease,
     };
   } catch (error) {
     if (isLegalTableMissing(error)) return null;
     throw error;
   }
+}
+
+/**
+ * ADR-057 mục 3 — bản dùng để GHI CHẤP THUẬN (đăng ký, mở gian hàng): đúng bản đang hiển thị nếu đó là bản chính thức; bản
+ * hiển thị là bản dự thảo → `null` (không ghi chấp thuận — kể cả khi trước đó có bản chính thức cũ hơn: người dùng chỉ thấy
+ * bản dự thảo, không ghi đồng ý cho một nội dung họ không được xem).
+ */
+export async function getAcceptanceLegalVersion(key: string, now: Date = new Date()): Promise<EffectiveLegalVersion | null> {
+  const version = await getEffectiveLegalVersion(key, now);
+  return version && !version.isDraftRelease ? version : null;
+}
+
+export interface LegalPreviewVersion {
+  title: string;
+  versionId: string;
+  version: number;
+  status: LegalVersionRow["status"];
+  reviewStatus: LegalReviewStatusValue;
+  contentHtml: string;
+  effectiveAt: Date | null;
+  isDraftRelease: boolean;
+}
+
+/**
+ * ADR-057 mục 2 — một phiên bản bất kỳ (DRAFT/PUBLISHED/ARCHIVED) cho trang xem trước. CHỈ ĐỌC; caller phải
+ * `requireAdminAccess` trước (route `/phap-ly/xem-truoc`). Không truyền `versionId` → phiên bản mới nhất. Không có → `null`.
+ */
+export async function getLegalVersionForPreview(key: string, versionId: string | null): Promise<LegalPreviewVersion | null> {
+  const row = await getPrismaClient().legalDocumentVersion.findFirst({
+    where: { document: { key }, ...(versionId ? { id: versionId } : {}) },
+    orderBy: { version: "desc" },
+    select: { id: true, version: true, status: true, reviewStatus: true, contentHtml: true, effectiveAt: true, isDraftRelease: true, document: { select: { title: true } } },
+  });
+  if (!row) return null;
+  return {
+    title: row.document.title,
+    versionId: row.id,
+    version: row.version,
+    status: row.status,
+    reviewStatus: row.reviewStatus,
+    contentHtml: row.contentHtml,
+    effectiveAt: row.effectiveAt,
+    isDraftRelease: row.isDraftRelease,
+  };
 }
 
 /** Tạo phiên bản nháp mới (số = lớn nhất + 1). Nội dung trống được phép (soạn dần). */
@@ -216,7 +274,7 @@ export async function updateLegalDraft(key: string, versionId: string, input: { 
   return loadVersion(key, versionId);
 }
 
-/** Đặt trạng thái rà soát của bản nháp (admin tích "đã rà soát pháp lý" hoặc bỏ tích). */
+/** Đặt trạng thái rà soát của bản nháp (admin tích "Đã rà soát nội dung" hoặc bỏ tích). */
 export async function setLegalReviewStatus(key: string, versionId: string, reviewStatus: LegalReviewStatusValue): Promise<LegalVersionRow> {
   const current = await loadVersion(key, versionId);
   if (current.status !== "DRAFT") throw legalError(LEGAL_ERROR_CODES.NOT_DRAFT, "Chỉ đổi trạng thái rà soát của bản nháp.", 409);
@@ -229,13 +287,20 @@ export async function setLegalReviewStatus(key: string, versionId: string, revie
 }
 
 /**
- * Xuất bản bản nháp với ngày hiệu lực (`null` = ngay bây giờ; không cho lùi về quá khứ). Server kiểm lại CẢ
+ * Xuất bản bản nháp với ngày hiệu lực (`null` = ngay bây giờ; không cho lùi về quá khứ). Bản chính thức: server kiểm lại CẢ
  * `reviewStatus = APPROVED` VÀ không còn placeholder; câu UPDATE kèm lại điều kiện để không lọt sửa đổi xen giữa.
+ * `asDraftRelease` (ADR-057 mục 3): bỏ qua cổng placeholder + rà soát (vẫn phải là DRAFT, có nội dung), lưu cờ
+ * `isDraftRelease = true` — bản này không bao giờ được dùng để ghi chấp thuận (`getAcceptanceLegalVersion`).
  */
-export async function publishLegalVersion(key: string, versionId: string, input: { effectiveAt: Date | null; actorId: string; now?: Date }): Promise<LegalVersionRow> {
+export async function publishLegalVersion(
+  key: string,
+  versionId: string,
+  input: { effectiveAt: Date | null; actorId: string; now?: Date; asDraftRelease?: boolean },
+): Promise<LegalVersionRow> {
   const now = input.now ?? new Date();
+  const asDraftRelease = input.asDraftRelease === true;
   const current = await loadVersion(key, versionId);
-  const blockers = legalPublishBlockers(current);
+  const blockers = legalPublishBlockers(current).filter((blocker) => !asDraftRelease || blocker === "EMPTY" || blocker === "NOT_DRAFT");
   if (blockers.length > 0) {
     throw legalError(LEGAL_ERROR_CODES.PUBLISH_BLOCKED, blockers.map((blocker) => LEGAL_PUBLISH_BLOCKER_MESSAGES[blocker]).join(" "), 422);
   }
@@ -244,8 +309,8 @@ export async function publishLegalVersion(key: string, versionId: string, input:
     throw legalError(LEGAL_ERROR_CODES.INVALID_INPUT, "Ngày hiệu lực không được ở quá khứ.", 400);
   }
   const result = await getPrismaClient().legalDocumentVersion.updateMany({
-    where: { id: versionId, status: "DRAFT", reviewStatus: "APPROVED", updatedAt: current.updatedAt },
-    data: { status: "PUBLISHED", effectiveAt, publishedAt: now, publishedById: input.actorId },
+    where: { id: versionId, status: "DRAFT", ...(asDraftRelease ? {} : { reviewStatus: "APPROVED" as const }), updatedAt: current.updatedAt },
+    data: { status: "PUBLISHED", effectiveAt, publishedAt: now, publishedById: input.actorId, isDraftRelease: asDraftRelease },
   });
   if (result.count === 0) throw legalError(LEGAL_ERROR_CODES.CONFLICT, "Phiên bản vừa được thay đổi ở nơi khác, tải lại trang rồi thử lại.", 409);
   return loadVersion(key, versionId);
@@ -257,6 +322,168 @@ export async function archiveLegalVersion(key: string, versionId: string): Promi
   if (current.status !== "PUBLISHED") throw legalError(LEGAL_ERROR_CODES.NOT_PUBLISHED, "Chỉ lưu trữ được bản đã xuất bản.", 409);
   await getPrismaClient().legalDocumentVersion.updateMany({ where: { id: versionId, status: "PUBLISHED" }, data: { status: "ARCHIVED" } });
   return loadVersion(key, versionId);
+}
+
+// ───────────────────────── Editor một nội dung (bổ sung ADR-057) ─────────────────────────
+//
+// Giao diện không còn danh sách phiên bản: mỗi văn bản có MỘT "bản nháp làm việc" (DRAFT) và bản đã xuất bản. Phía sau vẫn
+// là các phiên bản ADR-050 (PUBLISHED bất biến — bằng chứng đồng ý). Lưu nháp = sửa bản nháp làm việc, chưa có thì tạo mới
+// (số phiên bản tăng ngầm); Xuất bản = bản nháp làm việc → PUBLISHED; lần sửa sau lại tự tạo nháp mới. Mọi thao tác ghi
+// kèm `expectedUpdatedAt` (mốc editor đã nạp) để hai tab/hai admin không ghi đè nhau. Caller phải requireRole + ghi audit.
+
+/**
+ * Bản nháp làm việc trong danh sách phiên bản (mới nhất trước): DRAFT mới nhất CÓ nội dung; mọi DRAFT đều trống → DRAFT mới
+ * nhất. (Dữ liệu cũ có thể còn nhiều DRAFT — vd một bản trống tạo từ trang chưa tải lại — không để bản trống che nội dung.)
+ */
+export function pickWorkingLegalDraft<T extends { status: string; contentHtml: string }>(versionsDesc: readonly T[]): T | null {
+  const drafts = versionsDesc.filter((v) => v.status === "DRAFT");
+  return drafts.find((v) => v.contentHtml.replace(/<[^>]*>/g, "").trim() !== "") ?? drafts[0] ?? null;
+}
+
+/**
+ * ADR-057 mục 3 — bật "Công bố dạng bản dự thảo" (cột `legal_document_versions.isDraftRelease`, migration ADR-057 đã áp
+ * 2026-10-25). Đặt `false` nếu cần tắt tạm: editor tắt ô tích, server từ chối `asDraftRelease`.
+ */
+export const LEGAL_DRAFT_RELEASE_AVAILABLE = true;
+
+export interface LegalEditorData {
+  key: LegalDocumentKey;
+  /** Có bật "Công bố dạng bản dự thảo" không (xem `LEGAL_DRAFT_RELEASE_AVAILABLE`). */
+  draftReleaseAvailable: boolean;
+  title: string;
+  slug: string;
+  publicPath: string;
+  /** Bản nháp làm việc; `null` = chưa có (lần Lưu nháp tới sẽ tạo từ nội dung đang soạn). */
+  draft: {
+    versionId: string;
+    contentHtml: string;
+    reviewStatus: LegalReviewStatusValue;
+    /** Luôn `false` — cờ chỉ đặt lúc xuất bản (bản nháp chưa xuất bản không mang cờ). */
+    isDraftRelease: boolean;
+    /** ISO — gửi lại làm `expectedUpdatedAt` cho mọi action. */
+    updatedAt: string;
+  } | null;
+  /** Bản đang hiệu lực; chưa có thì bản hẹn hiệu lực gần nhất; không có bản nào → `null`. */
+  published: {
+    versionId: string;
+    contentHtml: string;
+    publishedAt: string | null;
+    effectiveAt: string | null;
+    isDraftRelease: boolean;
+    /** `false` = đã xuất bản nhưng ngày hiệu lực ở tương lai. */
+    isEffective: boolean;
+    updatedAt: string;
+  } | null;
+  /** Nội dung để nạp vào ô soạn: nháp làm việc → bản đã xuất bản → rỗng. */
+  editorContentHtml: string;
+  /** Có bản nháp và nội dung khác bản đã xuất bản (hoặc chưa xuất bản lần nào). */
+  hasUnpublishedChanges: boolean;
+  /** ISO — "Cập nhật lúc …" (mới nhất giữa nháp và bản đã xuất bản); `null` = chưa có gì. */
+  lastUpdatedAt: string | null;
+  /** Xem trước bản nháp (hoặc bản đã xuất bản nếu không có nháp); `null` = chưa có nội dung nào. */
+  previewHref: string | null;
+  meta: { summary: string; seoTitle: string; seoDescription: string };
+}
+
+export async function getLegalEditorData(key: LegalDocumentKey, now: Date = new Date()): Promise<LegalEditorData> {
+  const def = LEGAL_DOCUMENT_DEFS[key];
+  const doc = await getPrismaClient().legalDocument.findUnique({
+    where: { key },
+    select: { title: true, slug: true, summary: true, seoTitle: true, seoDescription: true, versions: { select: VERSION_SELECT, orderBy: { version: "desc" } } },
+  });
+  const versions = doc?.versions ?? [];
+  const draft = pickWorkingLegalDraft(versions);
+  const effective = pickEffectiveLegalVersion(versions, now);
+  const scheduled = effective
+    ? null
+    : (versions.filter((v) => v.status === "PUBLISHED" && v.effectiveAt).sort((a, b) => a.effectiveAt!.getTime() - b.effectiveAt!.getTime())[0] ?? null);
+  const published = effective ?? scheduled;
+  const times = [draft?.updatedAt, published?.publishedAt ?? published?.updatedAt].filter((d): d is Date => d instanceof Date);
+  const last = times.length > 0 ? new Date(Math.max(...times.map((d) => d.getTime()))) : null;
+  const previewId = draft?.id ?? published?.id;
+  return {
+    key,
+    draftReleaseAvailable: LEGAL_DRAFT_RELEASE_AVAILABLE,
+    title: doc?.title ?? def.title,
+    slug: doc?.slug ?? def.slug,
+    publicPath: legalDocumentPath(key),
+    draft: draft
+      ? { versionId: draft.id, contentHtml: draft.contentHtml, reviewStatus: draft.reviewStatus, isDraftRelease: false, updatedAt: draft.updatedAt.toISOString() }
+      : null,
+    published: published
+      ? {
+          versionId: published.id,
+          contentHtml: published.contentHtml,
+          publishedAt: published.publishedAt?.toISOString() ?? null,
+          effectiveAt: published.effectiveAt?.toISOString() ?? null,
+          isDraftRelease: published.isDraftRelease,
+          isEffective: published === effective,
+          updatedAt: published.updatedAt.toISOString(),
+        }
+      : null,
+    editorContentHtml: draft?.contentHtml ?? published?.contentHtml ?? "",
+    hasUnpublishedChanges: draft !== null && (published === null || draft.contentHtml !== published.contentHtml),
+    lastUpdatedAt: last?.toISOString() ?? null,
+    previewHref: previewId ? legalPreviewPath(key, previewId) : null,
+    meta: { summary: doc?.summary ?? "", seoTitle: doc?.seoTitle ?? "", seoDescription: doc?.seoDescription ?? "" },
+  };
+}
+
+function parseExpected(value: unknown): Date | null {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value !== "string") throw legalError(LEGAL_ERROR_CODES.INVALID_INPUT, "Dữ liệu không hợp lệ.", 400);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) throw legalError(LEGAL_ERROR_CODES.INVALID_INPUT, "Dữ liệu không hợp lệ.", 400);
+  return date;
+}
+
+const STALE_MESSAGE = "Nội dung vừa được thay đổi ở nơi khác (tab hoặc người khác). Tải lại trang rồi thử lại.";
+
+/** Bản nháp làm việc hiện tại; kiểm mốc `expectedUpdatedAt` editor gửi lên (null = editor nghĩ chưa có nháp). */
+async function loadWorkingDraft(key: string, expectedUpdatedAt: unknown): Promise<LegalVersionRow | null> {
+  const expected = parseExpected(expectedUpdatedAt);
+  const draft = pickWorkingLegalDraft(await listLegalVersions(key));
+  if ((draft?.updatedAt.getTime() ?? null) !== (expected?.getTime() ?? null)) throw legalError(LEGAL_ERROR_CODES.CONFLICT, STALE_MESSAGE, 409);
+  return draft;
+}
+
+/**
+ * Lưu nháp: có nháp làm việc → sửa (đổi nội dung đưa rà soát về PENDING); chưa có → tạo phiên bản DRAFT mới từ nội dung đang
+ * soạn. Chưa có nháp và nội dung trùng bản đã xuất bản mới nhất → không tạo gì (`row = null`).
+ */
+export async function saveLegalWorkingDraft(
+  spec: LegalDocumentSpec,
+  input: { contentHtml: unknown; expectedUpdatedAt: unknown; actorId: string },
+): Promise<{ row: LegalVersionRow | null; created: boolean }> {
+  const draft = await loadWorkingDraft(spec.key, input.expectedUpdatedAt);
+  if (draft) return { row: await updateLegalDraft(spec.key, draft.id, { contentHtml: input.contentHtml, changeSummary: draft.changeSummary }), created: false };
+  const contentHtml = normalizeContent(input.contentHtml);
+  const latestPublished = (await listLegalVersions(spec.key)).find((v) => v.status === "PUBLISHED");
+  if (latestPublished && latestPublished.contentHtml === contentHtml) return { row: null, created: false };
+  return { row: await createLegalDraft(spec, { contentHtml, actorId: input.actorId }), created: true };
+}
+
+/** Tích/bỏ "Đã rà soát nội dung" trên bản nháp làm việc. Chưa có nháp → lỗi (lưu nháp trước). */
+export async function setLegalWorkingDraftReview(key: string, input: { approved: boolean; expectedUpdatedAt: unknown }): Promise<LegalVersionRow> {
+  const draft = await loadWorkingDraft(key, input.expectedUpdatedAt);
+  if (!draft) throw legalError(LEGAL_ERROR_CODES.NOT_DRAFT, "Chưa có bản nháp — sửa nội dung và Lưu nháp trước.", 409);
+  return setLegalReviewStatus(key, draft.id, input.approved ? "APPROVED" : "PENDING_LEGAL_REVIEW");
+}
+
+/**
+ * Xuất bản bản nháp làm việc (`publishLegalVersion`): bản chính thức theo cổng ADR-050, hoặc `asDraftRelease` (ADR-057
+ * mục 3) bỏ qua cổng placeholder + rà soát. Tắt bằng `LEGAL_DRAFT_RELEASE_AVAILABLE` → từ chối thay vì xuất bản chính thức.
+ */
+export async function publishLegalWorkingDraft(
+  key: string,
+  input: { effectiveAt: Date | null; asDraftRelease: boolean; expectedUpdatedAt: unknown; actorId: string },
+): Promise<LegalVersionRow> {
+  const draft = await loadWorkingDraft(key, input.expectedUpdatedAt);
+  if (!draft) throw legalError(LEGAL_ERROR_CODES.NOT_DRAFT, "Không có thay đổi nào để xuất bản.", 409);
+  if (input.asDraftRelease && !LEGAL_DRAFT_RELEASE_AVAILABLE) {
+    throw legalError(LEGAL_ERROR_CODES.INVALID_INPUT, "Công bố dạng bản dự thảo đang tắt.", 409);
+  }
+  return publishLegalVersion(key, draft.id, { effectiveAt: input.effectiveAt, actorId: input.actorId, asDraftRelease: input.asDraftRelease });
 }
 
 // ───────────────────────── Mô tả ngắn + SEO (ADR-054 mục 4) ─────────────────────────
@@ -308,11 +535,18 @@ export type LegalDocumentAdminStatus = "NONE" | "DRAFT_ONLY" | "EFFECTIVE" | "SC
  * Trạng thái từng văn bản cho bộ chọn của editor (một truy vấn, không đọc nội dung): chưa có phiên bản / chỉ có nháp /
  * đang hiệu lực / chỉ có bản hẹn hiệu lực tương lai; kèm cờ có bản nháp. Khoá trong DB không còn khai báo bị bỏ.
  */
-export async function listLegalDocumentStatuses(now: Date = new Date()): Promise<Map<LegalDocumentKey, { status: LegalDocumentAdminStatus; hasDraft: boolean }>> {
+export interface LegalDocumentAdminStatusInfo {
+  status: LegalDocumentAdminStatus;
+  hasDraft: boolean;
+  /** ADR-057: bản đang hiệu lực (hoặc, khi chưa có, bản hẹn hiệu lực gần nhất) là "Bản dự thảo". */
+  isDraftRelease: boolean;
+}
+
+export async function listLegalDocumentStatuses(now: Date = new Date()): Promise<Map<LegalDocumentKey, LegalDocumentAdminStatusInfo>> {
   const docs = await getPrismaClient().legalDocument.findMany({
-    select: { key: true, versions: { select: { status: true, effectiveAt: true } } },
+    select: { key: true, versions: { select: { status: true, effectiveAt: true, version: true, isDraftRelease: true } } },
   });
-  const result = new Map<LegalDocumentKey, { status: LegalDocumentAdminStatus; hasDraft: boolean }>();
+  const result = new Map<LegalDocumentKey, LegalDocumentAdminStatusInfo>();
   for (const doc of docs) {
     if (!isLegalDocumentKey(doc.key)) continue;
     const published = doc.versions.filter((v) => v.status === "PUBLISHED" && v.effectiveAt);
@@ -320,7 +554,11 @@ export async function listLegalDocumentStatuses(now: Date = new Date()): Promise
     const scheduled = published.some((v) => v.effectiveAt!.getTime() > now.getTime());
     const hasDraft = doc.versions.some((v) => v.status === "DRAFT");
     const status: LegalDocumentAdminStatus = effective ? "EFFECTIVE" : scheduled ? "SCHEDULED" : hasDraft ? "DRAFT_ONLY" : "NONE";
-    result.set(doc.key, { status, hasDraft });
+    const shown =
+      pickEffectiveLegalVersion(doc.versions, now) ??
+      published.filter((v) => v.effectiveAt!.getTime() > now.getTime()).sort((a, b) => a.effectiveAt!.getTime() - b.effectiveAt!.getTime())[0] ??
+      null;
+    result.set(doc.key, { status, hasDraft, isDraftRelease: shown?.isDraftRelease === true });
   }
   return result;
 }
@@ -328,7 +566,7 @@ export async function listLegalDocumentStatuses(now: Date = new Date()): Promise
 // ───────────────────────── Văn bản đang hiệu lực (menu, link) ─────────────────────────
 
 /**
- * Khoá các văn bản ĐÃ KHAI BÁO trong code đang có bản hiệu lực — MỘT truy vấn, `cache()` theo request (header + footer +
+ * Khoá các văn bản ĐÃ KHAI BÁO trong code đang có bản hiệu lực (kể cả bản dự thảo ADR-057 — có trang để đọc) — MỘT truy vấn, `cache()` theo request (header + footer +
  * form cùng trang chỉ đọc một lần). Dùng để ẩn link menu/footer tới văn bản chưa hiệu lực (ADR-054 mục 3, 6).
  */
 export const getEffectiveLegalKeys = cache(async function getEffectiveLegalKeys(): Promise<ReadonlySet<LegalDocumentKey>> {
@@ -342,17 +580,18 @@ export const getEffectiveLegalKeys = cache(async function getEffectiveLegalKeys(
 // ───────────────────────── Chấp thuận theo phiên bản ─────────────────────────
 
 /**
- * Chọn phiên bản phải ghi chấp thuận. Client gửi id bản người dùng đã thấy trên form: khác bản đang hiệu lực → 409 (văn
- * bản vừa đổi, tải lại). Client không gửi (form cũ còn cache) → dùng bản đang hiệu lực (người dùng vẫn tích ô đồng ý).
- * Chưa có bản hiệu lực → `null` (bỏ qua như trước ADR-050).
+ * Chọn phiên bản phải ghi chấp thuận — CHỈ đúng bản người dùng đã thấy (bổ sung ADR-057, Quốc chốt 2026-10-25). Có bản
+ * chính thức mà client không gửi id (form cũ còn cache / trang lúc đó còn là bản dự thảo) hoặc gửi id khác → 409 (văn bản
+ * vừa đổi, tải lại). Chưa có bản chính thức → `null` (bỏ qua như trước ADR-050). ADR-057: bản dự thảo KHÔNG bao giờ được ghi chấp thuận
+ * (lớp phòng thủ thứ hai — nơi gọi đã dùng `getAcceptanceLegalVersion`).
  */
 export function resolveAcceptedLegalVersion(
   effective: EffectiveLegalVersion | null,
   submittedVersionId: string | undefined,
   changed: { code: string; message: string },
 ): string | null {
-  if (!effective) return null;
-  if (submittedVersionId && submittedVersionId !== effective.versionId) throw legalError(changed.code, changed.message, 409);
+  if (!effective || effective.isDraftRelease) return null;
+  if (submittedVersionId !== effective.versionId) throw legalError(changed.code, changed.message, 409);
   return effective.versionId;
 }
 
@@ -377,7 +616,7 @@ export function resolveRegistrationPrivacyVersion(effective: EffectiveLegalVersi
  * client ẩn/hiện checkbox) và id gửi lên (nếu có) phải là bản hiệu lực. Chưa có bản hiệu lực → `null`, ô bị bỏ qua.
  */
 export function resolveSellerPolicyAcceptance(effective: EffectiveLegalVersion | null, input: { accepted: boolean; submittedVersionId: string | undefined }): string | null {
-  if (!effective) return null;
+  if (!effective || effective.isDraftRelease) return null;
   if (!input.accepted) throw legalError(LEGAL_ERROR_CODES.ACCEPTANCE_REQUIRED, `Bạn cần đồng ý ${effective.title} để mở gian hàng.`, 400);
   return resolveAcceptedLegalVersion(effective, input.submittedVersionId, {
     code: LEGAL_ERROR_CODES.DOCUMENT_CHANGED,

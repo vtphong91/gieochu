@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 import { requireAdminAccess } from "../../../../lib/page-guards";
 import { getSystemSettingsPageData } from "../../../../lib/system-settings";
 import { AdminPageHeader } from "../../_ui/kit";
 import { IconAlertTriangle } from "../../_ui/icons";
+import { ModuleTabs } from "../../_ui/module-tabs";
+import { SETTINGS_GENERAL_TAB, SETTINGS_TABS, SETTINGS_TABS_LABEL } from "../_ui/settings-tabs";
 import { GeneralSettingsForm } from "./general-settings-form";
 
 const dateTime = new Intl.DateTimeFormat("vi-VN", {
@@ -14,6 +17,9 @@ const dateTime = new Intl.DateTimeFormat("vi-VN", {
   minute: "2-digit",
 });
 
+/** ADR-058: title riêng theo tab. */
+export const metadata: Metadata = { title: "Cấu hình chung" };
+
 /** ADR-032 — cấu hình hệ thống: thời hạn phiên/liên kết/URL ký, ân hạn, đơn/hoá đơn chờ, lượt tải mặc định. */
 export default async function AdminGeneralSettingsPage() {
   await requireAdminAccess("/admin/settings/general");
@@ -23,13 +29,15 @@ export default async function AdminGeneralSettingsPage() {
   const invalidVisible = data.invalidKeys.filter((key) => !data.inactiveKeys.includes(key));
 
   return (
-    <main className="px-5 py-8 lg:px-8">
+    // ADR-058: tab "Cấu hình chung" (mặc định) của nhóm cùng tên. Wrapper <div>: layout admin đã có <main>.
+    <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader
         title="Cấu hình chung"
         subtitle="Thời hạn phiên và liên kết, ân hạn gói, đơn/hoá đơn chờ thanh toán và lượt tải mặc định. Thay đổi chỉ áp dụng cho thao tác mới."
       />
+      <ModuleTabs label={SETTINGS_TABS_LABEL} items={SETTINGS_TABS} current={SETTINGS_GENERAL_TAB} />
 
-      <p className="mt-3 text-sm" style={{ color: "#4B5563" }}>
+      <p className="mt-4 text-sm" style={{ color: "#4B5563" }}>
         {data.isDefault || !data.updatedAt ? (
           "Chưa lưu lần nào — hệ thống đang dùng giá trị mặc định."
         ) : (
@@ -62,6 +70,6 @@ export default async function AdminGeneralSettingsPage() {
       ) : null}
 
       <GeneralSettingsForm values={data.values} bounds={data.bounds} inactiveKeys={data.inactiveKeys} />
-    </main>
+    </div>
   );
 }

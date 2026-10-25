@@ -918,6 +918,7 @@ export const LegalDocumentVersionScalarFieldEnum = {
   changeSummary: 'changeSummary',
   effectiveAt: 'effectiveAt',
   publishedAt: 'publishedAt',
+  isDraftRelease: 'isDraftRelease',
   publishedById: 'publishedById',
   createdById: 'createdById',
   createdAt: 'createdAt',

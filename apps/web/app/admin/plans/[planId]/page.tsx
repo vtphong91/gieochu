@@ -28,11 +28,12 @@ export default async function AdminEditPlanPage({ params }: { params: Promise<{ 
   };
 
   return (
-    <main className="px-5 py-8 lg:px-8">
+    // Wrapper <div>: layout admin đã có <main>.
+    <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader title={`Sửa gói — ${plan.name}`} />
       <SettingsGrid>
         <EditPlanForm planId={planId} initial={initial} />
       </SettingsGrid>
-    </main>
+    </div>
   );
 }

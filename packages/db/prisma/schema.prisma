@@ -1530,6 +1530,9 @@ model LegalDocumentVersion {
   /// Bắt buộc khi PUBLISHED/ARCHIVED (CHECK).
   effectiveAt   DateTime?
   publishedAt   DateTime?
+  /// ADR-057 — xuất bản dạng "Bản dự thảo" (bỏ qua cổng placeholder + rà soát): hiển thị công khai nhưng KHÔNG dùng để
+  /// ghi nhận đồng ý. Đóng băng sau khi rời DRAFT (trigger `legal_document_versions_freeze_content`).
+  isDraftRelease Boolean @default(false)
   /// Không FK (mẫu `updatedById`) — lịch sử không chặn xoá user.
   publishedById String?
   createdById   String?

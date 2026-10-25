@@ -1101,6 +1101,51 @@ Checklist pháp lý: `docs/legal/LEGAL_REVIEW_CHECKLIST.md`.
 - **Còn mở:** commit/deploy; xem UI thật với phiên SYSTEM_ADMIN; thử MoMo/SePay thật; ~~có cần hiện chu kỳ tháng/năm ở trang Đơn hàng gói~~ (Quốc 2026-10-25: giữ như code — KB-Audit §37 mục 5). Nút gỡ mã ở checkout ghi "Bỏ áp dụng".
 - **Tài liệu:** bản trích `01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr.md` (≙ ADR-056), `02-System-Specs/Payment-And-Billing.md` §5C–§5E, `02-System-Specs/Order-State-Machine.md` §3.9, `02-System-Specs/User-Management-System-Center-Specs.md` §2, §5, `03-API-Contracts/Endpoint-Directory.md` §27, `04-Operations-Runbooks/UI-Design-System.md` §24, `00-Index/KB-Audit-2026-09-26.md` §37.
 
+## Chính sách: nạp 7 dự thảo, xem trước, "Bản dự thảo", editor một nội dung (ADR-057 + bổ sung) — xong code, chưa commit; migration đã chạy — 2026-10-25
+
+**Chủ dự án chốt 2026-10-25 (ADR-057).**
+
+- **Script** `apps/web/scripts/import-legal-drafts.ts` (`pnpm --filter @gieochu/web run legal:import-drafts -- --actor-email=… [--apply]`): 7 dự thảo Markdown → HTML sanitize → bản nháp DRAFT, chạy thử mặc định, idempotent. Đã nạp 7 bản nháp (theo bổ sung ADR-057).
+- **Xem trước** `/phap-ly/xem-truoc?van-ban=&phien-ban=` — chỉ SYSTEM_ADMIN, noindex, cùng giao diện trang công khai.
+- **"Bản dự thảo"**: cột `legal_document_versions.isDraftRelease` (migration expand-only `20261025120000_adr057_legal_draft_release` — **đã chạy 2026-10-25**, Bổ sung ADR-058 (c)); bỏ qua cổng placeholder + rà soát; banner + "(đang cập nhật)"; **không dùng ghi chấp thuận** (`getAcceptanceLegalVersion`).
+- **Editor một nội dung**: 3 Server Action mới `saveLegalDraftAction` / `setLegalReviewAction` / `publishLegalAction` (có `expectedUpdatedAt`, lệch → `LEGAL_VERSION_CONFLICT`), bỏ 5 action theo phiên bản và nút Lưu trữ; SEO thu gọn dưới nội dung.
+- **Đổi tên**: "Chính sách sử dụng", "Liên hệ và thông tin đơn vị vận hành", "Đã rà soát nội dung".
+- **Test:** `legal.test.ts` thêm assert trong case có sẵn — `pnpm test:count` vẫn **100/66**.
+- **GĐ C xong (Hiếu báo 2026-10-25):** `getEffectiveLegalVersion` (hiển thị, có bản dự thảo) tách `getAcceptanceLegalVersion` (ghi đồng ý, chỉ bản chính thức); đăng ký: văn bản dự thảo có link, `versionId = null`, chỉ `consentAt`; mở gian hàng ẩn ô đồng ý khi Chính sách người bán là bản dự thảo; đã có bản chính thức rồi công bố bản dự thảo cũng không ghi đồng ý (Quốc chốt). Bắt buộc gửi id khớp khi có bản chính thức: thiếu/lệch → 409 (Điều khoản `LEGAL_TERMS_CHANGED`; Bảo mật + Người bán `LEGAL_DOCUMENT_CHANGED`) — `termsVersionId`/`privacyVersionId`/`sellerPolicyVersionId` thành bắt buộc trên thực tế.
+- **Còn mở:** commit/deploy; xem UI thật. Runbook pháp lý đã bỏ thao tác Lưu trữ (Quốc chốt 2026-10-25).
+- **Tài liệu:** bản trích `01-Architecture-Decisions/ADR-042-Legal-Drafts-Import-Preview-Draft-Release.md` (≙ ADR-057), `03-API-Contracts/Endpoint-Directory.md` §3.1, §26.4, §26.5, `04-Operations-Runbooks/Legal-Terms-Publishing-Runbook.md` §1, §3, `02-System-Specs/Legal-Documents-Specs.md` §2, §5 (viết lại), §6, `04-Operations-Runbooks/UI-Design-System.md` §13.7, `00-Index/KB-Audit-2026-09-26.md` §38.
+
+## Điều hướng tab theo chức năng + accordion + cảnh báo rời trang (ADR-058 + bổ sung) — GĐ 0 xong; GĐ 1 xong trừ 1.10, chưa commit — 2026-10-25
+
+**Chủ dự án chốt 2026-10-25 (ADR-058).** Kế hoạch: `docs/ke-hoach-toi-uu-layout-tab-accordion-2026-10-25.md`. Chỉ lớp trình bày; URL không đổi, không migration, không đổi Server Action. Mỗi task Quốc duyệt rồi mới làm task sau.
+
+- **GĐ 0 — Nền tảng:**
+  - ✅ **0.1** `admin/_ui/collapsible-section.tsx` (`CollapsibleSection`, `sectionStatus`, `revealSection`) + `admin/_ui/module-tabs.tsx` (`ModuleTabs`).
+  - ✅ **0.2** `admin/_ui/unsaved-changes.tsx` (`UnsavedChangesProvider`, `useUnsavedChanges`, `useLeaveGuard`, `GuardedLink`); Provider bọc `admin/layout.tsx`, `studio/[tenantSlug]/layout.tsx`; áp thử editor Chính sách sử dụng. Giới hạn: không chặn Back/Forward; 6 editor còn `beforeunload` riêng, chuyển dần.
+  - ✅ **0.3** `admin/_ui/nav-match.ts` + `SidebarNavLeaf.match?: string[]` (tiền tố; `=` khớp đúng; dài nhất thắng).
+  - ✅ **0.4** Long ghi KB (2026-10-25).
+- **Bổ sung ADR-058:** (a) mục sidebar "Trang tuỳ chỉnh" (`/admin/cms`, ẩn slug hệ thống trong truy vấn); (b) trang sửa tài liệu Studio giữ nguyên, không thêm tab, chỉ accordion; (c) migration ADR-057 đã chạy.
+- **GĐ 1 — System Center (Quốc duyệt 2026-10-25; xong code + verify, chưa thử trình duyệt):**
+  - ✅ **1.1** Trang CMS = `ModuleTabs` Trang chủ · Header & Footer (`admin/cms/_ui/cms-tabs.ts`, `cms/[slug]` slug `home`, `cms/menu` + `loading.tsx`); sidebar nhóm Nội dung: Trang CMS (`/admin/cms/home`, `match: ["/admin/cms/menu"]`) · **Trang tuỳ chỉnh** (`/admin/cms`, mới) · Trang Cửa hàng · Trang Bảng giá · Chính sách sử dụng · Danh mục tài liệu; bỏ "Menu & chân trang". Danh sách "Trang tuỳ chỉnh" lọc `slug notIn SYSTEM_CMS_SLUGS` cho cả `findMany` + `count` (Hiếu).
+  - ✅ **1.2** Khối SEO trang chủ thành `CollapsibleSection` (thu gọn, badge `sectionStatus`); nút Lên/Xuống/Ẩn-Hiện 44px dưới `lg`; bỏ hex cứng.
+  - ✅ **1.3** Editor Header & Footer (`cms/menu/menu-editor.tsx`): 3 `CollapsibleSection` — Menu đầu trang (mở), Nút kêu gọi + Chân trang (thu gọn) — badge lỗi/thay đổi, tóm tắt lỗi gọi `revealSection`, `useUnsavedChanges` thay `beforeunload`.
+  - ✅ **1.2b** Trang chủ theo dõi "có thay đổi chưa lưu" (sections + SEO so với mốc đã nạp) → `useUnsavedChanges` + badge thanh nút.
+  - ✅ **1.4** SEO trang Bảng giá thành `CollapsibleSection` luôn thu gọn.
+  - ✅ **1.5** Cửa hàng: kết luận không cần accordion (list-detail, mọi ô bắt buộc, không có SEO) — chỉ chuyển `beforeunload` sang `useUnsavedChanges`. SEO `/cua-hang` thuộc kế hoạch SEO tổng thể (làm sau).
+  - ✅ **1.6** `LegalMetaForm` dùng `CollapsibleSection` (`#seo`), giữ hành vi ADR-057; `CollapsibleSection.status` nhận mảng, thêm sắc `info`, badge xuống dòng trên mobile.
+  - ✅ **1.7** Cấu hình chung = `ModuleTabs` Cấu hình chung · Email hỗ trợ · Cấu hình Email (SMTP) (`admin/settings/_ui/settings-tabs.ts`); sidebar gộp 3 mục thành 1 (`match: ["=/admin/settings", "/admin/settings/smtp"]`) → System Center còn **21 mục**.
+  - ✅ **1.8** Tab nội bộ SMTP thành tab ARIA thật (←/→, Home/End). **1.8b** SMTP giữ giá trị đã nhập khi lưu lỗi (trừ mật khẩu).
+  - ✅ **1.9** Form Cấu hình chung: 3 nhóm `CollapsibleSection` (Bảo mật & phiên mở; Chính sách phiên, Nghiệp vụ thu gọn), badge lỗi/có thay đổi.
+  - ✅ **1.11** Thanh toán SePay · MoMo · QR thủ công: cổng đang bật thì mở, badge trạng thái; hook mới `admin/_ui/use-form-draft.ts` (`useFormDraft` — giữ giá trị khi lưu lỗi, không ghi lại secret, `dirtyOf`); sửa Toggle lệch sau lưu lỗi.
+  - ✅ **1.12a** Gói dịch vụ 3 khối (trang tạo gói mở cả 3), Danh mục 4 khối, Trang tuỳ chỉnh 2 khối — `useFormDraft` + `useUnsavedChanges`; sửa `<main>` lồng.
+  - ✅ **1.12b** Component mới `admin/_ui/in-page-tabs.tsx` (`InPageTabs`, tab ARIA kiểu pill, panel luôn mounted) cho Thương hiệu (sửa lỗi mất dữ liệu khi chuyển tab) và SMTP; Cloudinary `useFormDraft` (không ghi lại API key/secret) + `useUnsavedChanges`, không accordion.
+  - ✅ **1.13** Sửa `<main>` lồng (users, roles, tenants); Email hỗ trợ `useFormDraft` + `useUnsavedChanges`.
+  - ⏸ **1.10** Lưu trữ file — tạm hoãn, chờ Vương xong ADR-055 (kèm sửa `<main>` lồng ở `settings/storage/page.tsx`).
+- **Còn mở:** 1.10; thử trình duyệt toàn GĐ 1 (hộp hỏi rời trang, giữ dữ liệu khi lưu lỗi, phím tab, 375px); `admin/error.tsx` còn `<main>` lồng, các trang tab chưa có `metadata.title` riêng (KB-Audit §39); 3 editor Studio còn `beforeunload` riêng.
+- **Tiếp theo:** GĐ 2 Studio (2.1 → 2.6) — thứ tự ở kế hoạch §6; 1.10 khi Vương xong ADR-055.
+- **Test:** `pnpm test:count` vẫn **100/66**.
+- **Tài liệu:** bản trích `01-Architecture-Decisions/ADR-043-Module-Tabs-Accordion-Unsaved-Guard.md` (≙ ADR-058), `04-Operations-Runbooks/UI-Design-System.md` §5, §11.1, §12.5, §12.6, §25, `00-Index/KB-Audit-2026-09-26.md` §38, §39.
+
 ## Integration test không ghi cấu hình dùng chung + form cấu hình thanh toán (2026-10-24 → 25)
 
 - **Sự cố 2026-10-24:** integration test ghi đè `system_storage_config` và dòng SEPAY platform trên DB dùng chung. Chủ dự án đã nhập lại cấu hình storage; hiện không còn dòng SEPAY.

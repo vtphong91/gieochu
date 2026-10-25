@@ -23,7 +23,8 @@ interface RegisterFormValues {
 
 /** Bản văn bản đang hiệu lực (Điều khoản — ADR-050; Chính sách bảo mật — ADR-054) — `null` = chưa công bố. */
 export interface RegisterTermsInfo {
-  versionId: string;
+  /** `null` = bản đang hiển thị là bản dự thảo (ADR-057) — có link để đọc, không ghi chấp thuận theo phiên bản. */
+  versionId: string | null;
   href: string;
   title: string;
 }
@@ -64,8 +65,8 @@ export function RegisterForm({ brandName, terms, privacy }: { brandName: string;
       body: JSON.stringify({
         ...data,
         accountType,
-        ...(terms ? { termsVersionId: terms.versionId } : {}),
-        ...(privacy ? { privacyVersionId: privacy.versionId } : {}),
+        ...(terms?.versionId ? { termsVersionId: terms.versionId } : {}),
+        ...(privacy?.versionId ? { privacyVersionId: privacy.versionId } : {}),
       }),
     });
     if (!response.ok) {

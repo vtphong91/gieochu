@@ -6,8 +6,9 @@ export default async function AdminCmsNewPage() {
   await requireAdminAccess("/admin/cms/new");
 
   return (
-    <main className="px-5 py-8 lg:px-8">
-      <AdminPageHeader title="Tạo trang CMS mới" />
+    // Wrapper <div>: layout admin đã có <main>.
+    <div className="px-5 py-8 lg:px-8">
+      <AdminPageHeader title="Tạo trang tuỳ chỉnh mới" />
       <SettingsGrid>
         <CmsPageForm
           slugEditable
@@ -21,6 +22,6 @@ export default async function AdminCmsNewPage() {
           }}
         />
       </SettingsGrid>
-    </main>
+    </div>
   );
 }

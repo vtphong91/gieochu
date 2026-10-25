@@ -14,7 +14,8 @@ import Link from "next/link";
  */
 export default function AdminErrorBoundary({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
-    <main className="flex min-h-[60vh] flex-col items-center justify-center gap-3 px-5 text-center">
+    // Wrapper <div>: layout admin đã có <main>.
+    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 px-5 text-center">
       <p className="font-[family-name:var(--font-heading)] text-xl font-bold" style={{ color: "#12213A" }}>
         Có lỗi xảy ra
       </p>
@@ -38,6 +39,6 @@ export default function AdminErrorBoundary({ reset }: { error: Error & { digest?
           Đăng nhập lại
         </Link>
       </div>
-    </main>
+    </div>
   );
 }

@@ -37,6 +37,7 @@ import {
 } from "@gieochu/core/shop-sections";
 import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 import { Badge, GhostButton, Notice, PrimaryButton } from "../../../_ui/kit";
+import { useUnsavedChanges } from "../../../_ui/unsaved-changes";
 import {
   IconAlertTriangle,
   IconCheckCircle,
@@ -570,12 +571,8 @@ export function ShopSectionsEditor({
   const selected = sections.find((s) => s.id === selectedId) ?? sections[0];
   const visibleCount = sections.filter((s) => s.visible).length;
 
-  useEffect(() => {
-    if (!isDirty) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [isDirty]);
+  // ADR-058 mục 5: cờ "chưa lưu" đăng ký với provider của layout (beforeunload chung + chặn sidebar/tab).
+  useUnsavedChanges(isDirty, "Trang Cửa hàng có thay đổi chưa lưu. Rời trang và bỏ thay đổi?");
 
   useEffect(() => {
     if (!focusRequest) return;
@@ -707,7 +704,7 @@ export function ShopSectionsEditor({
               <Badge tone="neutral">Chưa lưu · cấu hình mặc định</Badge>
             )}
             {hasDraft ? <Badge tone="warning">Có nháp chưa xuất bản</Badge> : null}
-            {isDirty ? <Badge tone="info">Có thay đổi chưa lưu</Badge> : null}
+            {isDirty ? <Badge tone="warning">Có thay đổi chưa lưu</Badge> : null}
             {savedLabel ? (
               <span className="text-xs" style={{ color: INK_SOFT }}>
                 Lưu lần cuối: {savedLabel}

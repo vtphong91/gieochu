@@ -31,7 +31,7 @@ function plainText(html: string): string {
 export function buildLegalToc(html: string): { html: string; items: LegalTocItem[] } {
   const items: LegalTocItem[] = [];
   // id đã dùng trong khung trang (skip-link, đầu bài, mục lục) — tránh trùng với tiêu đề như "Nội dung".
-  const used = new Set<string>(["noi-dung", "dau-trang", "muc-luc", "muc-luc-mobile"]);
+  const used = new Set<string>(["noi-dung", "dau-trang", "muc-luc", "muc-luc-mobile", "chinh-sach-lien-quan"]);
   const normalized = html.replace(/<h1>/g, "<h2>").replace(/<\/h1>/g, "</h2>");
   const withIds = normalized.replace(/<h2>([\s\S]*?)<\/h2>/g, (_match, inner: string) => {
     const text = plainText(inner);

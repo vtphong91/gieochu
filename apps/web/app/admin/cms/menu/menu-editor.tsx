@@ -27,7 +27,9 @@ import {
 import { collectStrings, findContentClaimWarnings } from "@gieochu/core/cms-content-guard";
 import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 import { SortableListEditor } from "../_ui/sortable-list-editor";
-import { Badge, ConfigCard, GhostButton, Notice, PrimaryButton, SelectField, TextField, Toggle } from "../../_ui/kit";
+import { Badge, GhostButton, Notice, PrimaryButton, SelectField, TextField, Toggle } from "../../_ui/kit";
+import { CollapsibleSection, revealSection, sectionStatus } from "../../_ui/collapsible-section";
+import { useUnsavedChanges } from "../../_ui/unsaved-changes";
 import { IconAlertTriangle, IconCheckCircle, IconExternalLink, IconLayers, IconMenu, IconRoute } from "../../_ui/icons";
 import { publishMenuAction, restoreLiveMenuAction, saveMenuDraftAction, type MenuEditorActionState } from "./actions";
 
@@ -38,6 +40,8 @@ import { publishMenuAction, restoreLiveMenuAction, saveMenuDraftAction, type Men
  * tóm tắt lỗi** nhận focus — mỗi lỗi là nút nhảy tới đúng ô; lỗi server (`issues[].path`) gộp vào cùng khung. Danh sách
  * mục/menu con/cột/link dùng `SortableListEditor` (Lên/Xuống thay kéo-thả, WCAG 2.5.7). Xác nhận: xoá mục còn nội dung,
  * khôi phục (không hoàn tác), xuất bản khi còn cảnh báo nội dung. Cảnh báo rời trang khi có thay đổi chưa lưu.
+ * ADR-058: 3 khối là `CollapsibleSection` (Menu đầu trang mở, Nút kêu gọi + Chân trang thu gọn), badge lỗi/"Có thay đổi"
+ * theo từng khối; khối có lỗi tự mở, khung tóm tắt lỗi `revealSection` khối chứa ô lỗi trước khi focus.
  * Không đổi action/props.
  */
 
@@ -71,6 +75,15 @@ function newId(prefix: string): string {
 
 function emptyLink(prefix: string): NavLink {
   return { id: newId(prefix), label: "", kind: "page", target: "home", newTab: false, visible: true };
+}
+
+/** Khối accordion chứa một đường dẫn lỗi (`header.cta.*` → cta, `header.*` → header, `footer.*` → footer). */
+type MenuBlock = "header" | "cta" | "footer";
+const MENU_BLOCK_IDS: Record<MenuBlock, string> = { header: "menu-dau-trang", cta: "nut-keu-goi", footer: "chan-trang" };
+function blockOfPath(path: string): MenuBlock {
+  if (path.startsWith("header.cta")) return "cta";
+  if (path.startsWith("footer")) return "footer";
+  return "header";
 }
 
 function issuesFromSchema(menu: SiteMenu): MenuIssue[] {
@@ -301,12 +314,20 @@ export function MenuEditor({
   const setHeader = (next: Partial<SiteMenu["header"]>) => setMenu((prev) => ({ ...prev, header: { ...prev.header, ...next } }));
   const setFooter = (next: Partial<SiteMenu["footer"]>) => setMenu((prev) => ({ ...prev, footer: { ...prev.footer, ...next } }));
 
-  useEffect(() => {
-    if (!isDirty) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [isDirty]);
+  // ADR-058 mục 5: cờ "chưa lưu" đăng ký với provider của layout (beforeunload chung + chặn sidebar/tab).
+  useUnsavedChanges(isDirty, "Menu header & footer có thay đổi chưa lưu. Rời trang và bỏ thay đổi?");
+
+  // Trạng thái từng khối accordion: số lỗi (theo đường dẫn lỗi) + có thay đổi so với lần lưu gần nhất.
+  const savedMenu = useMemo(() => JSON.parse(savedSnapshot) as SiteMenu, [savedSnapshot]);
+  const blockErrors: Record<MenuBlock, number> = { header: 0, cta: 0, footer: 0 };
+  for (const issue of issues) blockErrors[blockOfPath(issue.path)] += 1;
+  const { cta: savedCta, ...savedHeaderRest } = savedMenu.header;
+  const { cta: currentCta, ...currentHeaderRest } = menu.header;
+  const blockDirty: Record<MenuBlock, boolean> = {
+    header: JSON.stringify(currentHeaderRest) !== JSON.stringify(savedHeaderRest),
+    cta: JSON.stringify(currentCta) !== JSON.stringify(savedCta),
+    footer: JSON.stringify(menu.footer) !== JSON.stringify(savedMenu.footer),
+  };
 
   useEffect(() => {
     if (!focusRequest) return;
@@ -416,7 +437,7 @@ export function MenuEditor({
               <Badge tone="neutral">Chưa lưu · menu mặc định</Badge>
             )}
             {hasDraft ? <Badge tone="warning">Có nháp chưa xuất bản</Badge> : null}
-            {isDirty ? <Badge tone="info">Có thay đổi chưa lưu</Badge> : null}
+            {isDirty ? <Badge tone="warning">Có thay đổi chưa lưu</Badge> : null}
             {savedLabel ? (
               <span className="text-xs" style={{ color: INK_SOFT }}>
                 Lưu lần cuối: {savedLabel}
@@ -475,7 +496,11 @@ export function MenuEditor({
                   {fieldId ? (
                     <button
                       type="button"
-                      onClick={() => requestFocus(fieldId)}
+                      onClick={() => {
+                        // Mở khối chứa ô lỗi (đồng bộ) rồi mới focus — ô trong khối thu gọn đang `hidden`.
+                        revealSection(MENU_BLOCK_IDS[blockOfPath(issue.path)]);
+                        requestFocus(fieldId);
+                      }}
                       className={`min-h-11 cursor-pointer rounded text-left text-sm underline underline-offset-2 lg:min-h-0 ${FOCUS}`}
                       style={{ color: RED }}
                     >
@@ -504,11 +529,14 @@ export function MenuEditor({
         </Notice>
       ) : null}
 
-      <ConfigCard
+      <CollapsibleSection
+        id={MENU_BLOCK_IDS.header}
+        defaultOpen
         icon={<IconMenu className="h-5 w-5" />}
         title="Menu đầu trang"
-        badges={<Badge tone="neutral">{`${visibleHeader}/${header.items.length} đang hiện`}</Badge>}
-        description={`Desktop (nav ngang) và mobile (nút menu) dùng cùng danh sách. Mục có menu con (1 cấp) trở thành nhóm, bấm để mở.`}
+        status={sectionStatus({ errorCount: blockErrors.header, dirty: blockDirty.header })}
+        errorCount={blockErrors.header}
+        description={`${visibleHeader}/${header.items.length} mục đang hiện. Desktop (nav ngang) và mobile (nút menu) dùng cùng danh sách; mục có menu con (1 cấp) trở thành nhóm.`}
       >
         <SortableListEditor
           id="menu-header-items"
@@ -565,12 +593,14 @@ export function MenuEditor({
             </>
           )}
         />
-      </ConfigCard>
+      </CollapsibleSection>
 
-      <ConfigCard
+      <CollapsibleSection
+        id={MENU_BLOCK_IDS.cta}
         icon={<IconRoute className="h-5 w-5" />}
         title="Nút kêu gọi đầu trang"
-        badges={header.cta.visible ? <Badge tone="success">Đang hiện</Badge> : <Badge tone="warning">Đang ẩn</Badge>}
+        status={sectionStatus({ errorCount: blockErrors.cta, dirty: blockDirty.cta, empty: !header.cta.visible, emptyLabel: "Đang ẩn", okLabel: "Đang hiện" })}
+        errorCount={blockErrors.cta}
         description={`Nút nổi bật cạnh “Đăng nhập”, chỉ hiện cho khách chưa đăng nhập. Nhãn tối đa ${NAV_CTA_LABEL_MAX} ký tự để vừa màn hình điện thoại.`}
       >
         <LinkFields
@@ -581,11 +611,14 @@ export function MenuEditor({
           showErrors={attempted}
           onChange={(cta) => setHeader({ cta })}
         />
-      </ConfigCard>
+      </CollapsibleSection>
 
-      <ConfigCard
+      <CollapsibleSection
+        id={MENU_BLOCK_IDS.footer}
         icon={<IconLayers className="h-5 w-5" />}
         title="Chân trang"
+        status={sectionStatus({ errorCount: blockErrors.footer, dirty: blockDirty.footer })}
+        errorCount={blockErrors.footer}
         description={`${NAV_FOOTER_COLUMNS_MIN}–${NAV_FOOTER_COLUMNS_MAX} cột, mỗi cột ${NAV_FOOTER_LINKS_MIN}–${NAV_FOOTER_LINKS_MAX} link. Mobile hiện 2 cột (1 cột nếu chỉ có 1), desktop đủ cột cạnh logo.`}
       >
         <div>
@@ -667,7 +700,7 @@ export function MenuEditor({
           error={attempted && !footer.copyright.trim() ? "Nhập dòng bản quyền." : undefined}
           onChange={(e) => setFooter({ copyright: e.target.value })}
         />
-      </ConfigCard>
+      </CollapsibleSection>
     </div>
   );
 }

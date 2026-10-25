@@ -46,7 +46,8 @@ export default async function AdminTenantsPage({
   const overdueRefunds = new Map((await countOverdueRefundRequestsByTenant()).map((row) => [row.tenantId, row.count]));
 
   return (
-    <main className="px-5 py-8 lg:px-8">
+    // Wrapper <div>: layout admin đã có <main>.
+    <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader title="Tenant" subtitle="Không có màn hình đơn hàng/khách hàng của tenant (§4.2) — chỉ số liệu tổng hợp." />
 
       <div className="mt-6">
@@ -96,6 +97,6 @@ export default async function AdminTenantsPage({
           </>
         )}
       </div>
-    </main>
+    </div>
   );
 }

@@ -18,5 +18,5 @@ const EMPTY: PlanFormValues = {
 };
 
 export function CreatePlanForm() {
-  return <PlanForm action={createPlanAction} initial={EMPTY} submitLabel="Tạo gói mới" />;
+  return <PlanForm action={createPlanAction} initial={EMPTY} submitLabel="Tạo gói mới" expandAll />;
 }

@@ -1390,3 +1390,46 @@
 - **Bổ sung ADR-056 lần 2 (2026-10-25, chủ dự án):** **tạm chưa xử lý MoMo** cho trường hợp đổi mã giảm giá sau khi đã tạo
   link MoMo (MoMo có thể từ chối `orderId` trùng — chưa thử với MoMo thật). Hành vi hiện tại giữ nguyên: báo lỗi
   `CHECKOUT_CREATE_FAILED`, đơn không đổi (an toàn về tiền). Xem lại khi làm MoMo.
+
+## ADR-057 — Nạp 7 dự thảo chính sách vào CMS, xem trước, công bố "Bản dự thảo"; đổi tên "Chính sách sử dụng"
+
+- **Bối cảnh (2026-10-25):** 7 dự thảo (`docs/legal/drafts/*.md`, ADR-050/054) chưa nằm trong CMS nên trang soạn trống. Chủ
+  dự án muốn quản lý toàn bộ trong CMS (soạn, xem nháp, xem trước, xuất bản) và cho khách hàng tham khảo trước khi hoàn tất
+  thông tin pháp nhân / rà soát.
+- **Quyết định (chủ dự án chốt 2026-10-25):**
+  1. **Nạp bằng script (phương án C):** chuyển 7 dự thảo Markdown → HTML đã sanitize (chỉ phần nội dung; bỏ khối dẫn đầu
+     file và "ghi chú nội bộ"), tạo **bản nháp (DRAFT)** cho từng văn bản trên DB dùng chung — không xuất bản. Có chế độ
+     chạy thử (dry-run); idempotent (bản nháp trống sẵn có thì điền vào, đã có nội dung thì tạo phiên bản mới, không ghi đè).
+  2. **Xem trước:** trang xem trước chỉ SYSTEM_ADMIN, hiển thị phiên bản nháp đúng giao diện trang công khai, noindex.
+  3. **Công bố "Bản dự thảo":** cho xuất bản khi admin tích "Công bố dạng bản dự thảo", bỏ qua cổng placeholder +
+     "đã rà soát". Trang công khai có nhãn "Bản dự thảo — đang hoàn thiện"; dấu `[[CẦN XÁC NHẬN: …]]` hiển thị
+     "(đang cập nhật)". **Bản dự thảo không dùng để ghi nhận đồng ý** (đăng ký / mở gian hàng chỉ ghi khi có bản chính
+     thức). Bản chính thức vẫn qua cổng ADR-050 (APPROVED + không placeholder). Cần migration expand-only (cờ trên
+     `legal_document_versions`).
+  4. **Đổi tên:** menu + tiêu đề trang soạn "Văn bản pháp lý" → **"Chính sách sử dụng"**; văn bản `contact` "Liên hệ và
+     thông tin pháp lý" → **"Liên hệ và thông tin đơn vị vận hành"**; ô tích "Đã rà soát pháp lý" → **"Đã rà soát nội
+     dung"**. Đường dẫn admin `/admin/cms/phap-ly` giữ nguyên.
+- **Bổ sung ADR-057 (2026-10-25, chủ dự án chốt):** script đã nạp 7 bản nháp. **Ẩn phiên bản khỏi giao diện**: mỗi văn bản
+  chỉ hiện MỘT nội dung — soạn → Lưu nháp / Xem trước / Xuất bản, hiện "Cập nhật lúc …". Phía sau vẫn giữ phiên bản (mỗi
+  lần Xuất bản tự tạo một bản PUBLISHED bất biến) để làm bằng chứng đồng ý (ADR-050); bản nháp làm việc tự tạo từ bản
+  mới nhất khi sửa tiếp. Không migration cho phần này. **Bố cục editor** thống nhất với các module soạn nội dung khác:
+  nội dung bên trái, sidebar chức năng bên phải (trạng thái, thời gian cập nhật, rà soát, công bố dạng dự thảo, ngày hiệu
+  lực, Lưu nháp/Xem trước/Xuất bản), khối "Tối ưu SEO" **bên dưới nội dung, thu gọn/mở rộng được**.
+
+## ADR-058 — Điều hướng tab theo chức năng + accordion cho trang cấu hình (System Center, Studio)
+
+- **Bối cảnh (2026-10-25):** kế hoạch `docs/ke-hoach-toi-uu-layout-tab-accordion-2026-10-25.md` (Phong). Chủ dự án chốt:
+  1. Tab ngang đầu trang chỉ gom **trang con cùng một chức năng**; không dropdown khi nhóm chỉ 2–3 tab. URL giữ nguyên.
+  2. **Trang CMS** = 2 tab: **Trang chủ** (mặc định) · **Header & Footer**. Cửa hàng, Bảng giá, Chính sách sử dụng,
+     Danh mục giữ mục riêng.
+  3. **Cấu hình chung** gom thêm tab **Email hỗ trợ** và **Cấu hình Email (SMTP)**. **Không** gom Lưu trữ & Cloudinary.
+  4. Accordion chỉ cho trang có nhiều khối/khối tuỳ chọn; không áp cho trang ngắn. Mặc định **khối đầu tiên mở**, các
+     khối khác thu gọn. Khối **SEO luôn thu gọn** ở mọi editor, kiểu section của Rank Math (tiêu đề + badge trạng thái
+     "Tất cả đều tốt"/"N lỗi"/"Có thay đổi" + chevron). Trang thanh toán: cổng **đang bật mở**, cổng tắt thu gọn.
+  5. **Cảnh báo rời trang khi chưa lưu** (kể cả bấm tab/sidebar — điều hướng client) làm ngay ở giai đoạn 0.
+  6. Studio áp cùng quy tắc (chỉ gom trang/khối cùng chức năng). Không làm trang tài khoản khách hàng.
+  7. Thực hiện **từng task nhỏ**, mỗi task duyệt rồi mới làm task sau.
+- **Bổ sung ADR-058 (2026-10-25, chủ dự án chốt):** (a) các trang CMS tuỳ chỉnh (`/p/[slug]`: giới thiệu, liên hệ…) có mục
+  sidebar riêng **Nội dung → "Trang tuỳ chỉnh"** (danh sách `/admin/cms`, **ẩn các slug hệ thống** home/menu/shop/pricing);
+  "Trang CMS" chỉ gồm 2 tab Trang chủ · Header & Footer. (b) Studio — trang sửa tài liệu **giữ nguyên, không thêm tab**,
+  chỉ áp accordion cho các khối. (c) Migration ADR-057 (`isDraftRelease`) đã chạy 2026-10-25.

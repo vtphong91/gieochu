@@ -137,7 +137,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   MENU_CMS_UPDATED: "Cập nhật menu header/footer",
   LEGAL_VERSION_CREATED: "Tạo phiên bản văn bản pháp lý",
   LEGAL_VERSION_UPDATED: "Sửa bản nháp văn bản pháp lý",
-  LEGAL_REVIEW_STATUS_CHANGED: "Đổi trạng thái rà soát pháp lý",
+  LEGAL_REVIEW_STATUS_CHANGED: "Đổi trạng thái rà soát nội dung",
   LEGAL_VERSION_PUBLISHED: "Xuất bản văn bản pháp lý",
   LEGAL_VERSION_ARCHIVED: "Lưu trữ văn bản pháp lý",
   LEGAL_DOCUMENT_META_UPDATED: "Cập nhật mô tả/SEO văn bản pháp lý",

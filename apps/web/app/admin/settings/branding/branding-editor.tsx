@@ -2,7 +2,10 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { ImageUploadField } from "../../_ui/image-upload-field";
-import { PrimaryButton, TextField } from "../../_ui/kit";
+import { Badge, PrimaryButton, TextField } from "../../_ui/kit";
+import { InPageTabs } from "../../_ui/in-page-tabs";
+import { useFormDraft } from "../../_ui/use-form-draft";
+import { useUnsavedChanges } from "../../_ui/unsaved-changes";
 import { isValidHex } from "../../../../lib/color-utils";
 import { resetBrandingAction, saveColorsAction, saveLogoUrlAction, saveNameSloganAction, type BrandingActionState } from "./actions";
 
@@ -14,7 +17,6 @@ const TABS = [
   { id: "preview", label: "Xem trước" },
 ] as const;
 
-type TabId = (typeof TABS)[number]["id"];
 
 export interface BrandingInitial {
   logoLightUrl: string;
@@ -52,72 +54,67 @@ function LogoField({ field, label, hint, value }: { field: string; label: string
   );
 }
 
+/**
+ * ADR-058 (task 1.12b): tab nội bộ thành `InPageTabs` (tab ARIA thật, kiểu pill). Mọi panel luôn mounted — trước đây chỉ
+ * render tab đang chọn nên sửa Tên/Màu rồi sang tab khác là mất dữ liệu đang nhập. Ảnh lưu ngay khi chọn (không cần cảnh
+ * báo); Tên & Slogan và Màu sắc có cảnh báo rời trang khi chưa lưu.
+ */
 export function BrandingEditor({ initial }: { initial: BrandingInitial }) {
-  const [tab, setTab] = useState<TabId>("logo");
+  const panels: Record<(typeof TABS)[number]["id"], React.ReactNode> = {
+    logo: (
+      <div className="space-y-5">
+        <div>
+          <p className="font-[family-name:var(--font-heading)] font-semibold" style={{ color: "#12213A" }}>
+            Logo & App Icon
+          </p>
+          <p className="text-sm text-gray-500">Logo chính xuất hiện trong header, trang đăng nhập. App icon dùng cho favicon dự phòng và không gian nhỏ.</p>
+        </div>
+        <LogoField field="logoLightUrl" label="Logo (nền sáng)" hint="PNG/SVG trong suốt — dùng trên nền sáng: header, trang đăng nhập." value={initial.logoLightUrl} />
+        <LogoField field="logoDarkUrl" label="Logo (nền tối)" hint="Dùng trên nền tối: sidebar, footer — nếu không có sẽ dùng cho cả 2 mục dưới." value={initial.logoDarkUrl} />
+        <LogoField field="logoSquareUrl" label="App icon / Logo mark (vuông)" hint="Tỷ lệ 1:1, khuyến nghị 256×256px." value={initial.logoSquareUrl} />
+        <LogoField field="logoSidebarUrl" label="Logo sidebar admin (tuỳ chọn)" hint="Để trống sẽ dùng Logo (nền tối)." value={initial.logoSidebarUrl} />
+        <LogoField field="logoFooterUrl" label="Logo footer (tuỳ chọn)" hint="Để trống sẽ dùng Logo (nền tối)." value={initial.logoFooterUrl} />
+      </div>
+    ),
+    favicon: (
+      <div className="space-y-5">
+        <div>
+          <p className="font-[family-name:var(--font-heading)] font-semibold" style={{ color: "#12213A" }}>
+            Favicon & Social Share
+          </p>
+          <p className="text-sm text-gray-500">Favicon hiển thị trên tab trình duyệt. OG Image xuất hiện khi chia sẻ link lên mạng xã hội.</p>
+        </div>
+        <LogoField field="faviconUrl" label="Favicon" hint="PNG 1:1, khuyến nghị 64×64 hoặc 256×256px." value={initial.faviconUrl} />
+        <LogoField field="ogImageUrl" label="OG Image (mạng xã hội)" hint="PNG/JPG 1200×630 — hiển thị khi chia sẻ link lên Facebook, Zalo, Twitter." value={initial.ogImageUrl} />
+      </div>
+    ),
+    name: <NameSloganForm initial={initial} />,
+    colors: <ColorsForm initial={initial} />,
+    preview: <PreviewTab initial={initial} />,
+  };
 
   return (
     <div className="mt-6">
-      <div className="flex flex-wrap gap-1 border-b" style={{ borderColor: "#E5E7EB" }}>
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className="rounded-t-lg px-4 py-2.5 text-sm font-semibold transition"
-            style={
-              tab === t.id
-                ? { borderBottom: "2px solid #0F3B82", color: "#0F3B82" }
-                : { borderBottom: "2px solid transparent", color: "#6B7280" }
-            }
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-6 rounded-2xl border bg-white p-5 sm:p-6" style={{ borderColor: "#E5E7EB" }}>
-        {tab === "logo" ? (
-          <div className="space-y-5">
-            <div>
-              <p className="font-[family-name:var(--font-heading)] font-semibold" style={{ color: "#12213A" }}>
-                Logo & App Icon
-              </p>
-              <p className="text-sm text-gray-500">Logo chính xuất hiện trong header, trang đăng nhập. App icon dùng cho favicon dự phòng và không gian nhỏ.</p>
-            </div>
-            <LogoField field="logoLightUrl" label="Logo (nền sáng)" hint="PNG/SVG trong suốt — dùng trên nền sáng: header, trang đăng nhập." value={initial.logoLightUrl} />
-            <LogoField field="logoDarkUrl" label="Logo (nền tối)" hint="Dùng trên nền tối: sidebar, footer — nếu không có sẽ dùng cho cả 2 mục dưới." value={initial.logoDarkUrl} />
-            <LogoField field="logoSquareUrl" label="App icon / Logo mark (vuông)" hint="Tỷ lệ 1:1, khuyến nghị 256×256px." value={initial.logoSquareUrl} />
-            <LogoField field="logoSidebarUrl" label="Logo sidebar admin (tuỳ chọn)" hint="Để trống sẽ dùng Logo (nền tối)." value={initial.logoSidebarUrl} />
-            <LogoField field="logoFooterUrl" label="Logo footer (tuỳ chọn)" hint="Để trống sẽ dùng Logo (nền tối)." value={initial.logoFooterUrl} />
-          </div>
-        ) : null}
-
-        {tab === "favicon" ? (
-          <div className="space-y-5">
-            <div>
-              <p className="font-[family-name:var(--font-heading)] font-semibold" style={{ color: "#12213A" }}>
-                Favicon & Social Share
-              </p>
-              <p className="text-sm text-gray-500">Favicon hiển thị trên tab trình duyệt. OG Image xuất hiện khi chia sẻ link lên mạng xã hội.</p>
-            </div>
-            <LogoField field="faviconUrl" label="Favicon" hint="PNG 1:1, khuyến nghị 64×64 hoặc 256×256px." value={initial.faviconUrl} />
-            <LogoField field="ogImageUrl" label="OG Image (mạng xã hội)" hint="PNG/JPG 1200×630 — hiển thị khi chia sẻ link lên Facebook, Zalo, Twitter." value={initial.ogImageUrl} />
-          </div>
-        ) : null}
-
-        {tab === "name" ? <NameSloganForm initial={initial} /> : null}
-        {tab === "colors" ? <ColorsForm initial={initial} /> : null}
-        {tab === "preview" ? <PreviewTab initial={initial} /> : null}
-      </div>
+      <InPageTabs
+        label="Nhận diện thương hiệu"
+        panelClassName="mt-6 border bg-white p-5 sm:p-6"
+        tabs={TABS.map((t) => ({ id: t.id, label: t.label, panel: panels[t.id] }))}
+      />
     </div>
   );
 }
 
+const NAME_FIELDS = ["brandName", "brandSlogan", "navbarLogoHeightPx"] as const;
+
 function NameSloganForm({ initial }: { initial: BrandingInitial }) {
   const [state, formAction, isPending] = useActionState<BrandingActionState, FormData>(saveNameSloganAction, {});
+  // Lưu lỗi giữ giá trị đã nhập (React 19 reset ô không kiểm soát sau action) + cảnh báo rời trang khi chưa lưu.
+  const saved = { brandName: initial.brandName, brandSlogan: initial.brandSlogan, navbarLogoHeightPx: String(initial.navbarLogoHeightPx) };
+  const { dirty, formProps } = useFormDraft({ names: NAME_FIELDS, initial: saved, resetKey: JSON.stringify(saved), failed: Boolean(state.error) });
+  useUnsavedChanges(dirty, "Tên & Slogan có thay đổi chưa lưu. Rời trang và bỏ thay đổi?");
 
   return (
-    <form action={formAction} className="space-y-5">
+    <form action={formAction} className="space-y-5" {...formProps}>
       <div>
         <p className="font-[family-name:var(--font-heading)] font-semibold" style={{ color: "#12213A" }}>
           Tên & Slogan
@@ -145,7 +142,10 @@ function NameSloganForm({ initial }: { initial: BrandingInitial }) {
       </div>
       {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
       {state.success ? <p className="text-sm text-green-700">Đã lưu.</p> : null}
-      <PrimaryButton loading={isPending}>{isPending ? "Đang lưu..." : "Lưu tên & slogan"}</PrimaryButton>
+      <div className="flex flex-wrap items-center gap-3">
+        <PrimaryButton loading={isPending}>{isPending ? "Đang lưu..." : "Lưu tên & slogan"}</PrimaryButton>
+        {dirty ? <Badge tone="warning">Có thay đổi chưa lưu</Badge> : null}
+      </div>
     </form>
   );
 }
@@ -155,6 +155,9 @@ function ColorsForm({ initial }: { initial: BrandingInitial }) {
   const [primary, setPrimary] = useState(initial.primaryColorHex);
   const [accent, setAccent] = useState(initial.accentColorHex);
   const [secondary, setSecondary] = useState(initial.secondaryColorHex);
+  // Ô màu có kiểm soát (không mất khi lưu lỗi); "có thay đổi" = khác giá trị đã lưu.
+  const dirty = primary !== initial.primaryColorHex || accent !== initial.accentColorHex || secondary !== initial.secondaryColorHex;
+  useUnsavedChanges(dirty, "Màu thương hiệu có thay đổi chưa lưu. Rời trang và bỏ thay đổi?");
 
   return (
     <form action={formAction} className="space-y-5">
@@ -174,7 +177,10 @@ function ColorsForm({ initial }: { initial: BrandingInitial }) {
 
       {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
       {state.success ? <p className="text-sm text-green-700">Đã lưu — tải lại trang để thấy màu mới.</p> : null}
-      <PrimaryButton loading={isPending}>{isPending ? "Đang lưu..." : "Lưu màu thương hiệu"}</PrimaryButton>
+      <div className="flex flex-wrap items-center gap-3">
+        <PrimaryButton loading={isPending}>{isPending ? "Đang lưu..." : "Lưu màu thương hiệu"}</PrimaryButton>
+        {dirty ? <Badge tone="warning">Có thay đổi chưa lưu</Badge> : null}
+      </div>
     </form>
   );
 }

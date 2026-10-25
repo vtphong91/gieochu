@@ -46,6 +46,7 @@ export type LegalDocumentVersionMinAggregateOutputType = {
   changeSummary: string | null
   effectiveAt: Date | null
   publishedAt: Date | null
+  isDraftRelease: boolean | null
   publishedById: string | null
   createdById: string | null
   createdAt: Date | null
@@ -62,6 +63,7 @@ export type LegalDocumentVersionMaxAggregateOutputType = {
   changeSummary: string | null
   effectiveAt: Date | null
   publishedAt: Date | null
+  isDraftRelease: boolean | null
   publishedById: string | null
   createdById: string | null
   createdAt: Date | null
@@ -78,6 +80,7 @@ export type LegalDocumentVersionCountAggregateOutputType = {
   changeSummary: number
   effectiveAt: number
   publishedAt: number
+  isDraftRelease: number
   publishedById: number
   createdById: number
   createdAt: number
@@ -104,6 +107,7 @@ export type LegalDocumentVersionMinAggregateInputType = {
   changeSummary?: true
   effectiveAt?: true
   publishedAt?: true
+  isDraftRelease?: true
   publishedById?: true
   createdById?: true
   createdAt?: true
@@ -120,6 +124,7 @@ export type LegalDocumentVersionMaxAggregateInputType = {
   changeSummary?: true
   effectiveAt?: true
   publishedAt?: true
+  isDraftRelease?: true
   publishedById?: true
   createdById?: true
   createdAt?: true
@@ -136,6 +141,7 @@ export type LegalDocumentVersionCountAggregateInputType = {
   changeSummary?: true
   effectiveAt?: true
   publishedAt?: true
+  isDraftRelease?: true
   publishedById?: true
   createdById?: true
   createdAt?: true
@@ -239,6 +245,7 @@ export type LegalDocumentVersionGroupByOutputType = {
   changeSummary: string | null
   effectiveAt: Date | null
   publishedAt: Date | null
+  isDraftRelease: boolean
   publishedById: string | null
   createdById: string | null
   createdAt: Date
@@ -278,6 +285,7 @@ export type LegalDocumentVersionWhereInput = {
   changeSummary?: Prisma.StringNullableFilter<"LegalDocumentVersion"> | string | null
   effectiveAt?: Prisma.DateTimeNullableFilter<"LegalDocumentVersion"> | Date | string | null
   publishedAt?: Prisma.DateTimeNullableFilter<"LegalDocumentVersion"> | Date | string | null
+  isDraftRelease?: Prisma.BoolFilter<"LegalDocumentVersion"> | boolean
   publishedById?: Prisma.StringNullableFilter<"LegalDocumentVersion"> | string | null
   createdById?: Prisma.StringNullableFilter<"LegalDocumentVersion"> | string | null
   createdAt?: Prisma.DateTimeFilter<"LegalDocumentVersion"> | Date | string
@@ -296,6 +304,7 @@ export type LegalDocumentVersionOrderByWithRelationInput = {
   changeSummary?: Prisma.SortOrderInput | Prisma.SortOrder
   effectiveAt?: Prisma.SortOrderInput | Prisma.SortOrder
   publishedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  isDraftRelease?: Prisma.SortOrder
   publishedById?: Prisma.SortOrderInput | Prisma.SortOrder
   createdById?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -318,6 +327,7 @@ export type LegalDocumentVersionWhereUniqueInput = Prisma.AtLeast<{
   changeSummary?: Prisma.StringNullableFilter<"LegalDocumentVersion"> | string | null
   effectiveAt?: Prisma.DateTimeNullableFilter<"LegalDocumentVersion"> | Date | string | null
   publishedAt?: Prisma.DateTimeNullableFilter<"LegalDocumentVersion"> | Date | string | null
+  isDraftRelease?: Prisma.BoolFilter<"LegalDocumentVersion"> | boolean
   publishedById?: Prisma.StringNullableFilter<"LegalDocumentVersion"> | string | null
   createdById?: Prisma.StringNullableFilter<"LegalDocumentVersion"> | string | null
   createdAt?: Prisma.DateTimeFilter<"LegalDocumentVersion"> | Date | string
@@ -336,6 +346,7 @@ export type LegalDocumentVersionOrderByWithAggregationInput = {
   changeSummary?: Prisma.SortOrderInput | Prisma.SortOrder
   effectiveAt?: Prisma.SortOrderInput | Prisma.SortOrder
   publishedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  isDraftRelease?: Prisma.SortOrder
   publishedById?: Prisma.SortOrderInput | Prisma.SortOrder
   createdById?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -360,6 +371,7 @@ export type LegalDocumentVersionScalarWhereWithAggregatesInput = {
   changeSummary?: Prisma.StringNullableWithAggregatesFilter<"LegalDocumentVersion"> | string | null
   effectiveAt?: Prisma.DateTimeNullableWithAggregatesFilter<"LegalDocumentVersion"> | Date | string | null
   publishedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"LegalDocumentVersion"> | Date | string | null
+  isDraftRelease?: Prisma.BoolWithAggregatesFilter<"LegalDocumentVersion"> | boolean
   publishedById?: Prisma.StringNullableWithAggregatesFilter<"LegalDocumentVersion"> | string | null
   createdById?: Prisma.StringNullableWithAggregatesFilter<"LegalDocumentVersion"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"LegalDocumentVersion"> | Date | string
@@ -375,6 +387,7 @@ export type LegalDocumentVersionCreateInput = {
   changeSummary?: string | null
   effectiveAt?: Date | string | null
   publishedAt?: Date | string | null
+  isDraftRelease?: boolean
   publishedById?: string | null
   createdById?: string | null
   createdAt?: Date | string
@@ -393,6 +406,7 @@ export type LegalDocumentVersionUncheckedCreateInput = {
   changeSummary?: string | null
   effectiveAt?: Date | string | null
   publishedAt?: Date | string | null
+  isDraftRelease?: boolean
   publishedById?: string | null
   createdById?: string | null
   createdAt?: Date | string
@@ -409,6 +423,7 @@ export type LegalDocumentVersionUpdateInput = {
   changeSummary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   effectiveAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isDraftRelease?: Prisma.BoolFieldUpdateOperationsInput | boolean
   publishedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -427,6 +442,7 @@ export type LegalDocumentVersionUncheckedUpdateInput = {
   changeSummary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   effectiveAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isDraftRelease?: Prisma.BoolFieldUpdateOperationsInput | boolean
   publishedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -444,6 +460,7 @@ export type LegalDocumentVersionCreateManyInput = {
   changeSummary?: string | null
   effectiveAt?: Date | string | null
   publishedAt?: Date | string | null
+  isDraftRelease?: boolean
   publishedById?: string | null
   createdById?: string | null
   createdAt?: Date | string
@@ -459,6 +476,7 @@ export type LegalDocumentVersionUpdateManyMutationInput = {
   changeSummary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   effectiveAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isDraftRelease?: Prisma.BoolFieldUpdateOperationsInput | boolean
   publishedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -475,6 +493,7 @@ export type LegalDocumentVersionUncheckedUpdateManyInput = {
   changeSummary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   effectiveAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isDraftRelease?: Prisma.BoolFieldUpdateOperationsInput | boolean
   publishedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -506,6 +525,7 @@ export type LegalDocumentVersionCountOrderByAggregateInput = {
   changeSummary?: Prisma.SortOrder
   effectiveAt?: Prisma.SortOrder
   publishedAt?: Prisma.SortOrder
+  isDraftRelease?: Prisma.SortOrder
   publishedById?: Prisma.SortOrder
   createdById?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -526,6 +546,7 @@ export type LegalDocumentVersionMaxOrderByAggregateInput = {
   changeSummary?: Prisma.SortOrder
   effectiveAt?: Prisma.SortOrder
   publishedAt?: Prisma.SortOrder
+  isDraftRelease?: Prisma.SortOrder
   publishedById?: Prisma.SortOrder
   createdById?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -542,6 +563,7 @@ export type LegalDocumentVersionMinOrderByAggregateInput = {
   changeSummary?: Prisma.SortOrder
   effectiveAt?: Prisma.SortOrder
   publishedAt?: Prisma.SortOrder
+  isDraftRelease?: Prisma.SortOrder
   publishedById?: Prisma.SortOrder
   createdById?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -630,6 +652,7 @@ export type LegalDocumentVersionCreateWithoutDocumentInput = {
   changeSummary?: string | null
   effectiveAt?: Date | string | null
   publishedAt?: Date | string | null
+  isDraftRelease?: boolean
   publishedById?: string | null
   createdById?: string | null
   createdAt?: Date | string
@@ -646,6 +669,7 @@ export type LegalDocumentVersionUncheckedCreateWithoutDocumentInput = {
   changeSummary?: string | null
   effectiveAt?: Date | string | null
   publishedAt?: Date | string | null
+  isDraftRelease?: boolean
   publishedById?: string | null
   createdById?: string | null
   createdAt?: Date | string
@@ -692,6 +716,7 @@ export type LegalDocumentVersionScalarWhereInput = {
   changeSummary?: Prisma.StringNullableFilter<"LegalDocumentVersion"> | string | null
   effectiveAt?: Prisma.DateTimeNullableFilter<"LegalDocumentVersion"> | Date | string | null
   publishedAt?: Prisma.DateTimeNullableFilter<"LegalDocumentVersion"> | Date | string | null
+  isDraftRelease?: Prisma.BoolFilter<"LegalDocumentVersion"> | boolean
   publishedById?: Prisma.StringNullableFilter<"LegalDocumentVersion"> | string | null
   createdById?: Prisma.StringNullableFilter<"LegalDocumentVersion"> | string | null
   createdAt?: Prisma.DateTimeFilter<"LegalDocumentVersion"> | Date | string
@@ -707,6 +732,7 @@ export type LegalDocumentVersionCreateWithoutAcceptancesInput = {
   changeSummary?: string | null
   effectiveAt?: Date | string | null
   publishedAt?: Date | string | null
+  isDraftRelease?: boolean
   publishedById?: string | null
   createdById?: string | null
   createdAt?: Date | string
@@ -724,6 +750,7 @@ export type LegalDocumentVersionUncheckedCreateWithoutAcceptancesInput = {
   changeSummary?: string | null
   effectiveAt?: Date | string | null
   publishedAt?: Date | string | null
+  isDraftRelease?: boolean
   publishedById?: string | null
   createdById?: string | null
   createdAt?: Date | string
@@ -755,6 +782,7 @@ export type LegalDocumentVersionUpdateWithoutAcceptancesInput = {
   changeSummary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   effectiveAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isDraftRelease?: Prisma.BoolFieldUpdateOperationsInput | boolean
   publishedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -772,6 +800,7 @@ export type LegalDocumentVersionUncheckedUpdateWithoutAcceptancesInput = {
   changeSummary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   effectiveAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isDraftRelease?: Prisma.BoolFieldUpdateOperationsInput | boolean
   publishedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -787,6 +816,7 @@ export type LegalDocumentVersionCreateManyDocumentInput = {
   changeSummary?: string | null
   effectiveAt?: Date | string | null
   publishedAt?: Date | string | null
+  isDraftRelease?: boolean
   publishedById?: string | null
   createdById?: string | null
   createdAt?: Date | string
@@ -802,6 +832,7 @@ export type LegalDocumentVersionUpdateWithoutDocumentInput = {
   changeSummary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   effectiveAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isDraftRelease?: Prisma.BoolFieldUpdateOperationsInput | boolean
   publishedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -818,6 +849,7 @@ export type LegalDocumentVersionUncheckedUpdateWithoutDocumentInput = {
   changeSummary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   effectiveAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isDraftRelease?: Prisma.BoolFieldUpdateOperationsInput | boolean
   publishedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -834,6 +866,7 @@ export type LegalDocumentVersionUncheckedUpdateManyWithoutDocumentInput = {
   changeSummary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   effectiveAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isDraftRelease?: Prisma.BoolFieldUpdateOperationsInput | boolean
   publishedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -881,6 +914,7 @@ export type LegalDocumentVersionSelect<ExtArgs extends runtime.Types.Extensions.
   changeSummary?: boolean
   effectiveAt?: boolean
   publishedAt?: boolean
+  isDraftRelease?: boolean
   publishedById?: boolean
   createdById?: boolean
   createdAt?: boolean
@@ -900,6 +934,7 @@ export type LegalDocumentVersionSelectCreateManyAndReturn<ExtArgs extends runtim
   changeSummary?: boolean
   effectiveAt?: boolean
   publishedAt?: boolean
+  isDraftRelease?: boolean
   publishedById?: boolean
   createdById?: boolean
   createdAt?: boolean
@@ -917,6 +952,7 @@ export type LegalDocumentVersionSelectUpdateManyAndReturn<ExtArgs extends runtim
   changeSummary?: boolean
   effectiveAt?: boolean
   publishedAt?: boolean
+  isDraftRelease?: boolean
   publishedById?: boolean
   createdById?: boolean
   createdAt?: boolean
@@ -934,13 +970,14 @@ export type LegalDocumentVersionSelectScalar = {
   changeSummary?: boolean
   effectiveAt?: boolean
   publishedAt?: boolean
+  isDraftRelease?: boolean
   publishedById?: boolean
   createdById?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type LegalDocumentVersionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "documentId" | "version" | "status" | "reviewStatus" | "contentHtml" | "changeSummary" | "effectiveAt" | "publishedAt" | "publishedById" | "createdById" | "createdAt" | "updatedAt", ExtArgs["result"]["legalDocumentVersion"]>
+export type LegalDocumentVersionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "documentId" | "version" | "status" | "reviewStatus" | "contentHtml" | "changeSummary" | "effectiveAt" | "publishedAt" | "isDraftRelease" | "publishedById" | "createdById" | "createdAt" | "updatedAt", ExtArgs["result"]["legalDocumentVersion"]>
 export type LegalDocumentVersionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   document?: boolean | Prisma.LegalDocumentDefaultArgs<ExtArgs>
   acceptances?: boolean | Prisma.LegalDocumentVersion$acceptancesArgs<ExtArgs>
@@ -972,6 +1009,11 @@ export type $LegalDocumentVersionPayload<ExtArgs extends runtime.Types.Extension
      */
     effectiveAt: Date | null
     publishedAt: Date | null
+    /**
+     * ADR-057 — xuất bản dạng "Bản dự thảo" (bỏ qua cổng placeholder + rà soát): hiển thị công khai nhưng KHÔNG dùng để
+     * ghi nhận đồng ý. Đóng băng sau khi rời DRAFT (trigger `legal_document_versions_freeze_content`).
+     */
+    isDraftRelease: boolean
     /**
      * Không FK (mẫu `updatedById`) — lịch sử không chặn xoá user.
      */
@@ -1413,6 +1455,7 @@ export interface LegalDocumentVersionFieldRefs {
   readonly changeSummary: Prisma.FieldRef<"LegalDocumentVersion", 'String'>
   readonly effectiveAt: Prisma.FieldRef<"LegalDocumentVersion", 'DateTime'>
   readonly publishedAt: Prisma.FieldRef<"LegalDocumentVersion", 'DateTime'>
+  readonly isDraftRelease: Prisma.FieldRef<"LegalDocumentVersion", 'Boolean'>
   readonly publishedById: Prisma.FieldRef<"LegalDocumentVersion", 'String'>
   readonly createdById: Prisma.FieldRef<"LegalDocumentVersion", 'String'>
   readonly createdAt: Prisma.FieldRef<"LegalDocumentVersion", 'DateTime'>

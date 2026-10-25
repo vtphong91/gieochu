@@ -150,10 +150,13 @@ body {
   border-top: 1px solid #e5e7eb;
   margin: 1.2em 0;
 }
-/* Văn bản pháp lý công khai (`app/phap-ly/[slug]`, ADR-050 GĐ2): đọc dài — chữ 16px (17px từ lg), dòng 1.75, H2 có vạch
-   ngăn mục; anchor H2 không bị header dính che nhờ `scroll-padding-top` (html:has(.site-header)). Dùng KÈM
-   `.gieochu-rich-content` (chỉ ghi đè cỡ chữ/khoảng cách). */
+/* Văn bản pháp lý công khai (`app/{slug}` — `_ui/legal-document-page.tsx`, ADR-050 GĐ2 + ADR-054/057): đọc dài — chữ 16px
+   (17px từ lg), dòng 1.75; khối chữ tối đa ~38em (~75–80 ký tự tiếng Việt/dòng, nằm trong cột 768px ADR-024). H2 có vạch ngăn
+   mục, H3 tách rõ khỏi đoạn trước; danh sách lồng đổi kiểu dấu; link gạch chân dày khi hover/focus; `blockquote` thành ô ghi
+   chú. Anchor H2 không bị header dính che nhờ `scroll-padding-top` (html:has(.site-header)). Dùng KÈM `.gieochu-rich-content`
+   (chỉ ghi đè). Màu = hex fallback của token `brandColors` (ink #12213a, inkSoft #55607a, line #e7dfc9, backgroundAlt #f5eedd). */
 .gieochu-legal-content {
+  max-width: 38em;
   font-size: 16px;
   line-height: 1.75;
   overflow-wrap: anywhere;
@@ -163,27 +166,200 @@ body {
     font-size: 17px;
   }
 }
+.gieochu-legal-content :is(h2, h3, h4) {
+  text-wrap: balance;
+  overflow-wrap: break-word;
+}
 .gieochu-legal-content h2 {
   margin-top: 2.2em;
+  margin-bottom: 0.6em;
   padding-top: 1.2em;
   border-top: 1px solid #e7dfc9;
+  font-size: 1.4em;
+  line-height: 1.3;
 }
 .gieochu-legal-content > h2:first-child {
   margin-top: 0;
   padding-top: 0;
   border-top: none;
 }
-.gieochu-legal-content :is(p, li) {
+.gieochu-legal-content h3 {
+  margin-top: 1.75em;
+  margin-bottom: 0.4em;
+  font-size: 1.15em;
+  font-weight: 650;
+  line-height: 1.35;
+}
+.gieochu-legal-content h4 {
+  margin-top: 1.4em;
+  margin-bottom: 0.3em;
+  font-weight: 650;
+}
+/* Tiêu đề liền sau tiêu đề (H2 → H3) không cần khoảng cách lớn. */
+.gieochu-legal-content :is(h2, h3) + :is(h3, h4) {
+  margin-top: 0.75em;
+}
+.gieochu-legal-content p {
   margin: 0.75em 0;
+  text-wrap: pretty;
+}
+.gieochu-legal-content strong {
+  font-weight: 650;
+  color: #12213a;
+}
+/* Danh sách: thụt 1.5em, dấu màu phụ; lồng cấp 2 đổi kiểu dấu để phân biệt cấp mà không cần màu. */
+.gieochu-legal-content :is(ul, ol) {
+  margin: 0.75em 0;
+  padding-left: 1.5em;
+}
+.gieochu-legal-content ul {
+  list-style: disc;
+}
+.gieochu-legal-content ol {
+  list-style: decimal;
+}
+.gieochu-legal-content :is(ul, ol) ul {
+  list-style: circle;
+}
+.gieochu-legal-content :is(ul, ol) ol {
+  list-style: lower-alpha;
+}
+.gieochu-legal-content li {
+  margin: 0.4em 0;
+  padding-left: 0.2em;
+}
+.gieochu-legal-content li::marker {
+  color: #55607a;
+}
+.gieochu-legal-content li > :is(ul, ol) {
+  margin: 0.35em 0;
 }
 .gieochu-legal-content li > p {
   margin: 0.25em 0;
 }
+.gieochu-legal-content a {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+  border-radius: 2px;
+}
+.gieochu-legal-content a:hover {
+  text-decoration-thickness: 2px;
+}
+.gieochu-legal-content a:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  text-decoration-thickness: 2px;
+}
+/* Ghi chú / trích dẫn trong văn bản: ô nền ấm, viền trái màu chính, chữ đậm màu thường (đọc được, không mờ). */
+.gieochu-legal-content blockquote {
+  margin: 1.25em 0;
+  padding: 0.75em 1em;
+  border-left: 4px solid var(--color-primary);
+  border-radius: 0 12px 12px 0;
+  background: #f5eedd;
+  color: #12213a;
+}
+.gieochu-legal-content blockquote > :first-child {
+  margin-top: 0;
+}
+.gieochu-legal-content blockquote > :last-child {
+  margin-bottom: 0;
+}
+.gieochu-legal-content hr {
+  margin: 2em 0;
+  border-top-color: #e7dfc9;
+}
+/* ADR-057: thông tin chưa xác nhận — server thay `[[CẦN XÁC NHẬN: …]]` bằng `<span class="legal-pending">(đang cập nhật)</span>`
+   (SAU sanitize). Chữ tự nói nghĩa; màu phụ inkSoft (5.9:1 trên nền kem) + nghiêng chỉ để làm dịu, không mang nghĩa riêng. */
+.gieochu-legal-content .legal-pending {
+  color: #55607a;
+  font-style: italic;
+  white-space: nowrap;
+}
 
-/* In văn bản pháp lý: bỏ header/footer hệ thống, mục lục, breadcrumb — chỉ còn tiêu đề + nội dung. */
+/* Trang văn bản dài: cuộn mượt khi bấm mục lục / "Lên đầu trang" (trừ khi giảm chuyển động). Dưới lg có nút nổi
+   "Lên đầu trang" góc dưới (48px) → chừa scroll-padding-bottom để phần tử nhận focus không bị nút che (WCAG 2.4.11). */
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.legal-doc) {
+    scroll-behavior: smooth;
+  }
+}
+@media (width < 64rem) {
+  html:has(.legal-doc) {
+    scroll-padding-bottom: 5rem;
+  }
+}
+
+/* In văn bản pháp lý: bỏ header/footer hệ thống, mục lục, breadcrumb, nút — chỉ còn tiêu đề, dòng phiên bản, banner dự thảo
+   (+ thanh xem trước nếu có) và nội dung; chữ đen trên nền trắng, cỡ 11pt; không ngắt trang ngay sau tiêu đề. */
 @media print {
+  @page {
+    margin: 18mm 16mm;
+  }
   html:has(.legal-doc) :is(.site-header, .site-footer, .no-print) {
     display: none !important;
+  }
+  html:has(.legal-doc) {
+    scroll-padding: 0;
+  }
+  .legal-doc {
+    background: #fff !important;
+    color: #000 !important;
+    min-height: 0 !important;
+  }
+  .legal-doc .container-page {
+    max-width: none;
+    padding: 0 !important;
+  }
+  .legal-doc .legal-layout {
+    display: block !important;
+  }
+  .legal-doc h1 {
+    font-size: 20pt !important;
+  }
+  .legal-doc .gieochu-legal-content {
+    max-width: none;
+    margin-top: 12pt;
+    font-size: 11pt;
+    line-height: 1.5;
+    color: #000;
+  }
+  .legal-doc .gieochu-legal-content :is(h2, h3, h4) {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+  .legal-doc .gieochu-legal-content h2 {
+    border-top: none;
+    padding-top: 0;
+    margin-top: 16pt;
+  }
+  .legal-doc .gieochu-legal-content :is(p, li) {
+    orphans: 3;
+    widows: 3;
+  }
+  .legal-doc .gieochu-legal-content :is(blockquote, li) {
+    break-inside: avoid;
+  }
+  .legal-doc .gieochu-legal-content :is(strong, .legal-pending) {
+    color: #000;
+  }
+  /* Link ngoài: in kèm địa chỉ (link nội bộ dạng "/slug" đã có tên văn bản trong chữ). */
+  .legal-doc .gieochu-legal-content a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.9em;
+    overflow-wrap: anywhere;
+  }
+  .legal-doc .gieochu-legal-content a {
+    color: #000;
+  }
+  .legal-doc :is(.legal-draft-banner, .legal-preview-bar) {
+    background: #fff !important;
+    color: #000 !important;
+    border: 1.5pt solid #000 !important;
+    break-inside: avoid;
+  }
+  .legal-doc .legal-preview-bar {
+    margin-bottom: 12pt;
   }
 }
 
@@ -278,6 +454,28 @@ html:has(.studio-preview-bar) {
     background: none;
     color: CanvasText;
   }
+}
+
+/* Editor "Chính sách sử dụng" (`admin/cms/phap-ly/legal-editor.tsx`, bổ sung ADR-057): văn bản dài → khung soạn cao như editor
+   bài viết. Sidebar "Xuất bản" chỉ DÍNH khi 2 cột (≥ xl) VÀ màn đủ cao (≥ 800px), có trần chiều cao = màn hình (tránh lỗi ADR-030:
+   card dính cao hơn màn hình che chức năng); màn thấp thì cuộn theo trang và thanh lưu nhanh `.legal-save-bar` hiện khi nút khuất —
+   chừa scroll-padding-bottom để thanh không che phần tử nhận focus (WCAG 2.4.11). Ngoài @layer để thắng utility. */
+.legal-editor .gieochu-editor-content {
+  min-height: 22rem;
+}
+@media (min-width: 80rem) and (min-height: 50rem) {
+  .legal-editor-aside {
+    position: sticky;
+    top: 1.5rem;
+    /* An toàn khi danh sách lý do chặn dài: card không bao giờ cao quá màn hình (cuộn riêng chỉ trong trường hợp này). */
+    max-height: calc(100dvh - 3rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-radius: 1rem;
+  }
+}
+html:has(.legal-save-bar[data-visible="true"]) {
+  scroll-padding-bottom: 6rem;
 }
 
 /* Editor bài viết (ADR-029 mục 5): nội dung là phần chính của trang → khung soạn cao hơn editor mô tả sản phẩm. */

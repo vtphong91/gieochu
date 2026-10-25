@@ -20,7 +20,7 @@ export const LEGAL_DOCUMENT_DEFS = {
   copyright: { key: "copyright", slug: "cam-ket-ban-quyen", title: "Cam kết bản quyền và nguồn gốc tài liệu" },
   usage_license: { key: "usage_license", slug: "quyen-su-dung-tai-lieu", title: "Quyền sử dụng tài liệu" },
   seller: { key: "seller", slug: "chinh-sach-nguoi-ban", title: "Chính sách người bán" },
-  contact: { key: "contact", slug: "lien-he", title: "Liên hệ và thông tin pháp lý" },
+  contact: { key: "contact", slug: "lien-he", title: "Liên hệ và thông tin đơn vị vận hành" },
 } as const;
 export type LegalDocumentKey = keyof typeof LEGAL_DOCUMENT_DEFS;
 
@@ -53,6 +53,39 @@ export function legalKeyFromSlug(slug: string): LegalDocumentKey | null {
 /** Dấu placeholder trong dự thảo (vd `[[CẦN XÁC NHẬN: tên pháp nhân]]`). Còn dấu này → không xuất bản được. */
 export const LEGAL_PLACEHOLDER_MARKER = "[[CẦN XÁC NHẬN";
 
+/** ADR-057 mục 3: chữ hiển thị thay cho placeholder trên trang công khai / xem trước. */
+export const LEGAL_PLACEHOLDER_DISPLAY = "(đang cập nhật)";
+
+/** Một placeholder nằm gọn trong một đoạn chữ (không chứa thẻ / `]`) — placeholder vắt qua thẻ giữ nguyên, không cắt HTML. */
+const LEGAL_PLACEHOLDER_PATTERN = /\[\[CẦN XÁC NHẬN[^\]<>]*\]\]/g;
+
+function escapeText(value: string): string {
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+}
+
+/**
+ * ADR-057 mục 3 — thay `[[CẦN XÁC NHẬN: …]]` bằng `<span class="legal-pending">(đang cập nhật)</span>`. Chỉ gọi trên HTML ĐÃ
+ * sanitize (whitelist bỏ `class`), khi render; DB giữ nguyên dấu gốc để cổng xuất bản chính thức vẫn chặn. Nội dung bên trong
+ * placeholder bị bỏ hẳn (không lộ ghi chú nội bộ kiểu "PL-01"); chữ chèn vào đã escape.
+ */
+export function replaceLegalPlaceholders(sanitizedHtml: string): string {
+  return sanitizedHtml.replace(LEGAL_PLACEHOLDER_PATTERN, () => `<span class="legal-pending">${escapeText(LEGAL_PLACEHOLDER_DISPLAY)}</span>`);
+}
+
+/** Số placeholder còn trong nội dung (thanh xem trước, script nạp). */
+export function countLegalPlaceholders(html: string): number {
+  return html.split(LEGAL_PLACEHOLDER_MARKER).length - 1;
+}
+
+/** ADR-057 mục 2 — trang xem trước (chỉ SYSTEM_ADMIN). Không có `versionId` → phiên bản mới nhất. */
+export const LEGAL_PREVIEW_PATH = "/phap-ly/xem-truoc";
+
+export function legalPreviewPath(key: LegalDocumentKey, versionId?: string): string {
+  const params = new URLSearchParams({ "van-ban": key });
+  if (versionId) params.set("phien-ban", versionId);
+  return `${LEGAL_PREVIEW_PATH}?${params.toString()}`;
+}
+
 export const LEGAL_CONTENT_MAX = 200_000;
 export const LEGAL_CHANGE_SUMMARY_MAX = 1000;
 
@@ -67,8 +100,8 @@ export const LEGAL_VERSION_STATUS_LABELS: Record<LegalVersionStatusValue, string
 export const LEGAL_REVIEW_STATUSES = ["PENDING_LEGAL_REVIEW", "APPROVED"] as const;
 export type LegalReviewStatusValue = (typeof LEGAL_REVIEW_STATUSES)[number];
 export const LEGAL_REVIEW_STATUS_LABELS: Record<LegalReviewStatusValue, string> = {
-  PENDING_LEGAL_REVIEW: "Chờ rà soát pháp lý",
-  APPROVED: "Đã rà soát pháp lý",
+  PENDING_LEGAL_REVIEW: "Chờ rà soát nội dung",
+  APPROVED: "Đã rà soát nội dung",
 };
 
 export function isLegalReviewStatus(value: unknown): value is LegalReviewStatusValue {
@@ -93,7 +126,7 @@ export type LegalPublishBlocker = "PLACEHOLDER" | "NOT_APPROVED" | "EMPTY" | "NO
 
 export const LEGAL_PUBLISH_BLOCKER_MESSAGES: Record<LegalPublishBlocker, string> = {
   PLACEHOLDER: `Nội dung còn dấu “${LEGAL_PLACEHOLDER_MARKER}…” — điền đủ thông tin trước khi xuất bản.`,
-  NOT_APPROVED: "Phiên bản chưa được đánh dấu “Đã rà soát pháp lý”.",
+  NOT_APPROVED: "Phiên bản chưa được đánh dấu “Đã rà soát nội dung”.",
   EMPTY: "Nội dung trống.",
   NOT_DRAFT: "Chỉ xuất bản được phiên bản nháp.",
 };

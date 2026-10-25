@@ -7,7 +7,8 @@ export default async function AdminNewCategoryPage() {
   await requireAdminAccess("/admin/categories/new");
 
   return (
-    <main className="px-5 py-8 lg:px-8">
+    // Wrapper <div>: layout admin đã có <main>.
+    <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader title="Thêm danh mục tài liệu" subtitle="Tạo danh mục mới để tenant gán sản phẩm vào sau này." />
       <SettingsGrid>
         <CategoryForm
@@ -25,6 +26,6 @@ export default async function AdminNewCategoryPage() {
           }}
         />
       </SettingsGrid>
-    </main>
+    </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
+import { brandColors } from "@gieochu/config/theme";
 // Import trực tiếp từ subpath (không qua barrel "@gieochu/core") — đây là
 // "use client" component, còn barrel index.ts kéo theo cả code server-only
 // (argon2) khiến Next cố bundle cho browser rồi lỗi "Module not found: fs".
@@ -35,8 +36,10 @@ import {
 } from "@gieochu/core/home-sections";
 import { collectStrings, findContentClaimWarnings } from "@gieochu/core/cms-content-guard";
 import { SEO_DESCRIPTION_MAX, SEO_TITLE_MAX, seoLengthWarning } from "@gieochu/core/seo";
-import { GhostButton, Notice, PrimaryButton, SelectField, TextField, Toggle } from "../../_ui/kit";
-import { IconCheckCircle, IconChevronDown, IconPlus, IconTrash } from "../../_ui/icons";
+import { Badge, GhostButton, Notice, PrimaryButton, SelectField, TextField, Toggle } from "../../_ui/kit";
+import { useUnsavedChanges } from "../../_ui/unsaved-changes";
+import { IconCheckCircle, IconChevronDown, IconEye, IconEyeOff, IconGlobe, IconPlus, IconTrash } from "../../_ui/icons";
+import { CollapsibleSection, sectionStatus } from "../../_ui/collapsible-section";
 import { ArrayObjectEditor } from "./array-object-editor";
 import { ImageUploadField } from "../../_ui/image-upload-field";
 import {
@@ -50,8 +53,11 @@ import {
 import { PinPicker, type PinOption } from "./pin-picker";
 import { toProductPinOption, toTenantPinOption } from "./pin-options";
 
-const INK = "#12213A";
+const INK = brandColors.ink;
 const LINE = "#E5E7EB";
+const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-primary)]";
+/** Nút icon trong danh sách section (cùng chuẩn editor Cửa hàng): 44×44 dưới lg (target chạm), 36×36 từ lg. */
+const ICON_BTN = `inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent motion-reduce:transition-none lg:h-9 lg:w-9 ${FOCUS}`;
 const TEXTAREA_CLASS =
   "mt-1.5 w-full rounded-lg border bg-white px-3.5 py-2.5 text-[15px] outline-none focus:border-[#0F3B82] focus:ring-2 focus:ring-[#0F3B82]/15";
 
@@ -348,13 +354,13 @@ function ItemList<T extends { id: string }>({
                 {itemName} {index + 1}
               </p>
               <div className="flex items-center gap-1">
-                <button type="button" disabled={index === 0} onClick={() => moveItem(index, -1)} aria-label={`Đưa ${itemName} ${index + 1} lên`} className="rounded p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-30">
+                <button type="button" disabled={index === 0} onClick={() => moveItem(index, -1)} aria-label={`Đưa ${itemName} ${index + 1} lên`} className={`${ICON_BTN} text-gray-600`}>
                   <IconChevronDown className="h-3.5 w-3.5 rotate-180" />
                 </button>
-                <button type="button" disabled={index === items.length - 1} onClick={() => moveItem(index, 1)} aria-label={`Đưa ${itemName} ${index + 1} xuống`} className="rounded p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-30">
+                <button type="button" disabled={index === items.length - 1} onClick={() => moveItem(index, 1)} aria-label={`Đưa ${itemName} ${index + 1} xuống`} className={`${ICON_BTN} text-gray-600`}>
                   <IconChevronDown className="h-3.5 w-3.5" />
                 </button>
-                <button type="button" disabled={items.length <= min} onClick={() => onChange(items.filter((_, i) => i !== index))} aria-label={`Xoá ${itemName} ${index + 1}`} className="rounded p-2 hover:bg-red-50 disabled:opacity-30" style={{ color: "#DC2626" }}>
+                <button type="button" disabled={items.length <= min} onClick={() => onChange(items.filter((_, i) => i !== index))} aria-label={`Xoá ${itemName} ${index + 1}`} className={`${ICON_BTN} hover:bg-red-50`} style={{ color: "#DC2626" }}>
                   <IconTrash className="h-3.5 w-3.5" />
                 </button>
               </div>
@@ -749,6 +755,9 @@ export function HomeSectionsEditor({
   const [sections, setSections] = useState<HomeSection[]>(initialSections);
   const [seo, setSeo] = useState<HomeSeoValue>(initialSeo);
   const [savedSeo, setSavedSeo] = useState<HomeSeoValue>(initialSeo);
+  // ADR-058 mục 5 (task 1.2b): mốc "đã lưu" của các section = bản đã nạp (nháp nếu có, không thì live — server chọn sẵn
+  // trong `initialSections`), cập nhật sau Lưu nháp/Xuất bản/Khôi phục. Chỉ là trạng thái client, không đổi action.
+  const [savedSectionsSnapshot, setSavedSectionsSnapshot] = useState(() => JSON.stringify(initialSections));
   const [hasDraft, setHasDraft] = useState(initialHasDraft);
   const [status, setStatus] = useState<Status>(initialStatus);
   const [selectedId, setSelectedId] = useState<string>(sections[0]?.id ?? "");
@@ -768,6 +777,10 @@ export function HomeSectionsEditor({
   }, [sections]);
   const seoWarnings = useMemo(() => findContentClaimWarnings([seo.seoTitle, seo.seoDescription]).map((rule) => rule.message), [seo]);
   const blockingIssues = useMemo(() => homePublishIssues(sections), [sections]);
+  const sectionsDirty = useMemo(() => JSON.stringify(sections) !== savedSectionsSnapshot, [sections, savedSectionsSnapshot]);
+  const seoDirty = seo.seoTitle !== savedSeo.seoTitle || seo.seoDescription !== savedSeo.seoDescription;
+  const isDirty = sectionsDirty || seoDirty;
+  useUnsavedChanges(isDirty, "Trang chủ có thay đổi chưa lưu. Rời trang và bỏ thay đổi?");
 
   function updateSelectedData(data: HomeSection["data"]) {
     setSections((prev) => prev.map((s) => (s.id === selectedId ? ({ ...s, data } as HomeSection) : s)));
@@ -795,11 +808,13 @@ export function HomeSectionsEditor({
 
   function saveDraft() {
     const submittedSeo = seo;
+    const submittedSections = sections;
     startTransition(async () => {
-      const result = await saveHomeDraftAction(sections, submittedSeo);
+      const result = await saveHomeDraftAction(submittedSections, submittedSeo);
       if (result.success) {
         setHasDraft(true);
         setSavedSeo(submittedSeo);
+        setSavedSectionsSnapshot(JSON.stringify(submittedSections));
         if (status === "NONE") setStatus("DRAFT");
       }
       showResult(result, "Đã lưu bản nháp.");
@@ -808,11 +823,13 @@ export function HomeSectionsEditor({
 
   function publish() {
     const submittedSeo = seo;
+    const submittedSections = sections;
     startTransition(async () => {
-      const result = await publishHomeAction(sections, submittedSeo);
+      const result = await publishHomeAction(submittedSections, submittedSeo);
       if (result.success) {
         setHasDraft(false);
         setSavedSeo(submittedSeo);
+        setSavedSectionsSnapshot(JSON.stringify(submittedSections));
         setStatus("PUBLISHED");
       }
       showResult(result, "Đã xuất bản — trang chủ đã cập nhật.");
@@ -824,6 +841,7 @@ export function HomeSectionsEditor({
       const result = await restoreLiveHomeAction();
       if (result.success) {
         setSections(live);
+        setSavedSectionsSnapshot(JSON.stringify(live));
         setSeo(savedSeo);
         setHasDraft(false);
       }
@@ -858,37 +876,52 @@ export function HomeSectionsEditor({
             ) : null}
           </div>
           <div className="space-y-1.5">
-            {sections.map((s, i) => (
-              <div
-                key={s.id}
-                className="flex items-center gap-2 rounded-lg border px-2.5 py-2 transition"
-                style={{
-                  borderColor: s.id === selectedId ? "#D97706" : LINE,
-                  background: s.id === selectedId ? "rgba(217,119,6,0.08)" : "white",
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={s.visible}
-                  onChange={() => toggleVisible(s.id)}
-                  className="h-4 w-4 shrink-0 rounded"
-                  title="Hiện/ẩn section"
-                  aria-label={`Hiển thị section ${HOME_SECTION_LABELS[s.type]}`}
-                />
-                <button type="button" onClick={() => setSelectedId(s.id)} className="min-w-0 flex-1 truncate text-left text-sm font-medium" style={{ color: s.visible ? INK : "#9CA3AF" }}>
-                  {HOME_SECTION_LABELS[s.type]}
-                  {warningsBySection.has(s.id) ? <span className="ml-1 text-xs" style={{ color: "#B45309" }}>(cần xác minh)</span> : null}
-                </button>
-                <div className="flex shrink-0 flex-col">
-                  <button type="button" disabled={i === 0} onClick={() => move(s.id, -1)} aria-label={`Đưa ${HOME_SECTION_LABELS[s.type]} lên`} className="text-gray-500 hover:text-gray-700 disabled:opacity-30">
-                    <IconChevronDown className="h-3 w-3 rotate-180" />
+            {sections.map((s, i) => {
+              const label = HOME_SECTION_LABELS[s.type];
+              const isSelected = s.id === selectedId;
+              return (
+                <div
+                  key={s.id}
+                  className="flex items-center gap-1 rounded-xl border p-1 transition-colors motion-reduce:transition-none"
+                  style={{ borderColor: isSelected ? brandColors.accent : LINE, background: isSelected ? brandColors.accentSoft : "white" }}
+                >
+                  {/* Nút con mắt thay checkbox 16px (target ≥ 44px dưới lg) — cùng mẫu editor Cửa hàng/Trang bán hàng. */}
+                  <button
+                    type="button"
+                    onClick={() => toggleVisible(s.id)}
+                    aria-pressed={s.visible}
+                    aria-label={`${s.visible ? "Ẩn" : "Hiện"} section ${label}`}
+                    title={s.visible ? "Đang hiện — bấm để ẩn" : "Đang ẩn — bấm để hiện"}
+                    className={ICON_BTN}
+                    style={{ color: s.visible ? "#15803D" : "#6B7280" }}
+                  >
+                    {s.visible ? <IconEye className="h-[18px] w-[18px]" /> : <IconEyeOff className="h-[18px] w-[18px]" />}
                   </button>
-                  <button type="button" disabled={i === sections.length - 1} onClick={() => move(s.id, 1)} aria-label={`Đưa ${HOME_SECTION_LABELS[s.type]} xuống`} className="text-gray-500 hover:text-gray-700 disabled:opacity-30">
-                    <IconChevronDown className="h-3 w-3" />
+                  <button
+                    type="button"
+                    onClick={() => setSelectedId(s.id)}
+                    aria-current={isSelected ? "true" : undefined}
+                    className={`flex min-h-11 min-w-0 flex-1 cursor-pointer flex-col items-start justify-center rounded-lg px-1.5 text-left lg:min-h-9 ${FOCUS}`}
+                  >
+                    <span className="w-full truncate text-sm font-medium" style={{ color: s.visible ? INK : "#6B7280" }}>
+                      {label}
+                    </span>
+                    {!s.visible || warningsBySection.has(s.id) ? (
+                      <span className="flex flex-wrap gap-x-2 text-[11px] font-semibold">
+                        {!s.visible ? <span style={{ color: "#6B7280" }}>Đang ẩn</span> : null}
+                        {warningsBySection.has(s.id) ? <span style={{ color: "#B45309" }}>Cần xác minh</span> : null}
+                      </span>
+                    ) : null}
+                  </button>
+                  <button type="button" disabled={i === 0} onClick={() => move(s.id, -1)} aria-label={`Đưa ${label} lên`} className={ICON_BTN} style={{ color: INK }}>
+                    <IconChevronDown className="h-4 w-4 rotate-180" />
+                  </button>
+                  <button type="button" disabled={i === sections.length - 1} onClick={() => move(s.id, 1)} aria-label={`Đưa ${label} xuống`} className={ICON_BTN} style={{ color: INK }}>
+                    <IconChevronDown className="h-4 w-4" />
                   </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </aside>
 
@@ -900,7 +933,11 @@ export function HomeSectionsEditor({
               </h2>
               <p className="text-xs text-gray-400">id: {selected?.id}</p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Chữ + màu (không chỉ màu); vùng polite để trình đọc màn hình biết khi trạng thái đổi. */}
+              <span aria-live="polite" className="inline-flex">
+                {isDirty ? <Badge tone="warning">Có thay đổi chưa lưu</Badge> : null}
+              </span>
               <Link href="/" target="_blank" rel="noreferrer">
                 <GhostButton type="button">Xem trang chủ ↗</GhostButton>
               </Link>
@@ -970,14 +1007,24 @@ export function HomeSectionsEditor({
         </section>
       </div>
 
-      <section className="rounded-2xl border bg-white p-4 sm:p-6" style={{ borderColor: LINE }} aria-labelledby="home-seo-heading">
-        <h2 id="home-seo-heading" className="font-[family-name:var(--font-heading)] text-lg font-semibold" style={{ color: INK }}>
-          SEO trang chủ
-        </h2>
-        <p className="mt-1 text-sm text-gray-500">
-          Không bắt buộc — để trống dùng tiêu đề/mô tả mặc định. Dùng {"{brand}"} cho tên nền tảng. SEO không có bản nháp: lưu xong là áp dụng ngay nếu trang chủ đã xuất bản.
+      {/* ADR-058: khối SEO luôn thu gọn, kiểu section Rank Math (tiêu đề + badge trạng thái có chữ + chevron). */}
+      <CollapsibleSection
+        id="seo"
+        title="SEO trang chủ"
+        description="Không bắt buộc — để trống dùng tiêu đề/mô tả mặc định."
+        icon={<IconGlobe className="h-5 w-5" />}
+        status={sectionStatus({
+          dirty: seoDirty,
+          warningCount: (titleWarning ? 1 : 0) + (descriptionWarning ? 1 : 0) + seoWarnings.length,
+          empty: seo.seoTitle.trim() === "" && seo.seoDescription.trim() === "",
+          emptyLabel: "Dùng mặc định",
+        })}
+      >
+        <p className="text-sm text-gray-500">
+          SEO không có bản nháp: bấm <strong>Lưu bản nháp</strong> hoặc <strong>Xuất bản</strong> đều ghi SEO và áp dụng ngay cho trang
+          chủ công khai (nếu trang chủ đã xuất bản). Dùng {"{brand}"} cho tên nền tảng.
         </p>
-        <div className="mt-4 space-y-4">
+        <div className="space-y-4">
           <TextField
             id="home-seo-title"
             label={`Tiêu đề SEO (${seo.seoTitle.length}/${SEO_TITLE_MAX})`}
@@ -1004,7 +1051,7 @@ export function HomeSectionsEditor({
             </Notice>
           ) : null}
         </div>
-      </section>
+      </CollapsibleSection>
     </div>
   );
 }

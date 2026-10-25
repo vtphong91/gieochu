@@ -1,9 +1,11 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { getEnv } from "@gieochu/config";
+import { LEGAL_PLACEHOLDER_MARKER, replaceLegalPlaceholders } from "@gieochu/core";
 import { getPrismaClient, withSystemJob } from "@gieochu/db";
 import { createTenantForUser } from "../../lib/create-tenant";
 import {
   createLegalDraft,
+  getAcceptanceLegalVersion,
   getEffectiveLegalVersion,
   publishLegalVersion,
   recordLegalAcceptance,
@@ -11,6 +13,7 @@ import {
   resolveRegistrationPrivacyVersion,
   resolveRegistrationTermsVersion,
   resolveSellerPolicyAcceptance,
+  sanitizeLegalHtml,
   setLegalReviewStatus,
   updateLegalDraft,
   type LegalDocumentSpec,
@@ -75,9 +78,11 @@ describe("ADR-050 legal documents", () => {
     const effective = await getEffectiveLegalVersion(spec.key, new Date(now.getTime() + 1000));
     expect(effective?.versionId).toBe(v1.id);
     expect(effective?.contentHtml).toContain("{brand}");
+    expect(effective?.isDraftRelease).toBe(false);
+    expect((await getAcceptanceLegalVersion(spec.key, new Date(now.getTime() + 1000)))?.versionId).toBe(v1.id);
 
-    // Form gửi đúng bản đang hiệu lực (hoặc không gửi) → ghi bản đó; gửi bản khác → 409.
-    expect(resolveRegistrationTermsVersion(effective, undefined)).toBe(v1.id);
+    // Chỉ ghi đúng bản người dùng đã thấy: gửi đúng bản đang hiệu lực → ghi bản đó; không gửi id hoặc gửi bản khác → 409.
+    expect(() => resolveRegistrationTermsVersion(effective, undefined)).toThrowError(expect.objectContaining({ code: "LEGAL_TERMS_CHANGED", httpStatus: 409 }));
     expect(() => resolveRegistrationTermsVersion(effective, v2.id)).toThrowError(expect.objectContaining({ code: "LEGAL_TERMS_CHANGED", httpStatus: 409 }));
     expect(resolveRegistrationTermsVersion(null, "whatever")).toBeNull();
 
@@ -146,6 +151,22 @@ describe("ADR-050 legal documents", () => {
     await setLegalReviewStatus(spec.key, draft.id, "APPROVED");
     await expect(publishLegalVersion(spec.key, draft.id, { effectiveAt: null, actorId: actor.id })).rejects.toMatchObject({ code: "LEGAL_PUBLISH_BLOCKED" });
 
+    // ADR-057: cùng nội dung còn placeholder + chưa rà soát → công bố được dạng "Bản dự thảo"; bản này hiển thị (trang có
+    // nội dung, placeholder thành "(đang cập nhật)") nhưng KHÔNG dùng để ghi chấp thuận; cờ bị đóng băng ở mức DB.
+    const draftSpec = nextSpec();
+    const draftRelease = await createLegalDraft(draftSpec, { contentHtml: "<h2>Đơn vị</h2><p>Tên: [[CẦN XÁC NHẬN: PL-01]]</p>", actorId: actor.id });
+    const released = await publishLegalVersion(draftSpec.key, draftRelease.id, { effectiveAt: null, actorId: actor.id, asDraftRelease: true });
+    expect(released).toMatchObject({ status: "PUBLISHED", reviewStatus: "PENDING_LEGAL_REVIEW", isDraftRelease: true });
+    const shown = await getEffectiveLegalVersion(draftSpec.key, new Date(Date.now() + 1000));
+    expect(shown).toMatchObject({ versionId: draftRelease.id, isDraftRelease: true });
+    expect(await getAcceptanceLegalVersion(draftSpec.key, new Date(Date.now() + 1000))).toBeNull();
+    expect(resolveRegistrationTermsVersion(shown, draftRelease.id)).toBeNull();
+    expect(resolveSellerPolicyAcceptance(shown, { accepted: false, submittedVersionId: undefined })).toBeNull();
+    const rendered = replaceLegalPlaceholders(sanitizeLegalHtml(shown!.contentHtml));
+    expect(rendered).toContain(`<span class="legal-pending">(đang cập nhật)</span>`);
+    expect(rendered).not.toContain(LEGAL_PLACEHOLDER_MARKER);
+    await expect(prisma.legalDocumentVersion.updateMany({ where: { id: draftRelease.id }, data: { isDraftRelease: false } })).rejects.toThrow();
+
     // Điền placeholder → nội dung đổi nên rà soát quay về PENDING → vẫn chặn.
     const filled = await updateLegalDraft(spec.key, draft.id, { contentHtml: "<p>Đơn vị vận hành: Công ty Thử Nghiệm.</p>" });
     expect(filled.reviewStatus).toBe("PENDING_LEGAL_REVIEW");
@@ -186,8 +207,9 @@ describe("ADR-050 legal documents", () => {
 
     // Đăng ký: hai văn bản độc lập; bản Bảo mật lệch → 409 mã riêng; văn bản chưa hiệu lực → bỏ qua.
     expect(() => resolveRegistrationPrivacyVersion(effPrivacy, terms.versionId)).toThrowError(expect.objectContaining({ code: "LEGAL_DOCUMENT_CHANGED", httpStatus: 409 }));
+    expect(() => resolveRegistrationPrivacyVersion(effPrivacy, undefined)).toThrowError(expect.objectContaining({ code: "LEGAL_DOCUMENT_CHANGED", httpStatus: 409 }));
     expect(resolveRegistrationPrivacyVersion(null, undefined)).toBeNull();
-    const signupIds = [resolveRegistrationTermsVersion(effTerms, terms.versionId), resolveRegistrationPrivacyVersion(effPrivacy, undefined)].filter(
+    const signupIds = [resolveRegistrationTermsVersion(effTerms, terms.versionId), resolveRegistrationPrivacyVersion(effPrivacy, privacy.versionId)].filter(
       (id): id is string => id !== null,
     );
     const user = await prisma.$transaction(async (tx) => {
@@ -211,6 +233,9 @@ describe("ADR-050 legal documents", () => {
       expect.objectContaining({ code: "LEGAL_ACCEPTANCE_REQUIRED", httpStatus: 400 }),
     );
     expect(() => resolveSellerPolicyAcceptance(effSeller, { accepted: true, submittedVersionId: privacy.versionId })).toThrowError(
+      expect.objectContaining({ code: "LEGAL_DOCUMENT_CHANGED", httpStatus: 409 }),
+    );
+    expect(() => resolveSellerPolicyAcceptance(effSeller, { accepted: true, submittedVersionId: undefined })).toThrowError(
       expect.objectContaining({ code: "LEGAL_DOCUMENT_CHANGED", httpStatus: 409 }),
     );
     expect(resolveSellerPolicyAcceptance(null, { accepted: false, submittedVersionId: undefined })).toBeNull();

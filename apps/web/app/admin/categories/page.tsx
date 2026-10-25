@@ -20,7 +20,8 @@ export default async function AdminCategoriesListPage({
   const [categories, total] = await Promise.all([listDocumentCategories({ skip, take }), countDocumentCategories()]);
 
   return (
-    <main className="px-5 py-8 lg:px-8">
+    // Wrapper <div>: layout admin đã có <main>.
+    <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader
         title="Danh mục tài liệu"
         subtitle="Danh mục do System Admin tạo trước — tenant sẽ gán sản phẩm vào các danh mục này (module sau)."
@@ -72,6 +73,6 @@ export default async function AdminCategoriesListPage({
           <Pagination total={total} page={page} pageSize={pageSize} />
         </div>
       )}
-    </main>
+    </div>
   );
 }

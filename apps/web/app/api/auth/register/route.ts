@@ -12,7 +12,7 @@ import { sendEmailNow } from "../../../../lib/email-dispatch";
 import { getEffectiveBrand } from "../../../../lib/branding";
 import { getSystemSettings } from "../../../../lib/system-settings";
 import {
-  getEffectiveLegalVersion,
+  getAcceptanceLegalVersion,
   recordLegalAcceptances,
   resolveRegistrationPrivacyVersion,
   resolveRegistrationTermsVersion,
@@ -72,8 +72,8 @@ export async function POST(request: Request) {
     // ADR-050 mục 3 + ADR-054 mục 5: văn bản nào (Điều khoản, Chính sách bảo mật) đang có bản hiệu lực → ghi chấp thuận
     // đúng phiên bản đó trong cùng giao dịch tạo user; chưa có → bỏ qua văn bản đó (chỉ `consentAt` như trước).
     const [effectiveTerms, effectivePrivacy] = await Promise.all([
-      getEffectiveLegalVersion(LEGAL_DOCUMENT_DEFS.terms.key, now),
-      getEffectiveLegalVersion(LEGAL_DOCUMENT_DEFS.privacy.key, now),
+      getAcceptanceLegalVersion(LEGAL_DOCUMENT_DEFS.terms.key, now),
+      getAcceptanceLegalVersion(LEGAL_DOCUMENT_DEFS.privacy.key, now),
     ]);
     const termsVersionId = resolveRegistrationTermsVersion(effectiveTerms, body.termsVersionId);
     const privacyVersionId = resolveRegistrationPrivacyVersion(effectivePrivacy, body.privacyVersionId);

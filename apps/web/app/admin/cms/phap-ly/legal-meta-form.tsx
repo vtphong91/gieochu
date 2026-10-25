@@ -6,13 +6,19 @@ import { brandColors } from "@gieochu/config/theme";
 import { LEGAL_SUMMARY_MAX, type LegalDocumentKey } from "@gieochu/core/legal";
 import { SEO_DESCRIPTION_MAX, SEO_TITLE_MAX, seoLengthWarning } from "@gieochu/core/seo";
 import { FormBanner, PrimaryButton, TextField } from "../../_ui/kit";
+import { IconGlobe } from "../../_ui/icons";
+import { CollapsibleSection, type SectionStatus } from "../../_ui/collapsible-section";
+import { useUnsavedChanges } from "../../_ui/unsaved-changes";
 import { saveLegalDocumentMetaAction } from "./actions";
 
 /**
  * ADR-054 mục 4 — mô tả ngắn + SEO của một văn bản pháp lý. Lưu thẳng (không nháp, như SEO trang chủ ADR-050 lần 2), có
  * đếm ký tự + cảnh báo mềm độ dài (60/160) như editor trang chủ. Server kiểm lại giới hạn (120/320/320).
  * Bố cục đồng bộ khung "SEO trang chủ": nhãn kèm bộ đếm, gợi ý/cảnh báo ngay dưới ô (aria-describedby), nhóm SEO bằng
- * fieldset; trạng thái đang lưu qua vùng `role="status"` ẩn, kết quả qua `FormBanner` (status/alert).
+ * fieldset; trạng thái đang lưu qua vùng `role="status"` ẩn, kết quả qua `FormBanner` (status/alert). Bổ sung ADR-057: bọc
+ * trong khối disclosure "Tối ưu SEO" (thu gọn mặc định) đặt dưới nội dung; cảnh báo rời trang khi có thay đổi chưa lưu (`useUnsavedChanges`, ADR-058).
+ * ADR-058 (task 1.6): khối thu gọn tự viết thay bằng `CollapsibleSection` dùng chung (kiểu Rank Math) — giữ đúng hành vi
+ * ADR-057: luôn thu gọn khi tải, tiêu đề luôn hiện "Đã điền x/3" + "Có thay đổi chưa lưu", panel chỉ `hidden`.
  */
 export interface LegalMetaValues {
   summary: string;
@@ -53,6 +59,9 @@ export function LegalMetaForm({ documentKey, initial, defaultTitle }: { document
   // Thông báo "Đã lưu" hết đúng khi người dùng sửa tiếp → ẩn (lỗi vẫn giữ tới lần lưu sau).
   const visibleMessage = message && !(message.ok && dirty) ? message : null;
 
+  // ADR-058 mục 5: đăng ký với provider của layout thay cho beforeunload riêng.
+  useUnsavedChanges(dirty, "Mô tả & SEO có thay đổi chưa lưu. Rời trang và bỏ thay đổi?");
+
   function save() {
     setMessage(null);
     startTransition(async () => {
@@ -67,16 +76,26 @@ export function LegalMetaForm({ documentKey, initial, defaultTitle }: { document
     });
   }
 
-  return (
-    <section className="mt-6 rounded-2xl border bg-white p-4 sm:p-6" style={{ borderColor: LINE }} aria-labelledby="legal-meta-heading" aria-describedby="legal-meta-desc">
-      <h2 id="legal-meta-heading" className="font-[family-name:var(--font-heading)] text-lg font-semibold" style={{ color: INK }}>
-        Mô tả & SEO
-      </h2>
-      <p id="legal-meta-desc" className="mt-1 text-sm leading-relaxed" style={{ color: INK_SOFT }}>
-        Không bắt buộc. Không theo phiên bản: lưu xong là áp dụng ngay cho trang công khai. Dùng <code>{"{brand}"}</code> thay cho tên nền tảng.
-      </p>
+  const filled = [saved.summary, saved.seoTitle, saved.seoDescription].filter((v) => v.trim() !== "").length;
+  const status: SectionStatus[] = [
+    { tone: filled > 0 ? "info" : "neutral", label: `Đã điền ${filled}/3` },
+    ...(dirty ? [{ tone: "warning" as const, label: "Có thay đổi chưa lưu" }] : []),
+  ];
 
-      <div className="mt-5 space-y-5">
+  return (
+    // Bổ sung ADR-057: khối "Tối ưu SEO" dưới nội dung, thu gọn mặc định (không bắt buộc, lưu riêng). Tiêu đề luôn hiện số
+    // trường đã điền + "Có thay đổi chưa lưu" để trạng thái không bị giấu khi thu gọn; panel chỉ `hidden` nên giữ dữ liệu.
+    <CollapsibleSection
+      id="seo"
+      icon={<IconGlobe className="h-5 w-5" />}
+      title="Tối ưu SEO"
+      description="Mô tả ngắn, tiêu đề và mô tả SEO — không bắt buộc, lưu riêng và áp dụng ngay cho trang công khai."
+      status={status}
+    >
+      <p className="text-sm leading-relaxed" style={{ color: INK_SOFT }}>
+        Dùng <code>{"{brand}"}</code> thay cho tên nền tảng.
+      </p>
+      <div className="space-y-5">
         <TextAreaField
           id="legal-summary"
           label={`Mô tả ngắn (${values.summary.length}/${LEGAL_SUMMARY_MAX})`}
@@ -124,6 +143,6 @@ export function LegalMetaForm({ documentKey, initial, defaultTitle }: { document
           ) : null}
         </div>
       </div>
-    </section>
+    </CollapsibleSection>
   );
 }

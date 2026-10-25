@@ -13,7 +13,8 @@ export default async function AdminEditCategoryPage({ params }: { params: Promis
   if (!category) notFound();
 
   return (
-    <main className="px-5 py-8 lg:px-8">
+    // Wrapper <div>: layout admin đã có <main>.
+    <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader title={category.name} subtitle={`Sửa danh mục — /${category.slug}`} />
       <SettingsGrid>
         <CategoryForm
@@ -31,6 +32,6 @@ export default async function AdminEditCategoryPage({ params }: { params: Promis
           }}
         />
       </SettingsGrid>
-    </main>
+    </div>
   );
 }

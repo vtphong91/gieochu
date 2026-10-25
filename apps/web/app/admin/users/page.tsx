@@ -66,7 +66,8 @@ export default async function AdminUsersPage({
   ]);
 
   return (
-    <main className="px-5 py-8 lg:px-8">
+    // Wrapper <div>: layout admin đã có <main>.
+    <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader title="Người dùng" subtitle={`Tổng: ${total.toLocaleString("vi-VN")} tài khoản`} />
 
       <div className="mt-6 flex flex-wrap gap-2">
@@ -150,6 +151,6 @@ export default async function AdminUsersPage({
           </>
         )}
       </div>
-    </main>
+    </div>
   );
 }

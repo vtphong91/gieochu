@@ -9,7 +9,7 @@ tags:
   - seo
   - status/living
 date: 2026-10-23
-updated: 2026-10-24
+updated: 2026-10-25
 author: Long
 ---
 
@@ -60,11 +60,11 @@ Cả 3 bảng **L1** (không `tenantId`) → **không RLS**, đọc/ghi bằng `
 | Bảng (model) | Cột chính | Ràng buộc |
 | :-- | :-- | :-- |
 | `legal_documents` (`LegalDocument`) | `key` unique, `slug` unique, `title`, **`summary?`, `seoTitle?`, `seoDescription?`** (ADR-054), `createdAt`, `updatedAt` | CHECK `legal_documents_key_format`: `key` khớp `^[a-z0-9]+([_-][a-z0-9]+)*$` (**ADR-054 nới** để nhận `_`), `slug` khớp `^[a-z0-9]+(-[a-z0-9]+)*$` (giữ luật cũ). CHECK `legal_documents_meta_length` (ADR-054): `summary` ≤ 320, `seoTitle` ≤ 120, `seoDescription` ≤ 320. Dòng tạo lười (`ensureLegalDocument` — upsert theo `key`) khi admin tạo bản nháp đầu **hoặc** lưu mô tả/SEO lần đầu, **không seed** |
-| `legal_document_versions` (`LegalDocumentVersion`) | `documentId` (FK `Restrict`), `version Int`, `status` (`DRAFT` mặc định / `PUBLISHED` / `ARCHIVED`), `reviewStatus` (`PENDING_LEGAL_REVIEW` mặc định / `APPROVED`), `contentHtml`, `changeSummary?`, `effectiveAt?`, `publishedAt?`, `publishedById?`, `createdById?` (2 cột id người **không FK**), `createdAt`, `updatedAt` | Unique `(documentId, version)`; index `(documentId, status, effectiveAt)`; CHECK `legal_document_versions_shape`: `version ≥ 1`, `contentHtml` ≤ 200 000 ký tự, `changeSummary` ≤ 1000, bản không phải `DRAFT` **bắt buộc** có `effectiveAt` + `publishedAt` |
+| `legal_document_versions` (`LegalDocumentVersion`) | `documentId` (FK `Restrict`), `version Int`, `status` (`DRAFT` mặc định / `PUBLISHED` / `ARCHIVED`), `reviewStatus` (`PENDING_LEGAL_REVIEW` mặc định / `APPROVED`), `contentHtml`, `changeSummary?`, `effectiveAt?`, `publishedAt?`, `publishedById?`, `createdById?` (2 cột id người **không FK**), **`isDraftRelease` (mặc định `false`, ADR-057 — §5.2)**, `createdAt`, `updatedAt` | Unique `(documentId, version)`; index `(documentId, status, effectiveAt)`; CHECK `legal_document_versions_shape`: `version ≥ 1`, `contentHtml` ≤ 200 000 ký tự, `changeSummary` ≤ 1000, bản không phải `DRAFT` **bắt buộc** có `effectiveAt` + `publishedAt` |
 | `user_legal_acceptances` (`UserLegalAcceptance`) | `userId` (FK `users` **Cascade**), `versionId` (FK `Restrict`), `acceptedAt` | Unique `(userId, versionId)`; index `versionId`. **Không lưu IP/User-Agent** (chủ dự án chốt) |
 
 **Trigger bất biến** `legal_document_versions_freeze_content` (BEFORE UPDATE): khi bản cũ **không còn `DRAFT`**, từ chối (ERRCODE `42501`) mọi thay đổi
-`contentHtml`, `version`, `documentId`, `effectiveAt`, `publishedAt`, `changeSummary`, mọi chuyển về `DRAFT`, và mọi chuyển ra khỏi `ARCHIVED`. Chỉ
+`contentHtml`, `version`, `documentId`, `effectiveAt`, `publishedAt`, `changeSummary`, `isDraftRelease` (từ ADR-057), mọi chuyển về `DRAFT`, và mọi chuyển ra khỏi `ARCHIVED`. Chỉ
 còn cho phép `PUBLISHED → ARCHIVED` và đổi `reviewStatus`. Sửa nội dung = tạo phiên bản mới. Mô tả/SEO nằm trên `legal_documents` nên **không** theo
 phiên bản (sửa được bất kỳ lúc nào).
 
@@ -167,16 +167,67 @@ dùng để ẩn/hiện link menu/footer.
 
 ---
 
-## 5. Editor `/admin/cms/phap-ly` ✅
+## 5. Editor "Chính sách sử dụng" `/admin/cms/phap-ly` + Bản dự thảo (ADR-057 + bổ sung) ✅ đọc code 2026-10-25 (chưa commit)
 
-- Trang `requireAdminAccess("/admin/cms/phap-ly")`; segment tĩnh thắng `/admin/cms/[slug]`. Chọn văn bản bằng **`?van-ban=<khoá>`** (khoá không hợp
-  lệ/không có → `terms`); bộ chọn hiện trạng thái từng văn bản từ `listLegalDocumentStatuses()` (một truy vấn): `NONE` (chưa có phiên bản) /
-  `DRAFT_ONLY` / `EFFECTIVE` / `SCHEDULED` + cờ có nháp. Danh sách mọi phiên bản của văn bản đang chọn (mới nhất trước).
-- Khung **"Mô tả & SEO"** — `LegalMetaForm` (`legal-meta-form.tsx`) gọi `saveLegalDocumentMetaAction`. Bộ chọn + khung meta hiện là bố cục tối thiểu,
-  Phong hoàn thiện sau 🟡 (comment `page.tsx`).
-- 6 Server Action (`app/admin/cms/phap-ly/actions.ts`) — contract ở [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §26.4. Sau thao tác phiên
-  bản: revalidate `/admin/cms/phap-ly`, `/{slug}`, `/register`, `/studio` và `revalidatePath("/", "layout")` (link footer "Thông tin" tự ẩn/hiện). Sau lưu
-  meta: `/admin/cms/phap-ly` + `/{slug}`.
+Quyết định: [[01-Architecture-Decisions/ADR-042-Legal-Drafts-Import-Preview-Draft-Release|ADR-042 KB (≙ ADR-057)]]. Ghi theo code working tree sau báo cáo
+"xong GĐ C" của Hiếu (qua Quốc, 2026-10-25). Contract Server Action: [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §26.4; quy trình thao tác:
+[[04-Operations-Runbooks/Legal-Terms-Publishing-Runbook|Legal-Terms-Publishing-Runbook]] §1.
+
+### 5.1. Editor một nội dung
+- Trang `requireAdminAccess("/admin/cms/phap-ly")`, tiêu đề "Chính sách sử dụng — {tên văn bản}"; segment tĩnh thắng `/admin/cms/[slug]`. Chọn văn bản bằng
+  **`?van-ban=<khoá>`** (khoá lạ → `terms`); hàng chọn hiện trạng thái từ `listLegalDocumentStatuses()` (một truy vấn): `NONE` / `DRAFT_ONLY` / `EFFECTIVE` /
+  `SCHEDULED` + `hasDraft` + **`isDraftRelease`** (bản đang hiệu lực — hoặc, khi chưa có, bản hẹn hiệu lực gần nhất — là bản dự thảo). Link chọn văn bản
+  gắn `useLeaveGuard` (ADR-058).
+- **Không lộ phiên bản:** `getLegalEditorData(key)` trả một nội dung — bản nháp làm việc (`pickWorkingLegalDraft`: DRAFT mới nhất **có nội dung**; mọi DRAFT
+  trống → DRAFT mới nhất), không có thì nội dung bản PUBLISHED mới nhất; kèm `hasUnpublishedChanges`, `lastUpdatedAt` ("Cập nhật lúc …"), `previewHref`, `meta`,
+  **`draftReleaseAvailable`** (= `LEGAL_DRAFT_RELEASE_AVAILABLE`).
+- 3 Server Action theo bản nháp làm việc (`saveLegalDraftAction`, `setLegalReviewAction`, `publishLegalAction`), chống ghi đè giữa tab bằng
+  `expectedUpdatedAt` (lệch → `LEGAL_VERSION_CONFLICT` 409). Sau thao tác: revalidate `/admin/cms/phap-ly`, `/{slug}`, `/register`, `/studio`,
+  `revalidatePath("/", "layout")`. 5 action theo phiên bản cũ và nút **Lưu trữ** đã bỏ; `archiveLegalVersion` còn trong lib, không action nào gọi.
+- Sidebar chặn nút Xuất bản kèm lý do: còn thay đổi chưa lưu; chưa có nháp; nội dung trống; với bản chính thức thêm: còn `[[CẦN XÁC NHẬN`, chưa tích
+  "Đã rà soát nội dung". Ô rà soát khoá khi còn thay đổi chưa lưu/chưa có nháp. Server kiểm lại.
+- Khung **"Mô tả & SEO"** (`LegalMetaForm`) dưới nội dung, thu gọn mặc định, lưu thẳng qua `saveLegalDocumentMetaAction` (§3.6). Cả editor và khung meta đăng
+  ký `useUnsavedChanges` (thay `beforeunload` riêng).
+
+### 5.2. Bản dự thảo — dữ liệu và xuất bản
+- Cột **`legal_document_versions.isDraftRelease BOOLEAN NOT NULL DEFAULT false`** ✅ `schema.prisma`. Migration expand-only
+  `20261025120000_adr057_legal_draft_release`: thêm cột + `CREATE OR REPLACE` function trigger `legal_document_versions_freeze_content` — **trigger đóng băng
+  giờ phủ cả `isDraftRelease`** (bản đã PUBLISHED/ARCHIVED không đổi được cờ; muốn thành bản chính thức phải xuất bản bản mới) ✅ đọc SQL. Migration **đã chạy
+  2026-10-25** 🟡 ("Bổ sung ADR-058" (c) — Long không đọc DB). Bảng L1, không RLS, không cần GRANT thêm.
+- `LEGAL_DRAFT_RELEASE_AVAILABLE = true` ✅ (`lib/legal.ts`; đặt `false` để tắt tạm: editor khoá ô tích, server từ chối `asDraftRelease`).
+- `publishLegalVersion(key, versionId, { effectiveAt, actorId, asDraftRelease })`: với `asDraftRelease` **bỏ qua** cổng `PLACEHOLDER` + `NOT_APPROVED`, chỉ còn
+  kiểm **`NOT_DRAFT`** và **`EMPTY`**; câu UPDATE bỏ điều kiện `reviewStatus = APPROVED`, ghi `isDraftRelease = true`. Luật ngày hiệu lực (§3.3) giữ nguyên.
+  Bản chính thức vẫn đủ 4 điều kiện ADR-050 (§3.2).
+- Audit `LEGAL_VERSION_PUBLISHED` metadata thêm **`isDraftRelease`** (cạnh `key`, `version`, `effectiveAt`) ✅ `actions.ts`.
+
+### 5.3. Hai hàm đọc bản hiệu lực — hiển thị vs ghi đồng ý
+
+| Hàm | Dùng cho | Hành vi |
+| :-- | :-- | :-- |
+| `getEffectiveLegalVersion(key, now?)` | **Hiển thị**: trang công khai, form đăng ký (link) | PUBLISHED, `effectiveAt <= now`, mới nhất — **kể cả bản dự thảo**; trả `EffectiveLegalVersion` có **`isDraftRelease`** |
+| `getAcceptanceLegalVersion(key, now?)` | **Ghi đồng ý**: `POST /api/auth/register`, mở gian hàng (`app/studio/page.tsx` + `app/studio/actions.ts`) | Gọi hàm trên; bản đang hiển thị là bản dự thảo → **`null`** — kể cả khi trước đó đã có bản chính thức cũ hơn (Quốc chốt: người dùng chỉ thấy bản dự thảo nên không ghi đồng ý cho nội dung họ không được xem) |
+
+Lớp phòng thủ thứ hai: `resolveAcceptedLegalVersion` và `resolveSellerPolicyAcceptance` trả `null` khi `effective.isDraftRelease` ✅.
+
+### 5.4. Ghi đồng ý khi văn bản là bản dự thảo
+- **Đăng ký:** văn bản dự thảo vẫn có link trong ô đồng ý nhưng `RegisterTermsInfo.versionId = null` (`register/page.tsx`) → không ghi `user_legal_acceptances`
+  cho văn bản đó, chỉ ghi `UserProfile.consentAt` như trước ADR-050 ✅.
+- **Mở gian hàng:** Chính sách người bán là bản dự thảo → `getAcceptanceLegalVersion` = `null` → **ẩn ô đồng ý** và server bỏ qua ✅.
+- **Bắt buộc id khớp** ✅ (Hiếu báo xong 2026-10-25; đọc code `resolveAcceptedLegalVersion`: `submittedVersionId !== effective.versionId` → 409): khi văn bản đã có
+  bản **chính thức**, client **phải** gửi id khớp — không gửi id hoặc id lệch đều 409 ("vui lòng tải lại trang"). Bỏ luật cũ "không gửi id thì dùng bản hiện hành".
+  Trên thực tế `termsVersionId`, `privacyVersionId`, `sellerPolicyVersionId` **bắt buộc** khi văn bản có bản chính thức. Mỗi văn bản giữ mã lỗi riêng:
+  Điều khoản **`LEGAL_TERMS_CHANGED`** (contract ADR-050), Chính sách bảo mật + Chính sách người bán **`LEGAL_DOCUMENT_CHANGED`**. §6 dưới đã chỉnh theo.
+
+### 5.5. Hiển thị
+- `LegalDocumentView` (`app/_ui/legal-document-page.tsx`): `[[CẦN XÁC NHẬN: …]]` → `<span class="legal-pending">(đang cập nhật)</span>` bằng
+  `replaceLegalPlaceholders` (chạy **sau** sanitize + thay `{brand}`); bản dự thảo có banner "Bản dự thảo" dưới H1, dòng meta "Công bố ngày" thay "Hiệu lực từ" ✅.
+- Menu + footer coi bản dự thảo là **"có trang"**: `getEffectiveLegalKeys()` lấy mọi văn bản có bản PUBLISHED `effectiveAt <= now`, không lọc cờ ✅.
+- Trang xem trước `/phap-ly/xem-truoc?van-ban=&phien-ban=` (chỉ SYSTEM_ADMIN, noindex, `getLegalVersionForPreview`) truyền `isDraftRelease` vào view và thêm
+  "Bản dự thảo" vào dòng trạng thái ✅.
+
+### 5.6. Contract kiểu dữ liệu đổi
+`EffectiveLegalVersion.isDraftRelease: boolean` · `LegalVersionRow.isDraftRelease` · `LegalDocumentAdminStatusInfo.isDraftRelease: boolean` ·
+`LegalEditorData.draftReleaseAvailable: boolean` · `RegisterTermsInfo.versionId: string | null` (`register-form.tsx`) ✅.
 
 ---
 
@@ -191,16 +242,17 @@ dùng để ẩn/hiện link menu/footer.
 `POST /api/auth/register` (contract: [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §3.1):
 1. `consent` bắt buộc như cũ; `UserProfile.consentAt` ghi như cũ.
 2. `resolveRegistrationTermsVersion` (409 **`LEGAL_TERMS_CHANGED`**) và `resolveRegistrationPrivacyVersion` (409 **`LEGAL_DOCUMENT_CHANGED`**): không có bản
-   hiệu lực → bỏ qua văn bản đó; có bản + client gửi id **khác** → 409; client **không** gửi id → dùng bản đang hiệu lực.
+   hiệu lực **chính thức** (`getAcceptanceLegalVersion`) → bỏ qua văn bản đó; có bản + client gửi id khác **hoặc không gửi id** → 409 (bổ sung ADR-057 — luật cũ
+   "không gửi id → dùng bản đang hiệu lực" đã bỏ — §5.4).
 3. `recordLegalAcceptances(tx, userId, [ids…], now)` trong **cùng transaction** tạo `User` + `UserProfile` + `VerificationToken` (`createMany … skipDuplicates`).
 
 ### 6.2. Mở gian hàng — Chính sách người bán (ADR-054 mục 5)
 
-- `app/studio/page.tsx` đọc bản hiệu lực của `seller`; có → `StudioOnboardingForm` hiện checkbox `sellerPolicyAccepted` + hidden `sellerPolicyVersionId`
+- `app/studio/page.tsx` đọc bản **chính thức** của `seller` (`getAcceptanceLegalVersion` — bản dự thảo coi như chưa có, §5.4); có → `StudioOnboardingForm` hiện checkbox `sellerPolicyAccepted` + hidden `sellerPolicyVersionId`
   + link `/chinh-sach-nguoi-ban`; chưa có → không hiện ô.
 - Server Action tạo gian hàng (`app/studio/actions.ts`) tự đọc bản hiệu lực (không tin việc client hiện/ẩn checkbox) → `resolveSellerPolicyAcceptance`:
   không có bản → bỏ qua; có bản mà **không tích** → 400 **`LEGAL_ACCEPTANCE_REQUIRED`** ("Bạn cần đồng ý {tiêu đề} để mở gian hàng."); id gửi lên khác
-  bản hiệu lực → 409 `LEGAL_DOCUMENT_CHANGED`.
+  bản hiệu lực **hoặc không gửi id** → 409 `LEGAL_DOCUMENT_CHANGED` (§5.4).
 - `createTenantForUser(user, { …, acceptedLegalVersionIds })` (`lib/create-tenant.ts`) ghi `user_legal_acceptances` **trong cùng transaction tạo tenant**
   (lỗi ghi → rollback cả tenant); đã có `(userId, versionId)` thì bỏ qua (`ON CONFLICT DO NOTHING` — bảng append-only, không cần UPDATE).
 - Ghi chấp thuận **không** ghi audit (bản ghi `user_legal_acceptances` chính là vết).

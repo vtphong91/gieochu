@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { HOME_CMS_SLUG, isSystemCmsSlug, MENU_CMS_SLUG, PRICING_CMS_SLUG, SHOP_CMS_SLUG } from "@gieochu/core";
+import { HOME_CMS_SLUG, isSystemCmsSlug, MENU_CMS_SLUG, PRICING_CMS_SLUG, SHOP_CMS_SLUG, SYSTEM_CMS_SLUGS } from "@gieochu/core";
 import { getPrismaClient } from "@gieochu/db";
 import { requireAdminAccess } from "../../../lib/page-guards";
 import { AdminPageHeader, Badge, DataTable, EmptyState, PrimaryButton, Td, Tr } from "../_ui/kit";
@@ -36,16 +36,20 @@ export default async function AdminCmsListPage({
   const { page, pageSize, skip, take } = parsePagination(sp);
 
   const prisma = getPrismaClient();
+  // ADR-058 bổ sung: chỉ trang tuỳ chỉnh — ẩn slug hệ thống (home/menu/shop/pricing có mục sửa riêng). Lọc ngay trong truy
+  // vấn để tổng số + phân trang khớp với danh sách hiển thị.
+  const where = { slug: { notIn: [...SYSTEM_CMS_SLUGS] } };
   const [pages, total] = await Promise.all([
-    prisma.cmsPage.findMany({ orderBy: { slug: "asc" }, skip, take }),
-    prisma.cmsPage.count(),
+    prisma.cmsPage.findMany({ where, orderBy: { slug: "asc" }, skip, take }),
+    prisma.cmsPage.count({ where }),
   ]);
 
   return (
-    <main className="px-5 py-8 lg:px-8">
+    // Wrapper <div>: layout admin đã có <main>. ADR-058 bổ sung: mục sidebar riêng "Trang tuỳ chỉnh" (`/p/[slug]`).
+    <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader
-        title="Trang CMS"
-        subtitle="Nội dung các trang công khai (giới thiệu, chính sách...) không thuộc trang chủ."
+        title="Trang tuỳ chỉnh"
+        subtitle="Các trang công khai riêng tại /p/… (giới thiệu, liên hệ...). Trang chủ, menu, cửa hàng và bảng giá có mục sửa riêng."
         action={
           <Link href="/admin/cms/new">
             <PrimaryButton type="button">
@@ -57,7 +61,7 @@ export default async function AdminCmsListPage({
 
       {pages.length === 0 ? (
         <div className="mt-6">
-          <EmptyState icon={<IconDoc className="h-6 w-6" />} title="Chưa có trang CMS nào" description="Tạo trang đầu tiên để bắt đầu quản lý nội dung công khai." />
+          <EmptyState icon={<IconDoc className="h-6 w-6" />} title="Chưa có trang tuỳ chỉnh nào" description="Tạo trang đầu tiên (vd giới thiệu, liên hệ) — trang hiển thị tại /p/{đường dẫn}." />
         </div>
       ) : (
         <div className="mt-6">
@@ -86,6 +90,6 @@ export default async function AdminCmsListPage({
           <Pagination total={total} page={page} pageSize={pageSize} />
         </div>
       )}
-    </main>
+    </div>
   );
 }

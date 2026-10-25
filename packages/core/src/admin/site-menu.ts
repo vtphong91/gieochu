@@ -34,7 +34,7 @@ export type NavLinkKind = (typeof NAV_LINK_KINDS)[number];
 
 export const NAV_LINK_KIND_LABELS: Record<NavLinkKind, string> = {
   page: "Trang có sẵn",
-  legal: "Văn bản pháp lý",
+  legal: "Chính sách sử dụng",
   internal: "Đường dẫn nội bộ",
   external: "Liên kết ngoài",
   email: "Email",

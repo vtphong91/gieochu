@@ -10,7 +10,8 @@ export default async function AdminCloudinarySettingsPage() {
   const config = await getSystemCloudinaryConfig();
 
   return (
-    <main className="px-5 py-8 lg:px-8">
+    // Wrapper <div>: layout admin đã có <main>.
+    <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader title="Cloudinary Upload" subtitle="Tài khoản Cloudinary dùng để upload ảnh trong Landing Page CMS." />
 
       <SettingsGrid>
@@ -27,6 +28,6 @@ export default async function AdminCloudinarySettingsPage() {
           }}
         />
       </SettingsGrid>
-    </main>
+    </div>
   );
 }

@@ -1,8 +1,11 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useRef, useState, useTransition } from "react";
 import { saveSmtpConfigAction, sendTestEmailAction, testSmtpConnectionAction, type SmtpActionState } from "./actions";
 import { Badge, FormBanner, GhostButton, PasswordField, PrimaryButton, TextField } from "../../_ui/kit";
+import { IconLock } from "../../_ui/icons";
+import { useUnsavedChanges } from "../../_ui/unsaved-changes";
+import { InPageTabs } from "../../_ui/in-page-tabs";
 
 const TABS = [
   { id: "config", label: "Cấu hình" },
@@ -10,7 +13,6 @@ const TABS = [
   { id: "history", label: "Lịch sử gửi" },
 ] as const;
 
-type TabId = (typeof TABS)[number]["id"];
 
 export interface SmtpInitial {
   host: string;
@@ -41,47 +43,58 @@ const PORT_PRESETS = [
   { port: 25, secure: false, label: "25" },
 ];
 
+/**
+ * Tab nội bộ SMTP — `InPageTabs` (tab ARIA thật, kiểu pill, ADR-058). Cả 3 panel luôn mounted, chỉ `hidden`: nếu unmount
+ * ConfigTab khi rời tab, state cục bộ port/secure (chọn qua nút 465/587/25) sẽ mất khi quay lại, âm thầm trả về giá trị đã
+ * lưu trước đó dù người dùng chưa bấm "Lưu cấu hình" (bug thật đã gặp: chọn SSL 465 → xem tab khác → quay lại → tự động về
+ * STARTTLS 587).
+ */
 export function SmtpTabs({ initial, log }: { initial: SmtpInitial; log: EmailLogRow[] }) {
-  const [tab, setTab] = useState<TabId>("config");
-
+  const panels: Record<(typeof TABS)[number]["id"], React.ReactNode> = {
+    config: <ConfigTab initial={initial} />,
+    test: <TestTab initial={initial} />,
+    history: <HistoryTab log={log} />,
+  };
   return (
     <div className="mt-6">
-      <div className="flex flex-wrap gap-1 border-b" style={{ borderColor: "#E5E7EB" }}>
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className="rounded-t-lg px-4 py-2.5 text-sm font-semibold transition"
-            style={
-              tab === t.id
-                ? { borderBottom: "2px solid #0F3B82", color: "#0F3B82" }
-                : { borderBottom: "2px solid transparent", color: "#6B7280" }
-            }
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/*
-        Giữ cả 3 tab luôn mounted, chỉ ẩn/hiện bằng CSS (không render có điều
-        kiện) — nếu unmount ConfigTab khi rời tab, state cục bộ port/secure
-        (chọn qua nút 465/587/25) sẽ mất khi quay lại, âm thầm trả về giá trị
-        đã lưu trước đó dù người dùng chưa bấm "Lưu cấu hình" (bug thật đã gặp:
-        chọn SSL 465 → xem tab khác → quay lại → tự động về STARTTLS 587).
-      */}
-      <div className="mt-6" style={{ display: tab === "config" ? "block" : "none" }}>
-        <ConfigTab initial={initial} />
-      </div>
-      <div className="mt-6" style={{ display: tab === "test" ? "block" : "none" }}>
-        <TestTab initial={initial} />
-      </div>
-      <div className="mt-6" style={{ display: tab === "history" ? "block" : "none" }}>
-        <HistoryTab log={log} />
-      </div>
+      <InPageTabs label="Cấu hình Email (SMTP)" tabs={TABS.map((t) => ({ id: t.id, label: t.label, panel: panels[t.id] }))} />
     </div>
   );
+}
+
+/** Giá trị form cấu hình (trừ port/secure — 2 trường này là state). Dùng để biết "có thay đổi chưa lưu". */
+type SmtpFormValues = { isEnabled: boolean; fromEmail: string; fromName: string; replyTo: string; host: string; username: string; password: string };
+
+function readSmtpForm(form: HTMLFormElement): SmtpFormValues {
+  const data = new FormData(form);
+  const text = (name: string) => String(data.get(name) ?? "");
+  return {
+    isEnabled: data.get("isEnabled") !== null,
+    fromEmail: text("fromEmail"),
+    fromName: text("fromName"),
+    replyTo: text("replyTo"),
+    host: text("host"),
+    username: text("username"),
+    password: text("password"),
+  };
+}
+
+/**
+ * Ghi lại giá trị đã gửi vào các ô sau khi React reset form (task 1.8b) — KHÔNG ghi ô mật khẩu: để trống = giữ mật khẩu
+ * đã lưu (nghiệp vụ hiện có), và không đưa secret vừa gõ trở lại DOM.
+ */
+function restoreSmtpForm(form: HTMLFormElement, values: SmtpFormValues) {
+  const field = (name: string) => form.elements.namedItem(name);
+  const enabled = field("isEnabled");
+  if (enabled instanceof HTMLInputElement) enabled.checked = values.isEnabled;
+  for (const name of ["fromEmail", "fromName", "replyTo", "host", "username"] as const) {
+    const input = field(name);
+    if (input instanceof HTMLInputElement) input.value = values[name];
+  }
+}
+
+function sameValues(a: SmtpFormValues, b: SmtpFormValues) {
+  return (Object.keys(a) as (keyof SmtpFormValues)[]).every((key) => a[key] === b[key]);
 }
 
 function ConfigTab({ initial }: { initial: SmtpInitial }) {
@@ -89,8 +102,58 @@ function ConfigTab({ initial }: { initial: SmtpInitial }) {
   const [port, setPort] = useState(initial.port || 587);
   const [secure, setSecure] = useState(initial.secure);
 
+  // ADR-058 mục 5 — theo dõi "có thay đổi chưa lưu" phía client (form không kiểm soát → đọc FormData khi có thay đổi).
+  // Mốc = giá trị đang hiển thị lúc tải (khớp `defaultValue`); lưu thành công → mốc = giá trị vừa gửi (mật khẩu rỗng).
+  // Task 1.8b — React 19 reset ô không kiểm soát sau MỌI lần action chạy xong, kể cả khi action trả lỗi → mất dữ liệu đã
+  // gõ. Chụp giá trị lúc `onSubmit`, sau khi reset ghi lại vào ô (trừ mật khẩu). Thành công thì giá trị đó cũng chính là
+  // giá trị đã lưu nên ghi lại vô hại; lỗi thì người dùng sửa tiếp được, chỉ cần gõ lại mật khẩu nếu đã nhập.
+  const initialValues: SmtpFormValues = {
+    isEnabled: initial.isEnabled,
+    fromEmail: initial.fromEmail,
+    fromName: initial.fromName,
+    replyTo: initial.replyTo,
+    host: initial.host || "smtp.gmail.com",
+    username: initial.username,
+    password: "",
+  };
+  const [values, setValues] = useState<SmtpFormValues>(initialValues);
+  const [savedValues, setSavedValues] = useState<SmtpFormValues>(initialValues);
+  const [savedTransport, setSavedTransport] = useState({ port: initial.port || 587, secure: initial.secure });
+  const [submitted, setSubmitted] = useState<{ values: SmtpFormValues; port: number; secure: boolean } | null>(null);
+  // Bản chụp cho trình xử lý `reset` (chạy ngoài render) — chỉ ghi/đọc trong event handler.
+  const submittedRef = useRef<SmtpFormValues | null>(null);
+  const [prevState, setPrevState] = useState(state);
+  if (state !== prevState) {
+    setPrevState(state);
+    if (state.success && submitted) {
+      setSavedValues({ ...submitted.values, password: "" });
+      setSavedTransport({ port: submitted.port, secure: submitted.secure });
+    }
+  }
+  const dirty = !sameValues(values, savedValues) || port !== savedTransport.port || secure !== savedTransport.secure;
+  useUnsavedChanges(dirty, "Cấu hình SMTP có thay đổi chưa lưu. Rời trang và bỏ thay đổi?");
+
   return (
-    <form action={formAction} className="space-y-5">
+    <form
+      action={formAction}
+      className="space-y-5"
+      onChange={(event) => setValues(readSmtpForm(event.currentTarget))}
+      onSubmit={(event) => {
+        const snapshot = readSmtpForm(event.currentTarget);
+        submittedRef.current = snapshot;
+        setSubmitted({ values: snapshot, port, secure });
+      }}
+      onReset={(event) => {
+        const form = event.currentTarget;
+        const snapshot = submittedRef.current;
+        submittedRef.current = null;
+        // Sự kiện `reset` chạy TRƯỚC khi trình duyệt khôi phục giá trị → ghi lại/đọc ở tick sau.
+        window.setTimeout(() => {
+          if (snapshot) restoreSmtpForm(form, snapshot);
+          setValues(readSmtpForm(form));
+        }, 0);
+      }}
+    >
       <input type="hidden" name="port" value={port} />
       <input type="hidden" name="secure" value={secure ? "true" : "false"} />
 
@@ -229,8 +292,11 @@ function ConfigTab({ initial }: { initial: SmtpInitial }) {
       </div>
 
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs text-gray-500">🔒 Mật khẩu được mã hoá AES-256-GCM trước khi lưu vào DB.</p>
+        <p className="inline-flex items-center gap-1.5 text-xs text-gray-500">
+          <IconLock className="h-3.5 w-3.5 shrink-0" /> Mật khẩu được mã hoá AES-256-GCM trước khi lưu vào DB.
+        </p>
         <div className="flex items-center gap-3">
+          {dirty ? <Badge tone="warning">Có thay đổi chưa lưu</Badge> : null}
           <FormBanner ok={Boolean(state.success)} message={state.error ?? (state.success ? "Đã lưu." : undefined)} />
           <PrimaryButton loading={isPending}>{isPending ? "Đang lưu..." : "Lưu cấu hình"}</PrimaryButton>
         </div>

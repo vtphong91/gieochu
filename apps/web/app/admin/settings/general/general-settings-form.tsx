@@ -3,8 +3,10 @@
 import { useActionState, useEffect, useRef, useState, type ReactNode } from "react";
 // Subpath (không qua barrel "@gieochu/core") — barrel kéo theo code server-only, vỡ bundle client.
 import type { SystemSettingKey, SystemSettingsValues, SYSTEM_SETTINGS_BOUNDS } from "@gieochu/core/system-settings";
-import { ConfigCard, FormBanner, GhostButton, PrimaryButton, TextField } from "../../_ui/kit";
+import { FormBanner, GhostButton, PrimaryButton, TextField } from "../../_ui/kit";
 import { IconPackage, IconShield } from "../../_ui/icons";
+import { CollapsibleSection, revealSection, sectionStatus } from "../../_ui/collapsible-section";
+import { useUnsavedChanges } from "../../_ui/unsaved-changes";
 import { updateSystemSettingsAction } from "./actions";
 
 type ActionState = Awaited<ReturnType<typeof updateSystemSettingsAction>>;
@@ -81,6 +83,9 @@ function toStrings(values: SystemSettingsValues): Record<SystemSettingKey, strin
  * giá trị đã gõ (React 19 tự reset ô không kiểm soát sau form action). Lưu lỗi có lỗi theo ô → hiện bảng tóm tắt lỗi
  * đầu form (focus vào đó, mỗi dòng là link tới ô) và giữ lỗi ngay dưới từng ô. Khoá `inactiveKeys` bị ẩn — action
  * không bắt buộc gửi (vắng = giữ giá trị cũ).
+ * ADR-058 (task 1.9): mỗi nhóm là một `CollapsibleSection` — nhóm đầu mở, nhóm sau thu gọn; badge "N lỗi"/"Có thay đổi"
+ * theo nhóm, nhóm có lỗi tự mở, link trong bảng tóm tắt lỗi mở nhóm trước khi nhảy tới ô. "Có thay đổi" = so `fields`
+ * với giá trị đã nạp (cập nhật thành giá trị vừa gửi khi lưu thành công) → `useUnsavedChanges`.
  */
 export function GeneralSettingsForm({
   values,
@@ -93,6 +98,13 @@ export function GeneralSettingsForm({
 }) {
   const [state, formAction, isPending] = useActionState(updateSystemSettingsAction, initialState);
   const [fields, setFields] = useState<Record<SystemSettingKey, string>>(() => toStrings(values));
+  const [savedFields, setSavedFields] = useState<Record<SystemSettingKey, string>>(() => toStrings(values));
+  const [submittedFields, setSubmittedFields] = useState<Record<SystemSettingKey, string> | null>(null);
+  const [prevState, setPrevState] = useState(state);
+  if (state !== prevState) {
+    setPrevState(state);
+    if (state.ok && submittedFields) setSavedFields(submittedFields);
+  }
   const summaryRef = useRef<HTMLDivElement>(null);
 
   const hidden = new Set(inactiveKeys);
@@ -115,9 +127,13 @@ export function GeneralSettingsForm({
   }, [state]);
 
   const isDefault = visibleKeys.every((key) => fields[key] === String(bounds[key].default));
+  const isDirty = visibleKeys.some((key) => fields[key] !== savedFields[key]);
+  useUnsavedChanges(isDirty, "Cấu hình chung có thay đổi chưa lưu. Rời trang và bỏ thay đổi?");
+  const sectionIdOf = (groupId: string) => `nhom-${groupId}`;
+  const groupOfKey = (key: SystemSettingKey) => groups.find((group) => group.keys.includes(key))?.id;
 
   return (
-    <form action={formAction} noValidate className="mt-6 space-y-6">
+    <form action={formAction} noValidate className="mt-6 space-y-6" onSubmit={() => setSubmittedFields(fields)}>
       {errorKeys.length > 0 ? (
         <div
           ref={summaryRef}
@@ -133,7 +149,15 @@ export function GeneralSettingsForm({
           <ul className="mt-1.5 list-disc space-y-1 pl-5">
             {errorKeys.map((key) => (
               <li key={key}>
-                <a href={`#${key}`} className="underline underline-offset-2">
+                <a
+                  href={`#${key}`}
+                  className="underline underline-offset-2"
+                  onClick={() => {
+                    // Mở nhóm chứa ô (đồng bộ) trước khi trình duyệt cuộn tới ô — ô trong nhóm thu gọn đang `hidden`.
+                    const groupId = groupOfKey(key);
+                    if (groupId) revealSection(sectionIdOf(groupId));
+                  }}
+                >
                   {fieldErrors[key]}
                 </a>
               </li>
@@ -142,34 +166,48 @@ export function GeneralSettingsForm({
         </div>
       ) : null}
 
-      <div className="grid items-start gap-6 xl:grid-cols-2">
-        {groups.map((group) => (
-          <ConfigCard key={group.id} icon={group.icon} title={group.title} description={group.description}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {group.keys.map((key) => {
-                const bound = bounds[key];
-                return (
-                  <TextField
-                    key={key}
-                    id={key}
-                    name={key}
-                    label={`${bound.label} (${bound.unit})`}
-                    type="number"
-                    inputMode="numeric"
-                    min={bound.min}
-                    max={bound.max}
-                    step={1}
-                    required
-                    value={fields[key]}
-                    onChange={(e) => setFields((prev) => ({ ...prev, [key]: e.target.value }))}
-                    hint={hintFor(key, bounds)}
-                    error={fieldErrors[key]}
-                  />
-                );
-              })}
-            </div>
-          </ConfigCard>
-        ))}
+      {/* Accordion xếp 1 cột (khối thu gọn cạnh khối mở trên lưới 2 cột sẽ lệch hàng); ô trong nhóm vẫn 2 cột từ sm. */}
+      <div className="space-y-4">
+        {groups.map((group, index) => {
+          const groupErrors = group.keys.filter((key) => fieldErrors[key]).length;
+          const groupDirty = group.keys.some((key) => fields[key] !== savedFields[key]);
+          return (
+            <CollapsibleSection
+              key={group.id}
+              id={sectionIdOf(group.id)}
+              defaultOpen={index === 0}
+              icon={group.icon}
+              title={group.title}
+              description={group.description}
+              status={sectionStatus({ errorCount: groupErrors, dirty: groupDirty })}
+              errorCount={groupErrors}
+            >
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {group.keys.map((key) => {
+                  const bound = bounds[key];
+                  return (
+                    <TextField
+                      key={key}
+                      id={key}
+                      name={key}
+                      label={`${bound.label} (${bound.unit})`}
+                      type="number"
+                      inputMode="numeric"
+                      min={bound.min}
+                      max={bound.max}
+                      step={1}
+                      required
+                      value={fields[key]}
+                      onChange={(e) => setFields((prev) => ({ ...prev, [key]: e.target.value }))}
+                      hint={hintFor(key, bounds)}
+                      error={fieldErrors[key]}
+                    />
+                  );
+                })}
+              </div>
+            </CollapsibleSection>
+          );
+        })}
       </div>
 
       <div className="flex flex-col gap-3 rounded-2xl border bg-white p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5" style={{ borderColor: "#E5E7EB" }}>

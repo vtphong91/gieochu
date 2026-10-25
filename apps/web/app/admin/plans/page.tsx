@@ -16,7 +16,8 @@ export default async function AdminPlansPage({ searchParams }: { searchParams: P
   const plans = await prisma.plan.findMany({ orderBy: { priceVnd: "asc" } });
 
   return (
-    <main className="px-5 py-8 lg:px-8">
+    // Wrapper <div>: layout admin đã có <main>.
+    <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader
         title="Gói dịch vụ"
         subtitle="Quản lý các gói subscription — giới hạn, giá, tính năng theo từng gói."
@@ -81,6 +82,6 @@ export default async function AdminPlansPage({ searchParams }: { searchParams: P
           </SettingsGrid>
         </div>
       ) : null}
-    </main>
+    </div>
   );
 }

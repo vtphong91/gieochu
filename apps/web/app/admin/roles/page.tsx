@@ -10,7 +10,8 @@ export default async function AdminRolesPage() {
   const [system, tenantOwners] = await Promise.all([getSystemRoleCounts(), getTenantOwnerCount()]);
 
   return (
-    <main className="space-y-8 px-5 py-8 lg:px-8">
+    // Wrapper <div>: layout admin đã có <main>.
+    <div className="space-y-8 px-5 py-8 lg:px-8">
       <AdminPageHeader
         title="Phân quyền hệ thống"
         subtitle={
@@ -133,6 +134,6 @@ export default async function AdminRolesPage() {
           biết URL chính xác cũng chỉ nhận 404, không lấy được dữ liệu gì.
         </p>
       </section>
-    </main>
+    </div>
   );
 }

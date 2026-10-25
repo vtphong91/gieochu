@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { isSystemCmsSlug, LEGAL_DOCUMENT_DEFS, LEGAL_DOCUMENT_KEYS, legalDocumentPath, NAV_PAGE_LABELS, NAV_PAGE_PATHS, type NavPageKey } from "@gieochu/core";
 import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 import { getPrismaClient } from "@gieochu/db";
@@ -5,7 +6,12 @@ import { requireAdminAccess } from "../../../../lib/page-guards";
 import { getEffectiveLegalKeys } from "../../../../lib/legal";
 import { getSiteMenuEditorData } from "../../../../lib/site-menu";
 import { AdminPageHeader, Notice } from "../../_ui/kit";
+import { ModuleTabs } from "../../_ui/module-tabs";
+import { CMS_MENU_TAB, CMS_TABS, CMS_TABS_LABEL } from "../_ui/cms-tabs";
 import { MenuEditor, type MenuPageOption } from "./menu-editor";
+
+/** ADR-058: title riêng theo tab. */
+export const metadata: Metadata = { title: "Header & Footer — Trang CMS" };
 
 /**
  * ADR-050 mục 1 — editor menu header/footer (`CmsPage` slug `menu`). Segment tĩnh `menu` thắng `[slug]`, xử lý được
@@ -39,10 +45,12 @@ export default async function AdminMenuCmsPage() {
 
   return (
     <div className="px-5 py-8 lg:px-8">
+      {/* ADR-058: tab "Header & Footer" của nhóm Trang CMS — h1 là tên nhóm. */}
       <AdminPageHeader
-        title="Menu header & footer"
-        subtitle="Chỉnh các mục menu đầu trang, nút kêu gọi và các cột chân trang dùng chung mọi trang công khai. Lưu nháp trước, Xuất bản khi sẵn sàng."
+        title="Trang CMS"
+        subtitle="Header & Footer — chỉnh các mục menu đầu trang, nút kêu gọi và các cột chân trang dùng chung mọi trang công khai. Lưu nháp trước, Xuất bản khi sẵn sàng."
       />
+      <ModuleTabs label={CMS_TABS_LABEL} items={CMS_TABS} current={CMS_MENU_TAB} />
       <div className="mt-6">
         <Notice tone="info">
           Dòng bản quyền dùng được <code>{"{năm}"}</code> (năm hiện tại theo giờ Việt Nam) và <code>{"{brand}"}</code> (tên nền tảng). “Đăng nhập” và menu tài

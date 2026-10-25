@@ -12,7 +12,8 @@ export default async function AdminBrandingSettingsPage() {
   const defaultBrand = DEFAULT_BRAND;
 
   return (
-    <main className="px-5 py-8 lg:px-8">
+    // Wrapper <div>: layout admin đã có <main>.
+    <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader
         title="Nhận diện thương hiệu"
         subtitle="Logo, favicon, tên, slogan và màu sắc áp dụng cho toàn bộ hệ thống — System Center, Studio và trang khách hàng."
@@ -38,6 +39,6 @@ export default async function AdminBrandingSettingsPage() {
           secondaryColorHex: branding?.secondaryColorHex ?? "",
         }}
       />
-    </main>
+    </div>
   );
 }
