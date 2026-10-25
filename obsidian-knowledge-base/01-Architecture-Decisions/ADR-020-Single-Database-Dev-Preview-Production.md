@@ -36,7 +36,9 @@ Một DB duy nhất. Hệ quả bắt buộc — **mọi thao tác DB trên máy
 2. **Không chạy `pnpm db:seed`** — seed ghi đè nội dung trang chủ CMS (`CmsPage` slug `home`, `update: { blocks, blocksDraft:
    null }` ✅ `packages/db/prisma/seed.ts`). Thay đổi dữ liệu hệ thống qua UI System Center.
 3. **Integration test và script thủ công ghi dữ liệu thật** vào production (tạo rồi dọn user/tenant/đơn tạm, có thể gửi email
-   tới `@example.test`). Chỉ chạy khi cần; luôn dọn dữ liệu, không đụng cấu hình dùng chung (`shared-config-snapshot`), không
+   tới `@example.test`). Chỉ chạy khi cần; luôn dọn dữ liệu, không đụng cấu hình dùng chung (từ 2026-10-25: **mock lớp đọc cấu hình** — `lib/system-storage`,
+   `getPlatformPaymentConfigRow` — không ghi, không snapshot/restore bảng singleton; helper `shared-config-snapshot` đã xoá — theo
+   ADR-034 mục 3 đã sửa trong `docs/DECISIONS.md`), không
    chạy luồng gửi email tới địa chỉ thật.
 4. **Dữ liệu demo** (`demo:seed` — khách `demo+…@gieochu.test`, sản phẩm `demo-*` của tenant `phongweb`) **đang nằm trên
    production và hiển thị công khai** 🟡 — phải dọn bằng `demo:clean` trước khi mở cho người dùng thật.

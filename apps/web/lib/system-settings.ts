@@ -8,6 +8,7 @@ import {
   SYSTEM_SETTING_KEYS,
   SYSTEM_SETTINGS_BOUNDS,
   systemSettingsSchema,
+  validateSessionSettings,
   type SystemSettingKey,
   type SystemSettingsValues,
 } from "@gieochu/core";
@@ -98,7 +99,7 @@ export interface SystemSettingsActionState {
 }
 
 /**
- * Validate (zod, ngoài khoảng → từ chối cả form) rồi ghi 11 khoá, log thay đổi cũ→mới. Người gọi
+ * Validate (zod, ngoài khoảng → từ chối cả form) rồi ghi mọi khoá cấu hình, log thay đổi cũ→mới. Người gọi
  * (Server Action) đã `requireRole("SYSTEM_ADMIN")`. Chỉ ghi các khoá cấu hình — không đụng
  * `supportEmail` (form /admin/settings).
  */
@@ -123,6 +124,11 @@ export async function saveSystemSettings(actor: CurrentUser, formData: FormData)
   }
 
   const next = parsed.data as SystemSettingsValues;
+  // ADR-053: ràng buộc chéo của chính sách phiên (cảnh báo < idle, idle ≤ thời hạn tối đa).
+  const sessionErrors = validateSessionSettings(next);
+  if (Object.keys(sessionErrors).length > 0) {
+    return { ok: false, code: ErrorCodes.VALIDATION_ERROR, error: "Có giá trị không hợp lệ, vui lòng kiểm tra lại.", fieldErrors: sessionErrors };
+  }
   await getPrismaClient().systemSettings.upsert({
     where: { id: CONFIG_ID },
     update: { ...next, updatedById: actor.userId },

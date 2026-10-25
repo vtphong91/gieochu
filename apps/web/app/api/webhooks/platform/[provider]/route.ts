@@ -4,6 +4,7 @@ import { logger } from "@gieochu/core";
 import { getEnv } from "@gieochu/config";
 import { getPrismaClient, Prisma, withSystemJob } from "@gieochu/db";
 import { markInvoicePaid } from "../../../../../lib/subscription-billing";
+import { getPlatformPaymentConfigRow } from "../../../../../lib/platform-payment";
 
 const VALID_PROVIDERS = new Set<PaymentProviderId>(["SEPAY", "MOMO"]);
 
@@ -29,7 +30,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
   });
 
   const prisma = getPrismaClient();
-  const configRow = await prisma.platformPaymentConfig.findUnique({ where: { provider: providerId } });
+  const configRow = await getPlatformPaymentConfigRow(providerId);
   if (!configRow || !configRow.isEnabled) {
     return NextResponse.json({ error: "not_configured" }, { status: 404 });
   }

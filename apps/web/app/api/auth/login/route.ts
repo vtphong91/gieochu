@@ -1,9 +1,18 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createRefreshToken, isProfileComplete, normalizeEmail, signAccessToken, verifyPassword } from "@gieochu/auth";
+import {
+  describeUserAgent,
+  isProfileComplete,
+  issueRefreshToken,
+  normalizeEmail,
+  refreshCookieMaxAgeSeconds,
+  sessionExpiresAt,
+  verifyPassword,
+} from "@gieochu/auth";
 import { AppError } from "@gieochu/core";
 import { getPrismaClient } from "@gieochu/db";
-import { getAccessTokenTtlSeconds, getJwtContext, getRefreshTokenTtl } from "../../../../lib/jwt-context";
+import { getSessionPolicy } from "../../../../lib/jwt-context";
+import { signSessionAccessToken } from "../../../../lib/session-access";
 import { applyAuthCookies } from "../../../../lib/cookies";
 import { getRequestId, handleApiError, parseJsonBody } from "../../../../lib/api-response";
 import { checkRateLimit } from "../../../../lib/rate-limit";
@@ -14,6 +23,8 @@ import { audit, auditMetaFromRequest } from "../../../../lib/audit";
 const loginSchema = z.object({
   email: z.string().email("Email không hợp lệ."),
   password: z.string().min(1),
+  /** ADR-053: "Ghi nhớ đăng nhập" (mặc định tắt). SYSTEM_ADMIN: server bỏ qua (`resolveSessionPolicy`). */
+  rememberMe: z.boolean().optional().default(false),
 });
 
 const INVALID_CREDENTIALS = new AppError({
@@ -94,8 +105,9 @@ export async function POST(request: Request) {
 
     const now = new Date();
     const familyId = crypto.randomUUID();
-    const [refreshTtl, accessTtl] = await Promise.all([getRefreshTokenTtl(), getAccessTokenTtlSeconds()]);
-    const refresh = createRefreshToken(familyId, refreshTtl.days, now);
+    // ADR-053: chính sách phiên theo vai trò + "Ghi nhớ"; hạn refresh = lúc đăng nhập + absolute (không trượt).
+    const policy = await getSessionPolicy(user.systemRole, body.rememberMe);
+    const refresh = issueRefreshToken(familyId, sessionExpiresAt(now, policy));
     const ip = getClientIp(request);
     const userAgent = request.headers.get("user-agent") ?? undefined;
 
@@ -108,6 +120,9 @@ export async function POST(request: Request) {
           expiresAt: refresh.expiresAt,
           userAgent,
           ip,
+          rememberMe: policy.rememberMe,
+          sessionStartedAt: now,
+          deviceLabel: describeUserAgent(userAgent),
         },
       }),
       prisma.userProfile.findUnique({ where: { userId: user.id } }),
@@ -117,10 +132,9 @@ export async function POST(request: Request) {
     await audit.log({ actorId: user.id, scope: "SYSTEM", action: "AUTH_LOGIN", targetType: "User", targetId: user.id, ...requestMeta });
 
     const profileCompleted = isProfileComplete(profile);
-    const accessToken = await signAccessToken(
-      { sub: user.id, sid: familyId, role: user.systemRole, ver: true, pc: profileCompleted },
-      getJwtContext(),
-      accessTtl,
+    const { accessToken, accessTtlSeconds } = await signSessionAccessToken(
+      { userId: user.id, familyId, role: user.systemRole, emailVerified: true, profileCompleted },
+      policy,
     );
 
     const landingPath = await resolveLandingPath({ userId: user.id, role: user.systemRole });
@@ -129,9 +143,9 @@ export async function POST(request: Request) {
     });
     applyAuthCookies(response, {
       accessToken,
-      accessTtlSeconds: accessTtl,
+      accessTtlSeconds,
       refreshToken: refresh.token,
-      refreshTtlSeconds: refreshTtl.seconds,
+      refreshMaxAgeSeconds: refreshCookieMaxAgeSeconds(policy, refresh.expiresAt, now),
     });
     return response;
   } catch (error) {

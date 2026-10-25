@@ -16,6 +16,12 @@ Quy trình cho **System Admin** (thường là chủ dự án) đưa một phiê
 [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]]; quyết định: [[01-Architecture-Decisions/ADR-035-Menu-Home-Seo-Versioned-Terms|ADR-035 KB (≙ ADR-050)]].
 
 > Mức xác minh: ✅ Long đối chiếu code working tree 2026-10-23 (chưa commit) · 🟡 brief Quốc · ❓ chưa chạy trên môi trường thật.
+> **Từ ADR-054 (2026-10-24, code chưa commit):** cùng quy trình áp cho **7 văn bản** (chọn văn bản bằng `?van-ban=<khoá>` ở `/admin/cms/phap-ly`); mỗi
+> văn bản có URL **cấp gốc** (`/dieu-khoan-su-dung`, `/chinh-sach-bao-mat`, …) — `/phap-ly/{slug}` cũ redirect 308. Bản hiệu lực đầu tiên của
+> Chính sách bảo mật làm form đăng ký ghi thêm chấp thuận văn bản đó; của Chính sách người bán làm form mở gian hàng **bắt buộc** tích ô đồng ý. Mô tả
+> ngắn + SEO sửa ở khung "Mô tả & SEO" (lưu thẳng). Migration ADR-054 phải chạy trước — `Deploy-Vercel-Runbook` §9.14 (DB dùng chung: đã chạy 2026-10-24 🟡). Chi tiết:
+> [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]].
+>
 > Nhãn nút/ô dưới đây là của editor hiện tại ✅ `app/admin/cms/phap-ly/legal-editor.tsx`; Phong đang làm UI 🟡 — chữ có thể đổi, **luật thì không**.
 
 ---
@@ -64,7 +70,7 @@ ngày, hoặc đúng giờ đã lên lịch):
   phải đăng ký lại sau khi tải trang (form cũ còn cache, không gửi id → server tự ghi bản đang hiệu lực).
 - Người dùng **đã có tài khoản** không bị yêu cầu chấp thuận lại (ADR-050) — không có dòng chấp thuận cho họ.
 
-Sau khi xuất bản, kiểm nhanh ❓ (chưa làm trên môi trường thật): mở `/phap-ly/dieu-khoan-su-dung` (hiện "Phiên bản n.0 · Có hiệu lực từ …"), mở `/register`
+Sau khi xuất bản, kiểm nhanh ❓ (chưa làm trên môi trường thật): mở `/dieu-khoan-su-dung` (từ ADR-054; trước đó `/phap-ly/dieu-khoan-su-dung`) (hiện "Phiên bản n.0 · Có hiệu lực từ …"), mở `/register`
 xem link mới, đăng ký thử **chỉ** bằng email kiểm thử (không gửi email tới địa chỉ thật của người khác — CLAUDE.md, ADR-034).
 
 ---
@@ -74,7 +80,7 @@ xem link mới, đăng ký thử **chỉ** bằng email kiểm thử (không g�
 - **Bản mới:** lặp lại §1 trên một phiên bản mới (số tăng). Bản cũ **không** tự lưu trữ: nhiều bản PUBLISHED cùng tồn tại, bản hiệu lực là bản
   PUBLISHED có ngày hiệu lực ≤ hiện tại **mới nhất**. Đặt ngày tương lai để báo trước cho người dùng (cách báo trước chưa có — giai đoạn pháp lý ❓).
 - **Lưu trữ** (`LEGAL_VERSION_ARCHIVED`): chỉ bản đã xuất bản; dùng để dọn bản cũ đã bị thay. Lưu trữ bản đang hiệu lực → bản PUBLISHED trước đó (nếu còn) tự hiệu lực lại ("Bổ sung ADR-050 lần 2"). ⚠️ Lưu trữ **bản đang hiệu lực** mà không còn bản PUBLISHED
-  nào khác có hiệu lực → `/phap-ly/dieu-khoan-su-dung` trả **404** và đăng ký quay về không ghi chấp thuận (editor có cảnh báo trong hộp xác nhận).
+  nào khác có hiệu lực → `/dieu-khoan-su-dung` trả **404** (link footer "Thông tin" tự ẩn — ADR-054) và đăng ký quay về không ghi chấp thuận (editor có cảnh báo trong hộp xác nhận).
   Lưu trữ là một chiều — không khôi phục được từ app.
 - **Sai sót sau khi xuất bản:** không sửa được bản đã xuất bản; tạo phiên bản mới đã sửa, xuất bản ngay (bản mới hơn thắng), rồi lưu trữ bản lỗi nếu cần.
   Các dòng chấp thuận đã ghi cho bản lỗi **giữ nguyên** (FK `Restrict`, không xoá được bản đã có người chấp thuận).

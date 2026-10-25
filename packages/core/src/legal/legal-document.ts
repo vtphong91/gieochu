@@ -7,24 +7,42 @@
  *  - Bản đã phát hành bất biến (trigger DB) — sửa = tạo phiên bản mới.
  */
 
-/** Đợt 1 chỉ một văn bản. Khoá ổn định trong code → slug URL dưới `/phap-ly/`. */
+/**
+ * ADR-054 — 7 văn bản, mỗi văn bản một URL **cấp gốc** `/{slug}` (route tĩnh trong `apps/web/app/{slug}/`, thắng
+ * `app/[tenantSlug]`; slug nằm trong `RESERVED_SLUGS` tenant). Khoá ổn định trong code; `title` chỉ dùng khi tạo dòng
+ * `legal_documents` lần đầu (sau đó trang đọc tiêu đề trong DB). Thứ tự khai báo = thứ tự trong editor + cột footer
+ * "Thông tin". Thêm văn bản mới: thêm ở đây + tạo thư mục route mỏng + quét slug tenant trùng trên DB.
+ */
 export const LEGAL_DOCUMENT_DEFS = {
   terms: { key: "terms", slug: "dieu-khoan-su-dung", title: "Điều khoản sử dụng" },
+  privacy: { key: "privacy", slug: "chinh-sach-bao-mat", title: "Chính sách bảo mật" },
+  content_policy: { key: "content_policy", slug: "chinh-sach-noi-dung", title: "Chính sách nội dung" },
+  copyright: { key: "copyright", slug: "cam-ket-ban-quyen", title: "Cam kết bản quyền và nguồn gốc tài liệu" },
+  usage_license: { key: "usage_license", slug: "quyen-su-dung-tai-lieu", title: "Quyền sử dụng tài liệu" },
+  seller: { key: "seller", slug: "chinh-sach-nguoi-ban", title: "Chính sách người bán" },
+  contact: { key: "contact", slug: "lien-he", title: "Liên hệ và thông tin pháp lý" },
 } as const;
 export type LegalDocumentKey = keyof typeof LEGAL_DOCUMENT_DEFS;
 
 export const LEGAL_DOCUMENT_KEYS = Object.keys(LEGAL_DOCUMENT_DEFS) as LegalDocumentKey[];
 
+/** Slug cấp gốc của mọi văn bản — `RESERVED_SLUGS` (tenant) đọc từ đây. */
+export const LEGAL_DOCUMENT_ROOT_SLUGS: readonly string[] = LEGAL_DOCUMENT_KEYS.map((key) => LEGAL_DOCUMENT_DEFS[key].slug);
+
 export function isLegalDocumentKey(value: unknown): value is LegalDocumentKey {
   return typeof value === "string" && Object.prototype.hasOwnProperty.call(LEGAL_DOCUMENT_DEFS, value);
 }
 
-export const LEGAL_BASE_PATH = "/phap-ly";
+/** Tiền tố URL cũ (ADR-050) — `/phap-ly/{slug}` nay chỉ redirect 308 sang `/{slug}` (ADR-054). */
+export const LEGAL_LEGACY_BASE_PATH = "/phap-ly";
 
-/** `/phap-ly/{slug}` của văn bản. */
+/** `/{slug}` (cấp gốc) của văn bản. */
 export function legalDocumentPath(key: LegalDocumentKey): string {
-  return `${LEGAL_BASE_PATH}/${LEGAL_DOCUMENT_DEFS[key].slug}`;
+  return `/${LEGAL_DOCUMENT_DEFS[key].slug}`;
 }
+
+/** Mô tả ngắn (fallback mô tả SEO) — cùng mức tối đa với mô tả SEO; CHECK DB `legal_documents_meta_length`. */
+export const LEGAL_SUMMARY_MAX = 320;
 
 /** Tra khoá từ slug URL; `null` = không phải văn bản đã khai báo. */
 export function legalKeyFromSlug(slug: string): LegalDocumentKey | null {
@@ -65,6 +83,10 @@ export const LEGAL_ERROR_CODES = {
   INVALID_INPUT: "LEGAL_INVALID_INPUT",
   CONFLICT: "LEGAL_VERSION_CONFLICT",
   TERMS_CHANGED: "LEGAL_TERMS_CHANGED",
+  /** ADR-054: văn bản khác Điều khoản (Bảo mật, Người bán…) vừa có bản hiệu lực mới giữa lúc mở form và lúc gửi. */
+  DOCUMENT_CHANGED: "LEGAL_DOCUMENT_CHANGED",
+  /** ADR-054: văn bản có bản hiệu lực nhưng người dùng chưa tích đồng ý (vd Chính sách người bán khi mở gian hàng). */
+  ACCEPTANCE_REQUIRED: "LEGAL_ACCEPTANCE_REQUIRED",
 } as const;
 
 export type LegalPublishBlocker = "PLACEHOLDER" | "NOT_APPROVED" | "EMPTY" | "NOT_DRAFT";

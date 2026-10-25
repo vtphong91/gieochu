@@ -66,6 +66,8 @@ model User {
   abuseReportsResolved AbuseReport[]       @relation("AbuseReportResolver")
   orderNotesAuthored   OrderNote[]         @relation("OrderNoteAuthor")
   legalAcceptances     UserLegalAcceptance[]
+  tenantEditorDrafts   TenantEditorDraft[]
+  systemEditorDrafts   SystemEditorDraft[]
 
   @@map("users")
 }
@@ -91,21 +93,34 @@ model UserProfile {
 
 /// §5.1 Layer System — REFRESH_TOKENS (rotated on every use; reuse of a
 /// replaced token revokes the whole familyId — see M1 sequence diagram).
+/// ADR-053: một familyId = một phiên đăng nhập (một thiết bị). rememberMe/sessionStartedAt/userAgent/ip/deviceLabel
+/// chép nguyên sang token mới mỗi lần rotate. "Hoạt động gần nhất" của phiên = createdAt của token còn hiệu lực
+/// (rotate chỉ xảy ra khi người dùng có thao tác) — không cần cột lastUsedAt. sessionStartedAt NULL = phiên tạo trước
+/// ADR-053 (code coi như bắt đầu từ lần rotate đầu tiên sau deploy).
 model RefreshToken {
-  id           String    @id @default(cuid(2))
-  userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  familyId     String
-  tokenHash    String    @unique
-  expiresAt    DateTime
-  revokedAt    DateTime?
-  replacedById String?
-  userAgent    String?
-  ip           String?
-  createdAt    DateTime  @default(now())
+  id               String    @id @default(cuid(2))
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyId         String
+  tokenHash        String    @unique
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  replacedById     String?
+  userAgent        String?
+  ip               String?
+  /// ADR-053: true = cookie refresh persistent tới hết absolute (rememberMeDays); false = session cookie. SYSTEM_ADMIN luôn false.
+  rememberMe       Boolean   @default(false)
+  /// ADR-053: thời điểm đăng nhập của phiên (không trượt khi rotate) — mốc tính absolute timeout.
+  sessionStartedAt DateTime?
+  /// ADR-053: nhãn thiết bị đã parse từ User-Agent ở server (vd "Chrome · Windows") cho danh sách thiết bị.
+  deviceLabel      String?
+  createdAt        DateTime  @default(now())
 
   @@index([userId])
   @@index([familyId])
+  /// ADR-053: cron dọn bản ghi hết hạn/đã thu hồi quá 90 ngày.
+  @@index([expiresAt])
+  @@index([revokedAt])
   @@map("refresh_tokens")
 }
 
@@ -337,6 +352,7 @@ model Tenant {
   abuseReports         AbuseReport[]
   subscriptionRefund   SubscriptionRefundRequest?
   orderNotes           OrderNote[]
+  editorDrafts         TenantEditorDraft[]
 
   @@map("tenants")
 }
@@ -532,6 +548,14 @@ model SystemSettings {
   orderPendingTtlMinutes    Int      @default(60)
   invoicePendingTtlHours    Int      @default(24)
   defaultDownloadLimit      Int      @default(5)
+  /// ADR-053 chính sách phiên (min/max ở packages/core/src/settings/system-settings.ts). refreshTokenTtlDays ở trên
+  /// không còn dùng sau khi code ADR-053 lên prod — thay bằng sessionAbsoluteHours/rememberMeDays (contract sau).
+  sessionIdleMinutes        Int      @default(60)
+  sessionAbsoluteHours      Int      @default(12)
+  rememberMeDays            Int      @default(30)
+  adminIdleMinutes          Int      @default(15)
+  adminAbsoluteHours        Int      @default(8)
+  sessionWarningMinutes     Int      @default(2)
   /// User (SYSTEM_ADMIN) sửa lần cuối — không đặt FK để xoá user không chặn/đổi cấu hình.
   updatedById               String?
   updatedAt                 DateTime @updatedAt
@@ -1475,9 +1499,15 @@ model LegalDocument {
   id        String                 @id @default(cuid(2))
   /// Khoá ổn định trong code (vd `terms`).
   key       String                 @unique
-  /// Segment URL dưới `/phap-ly/` (vd `dieu-khoan-su-dung`).
+  /// Segment URL cấp gốc `/{slug}` (vd `dieu-khoan-su-dung`, ADR-054; trước đó dưới `/phap-ly/`).
   slug      String                 @unique
   title     String
+  /// ADR-054 — mô tả ngắn (≤ 320, fallback mô tả SEO); sửa thẳng trong CMS, không theo phiên bản.
+  summary        String?
+  /// ADR-054 — tiêu đề SEO (≤ 120, token `{brand}`); trống → "{title} | {brand}".
+  seoTitle       String?
+  /// ADR-054 — mô tả SEO (≤ 320, token `{brand}`); trống → `summary`.
+  seoDescription String?
   createdAt DateTime               @default(now())
   updatedAt DateTime               @updatedAt
   versions  LegalDocumentVersion[]
@@ -1525,4 +1555,66 @@ model UserLegalAcceptance {
   @@unique([userId, versionId])
   @@index([versionId])
   @@map("user_legal_acceptances")
+}
+
+/// ADR-053 bổ sung lần 3 — loại thực thể của nháp tự động trong Studio (L2).
+enum TenantEditorDraftEntity {
+  POST
+  PRODUCT
+  STOREFRONT
+}
+
+/// ADR-053 bổ sung lần 3 — loại thực thể của nháp tự động trong System Center (L1).
+enum SystemEditorDraftEntity {
+  HOME
+  SHOP
+  PRICING
+  MENU
+  LEGAL_VERSION
+}
+
+/// ADR-053 bổ sung lần 3 — nháp tự động của editor Studio, **theo từng người dùng** (L2, RLS chỉ nhánh `tenant` +
+/// `system_job`; không public/customer/admin — §7.9). Truy cập qua `withTenant` + lọc `userId` ở server
+/// (`apps/web/lib/editor-draft.ts`). Autosave không bao giờ ghi vào bản đã lưu/live. `entityKey` = id thực thể hoặc
+/// `"new"` (trang Tạo). `revision` tăng mỗi lần lưu (xung đột nhiều tab); `clientId` = tab đã ghi. `payload` không ghi log.
+model TenantEditorDraft {
+  id            String                  @id @default(cuid(2))
+  tenantId      String
+  tenant        Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entityType    TenantEditorDraftEntity
+  entityKey     String
+  payload       Json
+  revision      Int                     @default(1)
+  clientId      String
+  /// `updatedAt` của bản đã lưu lúc nháp bắt đầu (null với thực thể mới) — để báo "dựa trên bản cũ hơn".
+  baseUpdatedAt DateTime?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  @@unique([tenantId, userId, entityType, entityKey])
+  @@index([updatedAt])
+  @@index([userId])
+  @@map("tenant_editor_drafts")
+}
+
+/// ADR-053 bổ sung lần 3 — nháp tự động của editor System Center (L1, không `tenantId`, không RLS). Chỉ truy cập qua
+/// `getPrismaClient()` sau `requireRole("SYSTEM_ADMIN")`. Cột như `TenantEditorDraft`.
+model SystemEditorDraft {
+  id            String                  @id @default(cuid(2))
+  userId        String
+  user          User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entityType    SystemEditorDraftEntity
+  entityKey     String
+  payload       Json
+  revision      Int                     @default(1)
+  clientId      String
+  baseUpdatedAt DateTime?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  @@unique([userId, entityType, entityKey])
+  @@index([updatedAt])
+  @@map("system_editor_drafts")
 }

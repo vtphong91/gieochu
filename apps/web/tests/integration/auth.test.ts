@@ -4,6 +4,7 @@ import { createVerificationToken, hashOpaqueToken, signAccessToken } from "@gieo
 import { getPrismaClient } from "@gieochu/db";
 import { getJwtContext, getAccessTokenTtlSeconds } from "../../lib/jwt-context";
 import { ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME } from "../../lib/cookies";
+import { resetRateLimits } from "../../lib/rate-limit";
 
 import { POST as register } from "../../app/api/auth/register/route";
 import { POST as verifyEmail } from "../../app/api/auth/verify-email/route";
@@ -44,6 +45,11 @@ async function activateUser(email: string): Promise<void> {
 }
 
 describe("M1 auth", () => {
+  // Rate limit đăng ký (10/IP/giờ, in-memory) — file này đăng ký >10 user trong cùng tiến trình.
+  beforeEach(() => {
+    resetRateLimits();
+  });
+
   afterAll(async () => {
     await prisma.user.deleteMany({ where: { email: { startsWith: RUN_PREFIX } } });
   });
@@ -133,7 +139,9 @@ describe("M1 auth", () => {
     expect(newRefreshToken).toBeTruthy();
     expect(newRefreshToken).not.toBe(oldRefreshToken);
 
-    // Reusing the now-replaced old token must revoke the whole family.
+    // Past the 30-second grace window (ADR-053), reusing the now-replaced old token must revoke the whole family.
+    const newTokenHash = hashOpaqueToken(newRefreshToken!);
+    await prisma.refreshToken.update({ where: { tokenHash: newTokenHash }, data: { createdAt: new Date(Date.now() - 60_000) } });
     const reuseAttempt = await refresh(
       new NextRequest("http://localhost/api/auth/refresh", {
         method: "POST",
@@ -145,9 +153,57 @@ describe("M1 auth", () => {
     expect(reuseBody.error.code).toBe("AUTH_REFRESH_REUSE");
 
     // The rotated (new) token must now be revoked too, since the whole family was.
-    const newTokenHash = hashOpaqueToken(newRefreshToken!);
     const newRecord = await prisma.refreshToken.findUnique({ where: { tokenHash: newTokenHash } });
     expect(newRecord?.revokedAt).not.toBeNull();
+  });
+
+  it("concurrent refreshes with the same token rotate once; the loser is rejected without revoking the family or clearing cookies", async () => {
+    const { email, password } = await registerUser();
+    await activateUser(email);
+    const loginResponse = await login(jsonRequest("http://localhost/api/auth/login", { email, password }));
+    const token = loginResponse.cookies.get(REFRESH_COOKIE_NAME)?.value;
+    expect(token).toBeTruthy();
+    const refreshWith = (value: string) =>
+      refresh(new NextRequest("http://localhost/api/auth/refresh", { method: "POST", headers: { cookie: `${REFRESH_COOKIE_NAME}=${value}` } }));
+
+    const results = await Promise.all([refreshWith(token!), refreshWith(token!)]);
+    const winners = results.filter((r) => r.status === 200);
+    const losers = results.filter((r) => r.status !== 200);
+    expect(winners).toHaveLength(1);
+    expect(losers).toHaveLength(1);
+    expect(losers[0]!.status).toBe(401);
+    expect((await losers[0]!.json()).error.code).toBe("AUTH_REFRESH_SUPERSEDED");
+    expect(losers[0]!.cookies.get(REFRESH_COOKIE_NAME)).toBeUndefined();
+    expect(losers[0]!.cookies.get(ACCESS_COOKIE_NAME)).toBeUndefined();
+
+    // A late request still carrying the old cookie (another tab) inside the grace window is also only "superseded".
+    const late = await refreshWith(token!);
+    expect(late.status).toBe(401);
+    expect((await late.json()).error.code).toBe("AUTH_REFRESH_SUPERSEDED");
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+    const active = await prisma.refreshToken.findMany({ where: { userId: user.id, revokedAt: null, replacedById: null } });
+    expect(active).toHaveLength(1);
+    const winnerToken = winners[0]!.cookies.get(REFRESH_COOKIE_NAME)?.value;
+    expect(active[0]!.tokenHash).toBe(hashOpaqueToken(winnerToken!));
+  });
+
+  it("refresh refuses a session whose user is no longer active and revokes it", async () => {
+    const { email, password } = await registerUser();
+    await activateUser(email);
+    const loginResponse = await login(jsonRequest("http://localhost/api/auth/login", { email, password }));
+    const token = loginResponse.cookies.get(REFRESH_COOKIE_NAME)?.value;
+    // Simulates a lock path that did not revoke tokens — the refresh route must still refuse on its own.
+    await prisma.user.update({ where: { email }, data: { status: "LOCKED" } });
+
+    const response = await refresh(
+      new NextRequest("http://localhost/api/auth/refresh", { method: "POST", headers: { cookie: `${REFRESH_COOKIE_NAME}=${token}` } }),
+    );
+    expect(response.status).toBe(401);
+    expect((await response.json()).error.code).toBe("ACCOUNT_LOCKED");
+    expect(response.cookies.get(REFRESH_COOKIE_NAME)?.value).toBe("");
+    const record = await prisma.refreshToken.findUnique({ where: { tokenHash: hashOpaqueToken(token!) } });
+    expect(record?.revokedAt).not.toBeNull();
   });
 
   it("resetting the password revokes every active session", async () => {

@@ -6,7 +6,7 @@ tags:
   - security
   - status/living
 date: 2026-09-26
-updated: 2026-10-23
+updated: 2026-10-25
 author: System Architect
 ---
 
@@ -34,7 +34,7 @@ liệu kinh doanh của một gian hàng là riêng tư giữa Tenant Owner và 
 
 ## 2. Điều Hướng Thật Của `/admin/**` (`AdminSidebarNav`)
 
-Lấy trực tiếp từ `apps/web/app/admin/_ui/sidebar-nav.tsx` (mảng `ADMIN_STANDALONE` + `ADMIN_GROUPS`, đối chiếu 2026-10-17 ✅) — nguồn sự thật duy
+Lấy trực tiếp từ `apps/web/app/admin/_ui/sidebar-nav.tsx` (mảng `ADMIN_STANDALONE` + `ADMIN_GROUPS`, đối chiếu 2026-10-17, cập nhật 2026-10-25 theo ADR-056 ✅) — nguồn sự thật duy
 nhất cho "System Center có gì". Từ ADR-042 menu dựng bằng `SidebarNav` **dùng chung với Studio** (accordion 1 nhóm mở, nhớ nhóm ở
 `localStorage` `admin:nav:expanded`), nằm trong `AppSidebarPanel` có nút **Đăng xuất** cố định đáy (về `/login`); dưới `lg` mở bằng nút ☰
 (drawer `<dialog>`). Header có menu tài khoản (họ tên + avatar, cũng có Đăng xuất). Chi tiết giao diện:
@@ -50,16 +50,19 @@ flowchart TB
     subgraph G2["Kinh doanh"]
         B1["/admin/tenants — Tenant"]
         B2["/admin/plans — Gói dịch vụ"]
+        B3["/admin/subscriptions — Đơn hàng (Đơn hàng gói dịch vụ, ADR-056)"]
     end
     subgraph G3["Nội dung"]
         C1["/admin/cms — Trang CMS"]
         C3["/admin/cms/shop — Trang Cửa hàng (ADR-035)"]
         C4["/admin/cms/pricing — Trang Bảng giá (ADR-041)"]
+        C5["/admin/cms/menu — Menu & chân trang (ADR-050)"]
+        C6["/admin/cms/phap-ly — Văn bản pháp lý (ADR-050, ADR-054)"]
         C2["/admin/categories — Danh mục tài liệu"]
     end
     subgraph G4["Tài chính"]
-        F1["/admin/billing/payment — Thanh toán nền tảng"]
-        F2["/admin/billing/invoices — Hoá đơn"]
+        F1["/admin/billing/payment — Cấu hình thanh toán (trước ADR-056: Thanh toán nền tảng)"]
+        F2["/admin/billing/invoices — Hoá đơn (2 tab Chờ đối soát / Tất cả, ADR-056)"]
         F3["/admin/billing/refunds — Hoàn tiền gói (ADR-041) — badge số yêu cầu chờ duyệt"]
     end
     subgraph G5["Cấu hình hệ thống"]
@@ -129,15 +132,20 @@ Không có bảng `SessionRecord` đa thiết bị trong Gieo Chữ. Cơ chế b
 
 ---
 
-## 4. Bảo Mật Phiên Đăng Nhập — Cơ Chế Thật (Refresh Token Rotation, Không Phải Multi-Device Session)
+## 4. Bảo Mật Phiên Đăng Nhập — Cơ Chế Thật (Refresh Token Rotation)
+
+> [!note] Cập nhật ADR-053 (2026-10-24) ✅ code
+> Từ ADR-053 mỗi `familyId` được dùng như **một phiên/thiết bị** (cột `rememberMe`, `sessionStartedAt`, `deviceLabel`): danh sách thiết bị + đăng xuất từng
+> phiên ở `/account/security`, idle/absolute timeout đo ở server, "Ghi nhớ đăng nhập", ân hạn 30 giây cho refresh đồng thời (`AUTH_REFRESH_SUPERSEDED`),
+> rotation nguyên tử, refresh từ chối user không `ACTIVE`. Vẫn **không** có bảng `SessionRecord` riêng. Chi tiết: [[02-System-Specs/Auth-Session-Specs|Auth-Session-Specs]].
 
 Gieo Chữ dùng **rotation + family revocation** trên `RefreshToken` (`packages/auth/src/tokens/refresh-token.ts`),
-không có bảng `SessionRecord` liệt kê từng thiết bị:
+không có bảng `SessionRecord` riêng:
 
 - Mỗi lần refresh, token cũ bị thay bằng token mới **cùng `familyId`** (`replacedById` trỏ tới token kế tiếp).
 - **Phát hiện tái sử dụng token đã bị thay (reuse detection):** nếu một token đã `replacedById` bị dùng lại
   (dấu hiệu token bị đánh cắp), toàn bộ `familyId` bị revoke — chặn luôn mọi refresh tiếp theo trong cùng
-  chuỗi.
+  chuỗi. *Ngoại lệ từ ADR-053:* token bị thay chưa quá 30 giây (race nhiều tab) → `superseded`, không revoke.
 - Chỉ lưu **hash SHA-256** của refresh token (`tokenHash`), không bao giờ lưu token gốc (CLAUDE.md §7.2).
 - Access/refresh token chỉ trong cookie `httpOnly`, `Secure` (prod), `SameSite=Lax`; refresh cookie
   `Path=/api/auth`.
@@ -152,9 +160,10 @@ không có bảng `SessionRecord` liệt kê từng thiết bị:
 | `/admin/tenants` | `lockTenantAction`/`unlockTenantAction` (`TenantStatus.LOCKED` ↔ `ACTIVE`, qua `lib/tenant-lock.ts` từ M12a/M12c) — **không** đọc order/customer của tenant. Từ ADR-039: badge "N hoàn tiền quá hạn" = **chỉ số đếm** yêu cầu hoàn tiền quá 7 ngày (`countOverdueRefundRequestsByTenant`), không id đơn/khách | `apps/web/app/admin/tenants/actions.ts`, `apps/web/lib/entitlement-remedy.ts` |
 | `/admin/cms` | CRUD trang CMS marketing, `blocksDraft` (nháp) tách khỏi `blocks` (live). Trang chủ (`slug=home`) dùng schema riêng `homeSectionsSchema`; từ ADR-033 bốn section `stats`/`search`/`coaches`/`documents` lấy dữ liệu thật, CMS chỉ lưu nhãn/`limit`/id ghim (ô chọn ghim `PinPicker`) | `packages/core/src/admin/cms-blocks.ts`, `packages/core/src/admin/home-sections.ts`, `apps/web/lib/home.ts` — xem [[01-Architecture-Decisions/ADR-019-Home-Page-Real-Data-Sold-Count|ADR-019 (≙ ADR-033)]]. Từ ADR-050: thêm slug hệ thống `menu` (`/admin/cms/menu` — menu header/footer), trang chủ thêm section `steps`/`faq`/`community` + ô SEO, editor văn bản pháp lý `/admin/cms/phap-ly` — xem [[02-System-Specs/System-Cms-Menu-Home-Seo-Specs|System-Cms-Menu-Home-Seo-Specs]], [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]] |
 | `/admin/categories` | Danh mục tài liệu (metadata sản phẩm, không phải dữ liệu riêng tư của tenant) | `apps/web/app/admin/categories/*` |
-| `/admin/billing/payment` | Cấu hình `PlatformPaymentConfig` (Manual QR/SePay/MoMo) | xem [[Payment-And-Billing]] |
-| `/admin/billing/invoices` | Duyệt `SubscriptionInvoice` chuyển khoản thủ công | `subscription-billing.ts` |
-| `/admin/settings/general` | (ADR-032) "Cấu hình chung": 10 khoá đang dùng của `SystemSettings` (TTL access/refresh, hạn link xác minh/đặt lại mật khẩu, hạn presign tải lên/tải xuống, ân hạn, đơn/hoá đơn chờ, lượt tải mặc định) — có giới hạn, chỉ áp cho thao tác mới; `trialDays` lưu nhưng ẩn (chưa dùng — ADR-021) | `apps/web/lib/system-settings.ts`, `updateSystemSettingsAction`; xem [[01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-From-System-Center|ADR-018 (≙ ADR-032)]] |
+| `/admin/billing/payment` | Menu "Cấu hình thanh toán" (trước ADR-056: "Thanh toán nền tảng"). Cấu hình `PlatformPaymentConfig` (Manual QR/SePay/MoMo); lưu báo rõ khi cổng bị tự tắt (ADR-013) | `savePlatformProviderConfig` → `{ isEnabled, autoDisabled }` — xem [[Payment-And-Billing]] §5E |
+| `/admin/billing/invoices` | (ADR-056) Tab "Chờ đối soát" — duyệt `SubscriptionInvoice` MANUAL_QR PENDING; tab "Tất cả" — mọi hoá đơn gói, lọc trạng thái/cổng, phân trang; nút xác nhận chỉ ở dòng MANUAL_QR PENDING | `listPendingManualInvoices`, `listSubscriptionInvoices` (`subscription-billing.ts`) — [[Payment-And-Billing]] §5C |
+| `/admin/subscriptions` | (ADR-056) "Đơn hàng gói dịch vụ" (menu Kinh doanh → Đơn hàng): thuê bao của mọi gian hàng, lọc gói/trạng thái, gói trả phí theo ngày hết hạn, gói miễn phí "Không thời hạn" xếp sau, hoá đơn gần nhất. Chỉ bảng L1 (§7.9) | `listSubscriptions`, `listPlanFilterOptions`, `parseEnumParam` (`subscription-billing.ts`) — [[Payment-And-Billing]] §5C |
+| `/admin/settings/general` | (ADR-032) "Cấu hình chung": 15 khoá đang dùng của `SystemSettings` (TTL access, hạn link xác minh/đặt lại mật khẩu, hạn presign tải lên/tải xuống, ân hạn, đơn/hoá đơn chờ, lượt tải mặc định; từ ADR-053 thêm nhóm "Chính sách phiên đăng nhập" 6 khoá — áp cho cả phiên đang mở từ lần refresh kế tiếp, xem [[02-System-Specs/Auth-Session-Specs|Auth-Session-Specs]] §9) — có giới hạn; `trialDays` và (từ ADR-053) `refreshTokenTtlDays` lưu nhưng ẩn (không dùng) | `apps/web/lib/system-settings.ts`, `updateSystemSettingsAction`; xem [[01-Architecture-Decisions/ADR-018-System-Settings-And-Brand-From-System-Center|ADR-018 (≙ ADR-032)]] |
 | `/admin/settings` | Chỉ còn **Email hỗ trợ** (`SystemSettings.supportEmail`) | `updateSupportEmailAction` (`app/admin/settings/actions.ts`) |
 | `/admin/settings/branding` | `SystemBranding` — nguồn **duy nhất** của tên thương hiệu/slogan (ADR-032; trống → `DEFAULT_BRAND`), logo, màu | `apps/web/lib/branding.ts` (`getEffectiveBrand`) |
 | `/admin/settings/storage` | `SystemStorageConfig` (R2 credential mã hoá) | xem [[File-Storage-And-Downloads-Specs]] |
@@ -173,6 +182,7 @@ lượng theo vai trò (aggregate), không bao giờ trả về danh sách đơn
 * [[Architecture-Overview]] — Ranh giới L1 System vs L2 Tenant ([Architecture-Overview.md](./Architecture-Overview.md))
 * [[Tenant-RBAC-And-Permissions]] — `SystemRole`, `isSuperAdmin`, `Role`/`Permission` ([Tenant-RBAC-And-Permissions.md](./Tenant-RBAC-And-Permissions.md))
 * [[Payment-And-Billing]] — `PlatformPaymentConfig`, hoá đơn subscription ([Payment-And-Billing.md](./Payment-And-Billing.md))
+* [[02-System-Specs/Auth-Session-Specs|Auth-Session-Specs]] — phiên đăng nhập, idle/absolute, "Ghi nhớ", danh sách thiết bị (ADR-053) ([Auth-Session-Specs.md](./Auth-Session-Specs.md))
 * CLAUDE.md §7.9 — nguyên tắc "System admin không có route nào đọc chi tiết đơn hàng/khách hàng của tenant"
 * Mã nguồn: `apps/web/lib/admin-users.ts`, `apps/web/lib/admin-roles.ts`, `apps/web/lib/page-guards.ts`,
   `apps/web/app/admin/_ui/{sidebar-nav,app-sidebar,sidebar-drawer}.tsx`, `apps/web/app/admin/layout.tsx`, `packages/auth/src/tokens/refresh-token.ts`,

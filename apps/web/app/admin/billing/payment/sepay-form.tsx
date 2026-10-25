@@ -33,7 +33,9 @@ export function SepayForm({
   const [state, formAction, isPending] = useActionState(saveSepayAction, initialState);
 
   return (
-    <form action={formAction}>
+    // React 19 tự reset form sau action, nhưng <select defaultValue> và trạng thái hiển thị của Toggle không theo
+    // giá trị mới từ server → key theo dữ liệu đã lưu để dựng lại form, khớp đúng DB sau mỗi lần lưu.
+    <form key={JSON.stringify(initial)} action={formAction}>
       <ConfigCard
         icon={<IconBolt className="h-5 w-5" />}
         title="SePay"
@@ -80,7 +82,7 @@ export function SepayForm({
           type="password"
           placeholder={initial.maskedSecret ? `Secret hiện tại: ${initial.maskedSecret} — để trống nếu giữ nguyên` : undefined}
         />
-        <FormBanner ok={Boolean(state.success)} message={state.error ?? (state.success ? "Đã lưu." : undefined)} />
+        <FormBanner ok={Boolean(state.success)} message={state.error ?? (state.success ? (state.message ?? "Đã lưu.") : undefined)} />
         <PrimaryButton loading={isPending}>{isPending ? "Đang lưu..." : "Lưu cấu hình"}</PrimaryButton>
       </ConfigCard>
     </form>

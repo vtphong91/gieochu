@@ -100,7 +100,9 @@ export const ModelName = {
   AbuseReport: 'AbuseReport',
   LegalDocument: 'LegalDocument',
   LegalDocumentVersion: 'LegalDocumentVersion',
-  UserLegalAcceptance: 'UserLegalAcceptance'
+  UserLegalAcceptance: 'UserLegalAcceptance',
+  TenantEditorDraft: 'TenantEditorDraft',
+  SystemEditorDraft: 'SystemEditorDraft'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -161,6 +163,9 @@ export const RefreshTokenScalarFieldEnum = {
   replacedById: 'replacedById',
   userAgent: 'userAgent',
   ip: 'ip',
+  rememberMe: 'rememberMe',
+  sessionStartedAt: 'sessionStartedAt',
+  deviceLabel: 'deviceLabel',
   createdAt: 'createdAt'
 } as const
 
@@ -376,6 +381,12 @@ export const SystemSettingsScalarFieldEnum = {
   orderPendingTtlMinutes: 'orderPendingTtlMinutes',
   invoicePendingTtlHours: 'invoicePendingTtlHours',
   defaultDownloadLimit: 'defaultDownloadLimit',
+  sessionIdleMinutes: 'sessionIdleMinutes',
+  sessionAbsoluteHours: 'sessionAbsoluteHours',
+  rememberMeDays: 'rememberMeDays',
+  adminIdleMinutes: 'adminIdleMinutes',
+  adminAbsoluteHours: 'adminAbsoluteHours',
+  sessionWarningMinutes: 'sessionWarningMinutes',
   updatedById: 'updatedById',
   updatedAt: 'updatedAt'
 } as const
@@ -887,6 +898,9 @@ export const LegalDocumentScalarFieldEnum = {
   key: 'key',
   slug: 'slug',
   title: 'title',
+  summary: 'summary',
+  seoTitle: 'seoTitle',
+  seoDescription: 'seoDescription',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -921,6 +935,39 @@ export const UserLegalAcceptanceScalarFieldEnum = {
 } as const
 
 export type UserLegalAcceptanceScalarFieldEnum = (typeof UserLegalAcceptanceScalarFieldEnum)[keyof typeof UserLegalAcceptanceScalarFieldEnum]
+
+
+export const TenantEditorDraftScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  userId: 'userId',
+  entityType: 'entityType',
+  entityKey: 'entityKey',
+  payload: 'payload',
+  revision: 'revision',
+  clientId: 'clientId',
+  baseUpdatedAt: 'baseUpdatedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type TenantEditorDraftScalarFieldEnum = (typeof TenantEditorDraftScalarFieldEnum)[keyof typeof TenantEditorDraftScalarFieldEnum]
+
+
+export const SystemEditorDraftScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  entityType: 'entityType',
+  entityKey: 'entityKey',
+  payload: 'payload',
+  revision: 'revision',
+  clientId: 'clientId',
+  baseUpdatedAt: 'baseUpdatedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SystemEditorDraftScalarFieldEnum = (typeof SystemEditorDraftScalarFieldEnum)[keyof typeof SystemEditorDraftScalarFieldEnum]
 
 
 export const SortOrder = {

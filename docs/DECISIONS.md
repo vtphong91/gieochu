@@ -766,7 +766,9 @@
   2. **Không chạy `pnpm db:seed`** (ghi đè nội dung trang chủ CMS). Thay đổi dữ liệu hệ thống qua UI System Center.
   3. **Integration test và script thủ công ghi dữ liệu thật** vào production (tạo rồi dọn user/tenant/đơn tạm, có thể
      gửi email tới `@example.test`). Chỉ chạy khi cần; luôn dọn dữ liệu và không đụng cấu hình dùng chung
-     (`shared-config-snapshot`). Không chạy luồng gửi email tới địa chỉ thật.
+     (từ 2026-10-25: **mock lớp đọc cấu hình** — `lib/system-storage`, `getPlatformPaymentConfigRow` — không ghi và
+     không snapshot/restore bảng cấu hình singleton; helper `shared-config-snapshot` đã xoá). Không chạy luồng gửi email
+     tới địa chỉ thật.
   4. **Dữ liệu demo** (`demo:seed`, khách `demo+…@gieochu.test`, sản phẩm `demo-*` của `phongweb`) đang nằm trên
      production và hiển thị công khai — dọn bằng `demo:clean` trước khi mở cho người dùng thật.
   5. **Preview deployment** ghi vào cùng DB — chỉ dùng Preview để xem giao diện, không thao tác tạo/xoá dữ liệu.
@@ -1278,3 +1280,113 @@
      - Cho phép ghi đè/đồng bộ lại `tenant.storageUsedBytes` theo số liệu thực tế trên storage vật lý khi phát hiện sai lệch.
      - Bổ sung nút "Kiểm tra", nút "Đồng bộ", và nút "Khớp dữ liệu Storage" toàn hệ thống (`reconcileAllTenantsStorageAction`).
      - Hỗ trợ `loading` prop trên `GhostButton` trong bộ UI kit quản trị.
+
+## ADR-053 — Phiên đăng nhập: sửa header cache, "Ghi nhớ đăng nhập", idle/absolute timeout, danh sách thiết bị
+
+- **Bối cảnh (2026-10-24):** header `/pricing`, `/cua-hang` hiện sai trạng thái đăng nhập. Nguyên nhân (Hiếu chẩn
+  đoán): layout chứa `SiteHeader` + `loading.tsx` được Next prefetch và tái dùng ~5 phút (staleTimes); login/logout gọi
+  Route Handler bằng `fetch` + `router.push/refresh` nên client cache không bị xoá → có thể **lộ tên/email người vừa đăng
+  xuất**. Phụ: race refresh nhiều tab bị coi là reuse → đăng xuất toàn bộ; rotation không nguyên tử. Hiện phiên luôn
+  persistent, không idle, refresh trượt 7 ngày (vô hạn).
+- **Quyết định (chủ dự án chốt 2026-10-24):**
+  1. **Sửa ngay (GĐ A, không migration):** sau login/logout điều hướng cứng (`window.location.assign`); refresh có ân hạn
+     ~30 giây cho token vừa được thay (không thu hồi family, không xoá cookie) + rotation nguyên tử
+     (`updateMany … replacedById: null`); `SessionRefresh` khoá giữa tab, refresh khi tab quay lại, 401 → cập nhật UI;
+     route refresh kiểm `user.status`.
+  2. **Chính sách phiên (GĐ B):**
+     | | Không tick "Ghi nhớ" (mặc định) | Tick "Ghi nhớ" | SYSTEM_ADMIN |
+     |---|---|---|---|
+     | Cookie refresh | session cookie (đóng trình duyệt = đăng xuất) | persistent tới hết absolute | luôn session cookie (checkbox vẫn hiện vì lúc nhập chưa biết vai trò — server bỏ qua) |
+     | Idle (đo ở server) | 60 phút | không áp | 15 phút |
+     | Absolute (từ lúc login, không trượt) | 12 giờ | 30 ngày | 8 giờ |
+     | Cảnh báo trước idle | 2 phút, nút "Tiếp tục" | — | có |
+     Chủ gian hàng và khách mua **cùng** mức. Checkbox "Ghi nhớ" **mặc định tắt**. Người dùng đang thao tác (gõ, bấm, cuộn,
+     quay lại tab) = còn hoạt động → không tự đăng xuất. Các con số cấu hình được trong System Settings.
+  3. **Soạn thảo luôn tự lưu nháp** (chủ dự án yêu cầu) — Hiếu kiểm hiện trạng các editor; editor nào chưa có thì làm
+     thành hạng mục riêng.
+  4. **Danh sách thiết bị đăng nhập:** ghi thiết bị + trình duyệt (từ User-Agent) + thời điểm đăng nhập / hoạt động gần
+     nhất cho mỗi phiên; trang tài khoản liệt kê và cho đăng xuất từng thiết bị (giữ nút đăng xuất mọi thiết bị). Bản ghi
+     phiên hết hạn/đã thu hồi **tự xoá sau 90 ngày** (cron `/api/cron/daily`).
+  5. **Test:** được nâng trần theo nhu cầu của module (báo số cụ thể khi xong).
+- **Migration (GĐ B, expand-only, chủ dự án chạy):** `refresh_tokens` thêm `rememberMe`, `sessionStartedAt` (+ cột
+  thiết bị nếu cần); `system_settings` thêm cột cấu hình phiên.
+- **Bổ sung ADR-053 (2026-10-24, chủ dự án chốt):** tự lưu nháp editor **lên server** (không lưu cục bộ trình duyệt —
+  tránh nội dung gian hàng nằm trên máy dùng chung). Ưu tiên: bài viết, tài liệu, trang gian hàng (Studio) → các editor CMS
+  System Center. Thiết kế chi tiết (nháp tự động vs bản đã lưu, chu kỳ, xung đột nhiều tab) chốt trong kế hoạch riêng
+  trước khi code.
+- **Bổ sung ADR-053 lần 2 (2026-10-24, Quốc — sau review GĐ B):** cấu hình phiên trong System Settings (và đổi vai trò)
+  áp cho **cả phiên đang mở** từ lần refresh kế tiếp — chủ ý vì là thay đổi bảo mật (ngoại lệ của nguyên tắc "chỉ áp cho
+  thao tác mới" ADR-032). Phiên tạo trước ADR-053 sau lần refresh đầu thành phiên **không ghi nhớ** (cookie session, idle
+  60 phút) — chấp nhận; người dùng muốn giữ thì đăng nhập lại có tick "Ghi nhớ". Cron dọn token chỉ chạy khi có lịch gọi
+  `/api/cron/daily` — trên VPS cần crontab (việc chờ của ADR-049).
+- **Bổ sung ADR-053 lần 3 (2026-10-24, chủ dự án duyệt — thiết kế tự lưu nháp):** chi tiết ở
+  `docs/ke-hoach-tu-luu-nhap-2026-10-24.md`. Chốt: 2 bảng nháp riêng theo layer — `tenant_editor_drafts` (L2, RLS chỉ
+  `tenant` + `system_job`) và `system_editor_drafts` (L1, chỉ SYSTEM_ADMIN); nháp **theo từng người dùng**; autosave không
+  bao giờ ghi vào bản đã lưu/live; debounce 3 giây, tối đa 30 giây/lần, lưu khi rời tab; xung đột → tab đó dừng autosave và
+  cho chọn tải bản mới / ghi đè; khôi phục bằng banner "Khôi phục / Bỏ"; Lưu/Xuất bản xoá nháp; nháp không động tới quá
+  **30 ngày** tự xoá (cron); tenant READ_ONLY/LOCKED **không** autosave; không lưu khi đóng tab (giữ cảnh báo
+  `beforeunload`); không autosave cho form JSON thô `cms-page-form` (làm sau khi có draft/live); cảnh báo "bản đã lưu bị sửa
+  nơi khác" cho nút Lưu là hạng mục riêng sau. Không ghi audit mỗi lần autosave. Thứ tự: bài viết → tài liệu → trang gian
+  hàng → CMS home/shop/pricing/menu → pháp lý → cron.
+
+## ADR-054 — Trang pháp lý đợt 2: 6 văn bản mới, URL cấp gốc thân thiện, ghi nhận đồng ý mở rộng
+
+- **Bối cảnh (2026-10-24):** kế hoạch `docs/ke-hoach-trang-phap-ly-dot-2-2026-10-24.md` + dự thảo `docs/legal/drafts/`
+  (Long). Hạ tầng văn bản có phiên bản đã có từ ADR-050.
+- **Quyết định (chủ dự án chốt 2026-10-24):**
+  1. **URL cấp gốc**, bỏ tiền tố `/phap-ly/` (chủ dự án: khó nghe). Mỗi văn bản một URL thân thiện:
+     `/dieu-khoan-su-dung`, `/chinh-sach-bao-mat`, `/chinh-sach-noi-dung`, `/cam-ket-ban-quyen`,
+     `/quyen-su-dung-tai-lieu`, `/chinh-sach-nguoi-ban`, `/lien-he`. Các slug này (và `phap-ly`) vào `RESERVED_SLUGS`
+     tenant + quét DB không trùng. `/phap-ly/{slug}` cũ → redirect 308 sang URL mới. **Không có trang tổng hợp (hub).**
+     Sửa ADR-050 mục 3 (URL `/phap-ly/dieu-khoan-su-dung`).
+  2. **6 văn bản mới** (ngoài `terms`): `privacy`, `content_policy`, `copyright` (tách riêng khỏi chính sách nội dung),
+     `usage_license`, `seller`, `contact` (soạn tay như một văn bản). Hoàn tiền giữ trong Điều khoản (không tách trang).
+  3. **Xuất bản từng văn bản** khi điền đủ placeholder + tích đã rà soát (cổng ADR-050 giữ nguyên). Văn bản chưa có bản
+     hiệu lực → 404 và tự ẩn khỏi menu.
+  4. **SEO + mô tả ngắn sửa trong CMS** (cột mới trên `legal_documents`, migration expand-only).
+  5. **Ghi nhận đồng ý theo phiên bản:** đăng ký ghi cả Điều khoản **và** Chính sách bảo mật (bản hiệu lực); mở gian hàng
+     có **checkbox** đồng ý Chính sách người bán, ghi `user_legal_acceptances`. Văn bản chưa có bản hiệu lực → bỏ qua như cũ.
+  6. **Footer mặc định thêm cột "Thông tin"** (không đặt tên "Pháp lý") chứa các văn bản đã có bản hiệu lực; menu CMS có
+     loại link "văn bản pháp lý" tự ẩn khi văn bản chưa hiệu lực.
+  7. **Link trong văn bản:** link nội bộ mở cùng tab, link ngoài mở tab mới (`rel="noopener noreferrer"`).
+  8. **Nhật ký tải (`download_events`, có IP) lưu 12 tháng** rồi tự xoá trong cron hằng ngày.
+  9. Không ghi cam kết "không bán dữ liệu cá nhân" ở đợt này (để luật sư duyệt). Hai vấn đề bắt buộc qua luật sư: chính
+     sách "chỉ khoá, không xoá user" so với quyền yêu cầu xoá dữ liệu; danh mục nội dung bị cấm.
+
+## ADR-055 — MinIO qua HTTPS bằng tên miền riêng (s3.<domain>), CSP cho phép đúng origin storage
+
+- **Bối cảnh (2026-10-25):** upload file thất bại trên Vercel: CSP `connect-src 'self' https://api.cloudinary.com` chặn PUT
+  presigned; MinIO đang ở `http://84.247.143.153:9000` → trang HTTPS gọi HTTP bị chặn mixed content dù CSP cho phép. Do một
+  DB dùng chung (ADR-034), cấu hình storage (ADR-044) áp cho cả Vercel lẫn VPS. Storage Gateway (ADR-045) chỉ dùng được
+  trên VPS (Vercel không vào được MinIO nội bộ); mẫu nginx gateway ký theo Host `127.0.0.1:9000`, lệch endpoint trong DB.
+- **Quyết định (chủ dự án chốt 2026-10-25):** phương án A — đưa MinIO ra **HTTPS qua tên miền riêng** `s3.<domain>` (vd
+  `s3.gieochu.net`, chờ chốt tên): DNS → VPS, nginx TLS (Let's Encrypt) proxy vào MinIO `127.0.0.1:9000`, CORS bucket cho
+  origin app, **đóng cổng 9000** ra internet; System Center đổi Host `s3.<domain>`, Port 443, useSSL bật. Bản ghi DNS để
+  **DNS only** (không proxy Cloudflare — gói free giới hạn 100 MB/upload, hệ thống cho 500 MB). Chưa cần CDN. Code: biến môi
+  trường tuỳ chọn liệt kê **chính xác** origin storage (chỉ `https://`, không wildcard, validate zod) nối vào `connect-src`
+  (và `img-src` nếu cần) trong `proxy.ts`; không đọc DB trong proxy. Gateway (ADR-045) giữ làm tuỳ chọn sau cho VPS.
+- **Phân công:** hạ tầng VPS (DNS, nginx, chứng chỉ, CORS, firewall) — Vương (`docs/yeu-cau-vuong-minio-https-2026-10-25.md`);
+  code CSP/env — Hiếu sau khi Vương xác nhận tên miền.
+
+## ADR-056 — System Center: lịch sử hoá đơn gói + trang Thuê bao; QR chuyển khoản tải được + thông tin chuyển khoản tay
+
+- **Bối cảnh (2026-10-25):** chủ dự án báo System Center "không ghi lại" thuê bao/hoá đơn. Hiếu chẩn đoán: dữ liệu đúng
+  (1 subscription CREATOR ACTIVE, 1 invoice MANUAL_QR PAID); trang Hoá đơn chỉ liệt kê MANUAL_QR **PENDING**
+  (`listPendingManualInvoices`), và không có trang liệt kê thuê bao.
+- **Quyết định (chủ dự án chốt 2026-10-25):**
+  1. Trang **Hoá đơn** có 2 tab: "Chờ đối soát" (giữ như hiện tại, nút xác nhận đã thu) và "Tất cả" (mọi trạng thái/cổng,
+     lọc trạng thái + cổng, phân trang).
+  2. Trang mới **`/admin/subscriptions`** (menu Kinh doanh → Thuê bao): gian hàng, gói, trạng thái, chu kỳ, hạn gia hạn,
+     hoá đơn gần nhất; lọc gói/trạng thái; sắp xếp theo ngày hết hạn. Dữ liệu L1 (subscriptions/invoices) — đúng §7.9.
+  3. Menu "Thanh toán nền tảng" đổi thành **"Cấu hình thanh toán"**.
+  4. Chuyển khoản thủ công (cả thanh toán gói lẫn checkout tài liệu): nút **"Tải ảnh QR"** + khối thông tin chuyển khoản tay
+     (ngân hàng, số TK, tên chủ TK, số tiền, nội dung CK = mã đơn) có nút sao chép.
+- **Không xoá** 27 dòng audit `SUBSCRIPTION_PAID` giả do integration test để lại — `audit_logs` append-only (ADR-037).
+- **Bổ sung ADR-056 (2026-10-25, chủ dự án chốt):** (a) mục menu của `/admin/subscriptions` đặt tên **"Đơn hàng"** (Kinh
+  doanh → Đơn hàng; tiêu đề trang ghi rõ là đơn hàng gói dịch vụ — dữ liệu L1, không phải đơn hàng của tenant, §7.9 giữ
+  nguyên). (b) **Mã giảm giá và QR:** khuyến khích áp mã trước khi chọn cách thanh toán; nếu áp mã **sau** khi đã có QR thì
+  server **tạo lại** `checkoutPayload` (QR + số tiền) theo tổng mới và khối thanh toán tải lại — không bao giờ để QR lệch
+  `totalVnd`. Chặn áp/gỡ mã khi đơn đã PAID/huỷ/hết hạn.
+- **Bổ sung ADR-056 lần 2 (2026-10-25, chủ dự án):** **tạm chưa xử lý MoMo** cho trường hợp đổi mã giảm giá sau khi đã tạo
+  link MoMo (MoMo có thể từ chối `orderId` trùng — chưa thử với MoMo thật). Hành vi hiện tại giữ nguyên: báo lỗi
+  `CHECKOUT_CREATE_FAILED`, đơn không đổi (an toàn về tiền). Xem lại khi làm MoMo.

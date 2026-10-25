@@ -11,6 +11,8 @@ export interface AccessTokenClaims {
   ver: boolean;
   /** profile completed */
   pc: boolean;
+  /** ADR-053: phiên "Ghi nhớ đăng nhập" (không có idle) — client dùng để biết có hiện cảnh báo idle hay không. Vắng = false. */
+  rm?: boolean;
 }
 
 export interface JwtContext {
@@ -29,7 +31,7 @@ export async function signAccessToken(
   ttlSeconds: number,
 ): Promise<string> {
   const nowSeconds = Math.floor(Date.now() / 1000);
-  return new SignJWT({ sid: claims.sid, role: claims.role, ver: claims.ver, pc: claims.pc })
+  return new SignJWT({ sid: claims.sid, role: claims.role, ver: claims.ver, pc: claims.pc, rm: claims.rm === true })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(claims.sub)
     .setIssuer(context.issuer)
@@ -52,6 +54,7 @@ export async function verifyAccessToken(token: string, context: JwtContext): Pro
     role: payload.role as SystemRole,
     ver: payload.ver as boolean,
     pc: payload.pc as boolean,
+    rm: payload.rm === true,
     iat: payload.iat as number,
     exp: payload.exp as number,
   };

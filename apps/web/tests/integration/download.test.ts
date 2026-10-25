@@ -1,14 +1,39 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { encryptSecret, generateOrderCode } from "@gieochu/core";
+import { afterAll, describe, expect, it, vi } from "vitest";
+import { generateOrderCode } from "@gieochu/core";
 import { getPrismaClient, withPublic, withSystemJob, withTenant } from "@gieochu/db";
-import { getEnv } from "@gieochu/config";
 import { createTenantForUser } from "../../lib/create-tenant";
 import { requestDownload, consumeDownloadToken } from "../../lib/download";
 import { createShareLink, resolveShareLink, consumeShareLinkDownload, revokeShareLink } from "../../lib/share-link";
 import { listLibraryEntitlements } from "../../lib/library";
 import { addProductExternalLink } from "../../lib/product";
 import type { CurrentUser } from "../../lib/session";
-import { restoreStorageConfig, snapshotStorageConfig, type StorageConfigSnapshot } from "./shared-config-snapshot";
+
+// ADR-034: DB dev = production — test KHÔNG ghi `system_storage_config`. Presign/URL tải chỉ là ký request cục bộ (không gọi
+// mạng), nên thay lớp đọc cấu hình bằng cấu hình R2 giả trong bộ nhớ. Tenant tạo mới chưa có bucket riêng → đi nhánh
+// R2 mặc định, không gọi `ensureBucketExists`.
+vi.mock("../../lib/system-storage", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../lib/system-storage")>();
+  const { createS3Client } = await import("@gieochu/storage");
+  const credentials = { accessKeyId: "fake", secretAccessKey: "fake" };
+  const r2 = { endpoint: "https://fake.example.com", region: "auto", bucketPrivate: "fake-private", bucketPublic: "fake-public", ...credentials };
+  const fakeConfig = {
+    isEnabled: true,
+    activeProvider: "CLOUDFLARE_R2" as const,
+    r2,
+    minio: { host: "", useSSL: true, region: "us-east-1", ...credentials },
+    endpoint: r2.endpoint,
+    region: r2.region,
+    bucketPrivate: r2.bucketPrivate,
+    bucketPublic: r2.bucketPublic,
+    ...credentials,
+  };
+  const clientConfig = { endpoint: r2.endpoint, region: r2.region, ...credentials };
+  return {
+    ...actual,
+    getDecryptedSystemStorageConfig: async () => fakeConfig,
+    createClientForProvider: async () => ({ client: createS3Client(clientConfig), config: clientConfig }),
+  };
+});
 
 const prisma = getPrismaClient();
 const RUN_PREFIX = `m9test_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -34,18 +59,6 @@ async function createOwnerAndTenant(name: string, slug: string) {
   const created = await createTenantForUser(toCurrentUser(owner.id), { name, slug: `${RUN_PREFIX}-${slug}` });
   const tenant = await prisma.tenant.findUniqueOrThrow({ where: { id: created.id } });
   return { owner, tenant };
-}
-
-/** Presign/download-URL generation is pure local request-signing (no real network call), same reasoning as M5's presign test. */
-async function ensureFakeStorageConfig(): Promise<void> {
-  const env = getEnv();
-  const secrets = encryptSecret(JSON.stringify({ accessKeyId: "fake", secretAccessKey: "fake" }), env.STORAGE_ENCRYPTION_KEY);
-  const publicConfig = { endpoint: "https://fake.example.com", region: "auto", bucketPrivate: "fake-private", bucketPublic: "fake-public" };
-  await prisma.systemStorageConfig.upsert({
-    where: { id: "default" },
-    update: { isEnabled: true, publicConfig, encryptedSecrets: secrets },
-    create: { id: "default", isEnabled: true, publicConfig, encryptedSecrets: secrets },
-  });
 }
 
 /** Bypasses the full M8 checkout flow — M9's own tests only need an existing FULFILLED order + entitlement to already be in place. */
@@ -102,12 +115,6 @@ async function createCleanProductFile(tenantId: string, productId: string) {
 }
 
 describe("M9 downloads and share links", () => {
-  // Cấu hình R2 dùng chung trên DB dev: chụp lại trước khi test ghi cấu hình giả, afterAll trả đúng dòng cũ.
-  let storageSnapshot: StorageConfigSnapshot;
-  beforeAll(async () => {
-    storageSnapshot = await snapshotStorageConfig();
-  });
-
   afterAll(async () => {
     const tenants = await prisma.tenant.findMany({ where: { slug: { startsWith: RUN_PREFIX } }, select: { id: true } });
     const tenantIds = tenants.map((t) => t.id);
@@ -126,7 +133,6 @@ describe("M9 downloads and share links", () => {
     }
     await prisma.tenant.deleteMany({ where: { slug: { startsWith: RUN_PREFIX } } });
     await prisma.user.deleteMany({ where: { email: { startsWith: RUN_PREFIX } } });
-    await restoreStorageConfig(storageSnapshot);
   });
 
   it("lists a customer's library entitlements grouped by tenant, across multiple tenants", async () => {
@@ -144,7 +150,6 @@ describe("M9 downloads and share links", () => {
   });
 
   it("downloads successfully: redirect URL issued, downloadsUsed incremented, download_events logged", async () => {
-    await ensureFakeStorageConfig();
     const { tenant } = await createOwnerAndTenant("Download Test", "dl");
     const product = await withTenant(tenant.id, (tx) => tx.product.create({ data: { tenantId: tenant.id, slug: "p", title: "P", status: "PUBLISHED" } }));
     const file = await createCleanProductFile(tenant.id, product.id);
@@ -167,7 +172,6 @@ describe("M9 downloads and share links", () => {
   });
 
   it("blocks requesting a new download token once the download limit is reached", async () => {
-    await ensureFakeStorageConfig();
     const { tenant } = await createOwnerAndTenant("Limit Test", "limit");
     const product = await withTenant(tenant.id, (tx) => tx.product.create({ data: { tenantId: tenant.id, slug: "p", title: "P", status: "PUBLISHED" } }));
     const file = await createCleanProductFile(tenant.id, product.id);
@@ -178,7 +182,6 @@ describe("M9 downloads and share links", () => {
   });
 
   it("a password-protected share link only downloads with the correct password", async () => {
-    await ensureFakeStorageConfig();
     const { tenant } = await createOwnerAndTenant("Share Password Test", "sharepw");
     const product = await withTenant(tenant.id, (tx) => tx.product.create({ data: { tenantId: tenant.id, slug: "p", title: "P", status: "PUBLISHED" } }));
     const file = await createCleanProductFile(tenant.id, product.id);

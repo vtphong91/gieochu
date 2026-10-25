@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { signAccessToken } from "@gieochu/auth";
 import { getPrismaClient, withSystemJob, withTenant } from "@gieochu/db";
 import { decryptSecret, encryptSecret, sepayProvider, type SepayConfig } from "@gieochu/payments";
@@ -9,7 +9,6 @@ import { getEnabledProviders, listTenantProviderConfigs, saveTenantProviderConfi
 import { getAccessTokenTtlSeconds, getJwtContext } from "../../lib/jwt-context";
 import { ACCESS_COOKIE_NAME } from "../../lib/cookies";
 import type { CurrentUser } from "../../lib/session";
-import { restorePlatformPaymentConfig, snapshotPlatformPaymentConfig, type PlatformPaymentConfigSnapshot } from "./shared-config-snapshot";
 
 const prisma = getPrismaClient();
 const RUN_PREFIX = `m7test_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -35,13 +34,6 @@ describe("M7 tenant payment configuration", () => {
     vi.resetModules();
   });
 
-  // Cổng SePay platform (unique theo provider) là cấu hình dùng chung trên DB dev: chụp lại trước khi test ghi đè,
-  // afterAll trả đúng dòng cũ (hoặc xoá nếu trước đó không có).
-  let sepaySnapshot: PlatformPaymentConfigSnapshot;
-  beforeAll(async () => {
-    sepaySnapshot = await snapshotPlatformPaymentConfig("SEPAY");
-  });
-
   afterAll(async () => {
     const tenants = await prisma.tenant.findMany({ where: { slug: { startsWith: RUN_PREFIX } }, select: { id: true } });
     const tenantIds = tenants.map((t) => t.id);
@@ -52,7 +44,6 @@ describe("M7 tenant payment configuration", () => {
       });
     }
     await prisma.tenant.deleteMany({ where: { slug: { startsWith: RUN_PREFIX } } });
-    await restorePlatformPaymentConfig(sepaySnapshot);
     await prisma.user.deleteMany({ where: { email: { startsWith: RUN_PREFIX } } });
   });
 
@@ -139,18 +130,6 @@ describe("M7 tenant payment configuration", () => {
       secrets: { secret: tenantSecret },
     });
 
-    // upsert (không create): provider là unique — DB dev có thể đã có cấu hình SePay thật (được khôi phục ở afterAll).
-    const platformData = {
-      isEnabled: true,
-      publicConfig: { bankBin: "970436", accountNo: "9999999999", accountName: "GIEO CHU", _testMarker: RUN_PREFIX },
-      encryptedSecrets: encryptSecret(JSON.stringify({ secret: platformSecret }), env.PAYMENT_ENCRYPTION_KEY),
-    };
-    await prisma.platformPaymentConfig.upsert({
-      where: { provider: "SEPAY" },
-      update: platformData,
-      create: { provider: "SEPAY", ...platformData },
-    });
-
     const tenantConfigRow = await withTenant(tenant.id, (tx) =>
       tx.tenantPaymentConfig.findUniqueOrThrow({ where: { tenantId_provider: { tenantId: tenant.id, provider: "SEPAY" } } }),
     );
@@ -159,12 +138,17 @@ describe("M7 tenant payment configuration", () => {
       ...(JSON.parse(decryptSecret(tenantConfigRow.encryptedSecrets, env.PAYMENT_ENCRYPTION_KEY)) as object),
     } as SepayConfig;
 
-    const platformConfigRow = await prisma.platformPaymentConfig.findFirstOrThrow({
-      where: { provider: "SEPAY", publicConfig: { path: ["_testMarker"], equals: RUN_PREFIX } },
-    });
+    // ADR-034: không ghi `platform_payment_configs` thật (DB dùng chung với production) — cấu hình platform dựng trong bộ
+    // nhớ, vẫn đi qua mã hoá/giải mã AES-GCM như dòng lưu DB.
     const platformCfg = {
-      ...(platformConfigRow.publicConfig as object),
-      ...(JSON.parse(decryptSecret(platformConfigRow.encryptedSecrets, env.PAYMENT_ENCRYPTION_KEY)) as object),
+      bankBin: "970436",
+      accountNo: "9999999999",
+      accountName: "GIEO CHU",
+      authType: "HMAC_SHA256",
+      paymentPrefix: "SUB",
+      ...(JSON.parse(
+        decryptSecret(encryptSecret(JSON.stringify({ secret: platformSecret }), env.PAYMENT_ENCRYPTION_KEY), env.PAYMENT_ENCRYPTION_KEY),
+      ) as object),
     } as SepayConfig;
 
     const rawBody = '{"id":1,"transferAmount":100000}';

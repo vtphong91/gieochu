@@ -7,7 +7,7 @@ tags:
   - payment
   - status/living
 date: 2026-10-16
-updated: 2026-10-22
+updated: 2026-10-24
 author: Long
 ---
 
@@ -154,7 +154,17 @@ File: `apps/web/app/api/cron/daily/route.ts` ✅. Contract đầy đủ: [[03-AP
   6. `reportIpPurge` *(thêm ở M12c, ADR-038 — bước `abuse_report.ip_purge`)* — `purgeExpiredAbuseReportIps()` đặt `ip = NULL` cho báo
      cáo vi phạm cũ hơn 12 tháng (giữ báo cáo); kết quả `{ cleared, skipped }`. Đặt sau `statsAggregate`, trước drain. Chi tiết:
      [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]] §8;
-  7. `queues` — `drainQueues` hai hàng đợi trên, ngân sách **40 giây**, kết quả `DrainQueuesResult`.
+  7. `sessionPurge` *(thêm ở ADR-053 — bước `refresh_tokens.purge`)* — `purgeStaleRefreshTokens()` xoá dòng `refresh_tokens` có `expiresAt` hoặc
+     `revokedAt` cũ hơn 90 ngày; kết quả `{ deleted }`. Đặt sau `reportIpPurge`, trước drain. Chi tiết:
+     [[02-System-Specs/Auth-Session-Specs|Auth-Session-Specs]] §8;
+  8. `downloadPurge` *(thêm ở ADR-054 mục 8 — bước `download_events.purge`)* — `purgeExpiredDownloadEvents()` (`lib/download.ts`) xoá dòng
+     `download_events` (nhật ký tải, có IP) có `createdAt` cũ hơn **12 tháng** (so UTC như audit purge); bảng L2 RLS `FORCE` → chạy qua
+     `withSystemJob` (policy `tenant_isolation` có nhánh `system_job` ✅ đọc SQL `rls_m9`). Giới hạn lượt tải dựa trên bộ đếm
+     `entitlements.downloadsUsed`/share link, không đếm lại dòng này → xoá không mở thêm lượt tải (comment code). Kết quả `{ deleted }`. Đặt sau
+     `sessionPurge`, trước drain. Nghiệp vụ: [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]] §10;
+  9. `queues` — `drainQueues` hai hàng đợi trên, ngân sách **40 giây**, kết quả `DrainQueuesResult`.
+- **Chưa có bước dọn nháp editor** (ADR-053 bổ sung lần 3): hàm `purgeStaleDrafts()` đã có ở `lib/editor-draft.ts` nhưng **chưa gắn** vào route cron ✅
+  — [[02-System-Specs/Editor-Autosave-Drafts-Specs|Editor-Autosave-Drafts-Specs]] §6.
 - Email M12c/ADR-039 (kết quả xử lý báo cáo, quyền lợi người mua, yêu cầu hoàn tiền) **không** đi qua hàng đợi — gửi bằng `sendEmailNow`
   trong `after()` của Server Action, tuần tự ✅ (job theo lô cho sản phẩm nhiều người mua là BACKLOG).
 - **Response:** chỉ có số đếm — không dữ liệu tenant/đơn/khách (§7.9) ✅. Có bước lỗi → **500** `CRON_STEP_FAILED` kèm `results`.

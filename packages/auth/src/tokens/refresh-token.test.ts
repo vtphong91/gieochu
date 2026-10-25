@@ -30,6 +30,17 @@ describe("M1 refresh token", () => {
     expect(evaluateRefreshToken(revoked, now)).toBe("reused");
   });
 
+  it("treats a token replaced within the grace window as superseded, but still reused after it or when revoked", () => {
+    const now = new Date("2026-01-01T00:00:30Z");
+    const replaced = { expiresAt: new Date("2026-02-01"), revokedAt: null, replacedById: "rt_new" };
+    const revokedAndReplaced = { ...replaced, revokedAt: new Date("2026-01-01T00:00:20Z") };
+
+    expect(evaluateRefreshToken(replaced, now, { replacedAt: new Date("2026-01-01T00:00:10Z") })).toBe("superseded");
+    expect(evaluateRefreshToken(replaced, now, { replacedAt: new Date("2025-12-31T23:59:00Z") })).toBe("reused");
+    expect(evaluateRefreshToken(replaced, now, { replacedAt: new Date("2026-01-01T00:00:25Z"), graceMs: 1_000 })).toBe("reused");
+    expect(evaluateRefreshToken(revokedAndReplaced, now, { replacedAt: new Date("2026-01-01T00:00:25Z") })).toBe("reused");
+  });
+
   it("rejects an expired refresh token", () => {
     const now = new Date("2026-01-10T00:00:00Z");
     const expired = { expiresAt: new Date("2026-01-01"), revokedAt: null, replacedById: null };

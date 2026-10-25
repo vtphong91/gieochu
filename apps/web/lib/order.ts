@@ -428,16 +428,32 @@ export async function applyCouponToOrder(tenantId: string, orderId: string, cust
     throw new AppError({ code: `COUPON_${pricing.couponError}`, message: couponErrorMessage(pricing.couponError), httpStatus: 400 });
   }
 
+  // ADR-056 bổ sung: đơn đã có QR/link thanh toán → tạo lại payload theo tổng mới TRƯỚC khi ghi (lỗi cổng → không đổi gì).
+  // Tổng mới 0đ → không cần payload, luồng ZERO_AMOUNT bên dưới đánh dấu PAID và trang ẩn khối thanh toán.
+  const checkoutPayload =
+    order.provider && order.checkoutPayload !== null && pricing.totalVnd > 0
+      ? await buildTenantCheckoutPayload(tenantId, { code: order.code, totalVnd: pricing.totalVnd }, order.provider)
+      : undefined;
+
   const updated = await withTenant(tenantId, async (tx) => {
+    const { count } = await tx.order.updateMany({
+      // Chưa ai đổi tổng tiền/cổng kể từ lúc đọc (chọn cổng hoặc áp mã song song) — tránh ghi đè payload lệch số tiền.
+      where: { id: orderId, status: "PENDING", totalVnd: order.totalVnd, provider: order.provider },
+      data: {
+        subtotalVnd: pricing.subtotalVnd,
+        discountVnd: pricing.discountVnd,
+        totalVnd: pricing.totalVnd,
+        couponCode: code,
+        ...(checkoutPayload !== undefined ? { checkoutPayload } : {}),
+      },
+    });
+    if (count === 0) throw orderChangedError();
     await Promise.all(
       pricing.lines.map((line) =>
         tx.orderItem.updateMany({ where: { orderId, productId: line.productId }, data: { finalPriceVnd: line.finalPriceVnd } }),
       ),
     );
-    return tx.order.update({
-      where: { id: orderId },
-      data: { subtotalVnd: pricing.subtotalVnd, discountVnd: pricing.discountVnd, totalVnd: pricing.totalVnd, couponCode: code },
-    });
+    return tx.order.findUniqueOrThrow({ where: { id: orderId } });
   });
 
   if (updated.totalVnd === 0) {
@@ -458,25 +474,36 @@ export async function removeCouponFromOrder(tenantId: string, orderId: string, c
     throw new AppError({ code: "ORDER_NOT_PENDING", message: "Đơn hàng không còn ở trạng thái chờ thanh toán.", httpStatus: 409 });
   }
 
+  // ADR-056 bổ sung: đơn đã có QR/link thanh toán → tạo lại payload theo tổng không giảm giá trước khi ghi.
+  const checkoutPayload =
+    order.provider && order.checkoutPayload !== null && order.subtotalVnd > 0
+      ? await buildTenantCheckoutPayload(tenantId, { code: order.code, totalVnd: order.subtotalVnd }, order.provider)
+      : undefined;
+
   return withTenant(tenantId, async (tx) => {
+    const { count } = await tx.order.updateMany({
+      where: { id: orderId, status: "PENDING", totalVnd: order.totalVnd, provider: order.provider },
+      data: {
+        subtotalVnd: order.subtotalVnd,
+        discountVnd: 0,
+        totalVnd: order.subtotalVnd,
+        couponCode: null,
+        ...(checkoutPayload !== undefined ? { checkoutPayload } : {}),
+      },
+    });
+    if (count === 0) throw orderChangedError();
     const items = await tx.orderItem.findMany({ where: { orderId } });
     await Promise.all(items.map((item) => tx.orderItem.update({ where: { id: item.id }, data: { finalPriceVnd: item.unitPriceVnd } })));
-    return tx.order.update({
-      where: { id: orderId },
-      data: { subtotalVnd: order.subtotalVnd, discountVnd: 0, totalVnd: order.subtotalVnd, couponCode: null },
-    });
+    return tx.order.findUniqueOrThrow({ where: { id: orderId } });
   });
 }
 
-/** Calls the tenant-scoped provider (§`PaymentScope: {kind:"TENANT", tenantId}` — never shares config/routes with platform billing) and stores the checkout payload for the checkout page to read back. */
-export async function initiateOrderCheckout(tenantId: string, orderId: string, customerId: string, provider: PaymentProviderId) {
-  const order = await withTenant(tenantId, (tx) => tx.order.findUnique({ where: { id: orderId } }));
-  if (!order || order.customerId !== customerId) throw notFound("Không tìm thấy đơn hàng.");
-  if (!isEffectivelyPending(order)) {
-    throw new AppError({ code: "ORDER_NOT_PENDING", message: "Đơn hàng không còn ở trạng thái chờ thanh toán.", httpStatus: 409 });
-  }
-  await assertOrderProductsPurchasable(tenantId, orderId);
-
+/**
+ * Tạo `checkoutPayload` qua cổng của tenant (§`PaymentScope: {kind:"TENANT", tenantId}` — không bao giờ dùng chung cấu hình/route
+ * với thanh toán gói). Số tiền luôn là `totalVnd` server vừa tính, nội dung CK/reference luôn là mã đơn (webhook SePay/MoMo tra
+ * đơn theo mã rồi tự đối chiếu số tiền với `orders.totalVnd`). Lỗi từ cổng (vd MoMo từ chối) → AppError, không đổi gì trên đơn.
+ */
+async function buildTenantCheckoutPayload(tenantId: string, order: { code: string; totalVnd: number }, provider: PaymentProviderId) {
   const [configRow, tenant] = await Promise.all([
     withTenant(tenantId, (tx) => tx.tenantPaymentConfig.findUnique({ where: { tenantId_provider: { tenantId, provider } } })),
     getPrismaClient().tenant.findUniqueOrThrow({ where: { id: tenantId } }),
@@ -489,19 +516,51 @@ export async function initiateOrderCheckout(tenantId: string, orderId: string, c
   const secrets = JSON.parse(decryptSecret(configRow.encryptedSecrets, env.PAYMENT_ENCRYPTION_KEY)) as Record<string, string>;
   const cfg = { ...(configRow.publicConfig as Record<string, unknown>), ...secrets };
 
-  const checkout = await getProvider(provider).createCheckout({
-    scope: { kind: "TENANT", tenantId },
-    cfg: cfg as never,
-    reference: order.code,
-    amountVnd: order.totalVnd,
-    description: `Thanh toan don hang ${order.code}`,
-    returnUrl: `${env.APP_URL}/${tenant.slug}/checkout/${order.code}`,
-    notifyUrl: buildWebhookNotifyUrl(env.APP_URL, { kind: "TENANT", tenantId }, provider),
-  });
+  try {
+    const checkout = await getProvider(provider).createCheckout({
+      scope: { kind: "TENANT", tenantId },
+      cfg: cfg as never,
+      reference: order.code,
+      amountVnd: order.totalVnd,
+      description: `Thanh toan don hang ${order.code}`,
+      returnUrl: `${env.APP_URL}/${tenant.slug}/checkout/${order.code}`,
+      notifyUrl: buildWebhookNotifyUrl(env.APP_URL, { kind: "TENANT", tenantId }, provider),
+    });
+    return checkout as unknown as Prisma.InputJsonValue;
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    logger.warn({ tenantId, orderCode: order.code, provider, err: error }, "order.checkout: cổng thanh toán không tạo được checkout");
+    throw new AppError({
+      code: "CHECKOUT_CREATE_FAILED",
+      message: "Không tạo được thông tin thanh toán, vui lòng thử lại hoặc chọn cách thanh toán khác.",
+      httpStatus: 502,
+    });
+  }
+}
 
-  return withTenant(tenantId, (tx) =>
-    tx.order.update({ where: { id: orderId }, data: { provider, checkoutPayload: checkout as unknown as Prisma.InputJsonValue } }),
-  );
+const orderChangedError = () =>
+  new AppError({ code: "ORDER_CHANGED", message: "Đơn hàng vừa được cập nhật, vui lòng tải lại trang và thử lại.", httpStatus: 409 });
+
+/** Stores the checkout payload for the checkout page to read back. */
+export async function initiateOrderCheckout(tenantId: string, orderId: string, customerId: string, provider: PaymentProviderId) {
+  const order = await withTenant(tenantId, (tx) => tx.order.findUnique({ where: { id: orderId } }));
+  if (!order || order.customerId !== customerId) throw notFound("Không tìm thấy đơn hàng.");
+  if (!isEffectivelyPending(order)) {
+    throw new AppError({ code: "ORDER_NOT_PENDING", message: "Đơn hàng không còn ở trạng thái chờ thanh toán.", httpStatus: 409 });
+  }
+  await assertOrderProductsPurchasable(tenantId, orderId);
+
+  const checkoutPayload = await buildTenantCheckoutPayload(tenantId, order, provider);
+
+  // ADR-056 bổ sung: chỉ ghi nếu tổng tiền không đổi kể từ lúc đọc (áp/gỡ mã chạy song song) — QR không bao giờ lệch totalVnd.
+  return withTenant(tenantId, async (tx) => {
+    const { count } = await tx.order.updateMany({
+      where: { id: orderId, status: "PENDING", totalVnd: order.totalVnd },
+      data: { provider, checkoutPayload },
+    });
+    if (count === 0) throw orderChangedError();
+    return tx.order.findUniqueOrThrow({ where: { id: orderId } });
+  });
 }
 
 export async function getOrderForCustomer(customerId: string, orderCode: string) {

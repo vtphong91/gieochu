@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { IconLock } from "../../admin/_ui/icons";
 
 /** Đỏ đạt 6.5:1 trên nền trắng. */
@@ -25,15 +24,14 @@ export function LogoutButton({
   tone?: "light" | "onDark";
 }) {
   const [pending, setPending] = useState(false);
-  const router = useRouter();
-
   async function handleLogout() {
     setPending(true);
     try {
       await fetch("/api/auth/logout", { method: "POST" });
-      router.push(redirectTo);
-      router.refresh();
-    } finally {
+      // ADR-053: điều hướng cứng — xoá toàn bộ client cache (header/layout prefetch còn dữ liệu phiên cũ). Giữ `pending`
+      // tới khi trang mới tải để không bấm lặp.
+      window.location.assign(redirectTo);
+    } catch {
       setPending(false);
     }
   }

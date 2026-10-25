@@ -1,5 +1,6 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
-import { verifyAccessToken, type SystemRole } from "@gieochu/auth";
+import { verifyAccessToken, type SystemRole, type VerifiedAccessToken } from "@gieochu/auth";
 import { forbidden, unauthorized } from "@gieochu/core";
 import { ACCESS_COOKIE_NAME } from "./cookies";
 import { getJwtContext } from "./jwt-context";
@@ -12,24 +13,39 @@ export interface CurrentUser {
   profileCompleted: boolean;
 }
 
-/** Reads + verifies the access token cookie. Returns null if absent/invalid/expired. */
-export async function getCurrentUser(): Promise<CurrentUser | null> {
+/** Verify access token cookie một lần mỗi request (`cache()`) — dùng chung cho getCurrentUser và root layout. */
+const readAccessClaims = cache(async (): Promise<VerifiedAccessToken | null> => {
   const store = await cookies();
   const token = store.get(ACCESS_COOKIE_NAME)?.value;
   if (!token) return null;
-
   try {
-    const claims = await verifyAccessToken(token, getJwtContext());
-    return {
-      userId: claims.sub,
-      familyId: claims.sid,
-      role: claims.role,
-      emailVerified: claims.ver,
-      profileCompleted: claims.pc,
-    };
+    return await verifyAccessToken(token, getJwtContext());
   } catch {
     return null;
   }
+});
+
+/** Reads + verifies the access token cookie. Returns null if absent/invalid/expired. */
+export async function getCurrentUser(): Promise<CurrentUser | null> {
+  const claims = await readAccessClaims();
+  if (!claims) return null;
+  return {
+    userId: claims.sub,
+    familyId: claims.sid,
+    role: claims.role,
+    emailVerified: claims.ver,
+    profileCompleted: claims.pc,
+  };
+}
+
+/**
+ * ADR-053 — thông tin phiên cho `SessionRefresh` (client): vai trò + "Ghi nhớ" (claim `rm`) để tính chính sách, và lúc
+ * access token được phát (`iat`, cùng lúc refresh token hiện tại được tạo) làm mốc đếm idle phía client. Không đọc DB.
+ */
+export async function getSessionClientInfo(): Promise<{ role: SystemRole; rememberMe: boolean; issuedAtMs: number } | null> {
+  const claims = await readAccessClaims();
+  if (!claims) return null;
+  return { role: claims.role, rememberMe: claims.rm === true, issuedAtMs: claims.iat * 1000 };
 }
 
 /**

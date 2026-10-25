@@ -909,6 +909,40 @@ export type EnumLegalReviewStatusWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedEnumLegalReviewStatusFilter<$PrismaModel>
 }
 
+export type EnumTenantEditorDraftEntityFilter<$PrismaModel = never> = {
+  equals?: $Enums.TenantEditorDraftEntity | Prisma.EnumTenantEditorDraftEntityFieldRefInput<$PrismaModel>
+  in?: $Enums.TenantEditorDraftEntity[] | Prisma.ListEnumTenantEditorDraftEntityFieldRefInput<$PrismaModel>
+  notIn?: $Enums.TenantEditorDraftEntity[] | Prisma.ListEnumTenantEditorDraftEntityFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumTenantEditorDraftEntityFilter<$PrismaModel> | $Enums.TenantEditorDraftEntity
+}
+
+export type EnumTenantEditorDraftEntityWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.TenantEditorDraftEntity | Prisma.EnumTenantEditorDraftEntityFieldRefInput<$PrismaModel>
+  in?: $Enums.TenantEditorDraftEntity[] | Prisma.ListEnumTenantEditorDraftEntityFieldRefInput<$PrismaModel>
+  notIn?: $Enums.TenantEditorDraftEntity[] | Prisma.ListEnumTenantEditorDraftEntityFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumTenantEditorDraftEntityWithAggregatesFilter<$PrismaModel> | $Enums.TenantEditorDraftEntity
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumTenantEditorDraftEntityFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumTenantEditorDraftEntityFilter<$PrismaModel>
+}
+
+export type EnumSystemEditorDraftEntityFilter<$PrismaModel = never> = {
+  equals?: $Enums.SystemEditorDraftEntity | Prisma.EnumSystemEditorDraftEntityFieldRefInput<$PrismaModel>
+  in?: $Enums.SystemEditorDraftEntity[] | Prisma.ListEnumSystemEditorDraftEntityFieldRefInput<$PrismaModel>
+  notIn?: $Enums.SystemEditorDraftEntity[] | Prisma.ListEnumSystemEditorDraftEntityFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumSystemEditorDraftEntityFilter<$PrismaModel> | $Enums.SystemEditorDraftEntity
+}
+
+export type EnumSystemEditorDraftEntityWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.SystemEditorDraftEntity | Prisma.EnumSystemEditorDraftEntityFieldRefInput<$PrismaModel>
+  in?: $Enums.SystemEditorDraftEntity[] | Prisma.ListEnumSystemEditorDraftEntityFieldRefInput<$PrismaModel>
+  notIn?: $Enums.SystemEditorDraftEntity[] | Prisma.ListEnumSystemEditorDraftEntityFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumSystemEditorDraftEntityWithAggregatesFilter<$PrismaModel> | $Enums.SystemEditorDraftEntity
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumSystemEditorDraftEntityFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumSystemEditorDraftEntityFilter<$PrismaModel>
+}
+
 export type NestedStringFilter<$PrismaModel = never> = {
   equals?: string | Prisma.StringFieldRefInput<$PrismaModel>
   in?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
@@ -1761,6 +1795,40 @@ export type NestedEnumLegalReviewStatusWithAggregatesFilter<$PrismaModel = never
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumLegalReviewStatusFilter<$PrismaModel>
   _max?: Prisma.NestedEnumLegalReviewStatusFilter<$PrismaModel>
+}
+
+export type NestedEnumTenantEditorDraftEntityFilter<$PrismaModel = never> = {
+  equals?: $Enums.TenantEditorDraftEntity | Prisma.EnumTenantEditorDraftEntityFieldRefInput<$PrismaModel>
+  in?: $Enums.TenantEditorDraftEntity[] | Prisma.ListEnumTenantEditorDraftEntityFieldRefInput<$PrismaModel>
+  notIn?: $Enums.TenantEditorDraftEntity[] | Prisma.ListEnumTenantEditorDraftEntityFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumTenantEditorDraftEntityFilter<$PrismaModel> | $Enums.TenantEditorDraftEntity
+}
+
+export type NestedEnumTenantEditorDraftEntityWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.TenantEditorDraftEntity | Prisma.EnumTenantEditorDraftEntityFieldRefInput<$PrismaModel>
+  in?: $Enums.TenantEditorDraftEntity[] | Prisma.ListEnumTenantEditorDraftEntityFieldRefInput<$PrismaModel>
+  notIn?: $Enums.TenantEditorDraftEntity[] | Prisma.ListEnumTenantEditorDraftEntityFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumTenantEditorDraftEntityWithAggregatesFilter<$PrismaModel> | $Enums.TenantEditorDraftEntity
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumTenantEditorDraftEntityFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumTenantEditorDraftEntityFilter<$PrismaModel>
+}
+
+export type NestedEnumSystemEditorDraftEntityFilter<$PrismaModel = never> = {
+  equals?: $Enums.SystemEditorDraftEntity | Prisma.EnumSystemEditorDraftEntityFieldRefInput<$PrismaModel>
+  in?: $Enums.SystemEditorDraftEntity[] | Prisma.ListEnumSystemEditorDraftEntityFieldRefInput<$PrismaModel>
+  notIn?: $Enums.SystemEditorDraftEntity[] | Prisma.ListEnumSystemEditorDraftEntityFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumSystemEditorDraftEntityFilter<$PrismaModel> | $Enums.SystemEditorDraftEntity
+}
+
+export type NestedEnumSystemEditorDraftEntityWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.SystemEditorDraftEntity | Prisma.EnumSystemEditorDraftEntityFieldRefInput<$PrismaModel>
+  in?: $Enums.SystemEditorDraftEntity[] | Prisma.ListEnumSystemEditorDraftEntityFieldRefInput<$PrismaModel>
+  notIn?: $Enums.SystemEditorDraftEntity[] | Prisma.ListEnumSystemEditorDraftEntityFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumSystemEditorDraftEntityWithAggregatesFilter<$PrismaModel> | $Enums.SystemEditorDraftEntity
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumSystemEditorDraftEntityFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumSystemEditorDraftEntityFilter<$PrismaModel>
 }
 
 

@@ -30,6 +30,9 @@ export type LegalDocumentMinAggregateOutputType = {
   key: string | null
   slug: string | null
   title: string | null
+  summary: string | null
+  seoTitle: string | null
+  seoDescription: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -39,6 +42,9 @@ export type LegalDocumentMaxAggregateOutputType = {
   key: string | null
   slug: string | null
   title: string | null
+  summary: string | null
+  seoTitle: string | null
+  seoDescription: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -48,6 +54,9 @@ export type LegalDocumentCountAggregateOutputType = {
   key: number
   slug: number
   title: number
+  summary: number
+  seoTitle: number
+  seoDescription: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -59,6 +68,9 @@ export type LegalDocumentMinAggregateInputType = {
   key?: true
   slug?: true
   title?: true
+  summary?: true
+  seoTitle?: true
+  seoDescription?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -68,6 +80,9 @@ export type LegalDocumentMaxAggregateInputType = {
   key?: true
   slug?: true
   title?: true
+  summary?: true
+  seoTitle?: true
+  seoDescription?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -77,6 +92,9 @@ export type LegalDocumentCountAggregateInputType = {
   key?: true
   slug?: true
   title?: true
+  summary?: true
+  seoTitle?: true
+  seoDescription?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -159,6 +177,9 @@ export type LegalDocumentGroupByOutputType = {
   key: string
   slug: string
   title: string
+  summary: string | null
+  seoTitle: string | null
+  seoDescription: string | null
   createdAt: Date
   updatedAt: Date
   _count: LegalDocumentCountAggregateOutputType | null
@@ -189,6 +210,9 @@ export type LegalDocumentWhereInput = {
   key?: Prisma.StringFilter<"LegalDocument"> | string
   slug?: Prisma.StringFilter<"LegalDocument"> | string
   title?: Prisma.StringFilter<"LegalDocument"> | string
+  summary?: Prisma.StringNullableFilter<"LegalDocument"> | string | null
+  seoTitle?: Prisma.StringNullableFilter<"LegalDocument"> | string | null
+  seoDescription?: Prisma.StringNullableFilter<"LegalDocument"> | string | null
   createdAt?: Prisma.DateTimeFilter<"LegalDocument"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"LegalDocument"> | Date | string
   versions?: Prisma.LegalDocumentVersionListRelationFilter
@@ -199,6 +223,9 @@ export type LegalDocumentOrderByWithRelationInput = {
   key?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  summary?: Prisma.SortOrderInput | Prisma.SortOrder
+  seoTitle?: Prisma.SortOrderInput | Prisma.SortOrder
+  seoDescription?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   versions?: Prisma.LegalDocumentVersionOrderByRelationAggregateInput
@@ -212,6 +239,9 @@ export type LegalDocumentWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.LegalDocumentWhereInput[]
   NOT?: Prisma.LegalDocumentWhereInput | Prisma.LegalDocumentWhereInput[]
   title?: Prisma.StringFilter<"LegalDocument"> | string
+  summary?: Prisma.StringNullableFilter<"LegalDocument"> | string | null
+  seoTitle?: Prisma.StringNullableFilter<"LegalDocument"> | string | null
+  seoDescription?: Prisma.StringNullableFilter<"LegalDocument"> | string | null
   createdAt?: Prisma.DateTimeFilter<"LegalDocument"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"LegalDocument"> | Date | string
   versions?: Prisma.LegalDocumentVersionListRelationFilter
@@ -222,6 +252,9 @@ export type LegalDocumentOrderByWithAggregationInput = {
   key?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  summary?: Prisma.SortOrderInput | Prisma.SortOrder
+  seoTitle?: Prisma.SortOrderInput | Prisma.SortOrder
+  seoDescription?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.LegalDocumentCountOrderByAggregateInput
@@ -237,6 +270,9 @@ export type LegalDocumentScalarWhereWithAggregatesInput = {
   key?: Prisma.StringWithAggregatesFilter<"LegalDocument"> | string
   slug?: Prisma.StringWithAggregatesFilter<"LegalDocument"> | string
   title?: Prisma.StringWithAggregatesFilter<"LegalDocument"> | string
+  summary?: Prisma.StringNullableWithAggregatesFilter<"LegalDocument"> | string | null
+  seoTitle?: Prisma.StringNullableWithAggregatesFilter<"LegalDocument"> | string | null
+  seoDescription?: Prisma.StringNullableWithAggregatesFilter<"LegalDocument"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"LegalDocument"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"LegalDocument"> | Date | string
 }
@@ -246,6 +282,9 @@ export type LegalDocumentCreateInput = {
   key: string
   slug: string
   title: string
+  summary?: string | null
+  seoTitle?: string | null
+  seoDescription?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   versions?: Prisma.LegalDocumentVersionCreateNestedManyWithoutDocumentInput
@@ -256,6 +295,9 @@ export type LegalDocumentUncheckedCreateInput = {
   key: string
   slug: string
   title: string
+  summary?: string | null
+  seoTitle?: string | null
+  seoDescription?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   versions?: Prisma.LegalDocumentVersionUncheckedCreateNestedManyWithoutDocumentInput
@@ -266,6 +308,9 @@ export type LegalDocumentUpdateInput = {
   key?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   versions?: Prisma.LegalDocumentVersionUpdateManyWithoutDocumentNestedInput
@@ -276,6 +321,9 @@ export type LegalDocumentUncheckedUpdateInput = {
   key?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   versions?: Prisma.LegalDocumentVersionUncheckedUpdateManyWithoutDocumentNestedInput
@@ -286,6 +334,9 @@ export type LegalDocumentCreateManyInput = {
   key: string
   slug: string
   title: string
+  summary?: string | null
+  seoTitle?: string | null
+  seoDescription?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -295,6 +346,9 @@ export type LegalDocumentUpdateManyMutationInput = {
   key?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -304,6 +358,9 @@ export type LegalDocumentUncheckedUpdateManyInput = {
   key?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -313,6 +370,9 @@ export type LegalDocumentCountOrderByAggregateInput = {
   key?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  summary?: Prisma.SortOrder
+  seoTitle?: Prisma.SortOrder
+  seoDescription?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -322,6 +382,9 @@ export type LegalDocumentMaxOrderByAggregateInput = {
   key?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  summary?: Prisma.SortOrder
+  seoTitle?: Prisma.SortOrder
+  seoDescription?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -331,6 +394,9 @@ export type LegalDocumentMinOrderByAggregateInput = {
   key?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  summary?: Prisma.SortOrder
+  seoTitle?: Prisma.SortOrder
+  seoDescription?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -359,6 +425,9 @@ export type LegalDocumentCreateWithoutVersionsInput = {
   key: string
   slug: string
   title: string
+  summary?: string | null
+  seoTitle?: string | null
+  seoDescription?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -368,6 +437,9 @@ export type LegalDocumentUncheckedCreateWithoutVersionsInput = {
   key: string
   slug: string
   title: string
+  summary?: string | null
+  seoTitle?: string | null
+  seoDescription?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -393,6 +465,9 @@ export type LegalDocumentUpdateWithoutVersionsInput = {
   key?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -402,6 +477,9 @@ export type LegalDocumentUncheckedUpdateWithoutVersionsInput = {
   key?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -442,6 +520,9 @@ export type LegalDocumentSelect<ExtArgs extends runtime.Types.Extensions.Interna
   key?: boolean
   slug?: boolean
   title?: boolean
+  summary?: boolean
+  seoTitle?: boolean
+  seoDescription?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   versions?: boolean | Prisma.LegalDocument$versionsArgs<ExtArgs>
@@ -453,6 +534,9 @@ export type LegalDocumentSelectCreateManyAndReturn<ExtArgs extends runtime.Types
   key?: boolean
   slug?: boolean
   title?: boolean
+  summary?: boolean
+  seoTitle?: boolean
+  seoDescription?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["legalDocument"]>
@@ -462,6 +546,9 @@ export type LegalDocumentSelectUpdateManyAndReturn<ExtArgs extends runtime.Types
   key?: boolean
   slug?: boolean
   title?: boolean
+  summary?: boolean
+  seoTitle?: boolean
+  seoDescription?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["legalDocument"]>
@@ -471,11 +558,14 @@ export type LegalDocumentSelectScalar = {
   key?: boolean
   slug?: boolean
   title?: boolean
+  summary?: boolean
+  seoTitle?: boolean
+  seoDescription?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type LegalDocumentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "key" | "slug" | "title" | "createdAt" | "updatedAt", ExtArgs["result"]["legalDocument"]>
+export type LegalDocumentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "key" | "slug" | "title" | "summary" | "seoTitle" | "seoDescription" | "createdAt" | "updatedAt", ExtArgs["result"]["legalDocument"]>
 export type LegalDocumentInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   versions?: boolean | Prisma.LegalDocument$versionsArgs<ExtArgs>
   _count?: boolean | Prisma.LegalDocumentCountOutputTypeDefaultArgs<ExtArgs>
@@ -495,10 +585,22 @@ export type $LegalDocumentPayload<ExtArgs extends runtime.Types.Extensions.Inter
      */
     key: string
     /**
-     * Segment URL dưới `/phap-ly/` (vd `dieu-khoan-su-dung`).
+     * Segment URL cấp gốc `/{slug}` (vd `dieu-khoan-su-dung`, ADR-054; trước đó dưới `/phap-ly/`).
      */
     slug: string
     title: string
+    /**
+     * ADR-054 — mô tả ngắn (≤ 320, fallback mô tả SEO); sửa thẳng trong CMS, không theo phiên bản.
+     */
+    summary: string | null
+    /**
+     * ADR-054 — tiêu đề SEO (≤ 120, token `{brand}`); trống → "{title} | {brand}".
+     */
+    seoTitle: string | null
+    /**
+     * ADR-054 — mô tả SEO (≤ 320, token `{brand}`); trống → `summary`.
+     */
+    seoDescription: string | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["legalDocument"]>
@@ -929,6 +1031,9 @@ export interface LegalDocumentFieldRefs {
   readonly key: Prisma.FieldRef<"LegalDocument", 'String'>
   readonly slug: Prisma.FieldRef<"LegalDocument", 'String'>
   readonly title: Prisma.FieldRef<"LegalDocument", 'String'>
+  readonly summary: Prisma.FieldRef<"LegalDocument", 'String'>
+  readonly seoTitle: Prisma.FieldRef<"LegalDocument", 'String'>
+  readonly seoDescription: Prisma.FieldRef<"LegalDocument", 'String'>
   readonly createdAt: Prisma.FieldRef<"LegalDocument", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"LegalDocument", 'DateTime'>
 }

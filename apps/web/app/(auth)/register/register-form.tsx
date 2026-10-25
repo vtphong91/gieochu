@@ -21,15 +21,31 @@ interface RegisterFormValues {
   consent: boolean;
 }
 
-/** Bản Điều khoản đang hiệu lực (ADR-050) — `null` = chưa công bố, checkbox giữ chữ như cũ. */
+/** Bản văn bản đang hiệu lực (Điều khoản — ADR-050; Chính sách bảo mật — ADR-054) — `null` = chưa công bố. */
 export interface RegisterTermsInfo {
   versionId: string;
   href: string;
   title: string;
 }
 
+function LegalLink({ doc }: { doc: RegisterTermsInfo }) {
+  return (
+    <Link
+      href={doc.href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="rounded-sm font-semibold underline underline-offset-2 outline-offset-2 focus-visible:outline-2"
+      style={{ color: BLUE, outlineColor: BLUE }}
+    >
+      {doc.title}
+      <IconExternalLink className="ml-1 inline h-3.5 w-3.5 align-[-2px]" />
+      <span className="sr-only"> (mở trong tab mới)</span>
+    </Link>
+  );
+}
+
 /** Form đăng ký (client). Tên thương hiệu do page (server) đọc từ `getEffectiveBrand()` truyền xuống (ADR-032). */
-export function RegisterForm({ brandName, terms }: { brandName: string; terms: RegisterTermsInfo | null }) {
+export function RegisterForm({ brandName, terms, privacy }: { brandName: string; terms: RegisterTermsInfo | null; privacy: RegisterTermsInfo | null }) {
   const [accountType, setAccountType] = useState<AccountType | null>(null);
   const {
     register,
@@ -45,7 +61,12 @@ export function RegisterForm({ brandName, terms }: { brandName: string; terms: R
     const response = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, accountType, ...(terms ? { termsVersionId: terms.versionId } : {}) }),
+      body: JSON.stringify({
+        ...data,
+        accountType,
+        ...(terms ? { termsVersionId: terms.versionId } : {}),
+        ...(privacy ? { privacyVersionId: privacy.versionId } : {}),
+      }),
     });
     if (!response.ok) {
       const body = await response.json();
@@ -129,25 +150,9 @@ export function RegisterForm({ brandName, terms }: { brandName: string; terms: R
                   {...register("consent", { required: true })}
                 />
                 <span>
-                  {terms ? (
-                    <>
-                      Tôi đồng ý với{" "}
-                      <Link
-                        href={terms.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-sm font-semibold underline underline-offset-2 outline-offset-2 focus-visible:outline-2"
-                        style={{ color: BLUE, outlineColor: BLUE }}
-                      >
-                        {terms.title}
-                        <IconExternalLink className="ml-1 inline h-3.5 w-3.5 align-[-2px]" />
-                        <span className="sr-only"> (mở trong tab mới)</span>
-                      </Link>{" "}
-                      và chính sách xử lý dữ liệu cá nhân.
-                    </>
-                  ) : (
-                    "Tôi đồng ý với điều khoản sử dụng và chính sách xử lý dữ liệu cá nhân."
-                  )}
+                  {/* ADR-054 mục 5: mỗi văn bản có bản hiệu lực thì thành link; chưa có thì giữ chữ thường như cũ. */}
+                  Tôi đồng ý với {terms ? <LegalLink doc={terms} /> : "điều khoản sử dụng"} và{" "}
+                  {privacy ? <LegalLink doc={privacy} /> : "chính sách xử lý dữ liệu cá nhân"}.
                 </span>
               </label>
               {errors.consent ? (

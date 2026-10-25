@@ -4,9 +4,11 @@ import { brandColors } from "@gieochu/config/theme";
 import { getPrismaClient } from "@gieochu/db";
 import { requireVerifiedAccess } from "../../../lib/page-guards";
 import { findPendingEmailChange } from "../../../lib/account-profile";
+import { listAccountSessions } from "../../../lib/account-sessions";
 import { AdminPageHeader } from "../../admin/_ui/kit";
 import { IconLock, IconMail, IconShield } from "../../admin/_ui/icons";
 import { ChangePasswordForm, EmailChangeSection, LogoutAllDevices } from "./security-forms";
+import { SessionList } from "./session-list";
 
 export const metadata: Metadata = { title: "Bảo mật", robots: { index: false, follow: false } };
 
@@ -20,9 +22,10 @@ const LINE = "#E5E7EB";
  */
 export default async function SecurityPage() {
   const user = await requireVerifiedAccess("/account/security");
-  const [dbUser, pendingEmail] = await Promise.all([
+  const [dbUser, pendingEmail, sessions] = await Promise.all([
     getPrismaClient().user.findUniqueOrThrow({ where: { id: user.userId }, select: { email: true } }),
     findPendingEmailChange(user.userId),
+    listAccountSessions(user),
   ]);
 
   return (
@@ -48,6 +51,10 @@ export default async function SecurityPage() {
           danger
           className="xl:col-span-2"
         >
+          {/* ADR-053 mục 4: thiết bị đang đăng nhập + đăng xuất từng thiết bị. */}
+          <div className="mb-4">
+            <SessionList sessions={sessions} />
+          </div>
           <LogoutAllDevices />
         </SecurityCard>
       </div>

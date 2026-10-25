@@ -1,11 +1,18 @@
+import { cache } from "react";
+import { z } from "zod";
+import { getEnv } from "@gieochu/config";
 import {
   AppError,
+  cmsSeoSchema,
+  isLegalDocumentKey,
   LEGAL_CHANGE_SUMMARY_MAX,
   LEGAL_CONTENT_MAX,
   LEGAL_EFFECTIVE_BACKDATE_TOLERANCE_MS,
   LEGAL_ERROR_CODES,
   LEGAL_PUBLISH_BLOCKER_MESSAGES,
+  LEGAL_SUMMARY_MAX,
   legalPublishBlockers,
+  type LegalDocumentKey,
   type LegalReviewStatusValue,
 } from "@gieochu/core";
 import { sanitizeRichTextHtml } from "@gieochu/core/content/sanitize-html";
@@ -74,9 +81,21 @@ function legalError(code: string, message: string, httpStatus = 422): AppError {
   return new AppError({ code, message, httpStatus });
 }
 
-/** Sanitize nội dung văn bản pháp lý (không cho ảnh: `imageCloudName = null`). */
+function siteOrigin(): string | null {
+  try {
+    return new URL(getEnv().APP_URL).origin;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Sanitize nội dung văn bản pháp lý (không cho ảnh: `imageCloudName = null`). ADR-054 mục 7: chế độ `trustedLinks` — link
+ * nội bộ (đường dẫn `/…`, `#…`, cùng origin `APP_URL`) mở cùng tab, link ngoài `target="_blank" rel="noopener noreferrer"`.
+ * Chỉ áp cho văn bản pháp lý (System Admin soạn) — nội dung tenant giữ nguyên hành vi cũ.
+ */
 export function sanitizeLegalHtml(html: string): string {
-  return sanitizeRichTextHtml(html, { imageCloudName: null });
+  return sanitizeRichTextHtml(html, { imageCloudName: null, trustedLinks: { siteOrigin: siteOrigin() } });
 }
 
 function normalizeContent(contentHtml: unknown): string {
@@ -240,22 +259,144 @@ export async function archiveLegalVersion(key: string, versionId: string): Promi
   return loadVersion(key, versionId);
 }
 
-// ───────────────────────── Chấp thuận lúc đăng ký ─────────────────────────
+// ───────────────────────── Mô tả ngắn + SEO (ADR-054 mục 4) ─────────────────────────
+
+export interface LegalDocumentMeta {
+  title: string;
+  summary: string | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+}
 
 /**
- * Chọn phiên bản Điều khoản phải ghi chấp thuận khi đăng ký. Client gửi `termsVersionId` (bản người dùng đã thấy trên
- * form): khác bản đang hiệu lực → 409 (Điều khoản vừa đổi, tải lại). Client không gửi (form cũ còn cache) → dùng bản
- * đang hiệu lực (người dùng vẫn tích ô đồng ý). Chưa có bản hiệu lực → `null` (đăng ký như trước ADR-050).
+ * Mô tả ngắn + SEO của văn bản (cột trên `legal_documents`, không theo phiên bản). Chưa có dòng (chưa tạo nháp nào) →
+ * `null`. Đọc riêng, KHÔNG gộp vào `getEffectiveLegalVersion` (đăng ký dùng hàm đó — không phụ thuộc cột mới).
  */
-export function resolveRegistrationTermsVersion(effective: EffectiveLegalVersion | null, submittedVersionId: string | undefined): string | null {
-  if (!effective) return null;
-  if (submittedVersionId && submittedVersionId !== effective.versionId) {
-    throw legalError(LEGAL_ERROR_CODES.TERMS_CHANGED, "Điều khoản sử dụng vừa được cập nhật. Vui lòng tải lại trang, đọc bản mới rồi đăng ký lại.", 409);
+export async function getLegalDocumentMeta(key: string): Promise<LegalDocumentMeta | null> {
+  return getPrismaClient().legalDocument.findUnique({
+    where: { key },
+    select: { title: true, summary: true, seoTitle: true, seoDescription: true },
+  });
+}
+
+const legalMetaSchema = cmsSeoSchema.extend({
+  summary: z.string().trim().max(LEGAL_SUMMARY_MAX, `Mô tả ngắn tối đa ${LEGAL_SUMMARY_MAX} ký tự.`),
+});
+
+/**
+ * Lưu thẳng mô tả ngắn + SEO (không nháp — như SEO trang chủ, ADR-050 lần 2): trim, giới hạn độ dài, chuỗi rỗng → `null`.
+ * Tạo dòng văn bản nếu chưa có (cho phép soạn SEO trước khi có phiên bản). Caller phải `requireRole("SYSTEM_ADMIN")`.
+ */
+export async function updateLegalDocumentMeta(spec: LegalDocumentSpec, input: unknown): Promise<LegalDocumentMeta> {
+  const parsed = legalMetaSchema.safeParse(input);
+  if (!parsed.success) throw legalError(LEGAL_ERROR_CODES.INVALID_INPUT, parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ.", 400);
+  const doc = await ensureLegalDocument(spec);
+  return getPrismaClient().legalDocument.update({
+    where: { id: doc.id },
+    data: {
+      summary: parsed.data.summary || null,
+      seoTitle: parsed.data.seoTitle || null,
+      seoDescription: parsed.data.seoDescription || null,
+    },
+    select: { title: true, summary: true, seoTitle: true, seoDescription: true },
+  });
+}
+
+export type LegalDocumentAdminStatus = "NONE" | "DRAFT_ONLY" | "EFFECTIVE" | "SCHEDULED";
+
+/**
+ * Trạng thái từng văn bản cho bộ chọn của editor (một truy vấn, không đọc nội dung): chưa có phiên bản / chỉ có nháp /
+ * đang hiệu lực / chỉ có bản hẹn hiệu lực tương lai; kèm cờ có bản nháp. Khoá trong DB không còn khai báo bị bỏ.
+ */
+export async function listLegalDocumentStatuses(now: Date = new Date()): Promise<Map<LegalDocumentKey, { status: LegalDocumentAdminStatus; hasDraft: boolean }>> {
+  const docs = await getPrismaClient().legalDocument.findMany({
+    select: { key: true, versions: { select: { status: true, effectiveAt: true } } },
+  });
+  const result = new Map<LegalDocumentKey, { status: LegalDocumentAdminStatus; hasDraft: boolean }>();
+  for (const doc of docs) {
+    if (!isLegalDocumentKey(doc.key)) continue;
+    const published = doc.versions.filter((v) => v.status === "PUBLISHED" && v.effectiveAt);
+    const effective = published.some((v) => v.effectiveAt!.getTime() <= now.getTime());
+    const scheduled = published.some((v) => v.effectiveAt!.getTime() > now.getTime());
+    const hasDraft = doc.versions.some((v) => v.status === "DRAFT");
+    const status: LegalDocumentAdminStatus = effective ? "EFFECTIVE" : scheduled ? "SCHEDULED" : hasDraft ? "DRAFT_ONLY" : "NONE";
+    result.set(doc.key, { status, hasDraft });
   }
+  return result;
+}
+
+// ───────────────────────── Văn bản đang hiệu lực (menu, link) ─────────────────────────
+
+/**
+ * Khoá các văn bản ĐÃ KHAI BÁO trong code đang có bản hiệu lực — MỘT truy vấn, `cache()` theo request (header + footer +
+ * form cùng trang chỉ đọc một lần). Dùng để ẩn link menu/footer tới văn bản chưa hiệu lực (ADR-054 mục 3, 6).
+ */
+export const getEffectiveLegalKeys = cache(async function getEffectiveLegalKeys(): Promise<ReadonlySet<LegalDocumentKey>> {
+  const rows = await getPrismaClient().legalDocument.findMany({
+    where: { versions: { some: { status: "PUBLISHED", effectiveAt: { lte: new Date() } } } },
+    select: { key: true },
+  });
+  return new Set(rows.map((row) => row.key).filter(isLegalDocumentKey));
+});
+
+// ───────────────────────── Chấp thuận theo phiên bản ─────────────────────────
+
+/**
+ * Chọn phiên bản phải ghi chấp thuận. Client gửi id bản người dùng đã thấy trên form: khác bản đang hiệu lực → 409 (văn
+ * bản vừa đổi, tải lại). Client không gửi (form cũ còn cache) → dùng bản đang hiệu lực (người dùng vẫn tích ô đồng ý).
+ * Chưa có bản hiệu lực → `null` (bỏ qua như trước ADR-050).
+ */
+export function resolveAcceptedLegalVersion(
+  effective: EffectiveLegalVersion | null,
+  submittedVersionId: string | undefined,
+  changed: { code: string; message: string },
+): string | null {
+  if (!effective) return null;
+  if (submittedVersionId && submittedVersionId !== effective.versionId) throw legalError(changed.code, changed.message, 409);
   return effective.versionId;
+}
+
+/** Phiên bản Điều khoản ghi khi đăng ký (giữ mã lỗi `LEGAL_TERMS_CHANGED` của ADR-050). */
+export function resolveRegistrationTermsVersion(effective: EffectiveLegalVersion | null, submittedVersionId: string | undefined): string | null {
+  return resolveAcceptedLegalVersion(effective, submittedVersionId, {
+    code: LEGAL_ERROR_CODES.TERMS_CHANGED,
+    message: "Điều khoản sử dụng vừa được cập nhật. Vui lòng tải lại trang, đọc bản mới rồi đăng ký lại.",
+  });
+}
+
+/** ADR-054 mục 5: phiên bản Chính sách bảo mật ghi khi đăng ký (cùng ô đồng ý với Điều khoản). */
+export function resolveRegistrationPrivacyVersion(effective: EffectiveLegalVersion | null, submittedVersionId: string | undefined): string | null {
+  return resolveAcceptedLegalVersion(effective, submittedVersionId, {
+    code: LEGAL_ERROR_CODES.DOCUMENT_CHANGED,
+    message: "Chính sách bảo mật vừa được cập nhật. Vui lòng tải lại trang, đọc bản mới rồi đăng ký lại.",
+  });
+}
+
+/**
+ * ADR-054 mục 5: Chính sách người bán khi mở gian hàng. Có bản hiệu lực → BẮT BUỘC tích ô đồng ý (server kiểm, không tin
+ * client ẩn/hiện checkbox) và id gửi lên (nếu có) phải là bản hiệu lực. Chưa có bản hiệu lực → `null`, ô bị bỏ qua.
+ */
+export function resolveSellerPolicyAcceptance(effective: EffectiveLegalVersion | null, input: { accepted: boolean; submittedVersionId: string | undefined }): string | null {
+  if (!effective) return null;
+  if (!input.accepted) throw legalError(LEGAL_ERROR_CODES.ACCEPTANCE_REQUIRED, `Bạn cần đồng ý ${effective.title} để mở gian hàng.`, 400);
+  return resolveAcceptedLegalVersion(effective, input.submittedVersionId, {
+    code: LEGAL_ERROR_CODES.DOCUMENT_CHANGED,
+    message: `${effective.title} vừa được cập nhật. Vui lòng tải lại trang, đọc bản mới rồi thử lại.`,
+  });
 }
 
 /** Ghi chấp thuận trong giao dịch đang mở (cùng giao dịch tạo user). Không lưu IP/User-Agent (ADR-050). */
 export async function recordLegalAcceptance(tx: Prisma.TransactionClient, userId: string, versionId: string, acceptedAt: Date): Promise<void> {
   await tx.userLegalAcceptance.create({ data: { userId, versionId, acceptedAt } });
+}
+
+/**
+ * Ghi nhiều chấp thuận trong giao dịch đang mở; đã có `(userId, versionId)` thì bỏ qua (`ON CONFLICT DO NOTHING` — không
+ * cần quyền UPDATE, bảng append-only). Dùng khi mở gian hàng (người dùng có thể đã chấp thuận bản đó trước).
+ */
+export async function recordLegalAcceptances(tx: Prisma.TransactionClient, userId: string, versionIds: readonly string[], acceptedAt: Date): Promise<number> {
+  const unique = [...new Set(versionIds)];
+  if (unique.length === 0) return 0;
+  const result = await tx.userLegalAcceptance.createMany({ data: unique.map((versionId) => ({ userId, versionId, acceptedAt })), skipDuplicates: true });
+  return result.count;
 }

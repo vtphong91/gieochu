@@ -60,6 +60,10 @@ export type UserProfile = Prisma.UserProfileModel
  * Model RefreshToken
  * §5.1 Layer System — REFRESH_TOKENS (rotated on every use; reuse of a
  * replaced token revokes the whole familyId — see M1 sequence diagram).
+ * ADR-053: một familyId = một phiên đăng nhập (một thiết bị). rememberMe/sessionStartedAt/userAgent/ip/deviceLabel
+ * chép nguyên sang token mới mỗi lần rotate. "Hoạt động gần nhất" của phiên = createdAt của token còn hiệu lực
+ * (rotate chỉ xảy ra khi người dùng có thao tác) — không cần cột lastUsedAt. sessionStartedAt NULL = phiên tạo trước
+ * ADR-053 (code coi như bắt đầu từ lần rotate đầu tiên sau deploy).
  */
 export type RefreshToken = Prisma.RefreshTokenModel
 /**
@@ -487,3 +491,17 @@ export type LegalDocumentVersion = Prisma.LegalDocumentVersionModel
  * L1, append-only với `gieochu_app` (không UPDATE). **Không lưu IP/User-Agent** (chủ dự án chốt). Xoá user → Cascade.
  */
 export type UserLegalAcceptance = Prisma.UserLegalAcceptanceModel
+/**
+ * Model TenantEditorDraft
+ * ADR-053 bổ sung lần 3 — nháp tự động của editor Studio, **theo từng người dùng** (L2, RLS chỉ nhánh `tenant` +
+ * `system_job`; không public/customer/admin — §7.9). Truy cập qua `withTenant` + lọc `userId` ở server
+ * (`apps/web/lib/editor-draft.ts`). Autosave không bao giờ ghi vào bản đã lưu/live. `entityKey` = id thực thể hoặc
+ * `"new"` (trang Tạo). `revision` tăng mỗi lần lưu (xung đột nhiều tab); `clientId` = tab đã ghi. `payload` không ghi log.
+ */
+export type TenantEditorDraft = Prisma.TenantEditorDraftModel
+/**
+ * Model SystemEditorDraft
+ * ADR-053 bổ sung lần 3 — nháp tự động của editor System Center (L1, không `tenantId`, không RLS). Chỉ truy cập qua
+ * `getPrismaClient()` sau `requireRole("SYSTEM_ADMIN")`. Cột như `TenantEditorDraft`.
+ */
+export type SystemEditorDraft = Prisma.SystemEditorDraftModel

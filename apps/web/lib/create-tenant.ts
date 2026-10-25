@@ -2,11 +2,17 @@ import { AppError, conflict, generateOrderCodePrefix, isReservedSlug, slugify } 
 import { getPrismaClient } from "@gieochu/db";
 import type { CurrentUser } from "./session";
 import { audit } from "./audit";
+import { recordLegalAcceptances } from "./legal";
 
 export interface CreateTenantInput {
   name: string;
   slug?: string;
   bio?: string;
+  /**
+   * ADR-054 mục 5: id phiên bản văn bản pháp lý người dùng chấp thuận khi mở gian hàng (Chính sách người bán) — caller đã
+   * kiểm bằng `resolveSellerPolicyAcceptance`. Ghi `user_legal_acceptances` trong CÙNG giao dịch tạo tenant.
+   */
+  acceptedLegalVersionIds?: readonly string[];
 }
 
 export interface CreatedTenant {
@@ -106,6 +112,8 @@ export async function createTenantForUser(user: CurrentUser, input: CreateTenant
         currentPeriodEnd: now,
       },
     });
+    // ADR-054 mục 5 — L1 (không RLS); lỗi ở đây rollback cả tenant (không có gian hàng mà thiếu bản ghi chấp thuận).
+    await recordLegalAcceptances(tx, user.userId, input.acceptedLegalVersionIds ?? [], now);
     return created;
   });
 

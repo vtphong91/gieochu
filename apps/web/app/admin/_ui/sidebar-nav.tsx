@@ -273,6 +273,7 @@ const ADMIN_GROUPS: SidebarNavGroup[] = [
     items: [
       { href: "/admin/tenants", label: "Tenant", icon: "store" },
       { href: "/admin/plans", label: "Gói dịch vụ", icon: "package" },
+      { href: "/admin/subscriptions", label: "Đơn hàng", icon: "shoppingBag" },
     ],
   },
   {
@@ -293,7 +294,7 @@ const ADMIN_GROUPS: SidebarNavGroup[] = [
     label: "Tài chính",
     icon: "card",
     items: [
-      { href: "/admin/billing/payment", label: "Thanh toán nền tảng", icon: "card" },
+      { href: "/admin/billing/payment", label: "Cấu hình thanh toán", icon: "card" },
       { href: "/admin/billing/invoices", label: "Hoá đơn", icon: "receipt" },
       { href: "/admin/billing/refunds", label: "Hoàn tiền gói", icon: "receipt" },
     ],

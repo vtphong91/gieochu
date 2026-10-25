@@ -1,7 +1,8 @@
-import { isSystemCmsSlug, NAV_PAGE_LABELS, NAV_PAGE_PATHS, type NavPageKey } from "@gieochu/core";
+import { isSystemCmsSlug, LEGAL_DOCUMENT_DEFS, LEGAL_DOCUMENT_KEYS, legalDocumentPath, NAV_PAGE_LABELS, NAV_PAGE_PATHS, type NavPageKey } from "@gieochu/core";
 import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 import { getPrismaClient } from "@gieochu/db";
 import { requireAdminAccess } from "../../../../lib/page-guards";
+import { getEffectiveLegalKeys } from "../../../../lib/legal";
 import { getSiteMenuEditorData } from "../../../../lib/site-menu";
 import { AdminPageHeader, Notice } from "../../_ui/kit";
 import { MenuEditor, type MenuPageOption } from "./menu-editor";
@@ -12,9 +13,10 @@ import { MenuEditor, type MenuPageOption } from "./menu-editor";
  */
 export default async function AdminMenuCmsPage() {
   await requireAdminAccess("/admin/cms/menu");
-  const [data, cmsPages] = await Promise.all([
+  const [data, cmsPages, effectiveLegalKeys] = await Promise.all([
     getSiteMenuEditorData(),
     getPrismaClient().cmsPage.findMany({ select: { slug: true, title: true, status: true }, orderBy: { slug: "asc" }, take: 200 }),
+    getEffectiveLegalKeys(),
   ]);
 
   const pageOptions: MenuPageOption[] = [
@@ -22,6 +24,13 @@ export default async function AdminMenuCmsPage() {
     ...cmsPages
       .filter((page) => !isSystemCmsSlug(page.slug) && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(page.slug))
       .map((page) => ({ value: `cms:${page.slug}`, label: `Trang CMS: ${page.title} (/p/${page.slug})`, published: page.status === "PUBLISHED" })),
+    // ADR-054 mục 6: lựa chọn cho loại link "Văn bản pháp lý" — `published` = đang có bản hiệu lực.
+    ...LEGAL_DOCUMENT_KEYS.map((key) => ({
+      value: key,
+      label: `${LEGAL_DOCUMENT_DEFS[key].title} (${legalDocumentPath(key)})`,
+      published: effectiveLegalKeys.has(key),
+      group: "legal" as const,
+    })),
   ];
 
   const updatedAtLabel = data.updatedAt

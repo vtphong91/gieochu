@@ -3,7 +3,7 @@ tags:
   - meta
   - contract
 date: 2026-09-26
-updated: 2026-10-23
+updated: 2026-10-25
 ---
 
 # 🔌 API Contracts & Data Interface
@@ -56,7 +56,18 @@ tenant nơi giáo viên/coach bán tài liệu số cho học viên.
   Điều khoản trong cùng transaction; Server Action/loader menu header/footer (`saveMenuDraftAction`… `SiteMenuView`), trang chủ (chữ ký đổi
   `(sections, seo)`, `getHomePageContent`, `getHomeCmsEditorData`), văn bản pháp lý (5 action `/admin/cms/phap-ly`, `lib/legal.ts`), subpath
   `@gieochu/core/site-menu`, `/seo`, `/cms-content-guard`, `/legal`, `/brand-token` — không thêm `route.ts` (23 dưới `/api`, 24 toàn app).
-- `[[Database-Schema-Reference]]` — Lược đồ 50 model + 33 enum (ADR-050 thêm 3 bảng L1 pháp lý + 2 enum) trong `packages/db/prisma/schema.prisma`, phân
+  §3.2–§3.3 ADR-053 (chưa commit) — `POST /api/auth/login` thêm `rememberMe` tuỳ chọn (cookie session/persistent theo chính sách phiên, claim `rm`);
+  `POST /api/auth/refresh` mã lỗi mới `AUTH_REFRESH_SUPERSEDED` (ân hạn 30 giây, không thu hồi), `SESSION_IDLE_TIMEOUT`, `SESSION_EXPIRED`, `ACCOUNT_LOCKED`
+  (401); §17 bước cron `refresh_tokens.purge` (`sessionPurge`); §21.4 Server Action `revokeSessionAction` (từ 2026-10-24 trả `{ signedOut }`) + loader
+  `listAccountSessions` (`deviceKind`) — không thêm `route.ts`.
+  ADR-054 (chưa commit) — §3.1 `POST /api/auth/register` thêm `privacyVersionId`, lỗi 409 `LEGAL_DOCUMENT_CHANGED`; §5.2 route mới `/phap-ly/[slug]` redirect
+  308 (23 dưới `/api`, **25** toàn app); §17 bước cron `download_events.purge` (`downloadPurge`); §26.4 `saveLegalDocumentMetaAction` + hàm lib mới; §26.5
+  `createTenantAction` thêm `sellerPolicyAccepted`/`sellerPolicyVersionId`, lỗi `LEGAL_ACCEPTANCE_REQUIRED`. ADR-053 bổ sung lần 3 — §26.6 lib nền nháp tự
+  động (`@gieochu/core/editor-draft`, `lib/editor-draft.ts`, `useServerAutosave`), chưa có Server Action.
+  §27 ADR-056 (chưa commit) — trang `/admin/billing/invoices` (`tab`, `status`, `provider`, `page`, `pageSize`) + `/admin/subscriptions` (`plan`, `status`),
+  4 hàm đọc L1 mới trong `lib/subscription-billing.ts`, `savePlatformProviderConfig` trả `{ isEnabled, autoDisabled }`, `getPlatformPaymentConfigRow`, `getBankByBin`;
+  checkout: `removeCouponAction` trả `CheckoutActionState`, mã lỗi `ORDER_CHANGED` 409 / `CHECKOUT_CREATE_FAILED` 502 — không thêm `route.ts` (vẫn 25 toàn app), không migration.
+- `[[Database-Schema-Reference]]` — Lược đồ 52 model + 35 enum (ADR-050 thêm 3 bảng L1 pháp lý + 2 enum; ADR-053 thêm 3 cột `refresh_tokens` + 6 cột `system_settings`; ADR-053 bổ sung lần 3 thêm `tenant_editor_drafts` (L2, RLS) + `system_editor_drafts` (L1) + 2 enum; ADR-054 thêm 3 cột `legal_documents` + nới CHECK khoá — migration đã chạy 2026-10-24 trên DB dùng chung) trong `packages/db/prisma/schema.prisma`, phân
   theo layer L1 (System) / L2 (Tenant, RLS) / L3 (góc nhìn Customer trên bảng L2), cùng quy ước cuid2 (ADR-001),
   mã hoá secret AES-256-GCM (§7.3 CLAUDE.md), và bảng RBAC `Role`/`Permission`/`RolePermission` (ADR-022); §7 ghi RLS tách đọc/ghi 7 bảng, quy tắc bảng L2 mới và mẫu
   trigger giới hạn cột theo scope (ADR-029); migration M10b bảng `posts` (partial unique index ghim, 2 trigger); migration M12a bảng L1 `audit_logs` (chỉ-INSERT: quyền `gieochu_app` + 3 trigger, cờ purge — ADR-037); migration M12b bảng L1 `tenant_daily_stats` (unique `tenantId+date`, FK tenant Cascade, không RLS — ADR-037). Migration M12c bảng L1 `abuse_reports` + khoá kiểm duyệt (trigger `*_guard_moderation`) + cam kết bản quyền (ADR-038); migration ADR-039 cột `entitlements.remedy*` + trigger `entitlements_guard_remedy`; ghi chú sửa lỗi đọc `orders` không scope (email đơn hàng). Migration ADR-041: `VerificationTokenType.EMAIL_CHANGE` + `verification_tokens.newEmail`; `SubscriptionInvoiceStatus.REFUNDED` + bảng L1 `subscription_refund_requests` (3 CHECK, `payoutEncrypted` AES-256-GCM). Migration ADR-047 (thư mục `…_adr045_order_notes` giữ số cũ): bảng L2 `order_notes` (RLS tách theo lệnh chỉ tenant + `system_job`, không UPDATE, CHECK 1–1000 ký tự) — 47 model / 31 enum.

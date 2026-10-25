@@ -1,17 +1,43 @@
 import { createHmac } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { getPrismaClient, withSystemJob, withTenant } from "@gieochu/db";
 import { encryptSecret } from "@gieochu/payments";
 import { getEnv } from "@gieochu/config";
 import { createTenantForUser } from "../../lib/create-tenant";
-import { createRenewalInvoice, getSubscriptionOverview } from "../../lib/subscription-billing";
+import { createRenewalInvoice, getSubscriptionOverview, listSubscriptionInvoices, listSubscriptions } from "../../lib/subscription-billing";
 import { runSubscriptionSweep } from "../../lib/subscription-sweep";
 import { assertPlanLimit } from "../../lib/plan-limits";
 import { assertTenantCanWrite } from "../../lib/tenant-write-guard";
 import { getPublishedProducts } from "../../lib/storefront";
 import { POST as platformWebhook } from "../../app/api/webhooks/platform/[provider]/route";
 import type { CurrentUser } from "../../lib/session";
-import { restorePlatformPaymentConfig, snapshotPlatformPaymentConfig, type PlatformPaymentConfigSnapshot } from "./shared-config-snapshot";
+
+const { PLATFORM_SEPAY_SECRET } = vi.hoisted(() => ({ PLATFORM_SEPAY_SECRET: "m3-platform-sepay-secret" }));
+
+// ADR-034: DB dev = production — test KHÔNG ghi `platform_payment_configs` (cổng thu phí SaaS thật). Tạo hoá đơn gia hạn và
+// webhook platform đọc cấu hình qua `getPlatformPaymentConfigRow` → thay bằng dòng SePay giả trong bộ nhớ (provider
+// khác → null, coi như chưa cấu hình).
+vi.mock("../../lib/platform-payment", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../lib/platform-payment")>();
+  return {
+    ...actual,
+    getPlatformPaymentConfigRow: async (provider: string) => {
+      if (provider !== "SEPAY") return null;
+      const now = new Date();
+      return {
+        id: "test-platform-sepay",
+        provider: "SEPAY" as const,
+        isEnabled: true,
+        publicConfig: { bankBin: "970436", accountNo: "0000000001", accountName: "GIEO CHU", authType: "HMAC_SHA256", paymentPrefix: "SUB" },
+        encryptedSecrets: encryptSecret(JSON.stringify({ secret: PLATFORM_SEPAY_SECRET }), getEnv().PAYMENT_ENCRYPTION_KEY),
+        webhookSecretHash: null,
+        lastVerifiedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+    },
+  };
+});
 
 const prisma = getPrismaClient();
 const RUN_PREFIX = `m3test_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -32,27 +58,6 @@ function toCurrentUser(userId: string): CurrentUser {
   return { userId, familyId: "test-family", role: "USER", emailVerified: true, profileCompleted: true };
 }
 
-const PLATFORM_SEPAY_SECRET = "m3-platform-sepay-secret";
-
-/** Upserts the one global PLATFORM SePay row (singleton per provider — see docs/BACKLOG.md). */
-async function ensurePlatformSepayConfig(): Promise<void> {
-  const env = getEnv();
-  await prisma.platformPaymentConfig.upsert({
-    where: { provider: "SEPAY" },
-    update: {
-      isEnabled: true,
-      publicConfig: { bankBin: "970436", accountNo: "0000000001", accountName: "GIEO CHU", authType: "HMAC_SHA256", paymentPrefix: "SUB" },
-      encryptedSecrets: encryptSecret(JSON.stringify({ secret: PLATFORM_SEPAY_SECRET }), env.PAYMENT_ENCRYPTION_KEY),
-    },
-    create: {
-      provider: "SEPAY",
-      isEnabled: true,
-      publicConfig: { bankBin: "970436", accountNo: "0000000001", accountName: "GIEO CHU", authType: "HMAC_SHA256", paymentPrefix: "SUB" },
-      encryptedSecrets: encryptSecret(JSON.stringify({ secret: PLATFORM_SEPAY_SECRET }), env.PAYMENT_ENCRYPTION_KEY),
-    },
-  });
-}
-
 function signedSepayRequest(rawBody: string): Request {
   const timestamp = String(Math.floor(Date.now() / 1000));
   const signature = `sha256=${createHmac("sha256", PLATFORM_SEPAY_SECRET).update(`${timestamp}.${rawBody}`).digest("hex")}`;
@@ -64,12 +69,6 @@ function signedSepayRequest(rawBody: string): Request {
 }
 
 describe("M3 subscription and platform billing", () => {
-  // Cổng SePay platform là cấu hình dùng chung trên DB dev: chụp lại trước khi test ghi đè, afterAll trả đúng dòng cũ.
-  let sepaySnapshot: PlatformPaymentConfigSnapshot;
-  beforeAll(async () => {
-    sepaySnapshot = await snapshotPlatformPaymentConfig("SEPAY");
-  });
-
   afterAll(async () => {
     const tenants = await prisma.tenant.findMany({ where: { slug: { startsWith: RUN_PREFIX } }, select: { id: true } });
     const tenantIds = tenants.map((t) => t.id);
@@ -87,7 +86,6 @@ describe("M3 subscription and platform billing", () => {
     }
     await prisma.tenant.deleteMany({ where: { slug: { startsWith: RUN_PREFIX } } });
     await prisma.user.deleteMany({ where: { email: { startsWith: RUN_PREFIX } } });
-    await restorePlatformPaymentConfig(sepaySnapshot);
   });
 
   it("creating a tenant opens an ACTIVE subscription on the FREE plan, which never expires", async () => {
@@ -101,7 +99,6 @@ describe("M3 subscription and platform billing", () => {
   });
 
   it("creates a renewal invoice and marks it PAID via a signed platform SePay webhook, activating the subscription", async () => {
-    await ensurePlatformSepayConfig();
     const proPlan = await prisma.plan.findUniqueOrThrow({ where: { code: "CREATOR" } });
 
     const owner = await createActiveUser(nextEmail());
@@ -126,10 +123,23 @@ describe("M3 subscription and platform billing", () => {
     expect(subscription.status).toBe("ACTIVE");
     expect(subscription.planId).toBe(proPlan.id);
     expect(invoices.find((i) => i.id === invoice.id)?.status).toBe("PAID");
+
+    // ADR-056: System Center "Tất cả" invoices tab + /admin/subscriptions read the same rows (read-only, L1).
+    const paidSepay = await listSubscriptionInvoices({ status: "PAID", provider: "SEPAY", page: 1, pageSize: 100 });
+    const listed = paidSepay.items.find((i) => i.id === invoice.id);
+    expect(listed).toMatchObject({ code: invoice.code, status: "PAID", amountVnd: proPlan.priceVnd, tenant: { slug: tenant.slug } });
+    expect(listed?.paidAt).toBeInstanceOf(Date);
+    expect(paidSepay.items.every((i) => i.status === "PAID" && i.provider === "SEPAY")).toBe(true);
+    const manualOnly = await listSubscriptionInvoices({ provider: "MANUAL_QR", page: 1, pageSize: 100 });
+    expect(manualOnly.items.some((i) => i.id === invoice.id)).toBe(false);
+
+    const creatorActive = await listSubscriptions({ planCode: "CREATOR", status: "ACTIVE", page: 1, pageSize: 100 });
+    const listedSub = creatorActive.items.find((s) => s.tenant.id === tenant.id);
+    expect(listedSub?.latestInvoice).toEqual({ code: invoice.code, status: "PAID" });
+    expect(creatorActive.items.every((s) => s.plan.code === "CREATOR" && s.status === "ACTIVE")).toBe(true);
   });
 
   it("processes a duplicate webhook event idempotently (no double transaction, no error)", async () => {
-    await ensurePlatformSepayConfig();
     const proPlan = await prisma.plan.findUniqueOrThrow({ where: { code: "CREATOR" } });
 
     const owner = await createActiveUser(nextEmail());
@@ -206,7 +216,6 @@ describe("M3 subscription and platform billing", () => {
   });
 
   it("upgrading from Free to a paid plan computes the new period starting now and switches the plan immediately on payment", async () => {
-    await ensurePlatformSepayConfig();
     const creatorPlan = await prisma.plan.findUniqueOrThrow({ where: { code: "CREATOR" } });
 
     const owner = await createActiveUser(nextEmail());

@@ -6,7 +6,7 @@ tags:
   - rollback
   - status/living
 date: 2026-07-02
-updated: 2026-10-23
+updated: 2026-10-25
 author: System Architect
 ---
 
@@ -71,41 +71,54 @@ pnpm install
 pnpm lint            # ESLint flat config, --max-warnings=0
 pnpm typecheck        # tsc --noEmit mọi package
 pnpm test             # Jest (unit, packages/*) + Vitest (integration, apps/web/tests/integration)
-pnpm test:count        # đối chiếu số test case: trần gốc mục 9 là 91/50, trần hiện 95/57 (ADR-026 + ADR-037 + ADR-050)
+pnpm test:count        # đối chiếu số test case: trần gốc mục 9 là 91/50, trần hiện 100/66 (ADR-026 + ADR-037 + ADR-050 + ADR-053 + ADR-054)
 pnpm build            # build tất cả package/app qua Turborepo
 ```
 
-**Số test (chạy `pnpm test:count` 2026-10-23, sau ADR-050) ✅:** thực **95 / 95 unit**, **57 / 57 integration** — **chạm trần**. Trần
+**Số test (chạy `pnpm test:count` 2026-10-24, sau ADR-053 bổ sung lần 3 + ADR-054) ✅:** thực **100 / 100 unit**, **66 / 66 integration** — **chạm trần**. Trần
 gốc ở đặc tả mục 9 là 91/50, nâng lên 94/53 theo ADR-026; ADR-027…036 không nâng trần; ADR-037 mục 6 nâng trần integration 53 → **55**
 cho đúng 2 test M12 (M12a — `audit.test.ts`; M12b — `stats.test.ts`). ADR-043 dùng nốt 1 unit (`dashboard-range.test.ts`) + 1 integration
 (`studio-dashboard.test.ts`) còn trống, không nâng trần. **ADR-050** (chủ dự án duyệt) nâng trần **94/55 → 95/57**: +1 unit
 `packages/core/src/admin/site-menu.test.ts` (parse menu/section trang chủ + link không an toàn), +2 integration `apps/web/tests/integration/legal.test.ts`
-(chấp thuận theo phiên bản; chặn xuất bản khi còn placeholder/chưa duyệt). Test mới từ nay cần chủ dự án duyệt nâng trần.
+(chấp thuận theo phiên bản; chặn xuất bản khi còn placeholder/chưa duyệt). **ADR-053** (chủ dự án cho nâng trần theo nhu cầu module) nâng **95/57 → 99/63**:
+GĐ A +1 unit (ân hạn refresh, `refresh-token.test.ts`) +2 integration (`auth.test.ts`: refresh đồng thời; từ chối user không ACTIVE); GĐ B +3 unit
+(`packages/auth/src/session-policy.test.ts`) +4 integration (`apps/web/tests/integration/session-policy.test.ts`). **ADR-053 bổ sung lần 3** (tự lưu nháp)
+nâng **99/63 → 100/65**: +1 unit `packages/core/src/content/editor-draft.test.ts`, +2 integration `apps/web/tests/integration/editor-draft.test.ts`. **ADR-054**
+(chủ dự án duyệt nâng tối thiểu) **65 → 66 integration** (+1 trong `legal.test.ts`: đăng ký ghi Điều khoản + Bảo mật; mở gian hàng bắt buộc + ghi Chính
+sách người bán), trần unit giữ 100 ✅ `scripts/count-tests.mjs`. Test mới từ nay cần chủ dự án duyệt nâng trần.
 
-**Integration đang lỗi do dữ liệu dùng chung (2026-10-23)** 🟡 (Quốc báo; Long không chạy `pnpm test`): **4 test** — 3 test lỗi
-`PRODUCT_LIMIT_REACHED` vì Plan FREE trên DB dùng chung đang `maxProducts = 1` (❓ giá trị thật cần đọc DB), 1 test đơn hàng **timeout**. Vấn đề **tồn tại,
-chưa xử lý** — không phải do ADR-050. Đừng "sửa" bằng cách đổi Plan FREE trên DB dùng chung (là cấu hình production — ADR-034); chờ Quốc quyết hướng
+**Integration lỗi đã biết** 🟡 (Quốc báo; Long không chạy `pnpm test`): ngày 2026-10-23 có **4 test** lỗi — 3 test `PRODUCT_LIMIT_REACHED` (Plan FREE
+trên DB dùng chung đang `maxProducts = 1` — ❓ giá trị thật cần đọc DB) và 1 test đơn hàng **timeout**. **Cập nhật 2026-10-24 (lượt verify ADR-053):** 3 test
+`PRODUCT_LIMIT_REACHED` **đã pass** (Quốc báo, chưa rõ nguyên nhân hết lỗi — Long không đọc DB); còn **1 test RLS trong `order.test.ts`** timeout 20 giây
+(`testTimeout: 20000` của Vitest) — **đã có từ trước**, không do ADR-050/052, chưa xử lý; lượt verify ADR-053 lần 3 + ADR-054 (2026-10-24) vẫn còn lỗi này 🟡 (brief Quốc). Đừng "sửa" bằng cách đổi Plan FREE trên DB dùng chung (là cấu hình production — ADR-034); chờ Quốc quyết hướng
 (xem `docs/PLAN.md` và [[00-Index/KB-Audit-2026-09-26|KB-Audit]] §31). Lưu ý: dòng `audit_logs` do integration test tạo không xoá
 được (12 tháng) — xem [[04-Operations-Runbooks/Deploy-Vercel-Runbook|Deploy-Vercel-Runbook]] §9.6. Script
 `scripts/count-tests.mjs` báo lỗi khi vượt trần. Không tự thêm/bớt test case khi chưa hỏi chủ dự án.
 
-#### 2.2.1. Quy tắc integration test: không được xoá cấu hình dùng chung
+#### 2.2.1. Quy tắc integration test: không ghi cấu hình dùng chung — mock lớp đọc cấu hình
 
-Integration test (Vitest) chạy trên **DB dev dùng chung** (ADR-009), nên test nào ghi đè cấu hình hệ thống dạng
-singleton phải **chụp lại dòng cũ trước khi ghi và khôi phục đúng dòng đó ở `afterAll`** — chỉ xoá khi trước đó
-không có dòng nào. **Không bao giờ `deleteMany` mù** cấu hình thật của môi trường ✅.
+**Quy ước (từ 2026-10-25): mock lớp đọc cấu hình, không snapshot/restore bảng singleton** ✅ đọc test. Integration test (Vitest) chạy trên **DB dùng chung với
+production** (ADR-034) nên **không được ghi** vào các bảng cấu hình hệ thống dạng singleton (`system_storage_config`, `platform_payment_configs`, và tương tự
+`system_cloudinary_config`, `system_settings`…). Cần cấu hình giả thì `vi.mock` **module lib đọc cấu hình** và trả dữ liệu trong bộ nhớ, giữ phần còn lại
+của module bằng `importOriginal`:
 
-- Helper: `apps/web/tests/integration/shared-config-snapshot.ts` ✅
-  - `snapshotStorageConfig()` / `restoreStorageConfig(snapshot)` — bảng `system_storage_config` (dòng `id = "default"`,
-    cấu hình R2).
-  - `snapshotPlatformPaymentConfig(provider)` / `restorePlatformPaymentConfig(snapshot)` — bảng
-    `platform_payment_configs` theo `provider` (cổng thanh toán platform, vd SePay). Khôi phục bằng upsert theo
-    `provider`, giữ nguyên `encryptedSecrets`, `webhookSecretHash`, `isEnabled`, `lastVerifiedAt`.
-- Đang dùng ở: `download.test.ts`, `product-upload.test.ts`, `subscription-billing.test.ts`,
-  `tenant-payment.test.ts` ✅.
-- Test mới đụng cấu hình singleton khác (vd `system_cloudinary_config`) phải theo cùng mẫu — bổ sung hàm vào helper này.
-- **Hậu quả đã xảy ra:** các test cũ (trước helper) từng xoá cấu hình R2 + SePay platform trên DB dev 🟡 (theo brief của
-  Quốc 2026-09-27) — cần nhập lại qua `/admin/settings/storage` và `/admin/billing/payment` (BACKLOG).
+| Test | Module mock | Hàm thay | Ghi chú |
+| :-- | :-- | :-- | :-- |
+| `download.test.ts`, `product-upload.test.ts` | `../../lib/system-storage` | `getDecryptedSystemStorageConfig`, `createClientForProvider` | Cấu hình R2 giả (`https://fake.example.com`); presign chỉ ký cục bộ, không gọi mạng; tenant mới chưa có bucket riêng → nhánh R2 mặc định |
+| `subscription-billing.test.ts` | `../../lib/platform-payment` | `getPlatformPaymentConfigRow` | Dòng SePay platform giả (secret mã hoá AES-GCM như thật); provider khác → `null` |
+| `tenant-payment.test.ts` | — | — | Không còn upsert dòng SePay platform: cấu hình platform dựng trong bộ nhớ (vẫn đi qua `encryptSecret`/`decryptSecret`) |
+
+- Lib phải có **một điểm đọc** để mock được — vd `getPlatformPaymentConfigRow(provider)` (`lib/platform-payment.ts`) được tách ra cho mục đích này và dùng ở
+  `createRenewalInvoice` + webhook platform ([[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5E).
+- Helper cũ `apps/web/tests/integration/shared-config-snapshot.ts` (chụp dòng cũ trước khi ghi, khôi phục ở `afterAll`) **đã xoá** ✅ `git status` — không dùng lại
+  mẫu snapshot/restore: nếu test dừng giữa chừng hoặc chạy song song, cấu hình thật vẫn bị ghi đè.
+- Test mới cần cấu hình singleton khác: tách hàm đọc trong lib (nếu chưa có) rồi mock hàm đó; không `upsert`/`deleteMany` bảng cấu hình.
+- **Sự cố đã xảy ra:**
+  - Trước khi có helper snapshot (≤ 2026-09-27): test cũ từng xoá cấu hình R2 + SePay platform trên DB dev 🟡 (brief Quốc 2026-09-27).
+  - **2026-10-24:** integration test ghi đè `system_storage_config` và dòng SePay platform trên DB dùng chung 🟡 (brief Quốc 2026-10-25). Chủ dự án đã nhập lại
+    cấu hình storage; hiện **không còn dòng SEPAY** trong `platform_payment_configs` 🟡 (Long không đọc DB) — nếu cần SePay platform thì nhập lại ở
+    `/admin/billing/payment` ❓. Test còn để lại **27 dòng audit `SUBSCRIPTION_PAID` giả** — **không xoá** (append-only, ADR-037; ADR-056) —
+    [[00-Index/KB-Audit-2026-09-26|KB-Audit]] §37.
 - ⚠️ **Một DB duy nhất (ADR-034):** máy dev, Preview và Production dùng cùng database — integration test từ máy dev **ghi dữ
   liệu thật vào production**. Chỉ chạy khi cần; test phải tự dọn user/tenant/đơn tạm, không đụng cấu hình dùng chung, chỉ gửi
   email tới `@example.test` ([[04-Operations-Runbooks/Deploy-Vercel-Runbook|Deploy-Vercel-Runbook]] §9.1).

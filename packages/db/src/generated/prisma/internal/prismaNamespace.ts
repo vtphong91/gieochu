@@ -446,7 +446,9 @@ export const ModelName = {
   AbuseReport: 'AbuseReport',
   LegalDocument: 'LegalDocument',
   LegalDocumentVersion: 'LegalDocumentVersion',
-  UserLegalAcceptance: 'UserLegalAcceptance'
+  UserLegalAcceptance: 'UserLegalAcceptance',
+  TenantEditorDraft: 'TenantEditorDraft',
+  SystemEditorDraft: 'SystemEditorDraft'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -462,7 +464,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userProfile" | "refreshToken" | "verificationToken" | "plan" | "role" | "permission" | "rolePermission" | "cmsPage" | "subscription" | "tenant" | "tenantMember" | "tenantSlugHistory" | "product" | "productFile" | "systemSettings" | "systemStorageConfig" | "systemCloudinaryConfig" | "systemSmtpConfig" | "emailSendLog" | "documentCategory" | "systemBranding" | "tenantPaymentConfig" | "platformPaymentConfig" | "subscriptionInvoice" | "subscriptionRefundRequest" | "platformPaymentTransaction" | "webhookEvent" | "bankBin" | "coupon" | "couponRedemption" | "order" | "orderNote" | "orderItem" | "tenantPaymentTransaction" | "tenantCustomer" | "entitlement" | "downloadToken" | "shareLink" | "downloadEvent" | "storefrontMessage" | "tenantMediaAsset" | "review" | "post" | "auditLog" | "tenantDailyStat" | "abuseReport" | "legalDocument" | "legalDocumentVersion" | "userLegalAcceptance"
+    modelProps: "user" | "userProfile" | "refreshToken" | "verificationToken" | "plan" | "role" | "permission" | "rolePermission" | "cmsPage" | "subscription" | "tenant" | "tenantMember" | "tenantSlugHistory" | "product" | "productFile" | "systemSettings" | "systemStorageConfig" | "systemCloudinaryConfig" | "systemSmtpConfig" | "emailSendLog" | "documentCategory" | "systemBranding" | "tenantPaymentConfig" | "platformPaymentConfig" | "subscriptionInvoice" | "subscriptionRefundRequest" | "platformPaymentTransaction" | "webhookEvent" | "bankBin" | "coupon" | "couponRedemption" | "order" | "orderNote" | "orderItem" | "tenantPaymentTransaction" | "tenantCustomer" | "entitlement" | "downloadToken" | "shareLink" | "downloadEvent" | "storefrontMessage" | "tenantMediaAsset" | "review" | "post" | "auditLog" | "tenantDailyStat" | "abuseReport" | "legalDocument" | "legalDocumentVersion" | "userLegalAcceptance" | "tenantEditorDraft" | "systemEditorDraft"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -4166,6 +4168,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    TenantEditorDraft: {
+      payload: Prisma.$TenantEditorDraftPayload<ExtArgs>
+      fields: Prisma.TenantEditorDraftFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.TenantEditorDraftFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantEditorDraftPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.TenantEditorDraftFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantEditorDraftPayload>
+        }
+        findFirst: {
+          args: Prisma.TenantEditorDraftFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantEditorDraftPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.TenantEditorDraftFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantEditorDraftPayload>
+        }
+        findMany: {
+          args: Prisma.TenantEditorDraftFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantEditorDraftPayload>[]
+        }
+        create: {
+          args: Prisma.TenantEditorDraftCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantEditorDraftPayload>
+        }
+        createMany: {
+          args: Prisma.TenantEditorDraftCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.TenantEditorDraftCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantEditorDraftPayload>[]
+        }
+        delete: {
+          args: Prisma.TenantEditorDraftDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantEditorDraftPayload>
+        }
+        update: {
+          args: Prisma.TenantEditorDraftUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantEditorDraftPayload>
+        }
+        deleteMany: {
+          args: Prisma.TenantEditorDraftDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.TenantEditorDraftUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.TenantEditorDraftUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantEditorDraftPayload>[]
+        }
+        upsert: {
+          args: Prisma.TenantEditorDraftUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TenantEditorDraftPayload>
+        }
+        aggregate: {
+          args: Prisma.TenantEditorDraftAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateTenantEditorDraft>
+        }
+        groupBy: {
+          args: Prisma.TenantEditorDraftGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.TenantEditorDraftGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.TenantEditorDraftCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.TenantEditorDraftCountAggregateOutputType> | number
+        }
+      }
+    }
+    SystemEditorDraft: {
+      payload: Prisma.$SystemEditorDraftPayload<ExtArgs>
+      fields: Prisma.SystemEditorDraftFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.SystemEditorDraftFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemEditorDraftPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.SystemEditorDraftFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemEditorDraftPayload>
+        }
+        findFirst: {
+          args: Prisma.SystemEditorDraftFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemEditorDraftPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.SystemEditorDraftFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemEditorDraftPayload>
+        }
+        findMany: {
+          args: Prisma.SystemEditorDraftFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemEditorDraftPayload>[]
+        }
+        create: {
+          args: Prisma.SystemEditorDraftCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemEditorDraftPayload>
+        }
+        createMany: {
+          args: Prisma.SystemEditorDraftCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.SystemEditorDraftCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemEditorDraftPayload>[]
+        }
+        delete: {
+          args: Prisma.SystemEditorDraftDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemEditorDraftPayload>
+        }
+        update: {
+          args: Prisma.SystemEditorDraftUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemEditorDraftPayload>
+        }
+        deleteMany: {
+          args: Prisma.SystemEditorDraftDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.SystemEditorDraftUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.SystemEditorDraftUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemEditorDraftPayload>[]
+        }
+        upsert: {
+          args: Prisma.SystemEditorDraftUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SystemEditorDraftPayload>
+        }
+        aggregate: {
+          args: Prisma.SystemEditorDraftAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateSystemEditorDraft>
+        }
+        groupBy: {
+          args: Prisma.SystemEditorDraftGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SystemEditorDraftGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.SystemEditorDraftCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SystemEditorDraftCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -4247,6 +4397,9 @@ export const RefreshTokenScalarFieldEnum = {
   replacedById: 'replacedById',
   userAgent: 'userAgent',
   ip: 'ip',
+  rememberMe: 'rememberMe',
+  sessionStartedAt: 'sessionStartedAt',
+  deviceLabel: 'deviceLabel',
   createdAt: 'createdAt'
 } as const
 
@@ -4462,6 +4615,12 @@ export const SystemSettingsScalarFieldEnum = {
   orderPendingTtlMinutes: 'orderPendingTtlMinutes',
   invoicePendingTtlHours: 'invoicePendingTtlHours',
   defaultDownloadLimit: 'defaultDownloadLimit',
+  sessionIdleMinutes: 'sessionIdleMinutes',
+  sessionAbsoluteHours: 'sessionAbsoluteHours',
+  rememberMeDays: 'rememberMeDays',
+  adminIdleMinutes: 'adminIdleMinutes',
+  adminAbsoluteHours: 'adminAbsoluteHours',
+  sessionWarningMinutes: 'sessionWarningMinutes',
   updatedById: 'updatedById',
   updatedAt: 'updatedAt'
 } as const
@@ -4973,6 +5132,9 @@ export const LegalDocumentScalarFieldEnum = {
   key: 'key',
   slug: 'slug',
   title: 'title',
+  summary: 'summary',
+  seoTitle: 'seoTitle',
+  seoDescription: 'seoDescription',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -5007,6 +5169,39 @@ export const UserLegalAcceptanceScalarFieldEnum = {
 } as const
 
 export type UserLegalAcceptanceScalarFieldEnum = (typeof UserLegalAcceptanceScalarFieldEnum)[keyof typeof UserLegalAcceptanceScalarFieldEnum]
+
+
+export const TenantEditorDraftScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  userId: 'userId',
+  entityType: 'entityType',
+  entityKey: 'entityKey',
+  payload: 'payload',
+  revision: 'revision',
+  clientId: 'clientId',
+  baseUpdatedAt: 'baseUpdatedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type TenantEditorDraftScalarFieldEnum = (typeof TenantEditorDraftScalarFieldEnum)[keyof typeof TenantEditorDraftScalarFieldEnum]
+
+
+export const SystemEditorDraftScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  entityType: 'entityType',
+  entityKey: 'entityKey',
+  payload: 'payload',
+  revision: 'revision',
+  clientId: 'clientId',
+  baseUpdatedAt: 'baseUpdatedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SystemEditorDraftScalarFieldEnum = (typeof SystemEditorDraftScalarFieldEnum)[keyof typeof SystemEditorDraftScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -5603,6 +5798,34 @@ export type ListEnumLegalReviewStatusFieldRefInput<$PrismaModel> = FieldRefInput
 
 
 /**
+ * Reference to a field of type 'TenantEditorDraftEntity'
+ */
+export type EnumTenantEditorDraftEntityFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TenantEditorDraftEntity'>
+    
+
+
+/**
+ * Reference to a field of type 'TenantEditorDraftEntity[]'
+ */
+export type ListEnumTenantEditorDraftEntityFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TenantEditorDraftEntity[]'>
+    
+
+
+/**
+ * Reference to a field of type 'SystemEditorDraftEntity'
+ */
+export type EnumSystemEditorDraftEntityFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SystemEditorDraftEntity'>
+    
+
+
+/**
+ * Reference to a field of type 'SystemEditorDraftEntity[]'
+ */
+export type ListEnumSystemEditorDraftEntityFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SystemEditorDraftEntity[]'>
+    
+
+
+/**
  * Reference to a field of type 'Float'
  */
 export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
@@ -5816,6 +6039,8 @@ export type GlobalOmitConfig = {
   legalDocument?: Prisma.LegalDocumentOmit
   legalDocumentVersion?: Prisma.LegalDocumentVersionOmit
   userLegalAcceptance?: Prisma.UserLegalAcceptanceOmit
+  tenantEditorDraft?: Prisma.TenantEditorDraftOmit
+  systemEditorDraft?: Prisma.SystemEditorDraftOmit
 }
 
 /* Types for Logging */

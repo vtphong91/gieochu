@@ -1,6 +1,6 @@
 > **BẢN DỰ THẢO — chưa được luật sư rà soát.**
 >
-> Văn bản: Điều khoản sử dụng (khoá `terms`, đường dẫn dự kiến `/phap-ly/dieu-khoan-su-dung` — ADR-050).
+> Văn bản: Điều khoản sử dụng (khoá `terms`, đường dẫn `/dieu-khoan-su-dung` — URL cấp gốc theo ADR-054; ADR-050 dùng `/phap-ly/dieu-khoan-su-dung`).
 > Người soạn: Long (tài liệu), 2026-10-23, theo `docs/claude-code-gieochu-legal-pages-implementation-brief.md` §4.1 và
 > `docs/legal/LEGAL_REVIEW_CHECKLIST.md`. Đây **không** phải tư vấn pháp lý và **không** được công bố như văn bản có hiệu
 > lực khi còn bất kỳ dấu `[[CẦN XÁC NHẬN: …]]` nào (hệ thống chặn xuất bản theo ADR-050).

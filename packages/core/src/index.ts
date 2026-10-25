@@ -306,7 +306,9 @@ export { escapeHtmlText, replaceBrandTokenInHtml } from "./content/brand-token";
 export {
   isLegalDocumentKey,
   isLegalReviewStatus,
-  LEGAL_BASE_PATH,
+  LEGAL_DOCUMENT_ROOT_SLUGS,
+  LEGAL_LEGACY_BASE_PATH,
+  LEGAL_SUMMARY_MAX,
   LEGAL_CHANGE_SUMMARY_MAX,
   LEGAL_CONTENT_MAX,
   LEGAL_DOCUMENT_DEFS,
@@ -434,6 +436,7 @@ export {
   SYSTEM_SETTING_KEYS,
   SYSTEM_SETTINGS_BOUNDS,
   systemSettingsSchema,
+  validateSessionSettings,
 } from "./settings/system-settings";
 export type {
   ParsedStoredSystemSettings,

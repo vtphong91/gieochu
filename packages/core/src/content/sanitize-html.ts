@@ -60,6 +60,32 @@ export interface SanitizeRichTextOptions {
    * c_limit,w_<N>, N ≤ 1600). Khi LƯU không truyền — DB giữ URL gốc Cloudinary trả về.
    */
   imageWidth?: number;
+  /**
+   * ADR-054 mục 7 — CHỈ cho nội dung do System Admin soạn (văn bản pháp lý). Có giá trị → link nội bộ (`#…`, `/…`
+   * không phải `//`/`/\`, đường dẫn tương đối, hoặc URL tuyệt đối cùng origin `siteOrigin`) giữ cùng tab, không `rel`;
+   * link ngoài (`http(s)` khác origin, protocol-relative) → `target="_blank" rel="noopener noreferrer"`; `mailto:` không
+   * `target`. `target`/`rel` có sẵn trong HTML luôn bị bỏ và dựng lại. Không truyền = hành vi cũ (bỏ mọi `target`/`rel`).
+   */
+  trustedLinks?: { siteOrigin: string | null };
+}
+
+/** ADR-054 mục 7 — phân loại `href` (đã qua kiểm scheme của sanitize-html) cho chế độ `trustedLinks`. */
+export function classifyRichTextLink(href: string, siteOrigin: string | null): "internal" | "external" | "mailto" {
+  const value = href.trim();
+  let absolute: URL | null = null;
+  try {
+    absolute = new URL(value);
+  } catch {
+    absolute = null;
+  }
+  if (absolute) {
+    if (absolute.protocol === "mailto:") return "mailto";
+    if (siteOrigin && (absolute.protocol === "https:" || absolute.protocol === "http:") && absolute.origin === siteOrigin) return "internal";
+    return "external";
+  }
+  // Tương đối: `//host` / `/\host` / `\\host` là protocol-relative (trình duyệt coi như host khác) → ngoài.
+  if (/^[/\\]{2}/.test(value) || /^\/\\/.test(value)) return "external";
+  return "internal";
 }
 
 /**
@@ -69,17 +95,34 @@ export interface SanitizeRichTextOptions {
  * và chạy lại khi render (lớp phòng thủ thứ hai).
  */
 export function sanitizeRichTextHtml(html: string, options: SanitizeRichTextOptions): string {
-  const { imageCloudName, imageWidth } = options;
+  const { imageCloudName, imageWidth, trustedLinks } = options;
   const isAllowedImageSrc = (src: string | undefined): boolean => Boolean(src && imageCloudName && isCloudinaryImageUrl(src, imageCloudName));
+
+  // Lưu ý: `allowedAttributes` của `a` chỉ có `href` nên `target`/`rel` thêm ở transform dưới bị lọc bỏ ở chế độ thường
+  // (hành vi hiện có — giữ nguyên ngoài phạm vi ADR-054). Chế độ `trustedLinks` mở `target`/`rel` và tự dựng giá trị.
+  const anchorTransform: sanitizeHtmlLib.Transformer = trustedLinks
+    ? (_tagName, attribs) => {
+        const href = attribs.href;
+        const next: sanitizeHtmlLib.Attributes = {};
+        if (href) {
+          next.href = href;
+          if (classifyRichTextLink(href, trustedLinks.siteOrigin) === "external") {
+            next.target = "_blank";
+            next.rel = "noopener noreferrer";
+          }
+        }
+        return { tagName: "a", attribs: next };
+      }
+    : sanitizeHtmlLib.simpleTransform("a", { rel: "noopener noreferrer nofollow", target: "_blank" });
 
   return sanitizeHtmlLib(html, {
     allowedTags: ALLOWED_TAGS,
-    allowedAttributes: ALLOWED_ATTRIBUTES,
+    allowedAttributes: trustedLinks ? { ...ALLOWED_ATTRIBUTES, a: ["href", "target", "rel"] } : ALLOWED_ATTRIBUTES,
     allowedStyles: ALLOWED_STYLES,
     allowedSchemes: ["http", "https", "mailto"],
     allowedSchemesByTag: { img: ["https"] },
     transformTags: {
-      a: sanitizeHtmlLib.simpleTransform("a", { rel: "noopener noreferrer nofollow", target: "_blank" }),
+      a: anchorTransform,
       img: (tagName, attribs) => {
         const src = attribs.src;
         if (!isAllowedImageSrc(src) || !src) return { tagName, attribs: { ...attribs, src: "" } };

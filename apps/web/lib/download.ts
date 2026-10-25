@@ -8,7 +8,7 @@ import {
   normalizeExternalDocumentUrl,
   notFound,
 } from "@gieochu/core";
-import { getPrismaClient, withCustomer, withTenant, type ProductFile } from "@gieochu/db";
+import { getPrismaClient, withCustomer, withSystemJob, withTenant, type ProductFile } from "@gieochu/db";
 import { clampDownloadTtlSeconds, createPresignedDownload, createS3Client } from "@gieochu/storage";
 import { requireStorageConfig } from "./product-upload";
 import { getSystemSettings } from "./system-settings";
@@ -159,4 +159,22 @@ export async function consumeDownloadToken(rawToken: string, ip: string | undefi
     ttlSeconds,
   });
   return toClientStorageUrl({ presignedUrl, provider: signingProvider, method: "GET", ttlSeconds });
+}
+
+export interface DownloadEventPurgeResult {
+  deleted: number;
+}
+
+/**
+ * ADR-054 mục 8 — nhật ký tải `download_events` (có IP) lưu 12 tháng: bước cron hằng ngày xoá dòng có `createdAt` cũ hơn
+ * 12 tháng (so UTC như audit purge). Bảng L2 có RLS FORCE → chạy qua `withSystemJob` (policy cho phép scope
+ * `system_job`). Giới hạn tải dùng bộ đếm `entitlements.downloadsUsed`/share link, không đếm lại dòng này → xoá không mở
+ * thêm lượt tải. Trả về chỉ số đếm (§7.9).
+ */
+export async function purgeExpiredDownloadEvents(): Promise<DownloadEventPurgeResult> {
+  const deleted = await withSystemJob((tx) => tx.$executeRaw`
+    DELETE FROM "download_events"
+    WHERE "createdAt" < (now() AT TIME ZONE 'UTC') - interval '12 months'
+  `);
+  return { deleted };
 }

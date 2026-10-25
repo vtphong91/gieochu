@@ -34,11 +34,27 @@ export async function applyCouponAction(
   return {};
 }
 
-export async function removeCouponAction(tenantSlug: string, orderCode: string): Promise<void> {
+// Chữ ký useActionState (prevState, formData) cho coupon-panel; cả hai không dùng — eslint của apps/web không có
+// argsIgnorePattern cho `_` nên khai báo ở overload, phần thân bỏ bớt tham số (TS cho phép danh sách ngắn hơn).
+export async function removeCouponAction(
+  tenantSlug: string,
+  orderCode: string,
+  prevState: CheckoutActionState,
+  formData: FormData,
+): Promise<CheckoutActionState>;
+export async function removeCouponAction(tenantSlug: string, orderCode: string): Promise<CheckoutActionState> {
   const user = await requireVerifiedAccess(`/${tenantSlug}/checkout/${orderCode}`);
   const order = await getOrderForCustomer(user.userId, orderCode);
-  await removeCouponFromOrder(order.tenantId, order.id, user.userId);
+  try {
+    // ADR-056 bổ sung: ORDER_CHANGED / CHECKOUT_CREATE_FAILED / PROVIDER_NOT_AVAILABLE / ORDER_NOT_PENDING → hiện cho khách.
+    await removeCouponFromOrder(order.tenantId, order.id, user.userId);
+  } catch (error) {
+    if (error instanceof AppError) return { error: error.message };
+    throw error;
+  }
+
   revalidatePath(`/${tenantSlug}/checkout/${orderCode}`);
+  return {};
 }
 
 export async function selectProviderAction(

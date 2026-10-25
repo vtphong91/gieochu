@@ -4,7 +4,7 @@ tags:
   - order
   - status/living
 date: 2026-09-26
-updated: 2026-10-23
+updated: 2026-10-25
 author: System Architect
 ---
 
@@ -167,6 +167,35 @@ gỡ/lưu trữ/chuyển nháp hoặc gian hàng bị khoá/tạm ngưng.
 - **Không** chặn webhook / xác nhận tay cho giao dịch **đã trả tiền** — các đường đó không qua hàm này; fulfil bình thường (sản phẩm bị
   khoá kiểm duyệt → `PENDING_CHOICE`, §3.1).
 
+### 3.9. Mã giảm giá sau khi đã có QR — tạo lại `checkoutPayload` (bổ sung ADR-056) — working tree, chưa commit ✅ `git diff lib/order.ts`
+
+Quyết định: [[01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr|ADR-041 KB (≙ ADR-056)]] §3.6–§3.7. Mục này chỉ ghi
+hành vi code đọc được; luật nghiệp vụ là của ADR.
+
+- **Chặn theo trạng thái:** `applyCouponToOrder` và `removeCouponFromOrder` kiểm `isEffectivelyPending(order)` trước — đơn PAID/FULFILLED/huỷ/hết hạn (hiệu lực)
+  → **409 `ORDER_NOT_PENDING`** ✅ (test `order.test.ts` kiểm đơn đã fulfil).
+- **Tạo lại payload:** nếu đơn đã có `provider` và `checkoutPayload` và tổng mới > 0, gọi `buildTenantCheckoutPayload(tenantId, { code, totalVnd: tổngMới },
+  order.provider)` (hàm nội bộ mới, tách từ `initiateOrderCheckout`; PaymentScope TENANT; `reference`/nội dung CK luôn là mã đơn) ✅.
+  - Payload được tạo **trước** transaction (gọi cổng thanh toán nằm ngoài transaction DB); lỗi cổng (không phải `AppError`) → `logger.warn` + **502
+    `CHECKOUT_CREATE_FAILED`**, đơn **không đổi** ✅.
+  - Sau đó **một** `withTenant` transaction: `order.updateMany` có điều kiện `{ id, status: "PENDING", totalVnd: <tổng lúc đọc>, provider: <cổng lúc đọc> }`
+    ghi subtotal/discount/total/couponCode + payload mới; cập nhật `order_items.finalPriceVnd`. `count = 0` (có người chọn cổng/áp mã song song) → **409
+    `ORDER_CHANGED`** "Đơn hàng vừa được cập nhật, vui lòng tải lại trang và thử lại." ✅.
+  - Gỡ mã: tổng về `subtotalVnd`, `discountVnd = 0`, `couponCode = null`, `finalPriceVnd = unitPriceVnd`; payload tạo lại theo `subtotalVnd` ✅.
+- **Tổng mới = 0đ:** không tạo payload; sau commit `markOrderPaid(tx, orderId, "ZERO_AMOUNT")` như cũ (trang ẩn khối thanh toán) ✅.
+- **`initiateOrderCheckout`** (chọn cổng) cũng dùng `buildTenantCheckoutPayload` rồi chỉ ghi khi `{ status: "PENDING", totalVnd: <tổng lúc đọc> }` còn khớp —
+  không thì 409 `ORDER_CHANGED` ✅.
+- **Server Action** (`app/[tenantSlug]/checkout/[orderCode]/actions.ts`): `applyCouponAction`, `removeCouponAction`, `selectProviderAction` đều bắt `AppError` →
+  `{ error: message }`. `removeCouponAction` nay trả **`CheckoutActionState`** (chữ ký `useActionState`) thay vì `void` ✅ đọc code.
+- **Kiểm test:** `order.test.ts` (case MANUAL_QR có sẵn) thêm assert: áp mã 10% sau khi có QR → `totalVnd` 90.000, QR chứa tag số tiền mới, nội dung CK giữ mã
+  đơn; gỡ mã → 100.000 ✅ đọc test. Kiểm qua trình duyệt/cổng thật ❓.
+- **QR cũ khách đã lưu:** với SePay, tiền về theo số cũ → `matchPaymentAmount` ghi `tenant_payment_transactions.matchStatus = MISMATCH_AMOUNT`, không
+  `markOrderPaid`; chủ gian hàng xác nhận tay (§3.1 `MANUAL_CONFIRM`, còn trong cửa sổ `canManuallyConfirmOrder`) ✅ đọc `lib/payment-process.ts`. Với SePay thật ❓.
+- **MoMo:** đổi mã sau khi đã có link MoMo → gọi lại `createCheckout` cùng `orderId`; MoMo có thể từ chối → `CHECKOUT_CREATE_FAILED`, đơn không đổi. **Tạm chưa
+  xử lý** (bổ sung ADR-056 lần 2) 🟡; hành vi với MoMo thật ❓.
+- **UI:** ô mã giảm giá (`coupon-panel.tsx`) có nhãn, gợi ý "Nhập mã trước khi chọn cách thanh toán…", lỗi `role="alert"` trong panel, thành công báo "Đã cập nhật mã
+  QR theo số tiền mới" khi đơn đã có QR — [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §24.3.
+
 > **Hiển thị ở Studio (ADR-046, 2026-10-18 — working tree, chưa commit ✅ `git status`):** trang `/studio/{slug}/orders` lọc/đếm theo trạng thái
 > **hiệu lực** (`effectiveOrderStatus`) và chỉ hiện thao tác hợp lệ theo `orderAllowedActions` — `confirm` = `canManuallyConfirmOrder`, `cancel` =
 > hiệu lực PENDING, `refund` = FULFILLED ✅ đọc code. Đây chỉ là lớp hiển thị; các action vẫn tự kiểm luật ở §3 (không đổi). Xem
@@ -196,6 +225,7 @@ transaction — xem [[02-System-Specs/Reviews-Specs|Reviews-Specs]] §5. Xem th�
 * [[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]] — hàng đợi pg-boss, `after()` + cron hằng ngày (ADR-036) ([Background-Jobs-Specs.md](./Background-Jobs-Specs.md))
 * [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]] — quyền lợi người mua khi tài liệu bị gỡ do vi phạm (ADR-039) ([Abuse-Reports-Specs.md](./Abuse-Reports-Specs.md))
 * [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]] — trang Đơn hàng Studio: danh sách lọc/tìm/phân trang + chi tiết, dòng thời gian đơn (ADR-046) ([Studio-Orders-Specs.md](./Studio-Orders-Specs.md))
+* [[01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr|ADR-041 KB (≙ ADR-056)]] — mã giảm giá sau khi đã có QR (§3.9) ([ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr.md](../01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr.md))
 * Mã nguồn: `packages/core/src/order/state.ts` (máy trạng thái), `packages/core/src/order/expiry.ts` (`effectiveOrderStatus`,
   `canManuallyConfirmOrder`), `apps/web/lib/order.ts` (`markOrderPaid`, `cancelOrder`, `markOrderRefunded`, `runOrderSweep`),
   `apps/web/lib/payment-process.ts`, enum: `packages/db/prisma/schema.prisma`

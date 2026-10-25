@@ -1,6 +1,7 @@
 import { z } from "zod";
 export { MENU_CMS_SLUG } from "./cms-slugs";
 import { isSafeEmailAddress, isSafeExternalUrl, isSafeInternalPath } from "./cms-content-guard";
+import { isLegalDocumentKey, legalDocumentPath, type LegalDocumentKey } from "../legal/legal-document";
 
 /**
  * ADR-050 mục 1 — menu header/footer hệ thống, lưu ở `CmsPage.slug = "menu"` (`blocks` = live, `blocksDraft` = nháp,
@@ -27,11 +28,13 @@ export const NAV_COPYRIGHT_MAX = 120;
 export const NAV_TARGET_MAX = 500;
 export const NAV_ID_MAX = 64;
 
-export const NAV_LINK_KINDS = ["page", "internal", "external", "email"] as const;
+/** ADR-054 mục 6: `legal` = văn bản pháp lý (đích = khoá văn bản) — tự ẩn khi văn bản chưa có bản hiệu lực. */
+export const NAV_LINK_KINDS = ["page", "legal", "internal", "external", "email"] as const;
 export type NavLinkKind = (typeof NAV_LINK_KINDS)[number];
 
 export const NAV_LINK_KIND_LABELS: Record<NavLinkKind, string> = {
   page: "Trang có sẵn",
+  legal: "Văn bản pháp lý",
   internal: "Đường dẫn nội bộ",
   external: "Liên kết ngoài",
   email: "Email",
@@ -75,6 +78,8 @@ export function resolveNavLinkHref(kind: NavLinkKind, target: string): string | 
   switch (kind) {
     case "page":
       return navPagePath(value);
+    case "legal":
+      return isLegalDocumentKey(value) ? legalDocumentPath(value) : null;
     case "internal":
       return isSafeInternalPath(value) ? value : null;
     case "external":
@@ -88,6 +93,7 @@ export function resolveNavLinkHref(kind: NavLinkKind, target: string): string | 
 
 const TARGET_ERROR: Record<NavLinkKind, string> = {
   page: "Chọn một trang có sẵn.",
+  legal: "Chọn một văn bản pháp lý.",
   internal: "Đường dẫn nội bộ phải bắt đầu bằng “/” (không “//”, không khoảng trắng).",
   external: "Liên kết ngoài phải là https:// chính thức (không localhost, không *.vercel.app).",
   email: "Email không hợp lệ (nhập địa chỉ, không kèm “mailto:”).",
@@ -174,13 +180,25 @@ export const siteMenuSchema = z
   });
 export type SiteMenu = z.infer<typeof siteMenuSchema>;
 
+/** ADR-054 mục 6 — nhãn ngắn (≤ `NAV_LABEL_MAX`) của cột footer "Thông tin" mặc định, theo thứ tự hiển thị. */
+const DEFAULT_FOOTER_LEGAL_LINKS: ReadonlyArray<readonly [LegalDocumentKey, string]> = [
+  ["terms", "Điều khoản sử dụng"],
+  ["privacy", "Chính sách bảo mật"],
+  ["content_policy", "Chính sách nội dung"],
+  ["copyright", "Cam kết bản quyền"],
+  ["usage_license", "Quyền sử dụng tài liệu"],
+  ["seller", "Chính sách người bán"],
+  ["contact", "Liên hệ"],
+];
+
 /** Nhãn CTA mặc định khi có gói miễn phí thật (ADR-021) / khi không có. Loader chọn theo dữ liệu `Plan`. */
 export const DEFAULT_HEADER_CTA_LABEL_FREE = "Mở gian hàng miễn phí";
 export const DEFAULT_HEADER_CTA_LABEL = "Mở gian hàng";
 
 /**
  * Menu mặc định (chưa xuất bản / dữ liệu hỏng) = menu trước ADR-050 bỏ các mục không có link ("Giáo viên & Coach",
- * cột "Công ty", cột "Pháp lý" — chưa có trang). Thứ tự header theo nav ngang desktop cũ.
+ * cột "Công ty"). Thứ tự header theo nav ngang desktop cũ. ADR-054 mục 6: thêm cột "Thông tin" gồm mọi văn bản pháp lý —
+ * link tới văn bản chưa có bản hiệu lực bị bỏ khi render, không còn link nào thì ẩn cả cột.
  */
 export function defaultSiteMenu(): SiteMenu {
   return {
@@ -201,6 +219,11 @@ export function defaultSiteMenu(): SiteMenu {
             { id: "foot-shop", label: "Cửa hàng", kind: "page", target: "shop", newTab: false, visible: true },
             { id: "foot-pricing", label: "Bảng giá", kind: "page", target: "pricing", newTab: false, visible: true },
           ],
+        },
+        {
+          id: "col-info",
+          title: "Thông tin",
+          links: DEFAULT_FOOTER_LEGAL_LINKS.map(([key, label]) => ({ id: `foot-legal-${key}`, label, kind: "legal" as const, target: key, newTab: false, visible: true })),
         },
       ],
       copyright: "© {năm} {brand}. Bảo lưu mọi quyền.",

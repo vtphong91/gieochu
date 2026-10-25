@@ -13,7 +13,7 @@ import {
   type LegalDocumentKey,
 } from "@gieochu/core";
 import { audit } from "../../../../lib/audit";
-import { archiveLegalVersion, createLegalDraft, publishLegalVersion, setLegalReviewStatus, updateLegalDraft } from "../../../../lib/legal";
+import { archiveLegalVersion, createLegalDraft, publishLegalVersion, setLegalReviewStatus, updateLegalDocumentMeta, updateLegalDraft } from "../../../../lib/legal";
 import { requireRole } from "../../../../lib/session";
 
 /**
@@ -50,10 +50,16 @@ async function logChange(actorId: string, action: AuditAction, key: LegalDocumen
   await audit.log({ actorId, scope: "SYSTEM", action, targetType: "LegalDocumentVersion", targetId: versionId, metadata: { key, version, ...extra } });
 }
 
+/**
+ * ADR-054: trang văn bản cấp gốc + form ghi chấp thuận (đăng ký: Điều khoản/Bảo mật; mở gian hàng: Người bán) + mọi trang
+ * có footer (link "Thông tin" tự ẩn/hiện) — `revalidatePath("/", "layout")` làm mới toàn bộ cây dưới layout gốc.
+ */
 function revalidate(key: LegalDocumentKey): void {
   revalidatePath("/admin/cms/phap-ly");
   revalidatePath(legalDocumentPath(key));
   revalidatePath("/register");
+  revalidatePath("/studio");
+  revalidatePath("/", "layout");
 }
 
 export async function createLegalDraftAction(keyInput: unknown, contentHtml: unknown, changeSummary: unknown): Promise<LegalActionState> {
@@ -107,6 +113,31 @@ export async function publishLegalVersionAction(keyInput: unknown, versionIdInpu
     await logChange(actor.userId, "LEGAL_VERSION_PUBLISHED", key, version.id, version.version, { effectiveAt: version.effectiveAt?.toISOString() ?? null });
     revalidate(key);
     return { success: true, versionId: version.id };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+/**
+ * ADR-054 mục 4: mô tả ngắn + tiêu đề/mô tả SEO — lưu thẳng (không nháp, như SEO trang chủ ADR-050 lần 2), áp ngay cho
+ * trang đang hiệu lực. Audit chỉ ghi khoá văn bản + cờ trường nào có giá trị (không ghi nội dung).
+ */
+export async function saveLegalDocumentMetaAction(keyInput: unknown, input: unknown): Promise<LegalActionState> {
+  try {
+    const actor = await requireRole("SYSTEM_ADMIN");
+    const key = toKey(keyInput);
+    const meta = await updateLegalDocumentMeta(LEGAL_DOCUMENT_DEFS[key], input);
+    await audit.log({
+      actorId: actor.userId,
+      scope: "SYSTEM",
+      action: "LEGAL_DOCUMENT_META_UPDATED",
+      targetType: "LegalDocument",
+      targetId: key,
+      metadata: { key, hasSummary: meta.summary !== null, hasSeoTitle: meta.seoTitle !== null, hasSeoDescription: meta.seoDescription !== null },
+    });
+    revalidatePath("/admin/cms/phap-ly");
+    revalidatePath(legalDocumentPath(key));
+    return { success: true };
   } catch (error) {
     return toActionError(error);
   }

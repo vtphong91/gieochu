@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { AppError } from "@gieochu/core";
 import { getPrismaClient } from "@gieochu/db";
 import {
   cancelEmailChange,
@@ -13,6 +14,7 @@ import {
   type EmailChangeState,
 } from "../../../lib/account-security";
 import { accountErrorState } from "../../../lib/account-state";
+import { revokeAccountSession } from "../../../lib/account-sessions";
 import { requireUser, requireVerified } from "../../../lib/session";
 import { ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME } from "../../../lib/cookies";
 
@@ -76,4 +78,28 @@ export async function logoutAllDevicesAction(): Promise<void> {
   store.delete({ name: REFRESH_COOKIE_NAME, path: "/api/auth" });
 
   redirect("/login");
+}
+
+/**
+ * ADR-053 mục 4 — đăng xuất MỘT thiết bị (ô ẩn `sessionId` = familyId). Quyền sở hữu kiểm trong `revokeAccountSession`
+ * (lọc theo userId của người gọi). Phiên đã bị đăng xuất từ trước (404) → chỉ làm mới danh sách. Đăng xuất chính thiết
+ * bị này → xoá cookie và trả `signedOut: true`; client điều hướng CỨNG tới /login (`window.location.assign`, như ADR-053
+ * GĐ A) để xoá client cache còn dữ liệu phiên cũ — không dùng `redirect()` mềm.
+ */
+export async function revokeSessionAction(formData: FormData): Promise<{ signedOut: boolean }> {
+  const user = await requireUser();
+  let isCurrent = false;
+  try {
+    ({ isCurrent } = await revokeAccountSession(user, formData.get("sessionId")));
+  } catch (error) {
+    if (!(error instanceof AppError) || error.httpStatus !== 404) throw error;
+  }
+  if (isCurrent) {
+    const store = await cookies();
+    store.delete(ACCESS_COOKIE_NAME);
+    store.delete({ name: REFRESH_COOKIE_NAME, path: "/api/auth" });
+    return { signedOut: true };
+  }
+  revalidatePath("/account/security");
+  return { signedOut: false };
 }

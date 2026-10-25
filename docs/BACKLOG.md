@@ -40,7 +40,7 @@ hoá đơn điện tử, đa tiền tệ, partition/backup/giám sát vận hàn
 - **`TEST_DATABASE_URL` riêng cho integration test**: hiện dùng chung Neon DB với dev (ADR-009). Khi có quyền
   tạo Neon branch (qua Neon API/Console), tách riêng để an toàn hơn và cho phép chạy song song.
 - **Avatar upload**: mục M1 "đổi avatar (upload qua M5 storage helper)" — chưa làm vì `packages/storage`
-  (presigned upload) thuộc M5. `/account/security` hiện chỉ có đổi mật khẩu + đăng xuất mọi thiết bị.
+  (presigned upload) thuộc M5. `/account/security` có đổi mật khẩu, đăng xuất mọi thiết bị và (từ ADR-053, 2026-10-24) danh sách thiết bị đang đăng nhập + đăng xuất từng thiết bị.
 - ~~**Audit log cho sự kiện M1**~~: `AUTH_LOGIN`, `AUTH_LOGIN_FAILED`, `AUTH_REFRESH_REUSE`, v.v. cần ghi qua
   `audit.log()` một khi bảng `audit_logs` (M12) tồn tại — nối lại khi làm M12, không lùi lại sửa M1. *(Đã nối ở M12a,
   2026-10-16 — ADR-037; đăng nhập với email không tồn tại cố ý không ghi.)*
@@ -388,7 +388,9 @@ lộ ra 2 lỗi cả 2 đều tồn tại từ trước, không riêng module n�
 **Môi trường dev**
 - **Nhập lại cấu hình R2 (`/admin/settings/storage`) + SePay platform (`/admin/billing/payment`) trên DB dev** — bị các
   integration test cũ xoá (trước khi có `tests/integration/shared-config-snapshot.ts`). Sau khi nhập lại cần "Kiểm tra
-  kết nối" để bật.
+  kết nối" để bật. *(Cập nhật 2026-10-25: helper snapshot đã xoá; integration test nay **mock lớp đọc cấu hình** — `lib/system-storage`,
+  `getPlatformPaymentConfigRow` — không ghi/snapshot bảng singleton. Sự cố 2026-10-24 test ghi đè storage + SePay platform: chủ dự án đã nhập lại
+  storage; SePay platform hiện không còn dòng — nhập lại hay không do chủ dự án quyết.)*
 
 ## Phát sinh trong đợt M10a (ADR-029 — siết RLS ghi + Đánh giá sản phẩm)
 
@@ -762,7 +764,8 @@ nhiều trang; nhánh SEO từ CMS đã xuất bản (`seoTitle`/`seoDescription
 **Giao diện**
 - ~~**Studio: menu điều hướng mobile (GĐ2b)** — chưa làm.~~ — **Xong 2026-10-17** (ADR-042).
 - **Editor CMS Cửa hàng: cột aside thiếu `min-w-0`** (nội dung dài có thể tràn).
-- **Danh sách phiên đăng nhập / IP, xoá tài khoản, tuỳ chọn thông báo, ảnh đại diện công khai, xác thực hai bước** — để sau theo ADR-041 C.4.
+- ~~**Danh sách phiên đăng nhập / IP**~~ — **Xong 2026-10-24** (ADR-053: `/account/security` liệt kê thiết bị, IP, đăng xuất từng phiên).
+- **Xoá tài khoản, tuỳ chọn thông báo, ảnh đại diện công khai, xác thực hai bước** — để sau theo ADR-041 C.4.
 - **Thẻ Enterprise, quà tặng theo kỳ hạn, dùng thử gói trả phí** — ngoài phạm vi ADR-041 (ghi để không đề xuất lại khi chưa có quyết định mới).
 
 ## Phát sinh trong đợt ADR-042 (sidebar dùng chung System Center + Studio, Đăng xuất, drawer mobile)

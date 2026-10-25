@@ -45,8 +45,10 @@ export interface MenuPageOption {
   /** Khoá "trang có sẵn" (`shop`, `pricing`, `cms:<slug>`…). */
   value: string;
   label: string;
-  /** false = trang CMS chưa xuất bản (khách sẽ gặp 404). */
+  /** false = trang CMS chưa xuất bản (khách sẽ gặp 404) / văn bản pháp lý chưa có bản hiệu lực (link tự ẩn). */
   published: boolean;
+  /** ADR-054 mục 6: `"legal"` = lựa chọn cho loại link "Văn bản pháp lý" (`value` = khoá văn bản); bỏ trống = trang có sẵn. */
+  group?: "legal";
 }
 
 type Status = "NONE" | "DRAFT" | "PUBLISHED";
@@ -136,7 +138,9 @@ function LinkFields({
   onChange: (link: EditableLink) => void;
 }) {
   const targetError = groupMode ? null : navTargetError(link.kind, link.target);
-  const pageOption = link.kind === "page" ? pageOptions.find((option) => option.value === link.target) : undefined;
+  const optionGroup = link.kind === "legal" ? "legal" : undefined;
+  const targetOptions = pageOptions.filter((option) => option.group === optionGroup);
+  const pageOption = link.kind === "page" || link.kind === "legal" ? targetOptions.find((option) => option.value === link.target) : undefined;
   // Lỗi nhãn chỉ hiện sau lần bấm Lưu/Xuất bản đầu (không la lỗi khi vừa thêm mục trống); lỗi đích hiện ngay khi đã gõ.
   const labelError = showErrors && !link.label.trim() ? "Nhập nhãn." : undefined;
   const showTargetError = targetError && (showErrors || (link.kind !== "page" && link.target.trim() !== "" && link.target !== "https://"));
@@ -144,6 +148,7 @@ function LinkFields({
   function changeKind(kind: NavLinkKind) {
     const defaults: Record<NavLinkKind, { target: string; newTab: boolean }> = {
       page: { target: "home", newTab: false },
+      legal: { target: "terms", newTab: false },
       internal: { target: "/", newTab: false },
       external: { target: "https://", newTab: true },
       email: { target: "", newTab: false },
@@ -174,20 +179,26 @@ function LinkFields({
               </option>
             ))}
           </SelectField>
-          {link.kind === "page" ? (
+          {link.kind === "page" || link.kind === "legal" ? (
             <SelectField
               id={`${idPrefix}-target`}
-              label="Trang"
+              label={link.kind === "legal" ? "Văn bản" : "Trang"}
               value={link.target}
               error={showTargetError ? (targetError ?? undefined) : undefined}
-              hint={pageOption && !pageOption.published ? "Trang này chưa xuất bản — khách sẽ gặp trang 404." : undefined}
+              hint={
+                pageOption && !pageOption.published
+                  ? link.kind === "legal"
+                    ? "Văn bản chưa có bản hiệu lực — link tự ẩn cho tới khi xuất bản."
+                    : "Trang này chưa xuất bản — khách sẽ gặp trang 404."
+                  : undefined
+              }
               onChange={(e) => onChange({ ...link, target: e.target.value })}
             >
-              {pageOption ? null : <option value={link.target}>(trang không còn tồn tại)</option>}
-              {pageOptions.map((option) => (
+              {pageOption ? null : <option value={link.target}>{link.kind === "legal" ? "(văn bản không còn tồn tại)" : "(trang không còn tồn tại)"}</option>}
+              {targetOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
-                  {option.published ? "" : " — chưa xuất bản"}
+                  {option.published ? "" : link.kind === "legal" ? " — chưa hiệu lực (đang ẩn)" : " — chưa xuất bản"}
                 </option>
               ))}
             </SelectField>

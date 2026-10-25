@@ -379,7 +379,7 @@ export function PricingSectionFields({
             <Notice tone="warning">
               Chưa bật cổng thanh toán nền tảng nào — khu vực này đang tự ẩn trên trang. Bật cổng ở{" "}
               <Link href="/admin/billing/payment" className={`font-semibold underline ${FOCUS}`}>
-                Thanh toán nền tảng
+                Cấu hình thanh toán
               </Link>
               .
             </Notice>

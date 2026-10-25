@@ -4,18 +4,20 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { getEnv } from "@gieochu/config";
 import { brandColors } from "@gieochu/config/theme";
-import { DISPLAY_TIME_ZONE, legalDocumentPath, legalKeyFromSlug, legalVersionLabel, replaceBrandTokenInHtml } from "@gieochu/core";
-import { getEffectiveBrand } from "../../../lib/branding";
-import { getEffectiveLegalVersion, sanitizeLegalHtml } from "../../../lib/legal";
-import { IconChevronDown, IconChevronRight } from "../../admin/_ui/icons";
-import { IconArrow } from "../../_ui/catalog-parts";
-import { SiteFooter } from "../../_ui/site-footer";
-import { SiteHeader } from "../../_ui/site-header";
-import { systemFontVars } from "../../_ui/system-fonts";
-import { buildLegalToc, type LegalTocItem } from "./_ui/legal-toc";
+import { DISPLAY_TIME_ZONE, legalDocumentPath, legalVersionLabel, replaceBrandToken, replaceBrandTokenInHtml, type LegalDocumentKey } from "@gieochu/core";
+import { getEffectiveBrand } from "../../lib/branding";
+import { getEffectiveLegalVersion, getLegalDocumentMeta, sanitizeLegalHtml } from "../../lib/legal";
+import { IconChevronDown, IconChevronRight } from "../admin/_ui/icons";
+import { IconArrow } from "./catalog-parts";
+import { SiteFooter } from "./site-footer";
+import { SiteHeader } from "./site-header";
+import { systemFontVars } from "./system-fonts";
+import { buildLegalToc, type LegalTocItem } from "./legal-toc";
 
 /**
- * ADR-050 mục 3 — trang công khai văn bản pháp lý `/phap-ly/{slug}` (đợt 1: `dieu-khoan-su-dung`). Render bản đang hiệu
+ * ADR-050 mục 3 + ADR-054 — trang công khai văn bản pháp lý ở URL cấp gốc `/{slug}`: 7 thư mục route mỏng
+ * `app/{slug}/page.tsx` cùng dùng component này, mỗi route truyền đúng một khoá (route tĩnh thắng `app/[tenantSlug]`).
+ * `/phap-ly/{slug}` cũ redirect 308 (`app/phap-ly/[slug]/route.ts`). Render bản đang hiệu
  * lực (PUBLISHED, `effectiveAt <= now` mới nhất); chưa có → 404. Nội dung sanitize lại khi render, SAU đó mới thay
  * `{brand}` (giá trị thay vào đã escape — `replaceBrandTokenInHtml`), rồi gắn `id` cho H2 để dựng mục lục (`buildLegalToc`).
  *
@@ -24,8 +26,6 @@ import { buildLegalToc, type LegalTocItem } from "./_ui/legal-toc";
  * dưới dòng meta. Độ rộng: `container-page` + lưới `220px | minmax(0,768px)` căn giữa (cột đọc = độ rộng `container-prose`,
  * ADR-024 — không thêm utility mới); không đủ 2 mục → bỏ TOC, cột đọc căn giữa. Chữ đọc 16/17px, dòng 1.75 (`.gieochu-legal-content`).
  */
-
-type Params = Promise<{ slug: string }>;
 
 const INK = brandColors.ink;
 const INK_SOFT = brandColors.inkSoft;
@@ -36,9 +36,7 @@ const PAPER_ALT = brandColors.backgroundAlt;
 /** Vòng focus + vùng bấm cho link phụ (breadcrumb, TOC, "Lên đầu trang"). */
 const SOFT_LINK = "rounded-sm outline-offset-2 hover:underline focus-visible:outline-2";
 
-const loadVersion = cache(async (slug: string) => {
-  const key = legalKeyFromSlug(slug);
-  if (!key) return null;
+const loadVersion = cache(async (key: LegalDocumentKey) => {
   const version = await getEffectiveLegalVersion(key);
   return version ? { key, version } : null;
 });
@@ -47,13 +45,20 @@ function formatDate(date: Date): string {
   return date.toLocaleDateString("vi-VN", { timeZone: DISPLAY_TIME_ZONE, day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
-  const { slug } = await params;
-  const [loaded, brand] = await Promise.all([loadVersion(slug), getEffectiveBrand()]);
+/**
+ * ADR-054 mục 3: title = `seoTitle` (token `{brand}`) hoặc "{tiêu đề} | {brand}"; description = `seoDescription` hoặc
+ * `summary` (token `{brand}`), không có cả hai → không đặt; canonical = URL cấp gốc. Chưa có bản hiệu lực → noindex.
+ */
+export async function legalDocumentMetadata(key: LegalDocumentKey): Promise<Metadata> {
+  const [loaded, brand] = await Promise.all([loadVersion(key), getEffectiveBrand()]);
   if (!loaded) return { title: brand.name, robots: { index: false, follow: false } };
+  const meta = await getLegalDocumentMeta(key);
+  const seoTitle = meta?.seoTitle?.trim();
+  const description = meta?.seoDescription?.trim() || meta?.summary?.trim() || null;
   return {
-    title: `${loaded.version.title} | ${brand.name}`,
-    alternates: { canonical: `${getEnv().APP_URL.replace(/\/+$/, "")}${legalDocumentPath(loaded.key)}` },
+    title: seoTitle ? replaceBrandToken(seoTitle, brand.name) : `${loaded.version.title} | ${brand.name}`,
+    ...(description ? { description: replaceBrandToken(description, brand.name) } : {}),
+    alternates: { canonical: `${getEnv().APP_URL.replace(/\/+$/, "")}${legalDocumentPath(key)}` },
   };
 }
 
@@ -75,9 +80,8 @@ function TocList({ items }: { items: LegalTocItem[] }) {
   );
 }
 
-export default async function LegalDocumentPage({ params }: { params: Params }) {
-  const { slug } = await params;
-  const [loaded, brand] = await Promise.all([loadVersion(slug), getEffectiveBrand()]);
+export async function LegalDocumentPage({ documentKey }: { documentKey: LegalDocumentKey }) {
+  const [loaded, brand] = await Promise.all([loadVersion(documentKey), getEffectiveBrand()]);
   if (!loaded) notFound();
   const { version } = loaded;
   const { html, items: toc } = buildLegalToc(replaceBrandTokenInHtml(sanitizeLegalHtml(version.contentHtml), brand.name));

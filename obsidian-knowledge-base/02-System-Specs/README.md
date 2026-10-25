@@ -3,7 +3,7 @@ tags:
   - meta
   - spec
 date: 2026-09-26
-updated: 2026-10-23
+updated: 2026-10-25
 ---
 
 # 📐 System Specifications (Living Specs)
@@ -18,20 +18,32 @@ bộ nội dung được viết lại từ nguồn thật: `CLAUDE.md`, `docs/AR
 - `[[Architecture-Overview]]`: Mô hình 3 tầng dữ liệu L1 System / L2 Tenant / L3 Customer, cơ chế Row-Level
   Security 4-scope (`withTenant`/`withCustomer`/`withPublic`/`withSystemJob`), cấu trúc Next.js App Router.
 - `[[Order-State-Machine]]`: Vòng đời trạng thái đơn hàng mua tài liệu số
-  (`PENDING → PAID → FULFILLED`, `EXPIRED`, `CANCELED`, `REFUNDED`) và hàm `markOrderPaid()` duy nhất.
+  (`PENDING → PAID → FULFILLED`, `EXPIRED`, `CANCELED`, `REFUNDED`) và hàm `markOrderPaid()` duy nhất; §3.9 áp/gỡ mã giảm giá sau khi đã có QR —
+  tạo lại `checkoutPayload`, `ORDER_CHANGED`/`CHECKOUT_CREATE_FAILED` (bổ sung ADR-056).
 - `[[Tenant-RBAC-And-Permissions]]`: Ba lớp tài khoản độc lập (System/Tenant/Customer), bảng
   `Role`/`Permission`/`RolePermission` (ADR-022), cơ chế guard 3 tầng không có middleware tập trung.
 - `[[Payment-And-Billing]]`: Hai hệ thống thanh toán tách biệt (Platform billing vs Tenant billing) dùng chung
   `packages/payments` qua `PaymentScope`, mô hình Free Forever + Paid Subscription (ADR-021), webhook
   idempotent với `timingSafeEqual`; §5A hạn mức `0`/`-1` + cờ tính năng + gói năm, §5B hoàn tiền gói 7 ngày (bảng L1
-  `subscription_refund_requests`, ADR-041 B).
+  `subscription_refund_requests`, ADR-041 B); §5C hoá đơn gói tab "Tất cả" + trang "Đơn hàng gói dịch vụ" `/admin/subscriptions`, §5D khối chuyển
+  khoản `BankTransferPanel`, §5E lưu cấu hình cổng platform trả `{ isEnabled, autoDisabled }` (ADR-056).
 - `[[File-Storage-And-Downloads-Specs]]`: Lưu trữ file sản phẩm qua S3-compatible (Cloudflare R2), presigned
   URL ≤ 10 phút, `DownloadToken`/`ShareLink`, mật khẩu share link bằng argon2 riêng trong `packages/core`; §7 ảnh
   tenant trên Cloudinary hệ thống — chữ ký `public_id`, giữ chỗ + đối soát hạn mức, `cloudinaryDeliveryUrl`,
   sanitizer (ADR-028); §9 Storage Gateway (ADR-045) — env `STORAGE_GATEWAY_PROVIDERS`, URL `/_s/<vé>` qua nginx `auth_request`,
   định dạng vé (HKDF-SHA256 `gieochu:storage-ticket:v1`, AES-256-GCM, base64url, ≤ 8192 ký tự, method GET/PUT, `maxBytes`).
 - `[[User-Management-System-Center-Specs]]`: Console quản trị `/admin/**`, khoá/mở khoá tài khoản, cơ chế
-  refresh-token rotation + reuse detection, ranh giới "System Admin không đọc order/customer của tenant".
+  refresh-token rotation + reuse detection, ranh giới "System Admin không đọc order/customer của tenant"; menu có "Đơn hàng" (`/admin/subscriptions`) và
+  "Cấu hình thanh toán" (ADR-056).
+- `[[Auth-Session-Specs]]`: Phiên đăng nhập (M1 + ADR-053) — **GĐ A + GĐ B xong code (2026-10-24), chưa commit; migration đã chạy**. Một `familyId` = một
+  phiên; "Ghi nhớ đăng nhập" mặc định tắt (SYSTEM_ADMIN luôn bỏ qua), cookie session vs persistent, idle/absolute đo ở server (không trượt), bảng chính
+  sách 6 khoá System Settings, ân hạn refresh 30 giây `AUTH_REFRESH_SUPERSEDED` + rotation nguyên tử + kiểm `user.status`, `SessionRefresh` (khoá giữa tab,
+  cảnh báo idle), điều hướng cứng sau login/logout (nguyên nhân lỗi header cache), danh sách thiết bị `/account/security` (`deviceKind`, đăng xuất thiết bị
+  này → `{ signedOut }` + điều hướng cứng), cron xoá bản ghi phiên sau 90 ngày ([Auth-Session-Specs.md](./Auth-Session-Specs.md)).
+- `[[Editor-Autosave-Drafts-Specs]]`: Tự lưu nháp editor lên server (ADR-053 bổ sung lần 3) — **phần nền xong code (2026-10-24), chưa commit; migration
+  đã chạy; chưa gắn editor nào, chưa gắn cron**. Bảng L2 `tenant_editor_drafts` (RLS tenant + `system_job` chỉ SELECT/DELETE) và L1 `system_editor_drafts`,
+  CHECK 1 MiB; khoá thực thể theo loại, giới hạn payload theo loại, zod "chế độ nháp", mã lỗi `DRAFT_*`; revision + `clientId` chống xung đột nhiều tab;
+  hook `useServerAutosave` (3 giây / 30 giây, sự kiện `gieochu:session-expiring`); `purgeStaleDrafts` 30 ngày ([Editor-Autosave-Drafts-Specs.md](./Editor-Autosave-Drafts-Specs.md)).
 - `[[Storefront-CMS-Specs]]`: Storefront tenant theo section CMS (7 loại section — thêm `reviews` và `posts` ở ADR-029, nháp/xuất bản/khôi phục, nội
   dung demo), form liên hệ + hộp thư `storefront_messages` với RLS tách policy theo lệnh, rate limit, upload ảnh
   Cloudinary theo tenant (ADR-023).
@@ -99,8 +111,10 @@ bộ nội dung được viết lại từ nguồn thật: `CLAUDE.md`, `docs/AR
   (thêm `steps`/`faq`/`community`, `testimonials` cũ → `community` chưa đồng ý = ẩn, `minToShow`, nội dung mặc định theo brief, chặn xuất bản
   `homePublishIssues`, cảnh báo mềm brief §8); SEO trang chủ + bộ giới hạn SEO chung `@gieochu/core/seo` (120/320, cảnh báo 60/160), `generateMetadata` +
   canonical từ `APP_URL` ([System-Cms-Menu-Home-Seo-Specs.md](./System-Cms-Menu-Home-Seo-Specs.md)).
-- `[[Legal-Documents-Specs]]`: Điều khoản sử dụng có phiên bản (ADR-050 mục 3) — **code chưa commit (2026-10-23); migration
-  `20261023090000_adr050_legal_documents` đã chạy**. 3 bảng L1 (`legal_documents`, `legal_document_versions`, `user_legal_acceptances` — append-only,
+- `[[Legal-Documents-Specs]]`: Văn bản pháp lý có phiên bản (ADR-050 mục 3 + **ADR-054 đợt 2**) — **code chưa commit; migration
+  `20261023090000_adr050_legal_documents` đã chạy, migration ADR-054 `20261024150000_adr053_legal_document_meta` đã chạy**. Từ ADR-054: 7 văn bản ở URL
+  cấp gốc, `/phap-ly/{slug}` redirect 308, mô tả/SEO trong CMS (`?van-ban=`, `LegalMetaForm`), `trustedLinks`, đăng ký ghi Điều khoản + Bảo mật, mở gian
+  hàng đồng ý Chính sách người bán, menu loại `legal` + footer "Thông tin", cron `download_events.purge`. 3 bảng L1 (`legal_documents`, `legal_document_versions`, `user_legal_acceptances` — append-only,
   không IP/UA), trigger bất biến bản đã phát hành, bản hiệu lực = PUBLISHED `effectiveAt ≤ now` mới nhất, cổng xuất bản (APPROVED + hết `[[CẦN XÁC
   NHẬN`), không lùi ngày hiệu lực (dung sai 5 phút), sửa nháp → rà soát về PENDING, `{brand}` thay sau sanitize, `/phap-ly/[slug]` 404 khi chưa có
   bản, editor `/admin/cms/phap-ly`, ghi chấp thuận khi đăng ký trong cùng transaction ([Legal-Documents-Specs.md](./Legal-Documents-Specs.md)).

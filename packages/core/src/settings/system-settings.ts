@@ -36,6 +36,14 @@ export const SYSTEM_SETTINGS_BOUNDS = {
   invoicePendingTtlHours: { default: 24, min: 1, max: 168, label: "Hạn hoá đơn chờ thanh toán", unit: "giờ" },
   /** 0 = không giới hạn (cùng quy ước `Product.downloadLimit`, ADR-014). */
   defaultDownloadLimit: { default: 5, min: 0, max: 1000, label: "Lượt tải mặc định", unit: "lượt" },
+  /** ADR-053 chính sách phiên. Idle tối thiểu 10 phút: phải lớn hơn chu kỳ làm mới phía client (≤ idle/3). */
+  sessionIdleMinutes: { default: 60, min: 10, max: 1440, label: "Tự đăng xuất khi không thao tác", unit: "phút" },
+  sessionAbsoluteHours: { default: 12, min: 1, max: 72, label: "Thời hạn tối đa một phiên", unit: "giờ" },
+  /** Trần 30 ngày (NIST SP 800-63B AAL1). */
+  rememberMeDays: { default: 30, min: 1, max: 30, label: "Thời hạn \"Ghi nhớ đăng nhập\"", unit: "ngày" },
+  adminIdleMinutes: { default: 15, min: 10, max: 60, label: "Tự đăng xuất quản trị viên khi không thao tác", unit: "phút" },
+  adminAbsoluteHours: { default: 8, min: 1, max: 24, label: "Thời hạn tối đa phiên quản trị viên", unit: "giờ" },
+  sessionWarningMinutes: { default: 2, min: 1, max: 10, label: "Cảnh báo trước khi tự đăng xuất", unit: "phút" },
 } as const satisfies Record<string, SystemSettingBound>;
 
 export type SystemSettingKey = keyof typeof SYSTEM_SETTINGS_BOUNDS;
@@ -49,7 +57,27 @@ export const SYSTEM_SETTING_KEYS = Object.keys(SYSTEM_SETTINGS_BOUNDS) as System
  */
 export const INACTIVE_SYSTEM_SETTINGS: Readonly<Partial<Record<SystemSettingKey, string>>> = Object.freeze({
   trialDays: "Chưa dùng — mô hình Free Forever, ADR-021.",
+  refreshTokenTtlDays: "Không còn dùng — thay bằng chính sách phiên (thời hạn tối đa / \"Ghi nhớ đăng nhập\"), ADR-053.",
 });
+
+/**
+ * ADR-053: ràng buộc chéo giữa các khoá phiên (mỗi khoá đã qua min/max riêng). Cảnh báo phải ngắn hơn idle nhỏ nhất,
+ * idle không dài hơn thời hạn tối đa của chính nhóm đó. Trả lỗi theo khoá (rỗng = hợp lệ).
+ */
+export function validateSessionSettings(values: SystemSettingsValues): Partial<Record<SystemSettingKey, string>> {
+  const errors: Partial<Record<SystemSettingKey, string>> = {};
+  const minIdle = Math.min(values.sessionIdleMinutes, values.adminIdleMinutes);
+  if (values.sessionWarningMinutes >= minIdle) {
+    errors.sessionWarningMinutes = `Cảnh báo phải ngắn hơn thời gian tự đăng xuất (hiện nhỏ nhất ${minIdle} phút).`;
+  }
+  if (values.sessionIdleMinutes > values.sessionAbsoluteHours * 60) {
+    errors.sessionIdleMinutes = "Thời gian tự đăng xuất không được dài hơn thời hạn tối đa một phiên.";
+  }
+  if (values.adminIdleMinutes > values.adminAbsoluteHours * 60) {
+    errors.adminIdleMinutes = "Thời gian tự đăng xuất không được dài hơn thời hạn tối đa phiên quản trị viên.";
+  }
+  return errors;
+}
 
 export const DEFAULT_SYSTEM_SETTINGS: Readonly<SystemSettingsValues> = Object.freeze(
   Object.fromEntries(SYSTEM_SETTING_KEYS.map((key) => [key, SYSTEM_SETTINGS_BOUNDS[key].default])) as SystemSettingsValues,

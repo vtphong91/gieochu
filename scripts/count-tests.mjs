@@ -11,6 +11,14 @@
 // daily stats without personal data + admin dashboard — M12b). Unit cap stays 94.
 // ADR-050 (owner-approved +1/+2): unit 94 -> 95 (CMS menu/home-sections parse + unsafe links), integration 55 -> 57
 // (legal acceptance recorded per published version + publish blocked while placeholders remain).
+// ADR-053 GĐ A (owner-approved, cap raised per module need): unit 95 -> 96 (refresh-token grace window), integration
+// 57 -> 59 (concurrent refresh = one rotation + superseded loser; refresh refuses a non-ACTIVE user).
+// ADR-053 GĐ B: unit 96 -> 99 (session policy resolve, idle/absolute evaluation, device label), integration 59 -> 63
+// (remember-me cookies + admin ignored, idle/absolute/legacy refresh, device list ownership, 90-day purge).
+// ADR-053 bổ sung lần 3 (tự lưu nháp): unit 99 -> 100 (draft payload zod + per-type size limits + entity keys),
+// integration 63 -> 65 (tenant draft RLS isolation; revision conflict/overwrite + discard on save).
+// ADR-054 (owner-approved minimal raise, +1 integration): integration 65 -> 66 (signup records terms + privacy per
+// version; opening a store requires + records the seller-policy acceptance in the tenant transaction). Unit cap unchanged.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
@@ -53,10 +61,10 @@ const integrationFiles = walk(join(ROOT, "apps", "web", "tests", "integration"),
 const unitCount = countCases(unitFiles);
 const integrationCount = countCases(integrationFiles);
 
-console.log(`Jest unit test cases (packages/*):        ${unitCount} / 95`);
-console.log(`Vitest integration test cases (apps/web):  ${integrationCount} / 57`);
+console.log(`Jest unit test cases (packages/*):        ${unitCount} / 100`);
+console.log(`Vitest integration test cases (apps/web):  ${integrationCount} / 66`);
 
-if (unitCount > 95 || integrationCount > 57) {
+if (unitCount > 100 || integrationCount > 66) {
   console.error("\nTest count exceeds the target in docs/GIEOCHU_PROMPT_MVP_PHASE1.md §9 — check before adding more.");
   process.exitCode = 1;
 }

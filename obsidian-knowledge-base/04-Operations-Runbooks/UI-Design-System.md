@@ -5,7 +5,7 @@ tags:
   - design-system
   - status/living
 date: 2026-05-24
-updated: 2026-10-23
+updated: 2026-10-25
 author: System Architect
 ---
 
@@ -1902,6 +1902,12 @@ Form vẫn nằm ở `orders/_ui/order-filter-form.tsx` (trang Khách hàng impo
 ## 22. Trang Văn Bản Pháp Lý `/phap-ly/[slug]` + Form Đăng Ký (ADR-050) ✅ đọc code 2026-10-23 (chưa commit)
 
 > Nguồn: báo cáo UI của Phong qua brief Quốc + "Bổ sung ADR-050 lần 2" (`docs/DECISIONS.md`). Nghiệp vụ: [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]].
+>
+> **Cập nhật ADR-054 (2026-10-24) ✅ đọc code:** trang chuyển sang URL cấp gốc — component dùng chung `app/_ui/legal-document-page.tsx`, TOC ở
+> `app/_ui/legal-toc.ts` (thư mục `app/phap-ly/[slug]/_ui/` và `page.tsx` cũ đã xoá; `/phap-ly/[slug]` chỉ còn `route.ts` redirect 308). Bố cục §22.1–§22.3
+> giữ nguyên theo comment component. Form đăng ký thêm link "Chính sách bảo mật" (cụm "chính sách xử lý dữ liệu cá nhân" thành link khi có bản hiệu
+> lực); form mở gian hàng có checkbox Chính sách người bán; editor `/admin/cms/phap-ly` có bộ chọn văn bản + khung "Mô tả & SEO" ở mức **tối thiểu**
+> (comment `page.tsx`: Phong hoàn thiện sau) — chưa có báo cáo UI của Phong cho các phần này 🟡.
 
 ### 22.1. Bố cục
 
@@ -1912,7 +1918,7 @@ Form vẫn nằm ở `orders/_ui/order-filter-form.tsx` (trang Khách hàng impo
   khi dài; dưới `lg` là `<details>` đóng sẵn ngay dưới dòng meta.
 * Meta: "Phiên bản n.0 · Có hiệu lực từ dd/mm/yyyy" (giờ VN).
 
-### 22.2. `buildLegalToc` (`app/phap-ly/[slug]/_ui/legal-toc.ts`)
+### 22.2. `buildLegalToc` (`app/_ui/legal-toc.ts` — trước ADR-054 ở `app/phap-ly/[slug]/_ui/legal-toc.ts`)
 
 * Đọc HTML **đã sanitize** (sau đó mới thay `{brand}`), **hạ mọi `<h1>` trong nội dung xuống `<h2>`** (trang chỉ có một H1 là tiêu đề văn bản), gắn `id`
   slug không dấu cho từng `<h2>` (chống trùng bằng hậu tố, rỗng → `muc-n`; id chỉ `[a-z0-9-]` nên chèn HTML an toàn), trả danh sách mục cho TOC (nhãn
@@ -1925,12 +1931,107 @@ Form vẫn nằm ở `orders/_ui/order-filter-form.tsx` (trang Khách hàng impo
 
 ### 22.4. Form đăng ký
 
-* Có bản Điều khoản đang hiệu lực → nhãn checkbox chấp thuận chứa link "Điều khoản sử dụng" tới `/phap-ly/dieu-khoan-su-dung`, **mở tab mới**
+* Có bản Điều khoản đang hiệu lực → nhãn checkbox chấp thuận chứa link "Điều khoản sử dụng" tới `/dieu-khoan-su-dung` (ADR-054; trước đó `/phap-ly/…`), **mở tab mới**
   (`target="_blank"` + `rel="noopener noreferrer"` + chữ ẩn "(mở trong tab mới)"); chưa có → chữ cũ, không link ✅ `register-form.tsx`.
 
 ---
 
-## 23. Tài Liệu Tham Chiếu & Liên Kết
+## 23. Phiên Đăng Nhập — Hộp Thoại Hết Phiên, Thẻ Thiết Bị, Checkbox "Ghi Nhớ" (ADR-053) ✅ đọc code 2026-10-24 (chưa commit)
+
+Quyết định thiết kế của Phong (brief Quốc 2026-10-24), Long đối chiếu code working tree. Nghiệp vụ: [[02-System-Specs/Auth-Session-Specs|Auth-Session-Specs]] §5, §7.
+Kiểm thật với trình đọc màn hình / trình duyệt thật ❓.
+
+### 23.1. Hộp thoại cảnh báo hết phiên — `app/_ui/session-expiry-dialog.tsx`
+
+* `SessionRefresh` mount `SessionExpiryDialog` khi còn `warningSeconds` trước hạn idle (thay hộp thoại tối thiểu trước đó).
+* Khung `<dialog>` + `showModal()` (cùng mẫu `ConfirmDialog` của Thư viện): top layer, nền sau `inert`, nền mờ navy; `role="alertdialog"` + `aria-modal` +
+  `aria-labelledby`/`aria-describedby`. Mở → focus "Tiếp tục phiên", bẫy Tab vòng; đóng → trả focus về phần tử trước đó.
+* Đồng hồ `mm:ss` và thanh tiến trình **`aria-hidden`** (đổi mỗi giây). Trình đọc màn hình nghe mô tả lúc mở, rồi một vùng `role="status"` chỉ cập nhật ở
+  mốc **60 giây** và **30 giây** (chỉ các mốc nhỏ hơn thời gian còn lại lúc mở).
+* **Esc = "Tiếp tục phiên"** (chặn `cancel` gốc của `<dialog>`; trình duyệt vẫn tự đóng thì mở lại). **Không có nút X**; **bấm nền không đóng** — người
+  dùng phải chọn một trong hai nút.
+* Nút đang xử lý dùng **`aria-disabled`** (không `disabled` — giữ focus), chữ đổi "Đang gia hạn phiên…" / "Đang đăng xuất…"; "Tiếp tục" cho bấm lại sau
+  5 giây nếu mạng chậm. Nút `min-h-11`, full-width trên mobile.
+* Hiệu ứng mở fade + scale (`@starting-style`) tắt khi **`prefers-reduced-motion`** (`motion-reduce:transition-none`).
+* Gốc có `data-idle-warning` để `SessionRefresh` bỏ qua thao tác bên trong hộp thoại.
+
+### 23.2. Thẻ thiết bị — `app/account/security/_ui/session-cards.tsx`
+
+* Dữ liệu chuẩn bị ở server (`session-list.tsx`): định dạng giờ `DISPLAY_TIME_ZONE`, loại thiết bị suy từ `deviceLabel` (iPad → máy tính bảng, iPhone/Android →
+  điện thoại, còn lại → máy tính) — chỉ để chọn icon.
+* Mỗi thẻ: icon loại thiết bị trong ô **44px** (kèm tên loại `sr-only`), nhãn "trình duyệt · hệ điều hành", badge **"Thiết bị này" tone `info`** và
+  **"Ghi nhớ" tone `neutral`** (không dùng `success` — xem §23.5); viền thẻ hiện tại màu `primary`.
+* `dl` lưới 2 cột: **Đăng nhập lúc** (tuyệt đối), **Hoạt động gần nhất** (tương đối: "vừa xong", "12 phút trước", "3 giờ trước", "hôm qua"…; **quá 7 ngày →
+  ngày giờ tuyệt đối**; luôn kèm giờ tuyệt đối trong `title` + `sr-only`), **Địa chỉ IP** (khi có). `<time dateTime>` cho cả hai mốc.
+* Nút "Đăng xuất" (viền đỏ, `aria-label` có tên thiết bị) mở **`ConfirmDialog`**; câu xác nhận khác nhau cho thiết bị hiện tại / thiết bị khác; lỗi hiện
+  trong hộp thoại.
+* **Thông báo kết quả đặt ở cấp danh sách** (`role="status"` chung) vì thẻ vừa đăng xuất bị xoá sau revalidate; chữ xanh `#15803D` trên `#F0FDF4` (~5:1).
+* Chỉ còn một phiên → câu **"Chỉ có thiết bị này đang đăng nhập."** (thay câu cũ "Không có phiên đăng nhập nào khác").
+
+### 23.3. Icon mới (`app/admin/_ui/icons.tsx`)
+
+`IconMonitor`, `IconSmartphone`, `IconTablet` (thẻ thiết bị), `IconClock` (hộp thoại hết phiên) ✅.
+
+### 23.4. Mẫu dòng phụ cho checkbox — "Ghi nhớ đăng nhập" ở `/login`
+
+* `label` bao cả ô → vùng bấm cả dòng `min-h-11`; dòng phụ **"Không dùng trên máy dùng chung."** là `<p id>` gắn vào checkbox bằng **`aria-describedby`**,
+  thụt lề (`pl-[26px]`) **thẳng hàng với chữ của nhãn**, cỡ `text-xs`, màu `inkSoft`. Dùng lại mẫu này cho checkbox có giải thích ngắn.
+
+### 23.5. Vấn đề còn mở — contrast tone `success` của kit
+
+`Badge tone="success"` và `FormBanner` thành công trong `admin/_ui/kit.tsx` (chữ `brandColors.secondary` trên nền xanh nhạt) chỉ đạt **~3:1** — chưa đủ
+4.5:1 cho chữ thường 🟡 (số đo của Phong; Long chưa đo). Thẻ thiết bị đã tránh dùng. **Chưa sửa** — Quốc sẽ giao task riêng. Ghi ở
+[[00-Index/KB-Audit-2026-09-26|KB-Audit]] §33 mục 12.
+
+---
+
+## 24. Hoá Đơn / Đơn Hàng Gói Ở System Center, Khối Chuyển Khoản, Ô Mã Giảm Giá (ADR-056) ✅ đọc code 2026-10-25 (chưa commit)
+
+Long ghi theo code working tree (brief Quốc 2026-10-25 không kèm báo cáo thiết kế riêng của Phong — chi tiết dưới đây là những gì code đang làm). Nghiệp vụ:
+[[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5C–§5E, [[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.9. Kiểm với trình đọc màn hình /
+thiết bị thật ❓.
+
+### 24.1. Kit admin — thành phần mới (`app/admin/_ui/kit.tsx`)
+
+* **`PillTabs({ label, items: { href, label, active }[] })`** — tab dạng pill điều hướng bằng link GET (không cần JS), bọc `<nav aria-label>`; tab đang chọn
+  `aria-current="page"`, nền `brandColors.accent` + **chữ INK** (comment code: chữ trắng trên accent chỉ ≈3.2:1, chữ INK ≈5.4:1); cao 44px dưới `lg`, 36px từ `lg`.
+* **`FilterSelect({ label, name, value, allLabel, options })`** — `<select>` có nhãn hiển thị (không chỉ placeholder), tuỳ chọn đầu = "tất cả" (bỏ lọc); chữ
+  16px dưới `lg` (tránh iOS tự zoom), cao 44px dưới `lg`; `id = filter-<name>`.
+* **`FilterBar({ action, label, hidden?, active, clearHref, children })`** — `<form method="get" aria-label>` gồm các `FilterSelect` + nút "Lọc" + link "Xoá bộ
+  lọc" (chỉ khi đang lọc); input ẩn giữ tham số (`tab`, `pageSize`), bỏ `page`.
+* Hằng `FOCUS_RING` (viền focus theo `var(--color-primary)`); **`GhostLinkButton`** đổi: `min-h-11` dưới `lg`, nền trắng, có focus ring.
+* **`app/admin/_ui/billing-labels.ts`** — nhãn tiếng Việt + tông badge cho trạng thái hoá đơn/thuê bao, nhãn cổng, `formatAdminDateTime`/`formatAdminDate`
+  (`DISPLAY_TIME_ZONE`). Badge luôn có chữ (không truyền nghĩa chỉ bằng màu).
+* Icon mới (`app/admin/_ui/icons.tsx`): `IconCopy`, `IconDownload` ✅.
+
+### 24.2. Trang `/admin/billing/invoices` và `/admin/subscriptions`
+
+* Header `AdminPageHeader` → `PillTabs` (chỉ trang Hoá đơn) → `FilterBar` → dòng đếm `aria-live="polite"` ("Tổng: …" / "Khớp bộ lọc: …") → `DataTable` có
+  `caption` → `Pagination`.
+* Cột phụ ẩn dưới `md`/`lg` (`hidden md:table-cell`…); thông tin bị ẩn (gói, cổng) lặp lại dưới tên gian hàng ở mobile (`md:hidden`).
+* Ô trống hiện `—` `aria-hidden` + chữ `sr-only` ("Chưa thu", "Không có", "Chưa có hoá đơn").
+* `EmptyState` tách 2 trường hợp: không khớp bộ lọc (nút "Xoá bộ lọc") / chưa có dữ liệu; tab "Chờ đối soát" rỗng có nút "Xem tất cả hoá đơn".
+* Trang Đơn hàng gói có nút phụ "Xem hoá đơn gói" (`/admin/billing/invoices?tab=tat-ca`).
+
+### 24.3. Khối chuyển khoản `BankTransferPanel` (`app/_ui/bank-transfer-panel.tsx`) + ô mã giảm giá checkout
+
+* **Thứ tự:** dưới `sm` khối thông tin + nút sao chép đứng **trước** ảnh QR (trên điện thoại không quét được QR của chính máy mình), câu dẫn riêng cho mobile;
+  từ `sm` ảnh QR lên trước. Container query: khung ≥ 32rem (`@lg`) thì QR (12rem) và thông tin đặt cạnh nhau.
+* Ảnh QR 192px, `alt` "Mã QR chuyển khoản cho {đơn hàng|hoá đơn} {mã}". Nút **"Tải ảnh QR"** là `<a download>` (không `fetch` — CSP), viền/chữ màu primary,
+  `min-h-11`.
+* `dl` từng dòng: nhãn `dt` + giá trị `select-all` (chạm giữ để chọn tay) + nút "Sao chép" `min-h-11`, `aria-label` "Sao chép {tên dòng}", đổi thành "Đã chép"
+  + icon check trong 2,5 giây. Dòng **Nội dung chuyển khoản** nền `accentSoft` + câu nhắc nhập đúng nguyên văn (nút sao chép trỏ `aria-describedby` vào câu này).
+* **Một** vùng `role="status"` `aria-live="polite"` (`sr-only`) cho cả khối đọc "Đã sao chép …" / lỗi clipboard (hướng dẫn chép tay).
+* **Ô mã giảm giá** (`app/[tenantSlug]/checkout/[orderCode]/coupon-panel.tsx`): nhãn "Mã giảm giá" hiển thị, input `min-h-11` chữ 16px, `autoCapitalize="characters"`,
+  gợi ý "Nhập mã trước khi chọn cách thanh toán. Nếu áp mã sau, mã QR và số tiền sẽ được cập nhật lại." (`aria-describedby`); lỗi `role="alert"` + `aria-invalid`;
+  thành công `role="status"` "Đã áp/bỏ mã giảm giá. Đã cập nhật mã QR theo số tiền mới." khi đơn đã có QR. Lỗi không mang thông điệp (Next che ở production) → câu
+  chung "…Vui lòng tải lại trang và thử lại.".
+* **Nút gỡ mã** (khi đơn đã áp mã): chữ **"Bỏ áp dụng"**, đang xử lý **"Đang bỏ áp dụng..."** (nút `disabled`); `aria-label` "Bỏ áp dụng mã giảm giá {mã}" /
+  "Đang bỏ áp dụng mã giảm giá"; kiểu link đỏ gạch chân, `min-h-11` ✅ đọc code (quyết định của Phong qua brief Quốc 2026-10-25 — thay chữ cũ "Bỏ mã").
+
+---
+
+## 25. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * `apps/web/app/admin/_ui/kit.tsx`, `apps/web/app/admin/_ui/kit-interactive.tsx`, `apps/web/app/admin/_ui/icons.tsx`
@@ -1958,6 +2059,7 @@ Form vẫn nằm ở `orders/_ui/order-filter-form.tsx` (trang Khách hàng impo
 * `apps/web/app/studio/[tenantSlug]/orders/**` (gồm `_ui/{order-list,order-filter-form,order-row-actions,order-detail-parts,order-format,order-skeleton}.ts(x)`), `apps/web/app/admin/_ui/{kit,link-pagination}.tsx` (§20) · [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]] ([Studio-Orders-Specs.md](../02-System-Specs/Studio-Orders-Specs.md)) · [[01-Architecture-Decisions/ADR-031-Studio-Orders-List-Detail-Upgrade|ADR-031 (≙ ADR-046)]]
 * `apps/web/app/studio/[tenantSlug]/customers/**` (gồm `_ui/{customer-list,customer-row-actions,customer-format,customer-skeleton}.ts(x)`), `apps/web/app/studio/[tenantSlug]/orders/_ui/order-filter-form.tsx` (prop `label`) (§21) · [[02-System-Specs/Studio-Customers-Specs|Studio-Customers-Specs]] ([Studio-Customers-Specs.md](../02-System-Specs/Studio-Customers-Specs.md)) · [[01-Architecture-Decisions/ADR-033-Studio-Customers-List-Upgrade|ADR-033 (≙ ADR-048)]]
 * `apps/web/app/_ui/{nav-link,nav-dropdown,mobile-nav,site-header,site-footer}.tsx` (§1.1.1), `apps/web/app/_home-sections.tsx` (§12.9), `apps/web/app/admin/cms/{menu,phap-ly}/*` (§13.7), `apps/web/app/phap-ly/[slug]/{page.tsx,_ui/legal-toc.ts}` (§22) · [[02-System-Specs/System-Cms-Menu-Home-Seo-Specs|System-Cms-Menu-Home-Seo-Specs]] · [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]] · [[01-Architecture-Decisions/ADR-035-Menu-Home-Seo-Versioned-Terms|ADR-035 (≙ ADR-050)]]
+* `apps/web/app/admin/_ui/{kit,billing-labels,icons}.ts(x)`, `apps/web/app/admin/billing/invoices/page.tsx`, `apps/web/app/admin/subscriptions/page.tsx`, `apps/web/app/_ui/bank-transfer-panel.tsx`, `apps/web/app/[tenantSlug]/checkout/[orderCode]/{page,coupon-panel}.tsx`, `apps/web/app/studio/[tenantSlug]/billing/page.tsx` (§24) · [[01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr|ADR-041 (≙ ADR-056)]]
 * [[04-Operations-Runbooks/README|Quay lại danh mục Operations Runbooks]]
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

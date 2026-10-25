@@ -8,7 +8,7 @@ tags:
   - database
   - status/accepted
 date: 2026-10-15
-updated: 2026-10-22
+updated: 2026-10-24
 decider: vtphong91
 status: Accepted (Chốt — Áp dụng chính thức)
 ---
@@ -70,6 +70,14 @@ hạn**, và refactor xong mới deploy 🟡.
    | `invoicePendingTtlHours` | 24 | 1–168 giờ |
    | `defaultDownloadLimit` | 5 | 0–1000 lượt (0 = không giới hạn) |
 
+   > [!note] Cập nhật ADR-053 (2026-10-24, ≙ [[01-Architecture-Decisions/ADR-039-Session-Policy-Remember-Me-Idle-Absolute|ADR-039 KB]]) ✅ code
+   > Thêm 6 khoá chính sách phiên (nhóm "Chính sách phiên đăng nhập" trên form): `sessionIdleMinutes` 60 (10–1440 phút), `sessionAbsoluteHours`
+   > 12 (1–72 giờ), `rememberMeDays` 30 (1–30 ngày), `adminIdleMinutes` 15 (10–60 phút), `adminAbsoluteHours` 8 (1–24 giờ), `sessionWarningMinutes`
+   > 2 (1–10 phút) — tổng 17 khoá. Ràng buộc chéo `validateSessionSettings`: cảnh báo < idle nhỏ nhất; idle ≤ absolute của cùng nhóm.
+   > `refreshTokenTtlDays` thành khoá **không còn dùng** (`INACTIVE_SYSTEM_SETTINGS`, ẩn trên form; cột giữ tới migration contract);
+   > `getRefreshTokenTtl()` đã xoá, thay bằng `getSessionPolicy(role, rememberMe)`. Khác §4.3 "chỉ token mới": cấu hình phiên áp cho cả phiên đang
+   > mở từ lần refresh kế tiếp — xem [[02-System-Specs/Auth-Session-Specs|Auth-Session-Specs]] §4.
+
    Validate server bằng zod (`systemSettingsSchema`; số nguyên, ngoài khoảng → từ chối cả form). Chỉ `SYSTEM_ADMIN` sửa; ghi
    log thay đổi cũ→mới — từ M12a (2026-10-16) ghi thêm `audit_logs` action `SYSTEM_SETTINGS_UPDATED` (metadata `changes` cũ→mới) ✅,
    xem [[01-Architecture-Decisions/ADR-023-M12-Audit-Log-Append-Only|ADR-023 (≙ ADR-037)]].
@@ -100,13 +108,16 @@ hạn**, và refactor xong mới deploy 🟡.
 * `INACTIVE_SYSTEM_SETTINGS = { trialDays: "Chưa dùng — mô hình Free Forever, ADR-021." }`: lưu + validate nhưng UI ẩn; form
   không gửi khoá này thì giữ giá trị cũ.
 * Root `app/layout.tsx` đọc `getAccessTokenTtlSeconds()` cho mọi trang (cùng lúc với màu thương hiệu) → mỗi request trang
-  thêm 1 truy vấn `system_settings` ngoài truy vấn branding đã có từ ADR-031 ✅ (chi phí chưa đo ❓).
+  thêm 1 truy vấn `system_settings` ngoài truy vấn branding đã có từ ADR-031 ✅ (chi phí chưa đo ❓). *Từ ADR-053:* layout đọc
+  `getSessionClientInfo()` (claim access token, không DB) + `getSessionPolicy()` thay `getAccessTokenTtlSeconds()` — vẫn 1 lần đọc
+  `system_settings` (qua `cache()`) ✅.
 
 ### 4.3. Nơi tiêu thụ ✅
 | Khoá | Nơi dùng |
 | :-- | :-- |
 | `accessTokenTtlMinutes` | `getAccessTokenTtlSeconds()` (`lib/jwt-context.ts`) — chỉ token **mới** ký; token cũ giữ `exp` |
-| `refreshTokenTtlDays` | `getRefreshTokenTtl()` → `days` cho bản ghi DB, `seconds` cho cookie `maxAge` |
+| `refreshTokenTtlDays` | ~~`getRefreshTokenTtl()`~~ — **không còn dùng từ ADR-053** (hàm đã xoá); hạn refresh = lúc đăng nhập + absolute theo `getSessionPolicy()` |
+| `session*`, `rememberMeDays`, `admin*` (ADR-053) | `getSessionPolicy()` (`lib/jwt-context.ts`) → login/refresh route, root layout (`SessionRefresh`), `lib/account-sessions.ts` |
 | `emailVerifyTtlHours` | `api/auth/register`, `api/auth/resend-verification`, `lib/admin-users.ts` — token + email hiển thị hạn động (`expiresInHours`) |
 | `passwordResetTtlMinutes` | `api/auth/forgot-password` — token (`/60` giờ) + email hiển thị `expiresInMinutes` |
 | `presignUploadTtlSeconds` | `lib/product-upload.ts` |

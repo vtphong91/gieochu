@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { brandColors } from "@gieochu/config/theme";
 import { IconChevronDown, IconChevronLeft, IconGrid, IconLock, IconPackage, IconReceipt, IconShield, IconStore, IconUsers } from "../admin/_ui/icons";
 import { AccountAvatar } from "./account-avatar";
@@ -49,7 +49,6 @@ export function AccountMenu({
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelId = useId();
-  const router = useRouter();
   const pathname = usePathname();
 
   // Đổi trang → đóng (điều chỉnh state trong render, không cần effect — cùng cách `MobileNav`).
@@ -79,8 +78,8 @@ export function AccountMenu({
   async function handleLogout() {
     setOpen(false);
     await fetch("/api/auth/logout", { method: "POST" });
-    router.push(logoutRedirect);
-    router.refresh();
+    // ADR-053: điều hướng cứng — xoá toàn bộ client cache, không để header (tên/email) của phiên cũ còn trong layout prefetch.
+    window.location.assign(logoutRedirect);
   }
 
   const close = () => setOpen(false);

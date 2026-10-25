@@ -7,7 +7,7 @@ tags:
   - customer
   - status/living
 date: 2026-10-17
-updated: 2026-10-17
+updated: 2026-10-24
 author: Long
 ---
 
@@ -28,7 +28,7 @@ author: Long
 - **Một hồ sơ cá nhân cho mọi `User`** (khách mua + chủ gian hàng). Studio chỉ giữ cài đặt gian hàng; hai khu vực liên kết qua menu tài
   khoản và nhóm "Gian hàng của bạn". Một user sở hữu tối đa 1 gian hàng (`Tenant.ownerId @unique`) ✅.
 - Bỏ mục không có nghiệp vụ (Referrals, Blocklist, Members…). Họ tên gộp **một ô**.
-- **Để sau (BACKLOG):** danh sách phiên/IP, xoá tài khoản, tuỳ chọn thông báo, ảnh đại diện công khai, xác thực hai bước.
+- **Để sau (BACKLOG):** ~~danh sách phiên/IP~~ (làm ở ADR-053 — §4.3), xoá tài khoản, tuỳ chọn thông báo, ảnh đại diện công khai, xác thực hai bước.
 - Bảng dùng: `users`, `user_profiles`, `refresh_tokens`, `verification_tokens` (L1 — `getPrismaClient()` trực tiếp là đúng lớp);
   thư viện/đơn của chính user qua `withCustomer` (L3); thẻ gian hàng chỉ đọc bảng L1 + đếm tài liệu của chính gian hàng (`withTenant`) ✅.
 
@@ -115,10 +115,16 @@ author: Long
 
 `logoutAllDevicesAction` (`requireUser()`): thu hồi mọi refresh token, xoá cookie `at` và `rt` (`Path=/api/auth`), về `/login`. Không ghi audit.
 
+**Từ ADR-053 (2026-10-24) ✅ code:** phía trên nút này có **danh sách thiết bị đang đăng nhập** (`SessionList`, loader `listAccountSessions`) — nhãn thiết bị
+từ User-Agent, lúc đăng nhập, hoạt động gần nhất, IP, "Đã ghi nhớ", badge "Thiết bị này" — và nút **Đăng xuất từng thiết bị** (`revokeSessionAction`,
+`requireUser()`, kiểm quyền sở hữu theo `userId`, không audit). Mỗi thẻ có icon theo `deviceKind` (`desktop`/`mobile`/`tablet`, suy từ User-Agent).
+Đăng xuất **chính thiết bị này**: action xoá cookie và trả `{ signedOut: true }`, client **điều hướng cứng** về `/login` (không còn `redirect()` ở server);
+thiết bị khác: trả `{ signedOut: false }`, thẻ biến mất sau revalidate ✅ code 2026-10-24. Chi tiết: [[02-System-Specs/Auth-Session-Specs|Auth-Session-Specs]] §7.
+
 ### 4.4. Giới hạn đã biết
 
 - Thu hồi phiên = thu hồi refresh token; **access token đã cấp vẫn sống tới hết TTL** (`accessTokenTtlMinutes`, mặc định 15 phút) — cùng giới
-  hạn với đặt lại mật khẩu (BACKLOG).
+  hạn với đặt lại mật khẩu (BACKLOG). Từ ADR-053 TTL access bị kẹp ≤ thời gian idle của phiên ([[02-System-Specs/Auth-Session-Specs|Auth-Session-Specs]] §2).
 - Rate limit nằm **trong bộ nhớ** từng instance (`checkRateLimit`) — trên Vercel nhiều instance không chia sẻ bộ đếm (BACKLOG).
 
 ---
@@ -139,7 +145,8 @@ author: Long
   chính user).
 - **Đăng xuất đi đâu (ADR-042 ✅ code 2026-10-17):** System Center và Studio → `/login` (prop `logoutRedirect="/login"` của `AccountMenu`, và nút
   Đăng xuất cố định đáy sidebar `LogoutButton redirectTo="/login"`); trang công khai (`SiteHeader`) và `/account` (menu + `LogoutButton` mặc
-  định) → `/`. Cả hai nút gọi cùng `POST /api/auth/logout`. Đăng xuất thật qua UI có đăng nhập chưa kiểm ❓.
+  định) → `/`. Cả hai nút gọi cùng `POST /api/auth/logout`. Đăng xuất thật qua UI có đăng nhập chưa kiểm ❓. Từ ADR-053 cả hai chuyển trang bằng
+  **điều hướng cứng** `window.location.assign` (xoá client cache — sửa lỗi header còn tên/email phiên cũ) ✅ code.
   Quyết định: [[01-Architecture-Decisions/ADR-028-Shared-App-Sidebar-Logout-Mobile-Drawer|ADR-028 KB (≙ ADR-042)]].
 
 ---
@@ -169,6 +176,7 @@ Gửi đồng bộ qua `sendEmailNow`, lỗi gửi không làm hỏng thao tác.
 ## 8. Liên kết
 
 * [[02-System-Specs/User-Management-System-Center-Specs|User-Management-System-Center-Specs]] — refresh-token rotation, khoá user ([User-Management-System-Center-Specs.md](./User-Management-System-Center-Specs.md))
+* [[02-System-Specs/Auth-Session-Specs|Auth-Session-Specs]] — phiên đăng nhập, danh sách thiết bị (ADR-053) ([Auth-Session-Specs.md](./Auth-Session-Specs.md))
 * [[02-System-Specs/Pricing-Page-Specs|Pricing-Page-Specs]] ([Pricing-Page-Specs.md](./Pricing-Page-Specs.md)) · [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5A–§5B ([Payment-And-Billing.md](./Payment-And-Billing.md))
 * [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]] §4 ([Audit-Log-Specs.md](./Audit-Log-Specs.md))
 * [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §21.4 ([Endpoint-Directory.md](../03-API-Contracts/Endpoint-Directory.md)) · [[03-API-Contracts/Database-Schema-Reference|Database-Schema-Reference]] ([Database-Schema-Reference.md](../03-API-Contracts/Database-Schema-Reference.md))

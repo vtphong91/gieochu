@@ -295,6 +295,8 @@ export type UserWhereInput = {
   abuseReportsResolved?: Prisma.AbuseReportListRelationFilter
   orderNotesAuthored?: Prisma.OrderNoteListRelationFilter
   legalAcceptances?: Prisma.UserLegalAcceptanceListRelationFilter
+  tenantEditorDrafts?: Prisma.TenantEditorDraftListRelationFilter
+  systemEditorDrafts?: Prisma.SystemEditorDraftListRelationFilter
 }
 
 export type UserOrderByWithRelationInput = {
@@ -326,6 +328,8 @@ export type UserOrderByWithRelationInput = {
   abuseReportsResolved?: Prisma.AbuseReportOrderByRelationAggregateInput
   orderNotesAuthored?: Prisma.OrderNoteOrderByRelationAggregateInput
   legalAcceptances?: Prisma.UserLegalAcceptanceOrderByRelationAggregateInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftOrderByRelationAggregateInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftOrderByRelationAggregateInput
 }
 
 export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -360,6 +364,8 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   abuseReportsResolved?: Prisma.AbuseReportListRelationFilter
   orderNotesAuthored?: Prisma.OrderNoteListRelationFilter
   legalAcceptances?: Prisma.UserLegalAcceptanceListRelationFilter
+  tenantEditorDrafts?: Prisma.TenantEditorDraftListRelationFilter
+  systemEditorDrafts?: Prisma.SystemEditorDraftListRelationFilter
 }, "id" | "email">
 
 export type UserOrderByWithAggregationInput = {
@@ -431,6 +437,8 @@ export type UserCreateInput = {
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateInput = {
@@ -462,6 +470,8 @@ export type UserUncheckedCreateInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserUpdateInput = {
@@ -493,6 +503,8 @@ export type UserUpdateInput = {
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateInput = {
@@ -524,6 +536,8 @@ export type UserUncheckedUpdateInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateManyInput = {
@@ -890,6 +904,34 @@ export type UserUpdateOneRequiredWithoutLegalAcceptancesNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutLegalAcceptancesInput, Prisma.UserUpdateWithoutLegalAcceptancesInput>, Prisma.UserUncheckedUpdateWithoutLegalAcceptancesInput>
 }
 
+export type UserCreateNestedOneWithoutTenantEditorDraftsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutTenantEditorDraftsInput, Prisma.UserUncheckedCreateWithoutTenantEditorDraftsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutTenantEditorDraftsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutTenantEditorDraftsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutTenantEditorDraftsInput, Prisma.UserUncheckedCreateWithoutTenantEditorDraftsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutTenantEditorDraftsInput
+  upsert?: Prisma.UserUpsertWithoutTenantEditorDraftsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutTenantEditorDraftsInput, Prisma.UserUpdateWithoutTenantEditorDraftsInput>, Prisma.UserUncheckedUpdateWithoutTenantEditorDraftsInput>
+}
+
+export type UserCreateNestedOneWithoutSystemEditorDraftsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutSystemEditorDraftsInput, Prisma.UserUncheckedCreateWithoutSystemEditorDraftsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutSystemEditorDraftsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutSystemEditorDraftsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutSystemEditorDraftsInput, Prisma.UserUncheckedCreateWithoutSystemEditorDraftsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutSystemEditorDraftsInput
+  upsert?: Prisma.UserUpsertWithoutSystemEditorDraftsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutSystemEditorDraftsInput, Prisma.UserUpdateWithoutSystemEditorDraftsInput>, Prisma.UserUncheckedUpdateWithoutSystemEditorDraftsInput>
+}
+
 export type UserCreateWithoutProfileInput = {
   id?: string
   email: string
@@ -918,6 +960,8 @@ export type UserCreateWithoutProfileInput = {
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutProfileInput = {
@@ -948,6 +992,8 @@ export type UserUncheckedCreateWithoutProfileInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutProfileInput = {
@@ -994,6 +1040,8 @@ export type UserUpdateWithoutProfileInput = {
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutProfileInput = {
@@ -1024,6 +1072,8 @@ export type UserUncheckedUpdateWithoutProfileInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutRefreshTokensInput = {
@@ -1054,6 +1104,8 @@ export type UserCreateWithoutRefreshTokensInput = {
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutRefreshTokensInput = {
@@ -1084,6 +1136,8 @@ export type UserUncheckedCreateWithoutRefreshTokensInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutRefreshTokensInput = {
@@ -1130,6 +1184,8 @@ export type UserUpdateWithoutRefreshTokensInput = {
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutRefreshTokensInput = {
@@ -1160,6 +1216,8 @@ export type UserUncheckedUpdateWithoutRefreshTokensInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutVerificationTokensInput = {
@@ -1190,6 +1248,8 @@ export type UserCreateWithoutVerificationTokensInput = {
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutVerificationTokensInput = {
@@ -1220,6 +1280,8 @@ export type UserUncheckedCreateWithoutVerificationTokensInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutVerificationTokensInput = {
@@ -1266,6 +1328,8 @@ export type UserUpdateWithoutVerificationTokensInput = {
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutVerificationTokensInput = {
@@ -1296,6 +1360,8 @@ export type UserUncheckedUpdateWithoutVerificationTokensInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutOwnedTenantInput = {
@@ -1326,6 +1392,8 @@ export type UserCreateWithoutOwnedTenantInput = {
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutOwnedTenantInput = {
@@ -1356,6 +1424,8 @@ export type UserUncheckedCreateWithoutOwnedTenantInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutOwnedTenantInput = {
@@ -1402,6 +1472,8 @@ export type UserUpdateWithoutOwnedTenantInput = {
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutOwnedTenantInput = {
@@ -1432,6 +1504,8 @@ export type UserUncheckedUpdateWithoutOwnedTenantInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutTenantMembershipsInput = {
@@ -1462,6 +1536,8 @@ export type UserCreateWithoutTenantMembershipsInput = {
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutTenantMembershipsInput = {
@@ -1492,6 +1568,8 @@ export type UserUncheckedCreateWithoutTenantMembershipsInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutTenantMembershipsInput = {
@@ -1538,6 +1616,8 @@ export type UserUpdateWithoutTenantMembershipsInput = {
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutTenantMembershipsInput = {
@@ -1568,6 +1648,8 @@ export type UserUncheckedUpdateWithoutTenantMembershipsInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutOrdersInput = {
@@ -1598,6 +1680,8 @@ export type UserCreateWithoutOrdersInput = {
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutOrdersInput = {
@@ -1628,6 +1712,8 @@ export type UserUncheckedCreateWithoutOrdersInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutOrdersInput = {
@@ -1674,6 +1760,8 @@ export type UserUpdateWithoutOrdersInput = {
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutOrdersInput = {
@@ -1704,6 +1792,8 @@ export type UserUncheckedUpdateWithoutOrdersInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutOrderNotesAuthoredInput = {
@@ -1734,6 +1824,8 @@ export type UserCreateWithoutOrderNotesAuthoredInput = {
   abuseReportsFiled?: Prisma.AbuseReportCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
   legalAcceptances?: Prisma.UserLegalAcceptanceCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutOrderNotesAuthoredInput = {
@@ -1764,6 +1856,8 @@ export type UserUncheckedCreateWithoutOrderNotesAuthoredInput = {
   abuseReportsFiled?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutOrderNotesAuthoredInput = {
@@ -1810,6 +1904,8 @@ export type UserUpdateWithoutOrderNotesAuthoredInput = {
   abuseReportsFiled?: Prisma.AbuseReportUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutOrderNotesAuthoredInput = {
@@ -1840,6 +1936,8 @@ export type UserUncheckedUpdateWithoutOrderNotesAuthoredInput = {
   abuseReportsFiled?: Prisma.AbuseReportUncheckedUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutTenantCustomerOfInput = {
@@ -1870,6 +1968,8 @@ export type UserCreateWithoutTenantCustomerOfInput = {
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutTenantCustomerOfInput = {
@@ -1900,6 +2000,8 @@ export type UserUncheckedCreateWithoutTenantCustomerOfInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutTenantCustomerOfInput = {
@@ -1946,6 +2048,8 @@ export type UserUpdateWithoutTenantCustomerOfInput = {
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutTenantCustomerOfInput = {
@@ -1976,6 +2080,8 @@ export type UserUncheckedUpdateWithoutTenantCustomerOfInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutEntitlementsInput = {
@@ -2006,6 +2112,8 @@ export type UserCreateWithoutEntitlementsInput = {
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutEntitlementsInput = {
@@ -2036,6 +2144,8 @@ export type UserUncheckedCreateWithoutEntitlementsInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutEntitlementsInput = {
@@ -2082,6 +2192,8 @@ export type UserUpdateWithoutEntitlementsInput = {
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutEntitlementsInput = {
@@ -2112,6 +2224,8 @@ export type UserUncheckedUpdateWithoutEntitlementsInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutDownloadTokensInput = {
@@ -2142,6 +2256,8 @@ export type UserCreateWithoutDownloadTokensInput = {
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutDownloadTokensInput = {
@@ -2172,6 +2288,8 @@ export type UserUncheckedCreateWithoutDownloadTokensInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutDownloadTokensInput = {
@@ -2218,6 +2336,8 @@ export type UserUpdateWithoutDownloadTokensInput = {
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutDownloadTokensInput = {
@@ -2248,6 +2368,8 @@ export type UserUncheckedUpdateWithoutDownloadTokensInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutDownloadEventsInput = {
@@ -2278,6 +2400,8 @@ export type UserCreateWithoutDownloadEventsInput = {
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutDownloadEventsInput = {
@@ -2308,6 +2432,8 @@ export type UserUncheckedCreateWithoutDownloadEventsInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutDownloadEventsInput = {
@@ -2354,6 +2480,8 @@ export type UserUpdateWithoutDownloadEventsInput = {
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutDownloadEventsInput = {
@@ -2384,6 +2512,8 @@ export type UserUncheckedUpdateWithoutDownloadEventsInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutReviewsInput = {
@@ -2414,6 +2544,8 @@ export type UserCreateWithoutReviewsInput = {
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutReviewsInput = {
@@ -2444,6 +2576,8 @@ export type UserUncheckedCreateWithoutReviewsInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutReviewsInput = {
@@ -2490,6 +2624,8 @@ export type UserUpdateWithoutReviewsInput = {
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutReviewsInput = {
@@ -2520,6 +2656,8 @@ export type UserUncheckedUpdateWithoutReviewsInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutAbuseReportsFiledInput = {
@@ -2550,6 +2688,8 @@ export type UserCreateWithoutAbuseReportsFiledInput = {
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutAbuseReportsFiledInput = {
@@ -2580,6 +2720,8 @@ export type UserUncheckedCreateWithoutAbuseReportsFiledInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutAbuseReportsFiledInput = {
@@ -2615,6 +2757,8 @@ export type UserCreateWithoutAbuseReportsResolvedInput = {
   abuseReportsFiled?: Prisma.AbuseReportCreateNestedManyWithoutReporterInput
   orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutAbuseReportsResolvedInput = {
@@ -2645,6 +2789,8 @@ export type UserUncheckedCreateWithoutAbuseReportsResolvedInput = {
   abuseReportsFiled?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutReporterInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutAbuseReportsResolvedInput = {
@@ -2691,6 +2837,8 @@ export type UserUpdateWithoutAbuseReportsFiledInput = {
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutAbuseReportsFiledInput = {
@@ -2721,6 +2869,8 @@ export type UserUncheckedUpdateWithoutAbuseReportsFiledInput = {
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserUpsertWithoutAbuseReportsResolvedInput = {
@@ -2762,6 +2912,8 @@ export type UserUpdateWithoutAbuseReportsResolvedInput = {
   abuseReportsFiled?: Prisma.AbuseReportUpdateManyWithoutReporterNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutAbuseReportsResolvedInput = {
@@ -2792,6 +2944,8 @@ export type UserUncheckedUpdateWithoutAbuseReportsResolvedInput = {
   abuseReportsFiled?: Prisma.AbuseReportUncheckedUpdateManyWithoutReporterNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
   legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutLegalAcceptancesInput = {
@@ -2822,6 +2976,8 @@ export type UserCreateWithoutLegalAcceptancesInput = {
   abuseReportsFiled?: Prisma.AbuseReportCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutLegalAcceptancesInput = {
@@ -2852,6 +3008,8 @@ export type UserUncheckedCreateWithoutLegalAcceptancesInput = {
   abuseReportsFiled?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutReporterInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutLegalAcceptancesInput = {
@@ -2898,6 +3056,8 @@ export type UserUpdateWithoutLegalAcceptancesInput = {
   abuseReportsFiled?: Prisma.AbuseReportUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutLegalAcceptancesInput = {
@@ -2928,6 +3088,296 @@ export type UserUncheckedUpdateWithoutLegalAcceptancesInput = {
   abuseReportsFiled?: Prisma.AbuseReportUncheckedUpdateManyWithoutReporterNestedInput
   abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
   orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutTenantEditorDraftsInput = {
+  id?: string
+  email: string
+  passwordHash: string
+  systemRole?: $Enums.SystemRole
+  status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
+  emailVerifiedAt?: Date | string | null
+  profileCompletedAt?: Date | string | null
+  lastLoginAt?: Date | string | null
+  failedLoginAttempts?: number
+  passwordResetRequired?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  profile?: Prisma.UserProfileCreateNestedOneWithoutUserInput
+  refreshTokens?: Prisma.RefreshTokenCreateNestedManyWithoutUserInput
+  verificationTokens?: Prisma.VerificationTokenCreateNestedManyWithoutUserInput
+  ownedTenant?: Prisma.TenantCreateNestedOneWithoutOwnerInput
+  tenantMemberships?: Prisma.TenantMemberCreateNestedManyWithoutUserInput
+  orders?: Prisma.OrderCreateNestedManyWithoutCustomerInput
+  entitlements?: Prisma.EntitlementCreateNestedManyWithoutUserInput
+  tenantCustomerOf?: Prisma.TenantCustomerCreateNestedManyWithoutUserInput
+  downloadTokens?: Prisma.DownloadTokenCreateNestedManyWithoutUserInput
+  downloadEvents?: Prisma.DownloadEventCreateNestedManyWithoutUserInput
+  reviews?: Prisma.ReviewCreateNestedManyWithoutUserInput
+  abuseReportsFiled?: Prisma.AbuseReportCreateNestedManyWithoutReporterInput
+  abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
+  legalAcceptances?: Prisma.UserLegalAcceptanceCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutTenantEditorDraftsInput = {
+  id?: string
+  email: string
+  passwordHash: string
+  systemRole?: $Enums.SystemRole
+  status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
+  emailVerifiedAt?: Date | string | null
+  profileCompletedAt?: Date | string | null
+  lastLoginAt?: Date | string | null
+  failedLoginAttempts?: number
+  passwordResetRequired?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  profile?: Prisma.UserProfileUncheckedCreateNestedOneWithoutUserInput
+  refreshTokens?: Prisma.RefreshTokenUncheckedCreateNestedManyWithoutUserInput
+  verificationTokens?: Prisma.VerificationTokenUncheckedCreateNestedManyWithoutUserInput
+  ownedTenant?: Prisma.TenantUncheckedCreateNestedOneWithoutOwnerInput
+  tenantMemberships?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutUserInput
+  orders?: Prisma.OrderUncheckedCreateNestedManyWithoutCustomerInput
+  entitlements?: Prisma.EntitlementUncheckedCreateNestedManyWithoutUserInput
+  tenantCustomerOf?: Prisma.TenantCustomerUncheckedCreateNestedManyWithoutUserInput
+  downloadTokens?: Prisma.DownloadTokenUncheckedCreateNestedManyWithoutUserInput
+  downloadEvents?: Prisma.DownloadEventUncheckedCreateNestedManyWithoutUserInput
+  reviews?: Prisma.ReviewUncheckedCreateNestedManyWithoutUserInput
+  abuseReportsFiled?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutReporterInput
+  abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
+  legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedCreateNestedManyWithoutUserInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutTenantEditorDraftsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutTenantEditorDraftsInput, Prisma.UserUncheckedCreateWithoutTenantEditorDraftsInput>
+}
+
+export type UserUpsertWithoutTenantEditorDraftsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutTenantEditorDraftsInput, Prisma.UserUncheckedUpdateWithoutTenantEditorDraftsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutTenantEditorDraftsInput, Prisma.UserUncheckedCreateWithoutTenantEditorDraftsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutTenantEditorDraftsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutTenantEditorDraftsInput, Prisma.UserUncheckedUpdateWithoutTenantEditorDraftsInput>
+}
+
+export type UserUpdateWithoutTenantEditorDraftsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
+  passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  profile?: Prisma.UserProfileUpdateOneWithoutUserNestedInput
+  refreshTokens?: Prisma.RefreshTokenUpdateManyWithoutUserNestedInput
+  verificationTokens?: Prisma.VerificationTokenUpdateManyWithoutUserNestedInput
+  ownedTenant?: Prisma.TenantUpdateOneWithoutOwnerNestedInput
+  tenantMemberships?: Prisma.TenantMemberUpdateManyWithoutUserNestedInput
+  orders?: Prisma.OrderUpdateManyWithoutCustomerNestedInput
+  entitlements?: Prisma.EntitlementUpdateManyWithoutUserNestedInput
+  tenantCustomerOf?: Prisma.TenantCustomerUpdateManyWithoutUserNestedInput
+  downloadTokens?: Prisma.DownloadTokenUpdateManyWithoutUserNestedInput
+  downloadEvents?: Prisma.DownloadEventUpdateManyWithoutUserNestedInput
+  reviews?: Prisma.ReviewUpdateManyWithoutUserNestedInput
+  abuseReportsFiled?: Prisma.AbuseReportUpdateManyWithoutReporterNestedInput
+  abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
+  legalAcceptances?: Prisma.UserLegalAcceptanceUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutTenantEditorDraftsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
+  passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  profile?: Prisma.UserProfileUncheckedUpdateOneWithoutUserNestedInput
+  refreshTokens?: Prisma.RefreshTokenUncheckedUpdateManyWithoutUserNestedInput
+  verificationTokens?: Prisma.VerificationTokenUncheckedUpdateManyWithoutUserNestedInput
+  ownedTenant?: Prisma.TenantUncheckedUpdateOneWithoutOwnerNestedInput
+  tenantMemberships?: Prisma.TenantMemberUncheckedUpdateManyWithoutUserNestedInput
+  orders?: Prisma.OrderUncheckedUpdateManyWithoutCustomerNestedInput
+  entitlements?: Prisma.EntitlementUncheckedUpdateManyWithoutUserNestedInput
+  tenantCustomerOf?: Prisma.TenantCustomerUncheckedUpdateManyWithoutUserNestedInput
+  downloadTokens?: Prisma.DownloadTokenUncheckedUpdateManyWithoutUserNestedInput
+  downloadEvents?: Prisma.DownloadEventUncheckedUpdateManyWithoutUserNestedInput
+  reviews?: Prisma.ReviewUncheckedUpdateManyWithoutUserNestedInput
+  abuseReportsFiled?: Prisma.AbuseReportUncheckedUpdateManyWithoutReporterNestedInput
+  abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
+  legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedUpdateManyWithoutUserNestedInput
+  systemEditorDrafts?: Prisma.SystemEditorDraftUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutSystemEditorDraftsInput = {
+  id?: string
+  email: string
+  passwordHash: string
+  systemRole?: $Enums.SystemRole
+  status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
+  emailVerifiedAt?: Date | string | null
+  profileCompletedAt?: Date | string | null
+  lastLoginAt?: Date | string | null
+  failedLoginAttempts?: number
+  passwordResetRequired?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  profile?: Prisma.UserProfileCreateNestedOneWithoutUserInput
+  refreshTokens?: Prisma.RefreshTokenCreateNestedManyWithoutUserInput
+  verificationTokens?: Prisma.VerificationTokenCreateNestedManyWithoutUserInput
+  ownedTenant?: Prisma.TenantCreateNestedOneWithoutOwnerInput
+  tenantMemberships?: Prisma.TenantMemberCreateNestedManyWithoutUserInput
+  orders?: Prisma.OrderCreateNestedManyWithoutCustomerInput
+  entitlements?: Prisma.EntitlementCreateNestedManyWithoutUserInput
+  tenantCustomerOf?: Prisma.TenantCustomerCreateNestedManyWithoutUserInput
+  downloadTokens?: Prisma.DownloadTokenCreateNestedManyWithoutUserInput
+  downloadEvents?: Prisma.DownloadEventCreateNestedManyWithoutUserInput
+  reviews?: Prisma.ReviewCreateNestedManyWithoutUserInput
+  abuseReportsFiled?: Prisma.AbuseReportCreateNestedManyWithoutReporterInput
+  abuseReportsResolved?: Prisma.AbuseReportCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteCreateNestedManyWithoutAuthorInput
+  legalAcceptances?: Prisma.UserLegalAcceptanceCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutSystemEditorDraftsInput = {
+  id?: string
+  email: string
+  passwordHash: string
+  systemRole?: $Enums.SystemRole
+  status?: $Enums.UserStatus
+  isSuperAdmin?: boolean
+  emailVerifiedAt?: Date | string | null
+  profileCompletedAt?: Date | string | null
+  lastLoginAt?: Date | string | null
+  failedLoginAttempts?: number
+  passwordResetRequired?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  profile?: Prisma.UserProfileUncheckedCreateNestedOneWithoutUserInput
+  refreshTokens?: Prisma.RefreshTokenUncheckedCreateNestedManyWithoutUserInput
+  verificationTokens?: Prisma.VerificationTokenUncheckedCreateNestedManyWithoutUserInput
+  ownedTenant?: Prisma.TenantUncheckedCreateNestedOneWithoutOwnerInput
+  tenantMemberships?: Prisma.TenantMemberUncheckedCreateNestedManyWithoutUserInput
+  orders?: Prisma.OrderUncheckedCreateNestedManyWithoutCustomerInput
+  entitlements?: Prisma.EntitlementUncheckedCreateNestedManyWithoutUserInput
+  tenantCustomerOf?: Prisma.TenantCustomerUncheckedCreateNestedManyWithoutUserInput
+  downloadTokens?: Prisma.DownloadTokenUncheckedCreateNestedManyWithoutUserInput
+  downloadEvents?: Prisma.DownloadEventUncheckedCreateNestedManyWithoutUserInput
+  reviews?: Prisma.ReviewUncheckedCreateNestedManyWithoutUserInput
+  abuseReportsFiled?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutReporterInput
+  abuseReportsResolved?: Prisma.AbuseReportUncheckedCreateNestedManyWithoutResolvedByInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutAuthorInput
+  legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedCreateNestedManyWithoutUserInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutSystemEditorDraftsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutSystemEditorDraftsInput, Prisma.UserUncheckedCreateWithoutSystemEditorDraftsInput>
+}
+
+export type UserUpsertWithoutSystemEditorDraftsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutSystemEditorDraftsInput, Prisma.UserUncheckedUpdateWithoutSystemEditorDraftsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutSystemEditorDraftsInput, Prisma.UserUncheckedCreateWithoutSystemEditorDraftsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutSystemEditorDraftsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutSystemEditorDraftsInput, Prisma.UserUncheckedUpdateWithoutSystemEditorDraftsInput>
+}
+
+export type UserUpdateWithoutSystemEditorDraftsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
+  passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  profile?: Prisma.UserProfileUpdateOneWithoutUserNestedInput
+  refreshTokens?: Prisma.RefreshTokenUpdateManyWithoutUserNestedInput
+  verificationTokens?: Prisma.VerificationTokenUpdateManyWithoutUserNestedInput
+  ownedTenant?: Prisma.TenantUpdateOneWithoutOwnerNestedInput
+  tenantMemberships?: Prisma.TenantMemberUpdateManyWithoutUserNestedInput
+  orders?: Prisma.OrderUpdateManyWithoutCustomerNestedInput
+  entitlements?: Prisma.EntitlementUpdateManyWithoutUserNestedInput
+  tenantCustomerOf?: Prisma.TenantCustomerUpdateManyWithoutUserNestedInput
+  downloadTokens?: Prisma.DownloadTokenUpdateManyWithoutUserNestedInput
+  downloadEvents?: Prisma.DownloadEventUpdateManyWithoutUserNestedInput
+  reviews?: Prisma.ReviewUpdateManyWithoutUserNestedInput
+  abuseReportsFiled?: Prisma.AbuseReportUpdateManyWithoutReporterNestedInput
+  abuseReportsResolved?: Prisma.AbuseReportUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUpdateManyWithoutAuthorNestedInput
+  legalAcceptances?: Prisma.UserLegalAcceptanceUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutSystemEditorDraftsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  systemRole?: Prisma.EnumSystemRoleFieldUpdateOperationsInput | $Enums.SystemRole
+  status?: Prisma.EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+  isSuperAdmin?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  profileCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
+  passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  profile?: Prisma.UserProfileUncheckedUpdateOneWithoutUserNestedInput
+  refreshTokens?: Prisma.RefreshTokenUncheckedUpdateManyWithoutUserNestedInput
+  verificationTokens?: Prisma.VerificationTokenUncheckedUpdateManyWithoutUserNestedInput
+  ownedTenant?: Prisma.TenantUncheckedUpdateOneWithoutOwnerNestedInput
+  tenantMemberships?: Prisma.TenantMemberUncheckedUpdateManyWithoutUserNestedInput
+  orders?: Prisma.OrderUncheckedUpdateManyWithoutCustomerNestedInput
+  entitlements?: Prisma.EntitlementUncheckedUpdateManyWithoutUserNestedInput
+  tenantCustomerOf?: Prisma.TenantCustomerUncheckedUpdateManyWithoutUserNestedInput
+  downloadTokens?: Prisma.DownloadTokenUncheckedUpdateManyWithoutUserNestedInput
+  downloadEvents?: Prisma.DownloadEventUncheckedUpdateManyWithoutUserNestedInput
+  reviews?: Prisma.ReviewUncheckedUpdateManyWithoutUserNestedInput
+  abuseReportsFiled?: Prisma.AbuseReportUncheckedUpdateManyWithoutReporterNestedInput
+  abuseReportsResolved?: Prisma.AbuseReportUncheckedUpdateManyWithoutResolvedByNestedInput
+  orderNotesAuthored?: Prisma.OrderNoteUncheckedUpdateManyWithoutAuthorNestedInput
+  legalAcceptances?: Prisma.UserLegalAcceptanceUncheckedUpdateManyWithoutUserNestedInput
+  tenantEditorDrafts?: Prisma.TenantEditorDraftUncheckedUpdateManyWithoutUserNestedInput
 }
 
 
@@ -2949,6 +3399,8 @@ export type UserCountOutputType = {
   abuseReportsResolved: number
   orderNotesAuthored: number
   legalAcceptances: number
+  tenantEditorDrafts: number
+  systemEditorDrafts: number
 }
 
 export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2965,6 +3417,8 @@ export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.I
   abuseReportsResolved?: boolean | UserCountOutputTypeCountAbuseReportsResolvedArgs
   orderNotesAuthored?: boolean | UserCountOutputTypeCountOrderNotesAuthoredArgs
   legalAcceptances?: boolean | UserCountOutputTypeCountLegalAcceptancesArgs
+  tenantEditorDrafts?: boolean | UserCountOutputTypeCountTenantEditorDraftsArgs
+  systemEditorDrafts?: boolean | UserCountOutputTypeCountSystemEditorDraftsArgs
 }
 
 /**
@@ -3068,6 +3522,20 @@ export type UserCountOutputTypeCountLegalAcceptancesArgs<ExtArgs extends runtime
   where?: Prisma.UserLegalAcceptanceWhereInput
 }
 
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountTenantEditorDraftsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.TenantEditorDraftWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountSystemEditorDraftsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.SystemEditorDraftWhereInput
+}
+
 
 export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -3098,6 +3566,8 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   abuseReportsResolved?: boolean | Prisma.User$abuseReportsResolvedArgs<ExtArgs>
   orderNotesAuthored?: boolean | Prisma.User$orderNotesAuthoredArgs<ExtArgs>
   legalAcceptances?: boolean | Prisma.User$legalAcceptancesArgs<ExtArgs>
+  tenantEditorDrafts?: boolean | Prisma.User$tenantEditorDraftsArgs<ExtArgs>
+  systemEditorDrafts?: boolean | Prisma.User$systemEditorDraftsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -3166,6 +3636,8 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   abuseReportsResolved?: boolean | Prisma.User$abuseReportsResolvedArgs<ExtArgs>
   orderNotesAuthored?: boolean | Prisma.User$orderNotesAuthoredArgs<ExtArgs>
   legalAcceptances?: boolean | Prisma.User$legalAcceptancesArgs<ExtArgs>
+  tenantEditorDrafts?: boolean | Prisma.User$tenantEditorDraftsArgs<ExtArgs>
+  systemEditorDrafts?: boolean | Prisma.User$systemEditorDraftsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -3189,6 +3661,8 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     abuseReportsResolved: Prisma.$AbuseReportPayload<ExtArgs>[]
     orderNotesAuthored: Prisma.$OrderNotePayload<ExtArgs>[]
     legalAcceptances: Prisma.$UserLegalAcceptancePayload<ExtArgs>[]
+    tenantEditorDrafts: Prisma.$TenantEditorDraftPayload<ExtArgs>[]
+    systemEditorDrafts: Prisma.$SystemEditorDraftPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -3627,6 +4101,8 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   abuseReportsResolved<T extends Prisma.User$abuseReportsResolvedArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$abuseReportsResolvedArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AbuseReportPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   orderNotesAuthored<T extends Prisma.User$orderNotesAuthoredArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$orderNotesAuthoredArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OrderNotePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   legalAcceptances<T extends Prisma.User$legalAcceptancesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$legalAcceptancesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$UserLegalAcceptancePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  tenantEditorDrafts<T extends Prisma.User$tenantEditorDraftsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$tenantEditorDraftsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TenantEditorDraftPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  systemEditorDrafts<T extends Prisma.User$systemEditorDraftsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$systemEditorDraftsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SystemEditorDraftPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -4409,6 +4885,54 @@ export type User$legalAcceptancesArgs<ExtArgs extends runtime.Types.Extensions.I
   take?: number
   skip?: number
   distinct?: Prisma.UserLegalAcceptanceScalarFieldEnum | Prisma.UserLegalAcceptanceScalarFieldEnum[]
+}
+
+/**
+ * User.tenantEditorDrafts
+ */
+export type User$tenantEditorDraftsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the TenantEditorDraft
+   */
+  select?: Prisma.TenantEditorDraftSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the TenantEditorDraft
+   */
+  omit?: Prisma.TenantEditorDraftOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TenantEditorDraftInclude<ExtArgs> | null
+  where?: Prisma.TenantEditorDraftWhereInput
+  orderBy?: Prisma.TenantEditorDraftOrderByWithRelationInput | Prisma.TenantEditorDraftOrderByWithRelationInput[]
+  cursor?: Prisma.TenantEditorDraftWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.TenantEditorDraftScalarFieldEnum | Prisma.TenantEditorDraftScalarFieldEnum[]
+}
+
+/**
+ * User.systemEditorDrafts
+ */
+export type User$systemEditorDraftsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the SystemEditorDraft
+   */
+  select?: Prisma.SystemEditorDraftSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the SystemEditorDraft
+   */
+  omit?: Prisma.SystemEditorDraftOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SystemEditorDraftInclude<ExtArgs> | null
+  where?: Prisma.SystemEditorDraftWhereInput
+  orderBy?: Prisma.SystemEditorDraftOrderByWithRelationInput | Prisma.SystemEditorDraftOrderByWithRelationInput[]
+  cursor?: Prisma.SystemEditorDraftWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.SystemEditorDraftScalarFieldEnum | Prisma.SystemEditorDraftScalarFieldEnum[]
 }
 
 /**

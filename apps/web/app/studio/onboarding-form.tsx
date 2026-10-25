@@ -1,14 +1,23 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { createTenantAction, type CreateTenantActionState } from "./actions";
 import { AuthCard } from "../(auth)/_ui/auth-card";
 import { ErrorBanner, SubmitButton, TextField } from "../(auth)/_ui/fields";
-import { INK_SOFT, LINE } from "../(auth)/_ui/colors";
+import { BLUE, INK_SOFT, LINE } from "../(auth)/_ui/colors";
+import { IconExternalLink } from "../admin/_ui/icons";
+
+/** ADR-054 mục 5 — bản Chính sách người bán đang hiệu lực; `null` = chưa có (không hiện ô đồng ý). */
+export interface SellerPolicyInfo {
+  versionId: string;
+  href: string;
+  title: string;
+}
 
 const initialState: CreateTenantActionState = {};
 
-export function StudioOnboardingForm({ brandName, siteHost }: { brandName: string; siteHost: string }) {
+export function StudioOnboardingForm({ brandName, siteHost, sellerPolicy }: { brandName: string; siteHost: string; sellerPolicy: SellerPolicyInfo | null }) {
   const [state, formAction, isPending] = useActionState(createTenantAction, initialState);
 
   return (
@@ -36,6 +45,34 @@ export function StudioOnboardingForm({ brandName, siteHost }: { brandName: strin
             style={{ borderColor: LINE }}
           />
         </div>
+        {sellerPolicy ? (
+          <div>
+            <input type="hidden" name="sellerPolicyVersionId" value={sellerPolicy.versionId} />
+            <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border px-3.5 py-3 text-sm leading-relaxed" style={{ borderColor: LINE, color: INK_SOFT }}>
+              <input
+                type="checkbox"
+                name="sellerPolicyAccepted"
+                required
+                className="mt-0.5 h-[18px] w-[18px] shrink-0 cursor-pointer rounded accent-[color:var(--brand-primary,#0F3B82)]"
+              />
+              <span>
+                Tôi đồng ý với{" "}
+                <Link
+                  href={sellerPolicy.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-sm font-semibold underline underline-offset-2 outline-offset-2 focus-visible:outline-2"
+                  style={{ color: BLUE, outlineColor: BLUE }}
+                >
+                  {sellerPolicy.title}
+                  <IconExternalLink className="ml-1 inline h-3.5 w-3.5 align-[-2px]" />
+                  <span className="sr-only"> (mở trong tab mới)</span>
+                </Link>
+                .
+              </span>
+            </label>
+          </div>
+        ) : null}
         <ErrorBanner message={state.error} />
         <SubmitButton loading={isPending}>{isPending ? "Đang tạo..." : "Mở trang của tôi"}</SubmitButton>
       </form>

@@ -1,14 +1,38 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { encryptSecret } from "@gieochu/core";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { getPrismaClient, withSystemJob } from "@gieochu/db";
-import { getEnv } from "@gieochu/config";
 import { signAccessToken } from "@gieochu/auth";
 import { createTenantForUser } from "../../lib/create-tenant";
 import { createProduct } from "../../lib/product";
 import { getAccessTokenTtlSeconds, getJwtContext } from "../../lib/jwt-context";
 import { ACCESS_COOKIE_NAME } from "../../lib/cookies";
 import type { CurrentUser } from "../../lib/session";
-import { restoreStorageConfig, snapshotStorageConfig, type StorageConfigSnapshot } from "./shared-config-snapshot";
+
+// ADR-034: DB dev = production — test KHÔNG ghi `system_storage_config`. Presign/URL tải chỉ là ký request cục bộ (không gọi
+// mạng), nên thay lớp đọc cấu hình bằng cấu hình R2 giả trong bộ nhớ. Tenant tạo mới chưa có bucket riêng → đi nhánh
+// R2 mặc định, không gọi `ensureBucketExists`.
+vi.mock("../../lib/system-storage", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../lib/system-storage")>();
+  const { createS3Client } = await import("@gieochu/storage");
+  const credentials = { accessKeyId: "fake", secretAccessKey: "fake" };
+  const r2 = { endpoint: "https://fake.example.com", region: "auto", bucketPrivate: "fake-private", bucketPublic: "fake-public", ...credentials };
+  const fakeConfig = {
+    isEnabled: true,
+    activeProvider: "CLOUDFLARE_R2" as const,
+    r2,
+    minio: { host: "", useSSL: true, region: "us-east-1", ...credentials },
+    endpoint: r2.endpoint,
+    region: r2.region,
+    bucketPrivate: r2.bucketPrivate,
+    bucketPublic: r2.bucketPublic,
+    ...credentials,
+  };
+  const clientConfig = { endpoint: r2.endpoint, region: r2.region, ...credentials };
+  return {
+    ...actual,
+    getDecryptedSystemStorageConfig: async () => fakeConfig,
+    createClientForProvider: async () => ({ client: createS3Client(clientConfig), config: clientConfig }),
+  };
+});
 
 const prisma = getPrismaClient();
 const RUN_PREFIX = `m5uploadtest_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -27,18 +51,6 @@ async function createActiveUser(email: string) {
 
 function toCurrentUser(userId: string): CurrentUser {
   return { userId, familyId: "test-family", role: "USER", emailVerified: true, profileCompleted: true };
-}
-
-/** A single-PUT presign is pure request signing — no real network call — so a fake/placeholder config is enough to test the auth gate around it. */
-async function ensureFakeStorageConfig(): Promise<void> {
-  const env = getEnv();
-  const secrets = encryptSecret(JSON.stringify({ accessKeyId: "fake", secretAccessKey: "fake" }), env.STORAGE_ENCRYPTION_KEY);
-  const publicConfig = { endpoint: "https://fake.example.com", region: "auto", bucketPrivate: "fake-private", bucketPublic: "fake-public" };
-  await prisma.systemStorageConfig.upsert({
-    where: { id: "default" },
-    update: { isEnabled: true, publicConfig, encryptedSecrets: secrets },
-    create: { id: "default", isEnabled: true, publicConfig, encryptedSecrets: secrets },
-  });
 }
 
 async function mockCookieFor(userId: string): Promise<void> {
@@ -75,12 +87,6 @@ describe("M5 product file upload — presign authorization", () => {
     vi.resetModules();
   });
 
-  // Cấu hình R2 dùng chung trên DB dev: chụp lại trước khi test ghi cấu hình giả, afterAll trả đúng dòng cũ.
-  let storageSnapshot: StorageConfigSnapshot;
-  beforeAll(async () => {
-    storageSnapshot = await snapshotStorageConfig();
-  });
-
   afterAll(async () => {
     const tenants = await prisma.tenant.findMany({ where: { slug: { startsWith: RUN_PREFIX } }, select: { id: true } });
     const tenantIds = tenants.map((t) => t.id);
@@ -92,14 +98,11 @@ describe("M5 product file upload — presign authorization", () => {
     }
     await prisma.tenant.deleteMany({ where: { slug: { startsWith: RUN_PREFIX } } });
     await prisma.user.deleteMany({ where: { email: { startsWith: RUN_PREFIX } } });
-    await restoreStorageConfig(storageSnapshot);
     vi.doUnmock("next/headers");
     vi.doUnmock("@gieochu/storage");
   });
 
   it("presign succeeds for the tenant's own owner but rejects (403) a non-member requesting it for someone else's product", async () => {
-    await ensureFakeStorageConfig();
-
     const ownerA = await createActiveUser(nextEmail());
     const tenantA = await createTenantForUser(toCurrentUser(ownerA.id), { name: "Upload Owner", slug: `${RUN_PREFIX}-a` });
     const product = await createProduct(tenantA.id, { title: "Đề thi Toán", type: "EXAM" });

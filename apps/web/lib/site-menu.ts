@@ -8,11 +8,13 @@ import {
   MENU_CMS_SLUG,
   parseSiteMenu,
   resolveNavLinkHref,
+  type LegalDocumentKey,
   type NavLink,
   type SiteMenu,
 } from "@gieochu/core";
 import { getPrismaClient } from "@gieochu/db";
 import { getEffectiveBrand } from "./branding";
+import { getEffectiveLegalKeys } from "./legal";
 
 /**
  * ADR-050 mục 1 — menu header/footer hệ thống từ CMS (`CmsPage` slug `menu`, L1 không RLS → `getPrismaClient()`).
@@ -21,6 +23,7 @@ import { getEffectiveBrand } from "./branding";
  *
  * Contract render (props cho UI — Phong dựng giao diện theo các kiểu dưới đây):
  *  - Link đã lọc `visible`, `href` đã dựng + kiểm an toàn (link hỏng bị bỏ), `{brand}`/`{năm}` đã thay.
+ *  - ADR-054 mục 6: link loại `legal` tới văn bản chưa có bản hiệu lực bị bỏ (cột footer rỗng → bỏ cả cột).
  *  - `external = true` khi không phải đường dẫn nội bộ (dùng `<a>` thay `<Link>`); `newTab` → `target="_blank"` +
  *    `rel="noopener noreferrer"`.
  */
@@ -89,34 +92,39 @@ export const getPublishedSiteMenu = cache(async function getPublishedSiteMenu():
   return menu;
 });
 
-function toLinkView(link: Pick<NavLink, "id" | "label" | "kind" | "target" | "newTab">): SiteNavLinkView | null {
+function toLinkView(link: Pick<NavLink, "id" | "label" | "kind" | "target" | "newTab">, effectiveLegalKeys: ReadonlySet<LegalDocumentKey>): SiteNavLinkView | null {
+  if (link.kind === "legal" && !effectiveLegalKeys.has(link.target.trim() as LegalDocumentKey)) return null;
   const href = resolveNavLinkHref(link.kind, link.target);
   if (!href) return null;
   return { id: link.id, label: link.label, href, newTab: link.newTab, external: !href.startsWith("/") };
 }
 
 /** Chuyển cấu hình menu sang dữ liệu render (lọc ẩn, dựng href, thay token). Dùng chung cho trang công khai và xem trước. */
-export function resolveSiteMenu(menu: SiteMenu, values: { brandName: string; slogan: string; year: number }): SiteMenuView {
+export function resolveSiteMenu(
+  menu: SiteMenu,
+  values: { brandName: string; slogan: string; year: number; effectiveLegalKeys: ReadonlySet<LegalDocumentKey> },
+): SiteMenuView {
+  const view = (link: Pick<NavLink, "id" | "label" | "kind" | "target" | "newTab">) => toLinkView(link, values.effectiveLegalKeys);
   const items: SiteNavItemView[] = [];
   for (const item of menu.header.items) {
     if (!item.visible) continue;
-    const children = item.children.filter((child) => child.visible).flatMap((child) => toLinkView(child) ?? []);
+    const children = item.children.filter((child) => child.visible).flatMap((child) => view(child) ?? []);
     if (item.children.length > 0) {
       // Mục nhóm: không còn mục con hiển thị nào → bỏ cả mục.
       if (children.length > 0) items.push({ id: item.id, label: item.label, href: null, newTab: false, external: false, children });
       continue;
     }
-    const view = toLinkView(item);
-    if (view) items.push({ ...view, children: [] });
+    const itemView = view(item);
+    if (itemView) items.push({ ...itemView, children: [] });
   }
 
-  const cta = menu.header.cta.visible ? toLinkView(menu.header.cta) : null;
+  const cta = menu.header.cta.visible ? view(menu.header.cta) : null;
 
   const columns = menu.footer.columns
     .map((column) => ({
       id: column.id,
       title: column.title,
-      links: column.links.filter((link) => link.visible).flatMap((link) => toLinkView(link) ?? []),
+      links: column.links.filter((link) => link.visible).flatMap((link) => view(link) ?? []),
     }))
     .filter((column) => column.links.length > 0);
 
@@ -132,8 +140,8 @@ export function resolveSiteMenu(menu: SiteMenu, values: { brandName: string; slo
 
 /** Dữ liệu render header/footer cho request hiện tại. */
 export const getSiteMenu = cache(async function getSiteMenu(): Promise<SiteMenuView> {
-  const [menu, brand] = await Promise.all([getPublishedSiteMenu(), getEffectiveBrand()]);
-  return resolveSiteMenu(menu, { brandName: brand.name, slogan: brand.slogan, year: currentDisplayYear() });
+  const [menu, brand, effectiveLegalKeys] = await Promise.all([getPublishedSiteMenu(), getEffectiveBrand(), getEffectiveLegalKeys()]);
+  return resolveSiteMenu(menu, { brandName: brand.name, slogan: brand.slogan, year: currentDisplayYear(), effectiveLegalKeys });
 });
 
 export interface SiteMenuEditorData {

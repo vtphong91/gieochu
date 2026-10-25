@@ -14,8 +14,16 @@ export type { AccessTokenClaims, JwtContext, VerifiedAccessToken } from "./token
 
 export { generateOpaqueToken, hashOpaqueToken } from "@gieochu/core";
 
-export { createRefreshToken, evaluateRefreshToken, rotateRefreshToken } from "./tokens/refresh-token";
-export type { NewRefreshToken, RefreshTokenRecord, RefreshTokenStatus } from "./tokens/refresh-token";
+export { createRefreshToken, evaluateRefreshToken, issueRefreshToken, REFRESH_REUSE_GRACE_MS, rotateRefreshToken } from "./tokens/refresh-token";
+export {
+  evaluateSessionTimeouts,
+  refreshCookieMaxAgeSeconds,
+  resolveSessionPolicy,
+  sessionExpiresAt,
+} from "./session-policy";
+export type { SessionPolicy, SessionPolicySettings, SessionTimeoutStatus } from "./session-policy";
+export { describeDeviceKind, describeUserAgent, UNKNOWN_DEVICE_LABEL, type DeviceKind } from "./device-label";
+export type { EvaluateRefreshTokenOptions, NewRefreshToken, RefreshTokenRecord, RefreshTokenStatus } from "./tokens/refresh-token";
 
 export { createVerificationToken, evaluateVerificationToken } from "./tokens/verification-token";
 export type {

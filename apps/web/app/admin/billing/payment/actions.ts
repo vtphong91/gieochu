@@ -9,7 +9,17 @@ import { savePlatformProviderConfig, testPlatformProviderConnection } from "../.
 export interface PlatformPaymentActionState {
   error?: string;
   success?: boolean;
+  /** Thông báo kèm `success` (VD: ADR-013 tự tắt) — không có thì form hiện "Đã lưu.". */
+  message?: string;
   testResult?: { ok: boolean; message?: string };
+}
+
+// ADR-013: lần lưu đầu / đổi tài khoản-secret thì cổng bị tự tắt dù admin đã bật — nói rõ để admin lưu lại lần nữa.
+const AUTO_DISABLED_MESSAGE =
+  "Đã lưu. Phương thức đang tắt vì thông tin tài khoản vừa thay đổi — bật lại và bấm Lưu thêm một lần để xác nhận.";
+
+function savedState(result: { autoDisabled: boolean }): PlatformPaymentActionState {
+  return result.autoDisabled ? { success: true, message: AUTO_DISABLED_MESSAGE } : { success: true };
 }
 
 const manualQrSchema = z.object({
@@ -30,7 +40,7 @@ export async function saveManualQrAction(
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ." };
 
-  await savePlatformProviderConfig({
+  const result = await savePlatformProviderConfig({
     actorId: actor.userId,
     provider: "MANUAL_QR",
     isEnabled: formData.get("isEnabled") === "on",
@@ -38,7 +48,7 @@ export async function saveManualQrAction(
     secrets: {},
   });
   revalidatePath("/admin/billing/payment");
-  return { success: true };
+  return savedState(result);
 }
 
 const sepaySchema = z.object({
@@ -66,8 +76,9 @@ export async function saveSepayAction(
   const secret = String(formData.get("secret") ?? "").trim();
   const { authType, paymentPrefix, ...publicConfig } = parsed.data;
 
+  let result: { autoDisabled: boolean };
   try {
-    await savePlatformProviderConfig({
+    result = await savePlatformProviderConfig({
       actorId: actor.userId,
       provider: "SEPAY",
       isEnabled: formData.get("isEnabled") === "on",
@@ -79,7 +90,7 @@ export async function saveSepayAction(
     throw error;
   }
   revalidatePath("/admin/billing/payment");
-  return { success: true };
+  return savedState(result);
 }
 
 const momoSchema = z.object({
@@ -102,8 +113,9 @@ export async function saveMomoAction(
 
   const secretKey = String(formData.get("secretKey") ?? "").trim();
 
+  let result: { autoDisabled: boolean };
   try {
-    await savePlatformProviderConfig({
+    result = await savePlatformProviderConfig({
       actorId: actor.userId,
       provider: "MOMO",
       isEnabled: formData.get("isEnabled") === "on",
@@ -115,7 +127,7 @@ export async function saveMomoAction(
     throw error;
   }
   revalidatePath("/admin/billing/payment");
-  return { success: true };
+  return savedState(result);
 }
 
 export async function testMomoConnectionAction(): Promise<PlatformPaymentActionState> {

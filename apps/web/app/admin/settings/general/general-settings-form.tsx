@@ -22,12 +22,20 @@ const GROUPS: { id: string; title: string; description: string; icon: ReactNode;
     icon: <IconShield className="h-5 w-5" />,
     keys: [
       "accessTokenTtlMinutes",
-      "refreshTokenTtlDays",
       "emailVerifyTtlHours",
       "passwordResetTtlMinutes",
       "presignUploadTtlSeconds",
       "presignDownloadTtlSeconds",
     ],
+  },
+  {
+    // ADR-053: chính sách phiên đăng nhập.
+    id: "session",
+    title: "Chính sách phiên đăng nhập",
+    description:
+      "Tự đăng xuất khi không thao tác, thời hạn tối đa của một phiên và \"Ghi nhớ đăng nhập\". Quản trị viên hệ thống luôn dùng mức riêng, không được ghi nhớ.",
+    icon: <IconShield className="h-5 w-5" />,
+    keys: ["sessionIdleMinutes", "sessionAbsoluteHours", "rememberMeDays", "adminIdleMinutes", "adminAbsoluteHours", "sessionWarningMinutes"],
   },
   {
     id: "business",
@@ -40,8 +48,13 @@ const GROUPS: { id: string; title: string; description: string; icon: ReactNode;
 
 /** Giải thích ngắn từng khoá cho System Admin (nhãn + đơn vị lấy từ `bounds`). */
 const DESCRIPTIONS: Partial<Record<SystemSettingKey, string>> = {
-  accessTokenTtlMinutes: "Phiên đăng nhập tự làm mới sau khoảng này.",
-  refreshTokenTtlDays: "Không hoạt động quá thời hạn này phải đăng nhập lại.",
+  accessTokenTtlMinutes: "Phiên đăng nhập tự làm mới sau khoảng này (không dài hơn thời gian tự đăng xuất).",
+  sessionIdleMinutes: "Không tick \"Ghi nhớ\": không thao tác quá khoảng này sẽ bị đăng xuất.",
+  sessionAbsoluteHours: "Không tick \"Ghi nhớ\": tính từ lúc đăng nhập, hết hạn phải đăng nhập lại dù vẫn thao tác.",
+  rememberMeDays: "Có tick \"Ghi nhớ\": giữ đăng nhập (kể cả khi đóng trình duyệt) tới hết số ngày này.",
+  adminIdleMinutes: "Quản trị viên hệ thống: không thao tác quá khoảng này sẽ bị đăng xuất.",
+  adminAbsoluteHours: "Quản trị viên hệ thống: thời hạn tối đa tính từ lúc đăng nhập.",
+  sessionWarningMinutes: "Hiện hộp thoại \"Tiếp tục phiên\" trước khi tự đăng xuất.",
   emailVerifyTtlHours: "Liên kết kích hoạt tài khoản gửi qua email.",
   passwordResetTtlMinutes: "Liên kết đặt lại mật khẩu gửi qua email.",
   presignUploadTtlSeconds: "URL tải tệp lên kho lưu trữ.",

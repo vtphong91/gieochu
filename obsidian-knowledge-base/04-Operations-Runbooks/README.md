@@ -3,7 +3,7 @@ tags:
   - meta
   - runbook
 date: 2026-09-26
-updated: 2026-10-23
+updated: 2026-10-25
 ---
 
 # 🚀 Operations Runbooks & DevOps
@@ -39,7 +39,8 @@ viên.
   trang hệ thống `/[slug]/posts`, section `posts` storefront, quy tắc sanitize lại khi render HTML (ADR-029, §11); trang chủ dữ liệu thật (thẻ link phủ cả thẻ, định dạng "1.200+", chip danh mục + `<details>` — từ ADR-035 GĐ2 chip/ô tìm trỏ `/cua-hang/tai-lieu`), `PinPicker`, form "Cấu hình chung", menu System Center, a11y kit `TextField`/`SelectField`/`Toggle`/icon (ADR-032/033, §12). Editor CMS Cửa hàng (ADR-035 GĐ1, §13): kit `Notice`, `PinPicker` thêm `copy`/`error`, pattern editor nhiều section (thanh trạng thái dính, con mắt + Lên/Xuống, tóm tắt lỗi nhảy focus, xác nhận khôi phục, `beforeunload`), ô điểm "4,0" ×10, menu "Trang Cửa hàng". Trang Cửa hàng công khai (ADR-035 GĐ2, §14): `catalog-parts`, `DocumentCard`/`TenantCard` dùng chung với trang chủ, `ProductShelf`/`TenantShelf`/`ShelfSection`, `CategoryGrid`, `ShopHero`/`ShopSearchForm`, `ShelfSkeleton`, `ShopEmptyState`/`OpenStoreCta`, trang tìm (sắp xếp, phân trang link thuần), `MobileNav`; header `current` + link "Cửa hàng" (§1.1). Trang nhật ký `/admin/audit` + Studio → Hoạt động (M12a — ADR-037, §15):
   `AuditFilterForm`/`AuditLogResults` (form GET, đủ trạng thái, bảng từ `xl` / thẻ dưới `xl`, chi tiết `<details>`), `LinkPagination`,
   `AuditLogSkeleton`, `DataTable` thêm `caption` + `th scope="col"`, nhóm sidebar "Giám sát". Dashboard `/admin` section "Hoạt động bán tài liệu (30 ngày)" (M12b — ADR-037, §16): 4 KPI + % so kỳ trước (BigInt), biểu đồ cột HTML `role="img"` + bảng trong `<details>`, chọn chỉ số `?chi-so=gmv|don`, top 5 gian hàng, trạng thái unavailable/rỗng/Suspense. Báo cáo vi phạm + khoá kiểm duyệt + quyền lợi người mua (M12c — ADR-038/039, §17): `ReportAbuseButton` (`<dialog>`), `ModerationLockBadge`/`ModerationLockNotice`, `/admin/reports` (lọc, bảng/thẻ, form xử lý), ô cam kết bản quyền, Thư viện `RemedyNotice`/`ConfirmDialog`/`LibraryEntitlementCard`, Studio đơn hàng `RefundRequestBadge`/`OrderItemRemedy`, `TenantNavItem.badge`, `IconFlag`, sửa tương phản chip lọc đơn. Bảng giá CMS + khu vực `/account` + hoàn tiền gói (ADR-041, §18): kit `PrimaryButton`/`GhostButton` 44px dưới `lg`, `PasswordField` a11y + `toggleLabel`, `SortableListEditor`, toggle Tháng/Năm radio, bảng so sánh cuộn trong khung `relative`, app shell `/account` + menu tài khoản disclosure, `/admin/billing/refunds` xác nhận 2 bước. Dashboard Tổng quan gian hàng `/studio/{slug}` (ADR-043, §19): route group `(tong-quan)` + `loading`/`error` riêng, date range picker 12 mốc (lần 3 — thay chip kỳ + form khoảng ngày GET cũ), KPI gộp/thực nhận + thẻ phụ, `TrendChart` cột + đường, top 5, 10 đơn mới không email, checklist 3 bước khi chưa có đơn; component chung `admin/_ui/stats-chart.tsx` (`KpiCard`, `ChangeLine`, `computeChange`, `TrendChart`, `RatioBar`, `StatIcon`) — `sales-stats.tsx` `/admin` dùng lại; icon `IconArrowUp/Down`, `IconStarSolid`, `IconGift`. Trang Đơn hàng Studio danh sách + chi tiết (ADR-046, §20, chưa commit): thanh lọc form GET (`OrderFilterForm`) với dropdown trạng thái kèm số đếm, date range picker `formMode` + "Mọi thời gian", bảng từ `xl` / thẻ dưới `xl`, sắp xếp bằng tiêu đề cột `aria-sort`, menu dòng `RowMenu` + `<dialog>` xác nhận, chi tiết `MainAsideGrid` (Thao tác đơn 2 bước, Lịch sử khách, Lịch sử đơn), `?back=` giữ bộ lọc; kit `DataTable.head` `ReactNode` + `headAriaSort`, `LinkPagination.pageParam`. Trang Khách hàng Studio (ADR-048, §21): mẫu trang danh sách Studio dùng chung (header → KpiCard → `OrderFilterForm` prop `label` mới → bảng từ `xl` / thẻ → phân trang, `loading`/`error`), 5 KPI khách, menu "Xem đơn của khách" + hộp ghi chú `<dialog>` 500 ký tự, dòng "Đang xem đơn của khách" ở trang Đơn hàng. `[[Publish-And-Rollback-Runbook]]` §2.2 có số test hiện tại và quy tắc
-  integration test không xoá cấu hình dùng chung (`shared-config-snapshot.ts`).
+  quy ước integration test: **mock lớp đọc cấu hình, không ghi/snapshot bảng singleton** (§2.2.1 — `shared-config-snapshot.ts` đã xoá 2026-10-25; sự cố ghi đè
+  cấu hình 2026-10-24). §24 `UI-Design-System`: kit `PillTabs`/`FilterSelect`/`FilterBar`, trang Hoá đơn + Đơn hàng gói, `BankTransferPanel` (ADR-056).
 - `[[Deploy-Vercel-Runbook]]`: Deploy app lên **Vercel** theo ADR-031/032 — cấu hình project (Root Directory `apps/web`,
   `vercel.json` `buildCommand: "next build"`), env runtime **8 biến bắt buộc** + biến cần xoá trên Vercel + biến **không** đặt
   (`PRISMA_MIGRATE_URL`…), chuẩn bị DB prod từ máy dev (`setup-app-role`, `db:migrate`, `db:seed`, quét slug dành riêng),
@@ -51,6 +52,11 @@ viên.
   5 bước tạo nháp → soạn/rà soát → điền placeholder `[[CẦN XÁC NHẬN` → tích "Đã rà soát pháp lý" → xuất bản kèm ngày hiệu lực (giờ VN, không lùi);
   ⚠️ bản đầu tiên làm form đăng ký bắt đầu ghi chấp thuận; phát hành bản mới, lưu trữ bản cũ, sửa sai sau xuất bản
   ([Legal-Terms-Publishing-Runbook.md](./Legal-Terms-Publishing-Runbook.md)). Migration tương ứng: `Deploy-Vercel-Runbook` §9.11.
+  Phiên đăng nhập (ADR-053): bước cron `refresh_tokens.purge` xoá bản ghi phiên hết hạn/thu hồi > 90 ngày — `Deploy-Vercel-Runbook` §6.6; migration
+  `20261024090000_adr051_session_policy` (đã chạy 2026-10-24, trước code GĐ B) — §9.12. Nháp tự động editor (ADR-053 bổ sung lần 3): migration
+  `20261024120000_adr051_editor_drafts` (đã chạy) — §9.13; bước cron dọn nháp **chưa gắn**. Trang pháp lý đợt 2 (ADR-054): bước cron `download_events.purge`
+  (nhật ký tải > 12 tháng) — §6.1; migration `20261024150000_adr053_legal_document_meta` (tên thư mục giữ số cũ) đã chạy 2026-10-24, DB khác phải chạy trước code — §9.14; quy trình xuất bản 7 văn
+  bản dùng chung `Legal-Terms-Publishing-Runbook`.
 - `[[Dev-Demo-Data-Runbook]]`: **Công cụ chỉ cho dev** — script `apps/web/scripts/demo-reviews.ts`
   (`ALLOW_DEMO_SEED=1 pnpm --filter @gieochu/db run demo:seed|demo:clean`): chốt an toàn, dữ liệu demo đánh giá trên tenant
   `phongweb` (3 sản phẩm, 5 khách, 11 đơn FULFILLED, 9 đánh giá), cách nhận diện và dọn

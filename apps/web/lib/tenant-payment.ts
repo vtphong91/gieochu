@@ -118,3 +118,10 @@ export async function listBankBins() {
   const prisma = getPrismaClient();
   return prisma.bankBin.findMany({ orderBy: { shortName: "asc" } });
 }
+
+/** Tên ngân hàng theo BIN (bảng L1 `bank_bins`) — null nếu BIN rỗng/không có trong danh mục. */
+export async function getBankByBin(bin: string | null | undefined): Promise<{ shortName: string; name: string } | null> {
+  if (!bin) return null;
+  const prisma = getPrismaClient();
+  return prisma.bankBin.findUnique({ where: { bin }, select: { shortName: true, name: true } });
+}

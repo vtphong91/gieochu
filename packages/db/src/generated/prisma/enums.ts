@@ -312,3 +312,23 @@ export const LegalReviewStatus = {
 } as const
 
 export type LegalReviewStatus = (typeof LegalReviewStatus)[keyof typeof LegalReviewStatus]
+
+
+export const TenantEditorDraftEntity = {
+  POST: 'POST',
+  PRODUCT: 'PRODUCT',
+  STOREFRONT: 'STOREFRONT'
+} as const
+
+export type TenantEditorDraftEntity = (typeof TenantEditorDraftEntity)[keyof typeof TenantEditorDraftEntity]
+
+
+export const SystemEditorDraftEntity = {
+  HOME: 'HOME',
+  SHOP: 'SHOP',
+  PRICING: 'PRICING',
+  MENU: 'MENU',
+  LEGAL_VERSION: 'LEGAL_VERSION'
+} as const
+
+export type SystemEditorDraftEntity = (typeof SystemEditorDraftEntity)[keyof typeof SystemEditorDraftEntity]

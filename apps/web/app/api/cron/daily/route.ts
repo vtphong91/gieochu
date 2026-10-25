@@ -10,6 +10,8 @@ import { drainQueues, superviseQueues, type DrainQueuesResult } from "../../../.
 import { audit } from "../../../../lib/audit";
 import { runStatsAggregation } from "../../../../lib/tenant-stats";
 import { purgeExpiredAbuseReportIps } from "../../../../lib/abuse-report";
+import { purgeStaleRefreshTokens } from "../../../../lib/account-sessions";
+import { purgeExpiredDownloadEvents } from "../../../../lib/download";
 
 // ADR-036: Vercel Cron (Hobby: once a day, vercel.json "0 20 * * *" = 03:00 Asia/Ho_Chi_Minh).
 export const maxDuration = 60;
@@ -42,7 +44,8 @@ async function runStep<T>(name: string, step: () => Promise<T>): Promise<StepRes
  * ADR-036 daily job: subscription sweep, order sweep (both run directly, not via the queue), a pg-boss
  * maintenance pass (stuck `active` jobs back to retry), the audit-log retention purge (ADR-037, rows > 12 months), the
  * `tenant_daily_stats` aggregation (ADR-037 M12b, yesterday + today in Vietnam time), the abuse-report IP retention
- * (ADR-038, `ip = NULL` on reports > 12 months — reports themselves are kept), then a
+ * (ADR-038, `ip = NULL` on reports > 12 months — reports themselves are kept), the refresh-token purge (ADR-053, rows
+ * expired/revoked > 90 days), the download-log purge (ADR-054, `download_events` > 12 months), then a
  * drain of leftover `payment.process`/`file.scan` jobs. Each step is isolated — one failing step never
  * skips the others. The response carries only counts (no tenant/order/customer data, §7.9).
  */
@@ -71,11 +74,15 @@ export async function GET(request: Request) {
     const statsAggregate = await runStep("stats.aggregate", () => runStatsAggregation());
     // ADR-038 mục 3: xoá IP của báo cáo vi phạm cũ hơn 12 tháng (giữ báo cáo). Bảng chưa có → { skipped: true }.
     const reportIpPurge = await runStep("abuse_report.ip_purge", () => purgeExpiredAbuseReportIps());
+    // ADR-053 mục 4: xoá bản ghi phiên hết hạn / đã thu hồi quá 90 ngày.
+    const sessionPurge = await runStep("refresh_tokens.purge", () => purgeStaleRefreshTokens());
+    // ADR-054 mục 8: xoá nhật ký tải (có IP) cũ hơn 12 tháng — L2, chạy qua withSystemJob.
+    const downloadPurge = await runStep("download_events.purge", () => purgeExpiredDownloadEvents());
     const queues = await runStep<DrainQueuesResult>("queue.drain", () =>
       drainQueues({ names: DRAINED_QUEUES, budgetMs: QUEUE_DRAIN_BUDGET_MS }),
     );
 
-    const results = { subscriptionSweep, orderSweep, queueMaintenance, queues, auditPurge, statsAggregate, reportIpPurge };
+    const results = { subscriptionSweep, orderSweep, queueMaintenance, queues, auditPurge, statsAggregate, reportIpPurge, sessionPurge, downloadPurge };
     const allOk =
       subscriptionSweep.ok &&
       orderSweep.ok &&
@@ -83,7 +90,9 @@ export async function GET(request: Request) {
       queues.ok &&
       auditPurge.ok &&
       statsAggregate.ok &&
-      reportIpPurge.ok;
+      reportIpPurge.ok &&
+      sessionPurge.ok &&
+      downloadPurge.ok;
     logger.info({ requestId, results }, "cron daily finished");
 
     if (!allOk) {

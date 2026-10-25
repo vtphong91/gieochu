@@ -7,7 +7,7 @@ tags:
   - jobs
   - status/living
 date: 2026-09-29
-updated: 2026-10-23
+updated: 2026-10-25
 author: Long
 ---
 
@@ -215,7 +215,7 @@ dữ liệu thì **không** chạy bước 3 (seed) — chỉ dùng khi dựng D
 | `/admin/settings/smtp` | Nhập SMTP, bật + xác minh | Rơi về env (§3.2) |
 | `/admin/billing/payment` | Cấu hình cổng thanh toán **platform** (SePay/MoMo/QR thủ công) | Tenant không trả phí gói được |
 | `/admin/settings/branding` | Tên thương hiệu, slogan, logo, màu (tuỳ chọn) | Dùng `DEFAULT_BRAND` + màu mặc định |
-| `/admin/settings/general` | Kiểm tra 10 khoá cấu hình đang hiện (TTL, ân hạn, đơn/hoá đơn chờ, lượt tải mặc định); nhập lại giá trị từng đặt qua env nếu khác mặc định | Dùng mặc định (`SYSTEM_SETTINGS_BOUNDS`) ✅ |
+| `/admin/settings/general` | Kiểm tra các khoá cấu hình đang hiện (TTL, ân hạn, đơn/hoá đơn chờ, lượt tải mặc định; từ ADR-053 thêm nhóm "Chính sách phiên đăng nhập" 6 khoá — áp cho cả phiên đang mở từ lần refresh kế tiếp); nhập lại giá trị từng đặt qua env nếu khác mặc định | Dùng mặc định (`SYSTEM_SETTINGS_BOUNDS`) ✅ |
 | `/admin/settings` | Email hỗ trợ (`supportEmail`) | Trống |
 
 Các trang trên tồn tại trong `apps/web/app/admin/**` ✅. Cổng thanh toán **tenant** do từng tenant tự cấu hình ở `/studio/{tenantSlug}/settings/payments` ✅.
@@ -253,6 +253,9 @@ deploy ❓) ✅. Nghiệp vụ chi tiết: [[02-System-Specs/Background-Jobs-Spe
 | Xoá audit log > 12 tháng (M12a, ADR-037) | Bước `audit.purge` trong cron, chạy trước drain ✅ | Dòng cũ tồn lâu hơn 12 tháng; không ảnh hưởng nghiệp vụ |
 | Tổng hợp `tenant_daily_stats` (M12b, ADR-037) | Bước `stats.aggregate` trong cron, sau `audit.purge`, trước drain — tính lại hôm qua + hôm nay giờ VN; bảng trống → backfill ≤ 400 ngày ✅ | Dashboard `/admin` hiện số của lần tổng hợp trước (ghi "cập nhật lần cuối …"); bảng trống → section báo "Chưa có hoạt động bán tài liệu" |
 | Xoá IP báo cáo vi phạm > 12 tháng (M12c, ADR-038) | Bước `abuse_report.ip_purge` trong cron, sau `stats.aggregate`, trước drain ✅ | IP tồn lâu hơn 12 tháng; báo cáo không đổi |
+| Xoá bản ghi phiên hết hạn/đã thu hồi > 90 ngày (ADR-053) | Bước `refresh_tokens.purge` trong cron, sau `abuse_report.ip_purge`, trước drain ✅ — §6.6 | Bảng `refresh_tokens` phình dần (gồm IP/User-Agent cũ); đăng nhập/refresh không bị ảnh hưởng |
+| Xoá nhật ký tải `download_events` > 12 tháng (ADR-054 mục 8) | Bước `download_events.purge` trong cron, sau `refresh_tokens.purge`, trước drain, qua `withSystemJob` ✅ | Nhật ký tải (có IP) giữ lâu hơn 12 tháng — lệch cam kết dự thảo Chính sách bảo mật; tải tài liệu không bị ảnh hưởng (lượt tải đếm ở `entitlements`/share link) |
+| Dọn nháp editor > 30 ngày / mồ côi (ADR-053 bổ sung lần 3) | `purgeStaleDrafts()` có ở `lib/editor-draft.ts` nhưng **chưa gắn** vào cron ✅ grep | Hiện chưa editor nào ghi nháp nên chưa có dữ liệu để dọn |
 
 Web app chạy pg-boss với `schedule: false, supervise: false` (`lib/jobs.ts`) ✅ — không sinh job `order.sweep`/`subscription.sweep` trên
 Vercel. **Email không phụ thuộc job** — gửi đồng bộ qua `sendEmailNow()` ✅.
@@ -311,6 +314,22 @@ Nếu chạy: cần Node ≥ 20.9, cả monorepo, cùng bộ env runtime §3.1 (
 `lib/jobs.ts` khởi động pg-boss lười một lần cho mỗi instance function ấm (start lỗi thì lần sau thử lại) ✅; mỗi instance giữ kết nối
 `DIRECT_URL` (không pooler — ADR-007). Số kết nối thật trên Neon khi nhiều instance song song và độ trễ cold start chưa đo ❓.
 
+### 6.6. Dọn bản ghi phiên đăng nhập — bước `refresh_tokens.purge` (ADR-053)
+
+Nguồn: ADR-053 mục 4 trong `docs/DECISIONS.md`; code `purgeStaleRefreshTokens()` (`apps/web/lib/account-sessions.ts`) ✅. Nghiệp vụ:
+[[02-System-Specs/Auth-Session-Specs|Auth-Session-Specs]] §8.
+
+* **Làm gì:** `DELETE FROM refresh_tokens` các dòng có `expiresAt < now − 90 ngày` **hoặc** `revokedAt < now − 90 ngày` (một câu `deleteMany`) ✅. Token
+  còn hiệu lực không bao giờ bị xoá; token đã bị thay (rotate) hết hạn cùng phiên nên bị xoá sau hạn phiên + 90 ngày.
+* **Không cần cấu hình thêm:** chạy trong cron hằng ngày sẵn có (§6.2); không env mới, không GRANT mới (`gieochu_app` đã có `DELETE` — theo comment
+  migration 🟡). Hạn 90 ngày là hằng `SESSION_RECORD_RETENTION_DAYS` trong code, **không** có ở System Settings.
+* **Kiểm sau lần chạy:** log `cron daily finished` → `results.sessionPurge = { ok: true, result: { deleted: <số dòng> } }`. Lần chạy đầu sau deploy có thể
+  xoá nhiều dòng tích từ trước (token cũ trượt 7 ngày, chưa từng dọn) — số thật ❓ chưa đo. Bước lỗi → `500 CRON_STEP_FAILED`, các bước khác vẫn chạy.
+* **Index:** `refresh_tokens_expiresAt_idx`, `refresh_tokens_revokedAt_idx` (migration §9.12) phục vụ câu xoá này.
+* **Production trên VPS (ADR-049):** Vercel Cron chỉ chạy ở môi trường Vercel; khi production chuyển VPS, crontab phải gọi `GET /api/cron/daily` kèm
+  Bearer `CRON_SECRET` thì bước này mới chạy — chưa có runbook VPS ([[01-Architecture-Decisions/ADR-036-Vercel-Testing-VPS-Production|ADR-036 KB]]) ❓.
+* **Không** chạy tay `DELETE` trên DB dùng chung để "dọn nhanh" (ADR-034) — chờ cron, hoặc bấm Run cron trên Vercel (§6.2 bước 6).
+
 ---
 
 ## 7. Sự cố đã gặp khi deploy và cách sửa
@@ -362,7 +381,8 @@ trên production.** Trình tự dưới đây Long soạn từ quy tắc trên, 
    `DROP`/`RENAME`/đổi kiểu cột chỉ chạy **sau khi** bản code không còn dùng cột đó đã lên production và qua smoke test.
 3. **Không chạy `pnpm db:seed`** — seed ghi đè `blocks` trang chủ CMS ✅ (`seed.ts`). Dữ liệu hệ thống sửa qua UI System Center.
 4. **Integration test / script thủ công ghi dữ liệu thật:** chỉ chạy khi cần; tự dọn user/tenant/đơn tạm; không đụng cấu hình
-   dùng chung (dùng `shared-config-snapshot`, Publish-And-Rollback §2.2.1); không chạy luồng gửi email tới địa chỉ thật (chỉ
+   dùng chung — cần cấu hình giả thì mock lớp đọc cấu hình, không ghi/snapshot bảng singleton (Publish-And-Rollback §2.2.1; `shared-config-snapshot` đã xoá
+   2026-10-25 sau sự cố ghi đè cấu hình 2026-10-24); không chạy luồng gửi email tới địa chỉ thật (chỉ
    `@example.test`).
 5. **Preview deployment** ghi vào cùng DB — chỉ dùng để **xem giao diện**, không tạo/xoá dữ liệu.
 6. **Dữ liệu demo đang ở production** — dọn bằng `demo:clean` trước khi mở cho người dùng thật (§9.3).
@@ -520,6 +540,43 @@ cột đã xoá) **không** quay lại được. Point-in-Time Restore ảnh hư
   **Không cần biến env mới** (canonical trang chủ dùng `APP_URL` có sẵn).
 * Sau deploy: chưa có bản Điều khoản PUBLISHED → đăng ký như cũ; xuất bản bản đầu theo [[04-Operations-Runbooks/Legal-Terms-Publishing-Runbook|Legal-Terms-Publishing-Runbook]].
   Nghiệp vụ: [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]].
+
+### 9.12. Migration ADR-053 (chính sách phiên đăng nhập) — đã chạy 2026-10-24, **trước code GĐ B**
+
+* `20261024090000_adr051_session_policy` — chỉ *thêm* (expand): `refresh_tokens` + `deviceLabel`, `rememberMe` (`NOT NULL DEFAULT false`),
+  `sessionStartedAt`; `system_settings` + 6 cột `INTEGER NOT NULL DEFAULT` (`sessionIdleMinutes` 60, `sessionAbsoluteHours` 12, `rememberMeDays` 30,
+  `adminIdleMinutes` 15, `adminAbsoluteHours` 8, `sessionWarningMinutes` 2); 2 index `expiresAt`, `revokedAt` ✅ đọc SQL. Không RLS (L1), không đổi/xoá cột cũ.
+* **Thứ tự:** migration **trước** code GĐ B. Code GĐ A (hoặc bản cũ hơn) chạy được trên schema mới (comment SQL). Code GĐ B lên DB chưa có cột → Prisma
+  ghi/đọc cột không tồn tại → login/refresh lỗi (suy từ code ❓).
+* **Đã chạy trên DB dùng chung 2026-10-24** 🟡 (brief Quốc; Long không chạy lệnh DB). File migration **chưa commit** ✅ `git status`. Mọi DB khác (restore,
+  branch mới): `pnpm db:migrate` trước deploy.
+* **Sau deploy:** phiên đang mở không bị đăng xuất; lần refresh đầu tiên bắt đầu đếm idle/absolute và chuyển phiên đó thành **không ghi nhớ** (cookie
+  session) — người dùng đóng trình duyệt sau đó sẽ phải đăng nhập lại ✅ suy từ code. Không biến env mới.
+* **Migration contract về sau** (chưa làm, cần Quốc duyệt): bỏ `system_settings.refreshTokenTtlDays` chỉ sau khi code ADR-053 đã lên mọi môi trường dùng DB.
+* Rollback code về trước ADR-053: an toàn với schema (cột mới có default); token tạo bởi code ADR-053 có `expiresAt` = hạn phiên, code cũ đọc bình thường ✅
+  suy từ code.
+
+### 9.13. Migration ADR-053 bổ sung lần 3 (nháp tự động editor) — đã chạy 2026-10-24
+
+* `20261024120000_adr051_editor_drafts` (tên thư mục giữ số cũ ADR-051 — đổi số ADR 2026-10-24, [[00-Index/KB-Audit-2026-09-26|KB-Audit]] §34) — chỉ
+  *thêm* (expand): 2 enum, bảng L2 `tenant_editor_drafts` (RLS `ENABLE` + `FORCE`, 5 policy) và bảng L1 `system_editor_drafts`, index, FK Cascade, CHECK,
+  `GRANT` cho `gieochu_app` (bọc `IF EXISTS`) ✅ đọc SQL. Không đổi bảng cũ.
+* **Thứ tự:** migration trước code dùng nháp; code hiện tại chạy được trên schema mới (không đọc 2 bảng) — comment SQL.
+* **Đã chạy trên DB dùng chung** 🟡 (brief Quốc; Long không chạy lệnh DB). File migration **chưa commit** ✅ `git status`. Mọi DB khác: `pnpm db:migrate`.
+* Môi trường tạo role `gieochu_app` **sau** migration: `setup-app-role` (ALTER DEFAULT PRIVILEGES) phải phủ 2 bảng — theo comment SQL, chưa kiểm ❓.
+
+### 9.14. Migration ADR-054 (mô tả/SEO văn bản pháp lý, nới khoá) — đã chạy 2026-10-24, **trước code ADR-054**
+
+* `20261024150000_adr053_legal_document_meta` (tên thư mục giữ số cũ 053 — đổi số ADR 2026-10-25, [[00-Index/KB-Audit-2026-09-26|KB-Audit]] §36) — expand: `legal_documents` + `summary`, `seoTitle`, `seoDescription` (NULL), CHECK `legal_documents_meta_length`
+  (320/120/320); `DROP` + tạo lại CHECK `legal_documents_key_format` (`key` nhận `_`, `slug` giữ luật cũ) ✅ đọc SQL. L1, không GRANT thêm.
+* **Thứ tự:** chạy migration **trước** deploy code ADR-054 — metadata trang văn bản và editor `/admin/cms/phap-ly` đọc 3 cột mới; tạo nháp
+  `content_policy`/`usage_license` cần CHECK đã nới. Code cũ chạy được trên schema mới (cột NULL, CHECK chỉ nới) — comment SQL.
+* **Trạng thái:** **đã chạy trên DB dùng chung** 🟡 (chủ dự án xác nhận 2026-10-24, brief Quốc 2026-10-25; Long không chạy lệnh DB) — đã cập nhật
+  [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]] và [[03-API-Contracts/Database-Schema-Reference|Database-Schema-Reference]] §7. Môi trường
+  dùng DB khác (khôi phục, Neon mới) vẫn phải chạy migration này trước code ADR-054.
+* **Trước khi deploy:** quét DB không có tenant mang slug trùng 7 URL văn bản (`dieu-khoan-su-dung`, `chinh-sach-bao-mat`, `chinh-sach-noi-dung`,
+  `cam-ket-ban-quyen`, `quyen-su-dung-tai-lieu`, `chinh-sach-nguoi-ban`, `lien-he`) — route tĩnh cấp gốc sẽ che storefront của tenant đó. Lần quét 2026-10-24: ✅ Hiếu quét DB (chỉ đọc), báo qua Quốc 2026-10-24: DB có 1 tenant, không trùng 7 slug mới và `phap-ly`; quét lại nếu có tenant mới trước deploy.
+* Rollback code về trước ADR-054: cột mới bị bỏ qua; link `/{slug}` mới sẽ 404 (thư mục route không còn), `/phap-ly/{slug}` cũ hoạt động lại ✅ suy từ code.
 
 ---
 

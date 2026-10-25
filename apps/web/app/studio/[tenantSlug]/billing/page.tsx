@@ -10,6 +10,7 @@ import { RefundRequestForm } from "./refund-request-form";
 import { getEnabledPlatformProviders } from "../../../../lib/platform-payment";
 import { RenewForm } from "./renew-form";
 import { BillingPoll } from "./billing-poll";
+import { BankTransferPanel } from "../../../_ui/bank-transfer-panel";
 import { AdminPageHeader, Badge, ConfigCard, DataTable, EmptyState, Notice, Td, Tr } from "../../../admin/_ui/kit";
 import { IconCard, IconReceipt } from "../../../admin/_ui/icons";
 import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
@@ -206,15 +207,18 @@ export default async function StudioBillingPage({
               const checkout = pendingInvoice.checkoutPayload as CheckoutResult | null;
               if (!checkout) return null;
               if (checkout.kind === "QR") {
+                const bank = banks.find((b) => b.bin === checkout.bank.bin);
                 return (
-                  <div>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={checkout.qrImageDataUrl} alt="QR thanh toán" className="h-48 w-48" />
-                    <p className="mt-2 text-sm">
-                      {checkout.bank.accountName} — {checkout.bank.accountNo}
-                    </p>
-                    <p className="text-sm text-gray-500">Nội dung: {checkout.content}</p>
-                  </div>
+                  <BankTransferPanel
+                    qrImageDataUrl={checkout.qrImageDataUrl}
+                    bank={bank ? { shortName: bank.shortName, name: bank.name } : null}
+                    accountNo={checkout.bank.accountNo}
+                    accountName={checkout.bank.accountName}
+                    amountVnd={pendingInvoice.amountVnd}
+                    content={checkout.content}
+                    referenceCode={pendingInvoice.code}
+                    referenceNoun="hoá đơn"
+                  />
                 );
               }
               return (

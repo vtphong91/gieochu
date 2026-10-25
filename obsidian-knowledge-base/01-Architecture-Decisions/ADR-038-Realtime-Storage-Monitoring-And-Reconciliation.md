@@ -18,7 +18,7 @@ status: Accepted (Chốt — Áp dụng chính thức)
 
 Tiến độ: **Đã triển khai hoàn tất trong code** (đã sửa `apps/web/app/admin/settings/storage/page.tsx`, `bucket-monitoring.tsx`, `packages/storage/src/bucket.ts`, `tenant-storage.ts`, `actions.ts` và bộ UI kit `GhostButton`).
 
-Mức xác minh: ✅ Đã kiểm thử qua unit test + typecheck monorepo 100% (`@gieochu/storage` 0 lỗi, `@gieochu/web` 0 lỗi, 37 test suites passed).
+Mức xác minh: ✅ Đã kiểm thử qua unit test + typecheck monorepo 100% (`@gieochu/storage` 0 lỗi, `@gieochu/web` 0 lỗi, 37 test suites passed) 🟡 — số liệu do vuong báo, Long chưa đối chiếu.
 
 ---
 
@@ -73,6 +73,8 @@ Xây dựng 3 tầng xử lý trong [`apps/web/lib/tenant-storage.ts`](file:///f
 ---
 
 ## 5. Tài Liệu Tham Chiếu
-- [[ADR-034-Dual-Storage-MinIO-R2-Dedicated-Tenant-Bucket|ADR-034: Dual Storage MinIO & Cloudflare R2]]
-- [[File-Storage-And-Downloads-Specs|Đặc tả Lưu trữ File & Tải xuống]]
+- [[01-Architecture-Decisions/ADR-034-Dual-Storage-MinIO-R2-Dedicated-Tenant-Bucket|ADR-034: Dual Storage MinIO & Cloudflare R2]]
+- [[02-System-Specs/File-Storage-And-Downloads-Specs|Đặc tả Lưu trữ File & Tải xuống]]
 - [docs/DECISIONS.md](../../docs/DECISIONS.md) — ADR-052
+
+*Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

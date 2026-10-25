@@ -1,17 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { toSafeRedirect } from "../../../lib/safe-redirect";
 import { AuthCard } from "../_ui/auth-card";
-import { ErrorBanner, PasswordField, SubmitButton, TextField } from "../_ui/fields";
+import { INK_SOFT } from "../_ui/colors";
+import { ErrorBanner, InfoBanner, PasswordField, SubmitButton, TextField } from "../_ui/fields";
 
 interface LoginFormValues {
   email: string;
   password: string;
+  /** ADR-053: "Ghi nhớ đăng nhập" — mặc định tắt; server bỏ qua với SYSTEM_ADMIN. */
+  rememberMe: boolean;
 }
+
+/** Chống vòng lặp khôi phục phiên (trang cần đăng nhập → /login → khôi phục → trang đó → /login...). Chỉ lưu mốc thời gian. */
+const RESUME_GUARD_KEY = "gieochu-session-resume-at";
+const RESUME_GUARD_MS = 30_000;
 
 /** Form đăng nhập (client). Tên thương hiệu do page (server) đọc từ `getEffectiveBrand()` truyền xuống (ADR-032). */
 export function LoginForm({ brandName }: { brandName: string }) {
@@ -23,8 +30,30 @@ export function LoginForm({ brandName }: { brandName: string }) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [needsVerification, setNeedsVerification] = useState(false);
   const [needsPasswordReset, setNeedsPasswordReset] = useState(false);
-  const router = useRouter();
   const searchParams = useSearchParams();
+  const sessionTimedOut = searchParams.get("het-phien") === "1";
+
+  // ADR-053: access token hết hạn nhưng refresh "Ghi nhớ" còn → trang cần đăng nhập chuyển về đây; thử khôi phục phiên
+  // một lần rồi quay lại trang đích. Vừa hết phiên do idle (`het-phien`) thì không thử.
+  useEffect(() => {
+    if (sessionTimedOut) return;
+    try {
+      const last = Number(window.sessionStorage.getItem(RESUME_GUARD_KEY) ?? "0");
+      if (Date.now() - last < RESUME_GUARD_MS) return;
+      window.sessionStorage.setItem(RESUME_GUARD_KEY, String(Date.now()));
+    } catch {
+      return; // sessionStorage bị chặn → bỏ qua khôi phục (không có cách chống vòng lặp).
+    }
+    let cancelled = false;
+    void fetch("/api/auth/refresh", { method: "POST" })
+      .then((response) => {
+        if (!cancelled && response.ok) window.location.assign(toSafeRedirect(searchParams.get("next"), "/"));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionTimedOut, searchParams]);
 
   async function onSubmit(data: LoginFormValues) {
     setServerError(null);
@@ -33,7 +62,7 @@ export function LoginForm({ brandName }: { brandName: string }) {
     const response = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ email: data.email, password: data.password, rememberMe: data.rememberMe === true }),
     });
     const body = await response.json();
     if (!response.ok) {
@@ -55,8 +84,9 @@ export function LoginForm({ brandName }: { brandName: string }) {
     // ở lib/page-guards.ts).
     const roleDefault = body.user?.landingPath ?? "/";
     const next = toSafeRedirect(searchParams.get("next"), roleDefault);
-    router.push(next);
-    router.refresh();
+    // ADR-053: điều hướng cứng — xoá toàn bộ client cache (layout prefetch của /pricing, /cua-hang… còn header "khách").
+    // `router.push` + `router.refresh` chỉ xoá cache của route hiện tại; cookie đặt qua Route Handler không invalidate.
+    window.location.assign(next);
   }
 
   return (
@@ -72,6 +102,11 @@ export function LoginForm({ brandName }: { brandName: string }) {
         </>
       }
     >
+      {sessionTimedOut ? (
+        <div className="mb-4">
+          <InfoBanner message="Phiên đăng nhập đã kết thúc để bảo vệ tài khoản. Vui lòng đăng nhập lại." />
+        </div>
+      ) : null}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         <TextField
           id="email"
@@ -88,6 +123,24 @@ export function LoginForm({ brandName }: { brandName: string }) {
           error={errors.password?.message}
           {...register("password", { required: "Vui lòng nhập mật khẩu." })}
         />
+        {/* ADR-053: mặc định tắt. Quản trị viên hệ thống: server luôn bỏ qua (phiên kết thúc khi đóng trình duyệt). */}
+        {/* `label` bao cả ô → vùng bấm cả dòng ≥44px; dòng phụ gắn qua aria-describedby, thẳng hàng với chữ của nhãn. */}
+        <div>
+          <label htmlFor="rememberMe" className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm">
+            <input
+              id="rememberMe"
+              type="checkbox"
+              aria-describedby="rememberMe-hint"
+              className="h-4 w-4 shrink-0 cursor-pointer"
+              style={{ accentColor: "var(--color-primary)" }}
+              {...register("rememberMe")}
+            />
+            Ghi nhớ đăng nhập trên thiết bị này
+          </label>
+          <p id="rememberMe-hint" className="-mt-2 pl-[26px] text-xs" style={{ color: INK_SOFT }}>
+            Không dùng trên máy dùng chung.
+          </p>
+        </div>
         {needsVerification ? (
           <Link href="/verify-email?pending=1" className="block text-sm font-medium" style={{ color: "#0F3B82" }}>
             Gửi lại email kích hoạt

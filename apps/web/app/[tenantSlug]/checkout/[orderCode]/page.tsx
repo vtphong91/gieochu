@@ -5,10 +5,11 @@ import type { CheckoutResult } from "@gieochu/payments";
 import { brandColors } from "@gieochu/config/theme";
 import { requireVerifiedAccess } from "../../../../lib/page-guards";
 import { getOrderForCustomer } from "../../../../lib/order";
-import { getEnabledProviders } from "../../../../lib/tenant-payment";
+import { getBankByBin, getEnabledProviders } from "../../../../lib/tenant-payment";
 import { SiteFooter } from "../../../_ui/site-footer";
 import { SiteHeader } from "../../../_ui/site-header";
 import { systemFontVars } from "../../../_ui/system-fonts";
+import { BankTransferPanel } from "../../../_ui/bank-transfer-panel";
 import { CheckoutPoll } from "./checkout-poll";
 import { CouponPanel } from "./coupon-panel";
 import { ProviderPanel } from "./provider-panel";
@@ -55,6 +56,8 @@ export default async function CheckoutPage({ params }: { params: Promise<{ tenan
   const isPaidOrFulfilled = order.status === "PAID" || order.status === "FULFILLED";
   const enabledProviders = isPending && !order.provider ? await getEnabledProviders(order.tenantId) : [];
   const checkout = order.checkoutPayload as CheckoutResult | null;
+  // Tên ngân hàng từ bảng L1 `bank_bins` theo BIN trong checkoutPayload; không tìm thấy → không truyền (dòng "Ngân hàng" tự ẩn).
+  const bank = isPending && checkout?.kind === "QR" ? await getBankByBin(checkout.bank.bin) : null;
 
   // ADR-025: checkout là trang hệ thống — bọc header/footer + font hệ thống, nội dung giữ container-narrow.
   return (
@@ -120,7 +123,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ tenan
 
         {isPending ? (
           <section className="mt-4">
-            <CouponPanel tenantSlug={tenantSlug} orderCode={orderCode} appliedCode={order.couponCode} />
+            <CouponPanel tenantSlug={tenantSlug} orderCode={orderCode} appliedCode={order.couponCode} hasQrCheckout={checkout?.kind === "QR"} />
           </section>
         ) : null}
 
@@ -129,12 +132,19 @@ export default async function CheckoutPage({ params }: { params: Promise<{ tenan
             {checkout ? (
               checkout.kind === "QR" ? (
                 <div>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={checkout.qrImageDataUrl} alt="QR thanh toán" className="mx-auto h-48 w-48" />
-                  <p className="mt-2 text-center text-sm">
-                    {checkout.bank.accountName} — {checkout.bank.accountNo}
-                  </p>
-                  <p className="text-center text-sm [overflow-wrap:anywhere]" style={{ color: INK_SOFT }}>Nội dung: {checkout.content}</p>
+                  <h2 className="font-[family-name:var(--font-heading)] text-lg font-semibold">Thanh toán chuyển khoản</h2>
+                  <div className="mt-2">
+                    <BankTransferPanel
+                      {...(bank ? { bank } : {})}
+                      qrImageDataUrl={checkout.qrImageDataUrl}
+                      accountNo={checkout.bank.accountNo}
+                      accountName={checkout.bank.accountName}
+                      amountVnd={order.totalVnd}
+                      content={checkout.content}
+                      referenceCode={order.code}
+                      referenceNoun="đơn hàng"
+                    />
+                  </div>
                 </div>
               ) : (
                 <a href={checkout.url} className="flex min-h-11 items-center justify-center font-medium underline" style={{ color: BLUE }}>

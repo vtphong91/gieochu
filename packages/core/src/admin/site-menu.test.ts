@@ -1,5 +1,5 @@
 import { formatCompactStatCount, homePublishIssues, homeSectionsSchema, parseHomeSections, resolveCommunityView } from "./home-sections";
-import { defaultSiteMenu, parseSiteMenu, siteMenuSchema } from "./site-menu";
+import { defaultSiteMenu, parseSiteMenu, resolveNavLinkHref, siteMenuSchema } from "./site-menu";
 
 describe("ADR-050 CMS menu and home sections", () => {
   it("rejects unsafe menu links, parses stored menu/home data defensively and hides unconsented testimonials", () => {
@@ -19,6 +19,13 @@ describe("ADR-050 CMS menu and home sections", () => {
     expect(withTarget("internal", "/\\evil.example")).toBe(false);
     expect(withTarget("page", "not-a-page")).toBe(false);
     expect(withTarget("email", "javascript:alert(1)")).toBe(false);
+    // ADR-054: loại link "legal" chỉ nhận khoá văn bản đã khai báo; footer mặc định có cột "Thông tin" (7 văn bản).
+    expect(withTarget("legal", "privacy")).toBe(true);
+    expect(withTarget("legal", "not-a-document")).toBe(false);
+    expect(resolveNavLinkHref("legal", "seller")).toBe("/chinh-sach-nguoi-ban");
+    expect(defaultSiteMenu().footer.columns.find((c) => c.id === "col-info")?.links.map((l) => l.target)).toEqual([
+      "terms", "privacy", "content_policy", "copyright", "usage_license", "seller", "contact",
+    ]);
 
     // Parse phòng thủ: link hỏng bị bỏ riêng, cột rỗng bị bỏ, header > 5 mục bị cắt, đầu vào không phải object → null.
     const stored = {

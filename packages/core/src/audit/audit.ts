@@ -72,6 +72,8 @@ export const AUDIT_ACTIONS = [
   "LEGAL_REVIEW_STATUS_CHANGED",
   "LEGAL_VERSION_PUBLISHED",
   "LEGAL_VERSION_ARCHIVED",
+  // ADR-054 (metadata chỉ khoá văn bản + cờ trường có giá trị, không nội dung)
+  "LEGAL_DOCUMENT_META_UPDATED",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -138,6 +140,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   LEGAL_REVIEW_STATUS_CHANGED: "Đổi trạng thái rà soát pháp lý",
   LEGAL_VERSION_PUBLISHED: "Xuất bản văn bản pháp lý",
   LEGAL_VERSION_ARCHIVED: "Lưu trữ văn bản pháp lý",
+  LEGAL_DOCUMENT_META_UPDATED: "Cập nhật mô tả/SEO văn bản pháp lý",
 };
 
 export const AUDIT_SCOPE_LABELS: Record<AuditScopeValue, string> = {

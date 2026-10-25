@@ -15,6 +15,7 @@ import {
   getOrderForCustomer,
   initiateOrderCheckout,
   listOrdersPage,
+  removeCouponFromOrder,
   runOrderSweep,
 } from "../../lib/order";
 import { addOrderNote, deleteOrderNote } from "../../lib/order-note";
@@ -118,6 +119,22 @@ describe("M8 checkout and orders", () => {
     const checkout = updated.checkoutPayload as unknown as CheckoutQrResult;
     expect(checkout.kind).toBe("QR");
     expect(checkout.content).toBe(order.code);
+
+    // ADR-056 bổ sung: áp/gỡ mã SAU khi đã có QR → server tạo lại QR theo totalVnd mới (VietQR tag 54 = số tiền), nội dung CK giữ mã đơn.
+    await createCoupon(tenant.id, { code: "QR10", type: "PERCENT", value: 10, isEnabled: true });
+    const discounted = await applyCouponToOrder(tenant.id, order.id, buyer.id, "QR10");
+    const discountedQr = discounted.checkoutPayload as unknown as CheckoutQrResult;
+    expect(discounted.totalVnd).toBe(90_000);
+    expect(discounted.provider).toBe("MANUAL_QR");
+    expect(discountedQr.qrPayload).toContain("540590000");
+    expect(discountedQr.qrPayload).not.toBe(checkout.qrPayload);
+    expect(discountedQr.content).toBe(order.code);
+
+    const restored = await removeCouponFromOrder(tenant.id, order.id, buyer.id);
+    const restoredQr = restored.checkoutPayload as unknown as CheckoutQrResult;
+    expect(restored.totalVnd).toBe(100_000);
+    expect(restoredQr.qrPayload).toContain("5406100000");
+    expect(restoredQr.content).toBe(order.code);
   });
 
   it("owner's manual confirm requires a note, then fulfills the order and grants an entitlement", async () => {
@@ -133,6 +150,9 @@ describe("M8 checkout and orders", () => {
     const fulfilled = await getOrderDetailView(tenant.id, order.id);
     expect(fulfilled.status).toBe("FULFILLED");
     expect(fulfilled.paidAt).not.toBeNull();
+    // ADR-056 bổ sung: đơn đã thanh toán không được áp/gỡ mã giảm giá.
+    await expect(applyCouponToOrder(tenant.id, order.id, buyer.id, "ANY")).rejects.toMatchObject({ code: "ORDER_NOT_PENDING" });
+    await expect(removeCouponFromOrder(tenant.id, order.id, buyer.id)).rejects.toMatchObject({ code: "ORDER_NOT_PENDING" });
     expect(fulfilled.confirmNote).toContain("đối chiếu");
     expect(fulfilled.allowedActions).toEqual(["view", "refund"]);
 

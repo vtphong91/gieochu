@@ -1,7 +1,7 @@
 import { decryptSecret, encryptSecret, getProvider, maskSecret, type PaymentProviderId, type TestResult } from "@gieochu/payments";
 import { AppError } from "@gieochu/core";
 import { getEnv } from "@gieochu/config";
-import { getPrismaClient, Prisma } from "@gieochu/db";
+import { getPrismaClient, Prisma, type PlatformPaymentConfig } from "@gieochu/db";
 import { audit } from "./audit";
 
 export type PublicProviderConfig = Record<string, string | number | boolean>;
@@ -31,7 +31,14 @@ function accountIdentity(provider: PaymentProviderId, cfg: PublicProviderConfig)
  * re-confirmed. A cosmetic edit (account name, SePay authType) does not
  * trigger this. Re-saving unchanged (with the checkbox ticked) re-enables it.
  */
-export async function savePlatformProviderConfig(input: SavePlatformProviderConfigInput): Promise<void> {
+export interface SavePlatformProviderConfigResult {
+  /** Trạng thái thực sự đã lưu (có thể khác `input.isEnabled` do ADR-013). */
+  isEnabled: boolean;
+  /** Admin yêu cầu bật nhưng bị tự tắt vì định danh tài khoản/secret đổi (ADR-013) — cần lưu lại lần nữa. */
+  autoDisabled: boolean;
+}
+
+export async function savePlatformProviderConfig(input: SavePlatformProviderConfigInput): Promise<SavePlatformProviderConfigResult> {
   const env = getEnv();
   const prisma = getPrismaClient();
 
@@ -83,6 +90,7 @@ export async function savePlatformProviderConfig(input: SavePlatformProviderConf
       accountChanged: identityChanged,
     },
   });
+  return { isEnabled, autoDisabled: identityChanged && input.isEnabled };
 }
 
 export interface MaskedPlatformProviderConfig {
@@ -109,6 +117,15 @@ export async function listPlatformProviderConfigs(): Promise<MaskedPlatformProvi
       lastVerifiedAt: row.lastVerifiedAt,
     };
   });
+}
+
+/**
+ * Dòng cấu hình cổng PLATFORM (L1, PaymentScope PLATFORM) theo provider — điểm đọc duy nhất cho luồng tạo hoá đơn gia hạn
+ * và webhook platform. Tách hàm để integration test thay bằng cấu hình giả trong bộ nhớ thay vì ghi đè dòng thật trên
+ * DB dùng chung (ADR-034).
+ */
+export async function getPlatformPaymentConfigRow(provider: PaymentProviderId): Promise<PlatformPaymentConfig | null> {
+  return getPrismaClient().platformPaymentConfig.findUnique({ where: { provider } });
 }
 
 /** Used by subscription-billing.ts to offer only providers the platform actually accepts payment through. */

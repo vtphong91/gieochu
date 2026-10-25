@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { cache } from "react";
-import { isProfileComplete, signAccessToken } from "@gieochu/auth";
+import { isProfileComplete } from "@gieochu/auth";
 import {
   isVnProvince,
   normalizeVnPhone,
@@ -11,11 +11,10 @@ import { cloudinaryDeliveryUrl } from "@gieochu/core/cloudinary-url";
 import { AppError, describePlanLimit, formatPlanLimit, logger, rateLimited, type PlanLimitDisplay, type PlanLimitField } from "@gieochu/core";
 import { getPrismaClient, withCustomer, withTenant, type SubscriptionStatus } from "@gieochu/db";
 import { cookies } from "next/headers";
-import { ACCESS_COOKIE_NAME } from "./cookies";
-import { getAccessTokenTtlSeconds, getJwtContext } from "./jwt-context";
 import { tenantLogoUrl } from "./home";
 import { getPublicBucketBaseUrl } from "./product-cover";
 import { checkRateLimit } from "./rate-limit";
+import { issueAccessCookieForSession } from "./session-access";
 import { getCurrentUser, type CurrentUser } from "./session";
 import {
   createCloudinaryUploadSignature,
@@ -345,19 +344,13 @@ export async function updateProfile(user: CurrentUser, formData: FormData): Prom
   });
 
   if (complete !== user.profileCompleted) {
-    const accessTtl = await getAccessTokenTtlSeconds();
-    const accessToken = await signAccessToken(
-      { sub: dbUser.id, sid: user.familyId, role: dbUser.systemRole, ver: Boolean(dbUser.emailVerifiedAt), pc: complete },
-      getJwtContext(),
-      accessTtl,
-    );
-    const store = await cookies();
-    store.set(ACCESS_COOKIE_NAME, accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: accessTtl,
+    // ADR-053: ký lại theo chính sách của phiên hiện tại (claim `rm`, TTL, kiểu cookie) — cùng helper với login/refresh.
+    await issueAccessCookieForSession(await cookies(), {
+      userId: dbUser.id,
+      familyId: user.familyId,
+      role: dbUser.systemRole,
+      emailVerified: Boolean(dbUser.emailVerifiedAt),
+      profileCompleted: complete,
     });
   }
 

@@ -5,7 +5,7 @@ tags:
   - billing
   - status/living
 date: 2026-09-26
-updated: 2026-10-17
+updated: 2026-10-25
 author: System Architect
 ---
 
@@ -209,6 +209,56 @@ thứ hai** thì **mất quyền** yêu cầu (bổ sung lần 2).
 hoàn → hoá đơn `REFUNDED` + Free + payout `NULL`; từ chối cần lý do; hoá đơn thứ hai → 409; quá 7 ngày bị từ chối. **Chưa** kiểm qua UI có
 đăng nhập, **chưa** SMTP thật ❓.
 
+### 5C. System Center — lịch sử hoá đơn gói + "Đơn hàng gói dịch vụ" (ADR-056) — working tree, chưa commit ✅ `git status`
+
+Quyết định: [[01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr|ADR-041 KB (≙ ADR-056)]]. Không migration.
+
+- **`/admin/billing/invoices`** — 2 tab bằng `?tab=cho-doi-soat|tat-ca` ✅ (tab lạ → "Chờ đối soát"):
+  - *Chờ đối soát*: `listPendingManualInvoices()` như cũ (MANUAL_QR PENDING), nút "Xác nhận đã nhận tiền" → `confirmManualInvoicePayment` (không đổi).
+  - *Tất cả*: `listSubscriptionInvoices({ status, provider, page, pageSize })` — mọi trạng thái/cổng, mới nhất trước (`createdAt desc, id desc`),
+    `pageSize` kẹp 1–100 (trang dùng 10/20/50/100, mặc định 20). Cột: mã, gian hàng, gói, cổng, số tiền, trạng thái, ngày tạo, hạn thanh toán, ngày thu.
+    Nút xác nhận **chỉ** ở dòng `provider = MANUAL_QR` và `status = PENDING`.
+- **`/admin/subscriptions`** (menu Kinh doanh → "Đơn hàng", tiêu đề "Đơn hàng gói dịch vụ") ✅ — `listSubscriptions({ planCode, status, page, pageSize })`:
+  - Lọc `?plan=` (mã gói; chỉ nhận mã có trong `listPlanFilterOptions()` — mọi gói kể cả đã ngừng bán, xếp theo giá) và `?status=` (6 giá trị
+    `SubscriptionStatus`); có `page`/`pageSize`.
+  - Sắp xếp `plan.isFree asc` → `currentPeriodEnd asc` → `id asc`: gói trả phí hết hạn sớm nhất lên đầu, **gói miễn phí xếp sau**; cột "Hết hạn" của gói
+    miễn phí hiện **"Không thời hạn"** (Free có `currentPeriodEnd = currentPeriodStart` — comment code).
+  - "Hoá đơn gần nhất" = hoá đơn mới nhất của tenant (`createdAt desc`, lấy 1). Tên gian hàng link tới `/admin/tenants` (danh sách chung, không trang chi tiết).
+- `parseEnumParam(allowed, value)` — query không thuộc danh sách → `undefined` (bỏ lọc), không ném lỗi ✅.
+- Nhãn/tông badge dùng chung ở `app/admin/_ui/billing-labels.ts` (`INVOICE_STATUS_LABEL`, `INVOICE_PROVIDER_LABEL`, `SUBSCRIPTION_STATUS_LABEL`, …,
+  `formatAdminDateTime`/`formatAdminDate` theo `DISPLAY_TIME_ZONE`) ✅.
+- **Ranh giới:** bốn hàm chỉ đọc `subscription_invoices`, `subscriptions`, `plans` + tên/slug gian hàng — không đọc đơn/khách của tenant (§7.9) ✅.
+- Kiểm bằng integration test có sẵn (`subscription-billing.test.ts`, thêm assert lọc `PAID`+`SEPAY`, `MANUAL_QR`, `CREATOR`+`ACTIVE`, `latestInvoice`) ✅ đọc test;
+  xem UI thật với phiên SYSTEM_ADMIN ❓.
+
+### 5D. Khối chuyển khoản dùng chung `BankTransferPanel` (ADR-056 mục 4) ✅ đọc code
+
+`apps/web/app/_ui/bank-transfer-panel.tsx` (client, thuần trình bày — không tự truy vấn). Dùng ở:
+- Studio `/studio/{slug}/billing` — hoá đơn gói đang chờ, `checkoutPayload.kind === "QR"` (PaymentScope PLATFORM); `referenceNoun = "hoá đơn"`.
+- Checkout `/{tenantSlug}/checkout/{orderCode}` — đơn PENDING có QR (PaymentScope TENANT); `referenceNoun = "đơn hàng"`; số tiền truyền vào là `order.totalVnd`.
+
+Hành vi:
+- **"Tải ảnh QR"** là `<a href={qrImageDataUrl} download="QR-<mã>.png">` — QR là data URL PNG sinh ở server; **không `fetch()`** vì CSP `connect-src` không
+  có `data:` ✅ comment code.
+- Bảng `dl` các dòng: Ngân hàng (chỉ khi tìm được tên theo BIN — không hiện BIN thô), Số tài khoản, Chủ tài khoản, Số tiền, Nội dung chuyển khoản (= mã đơn/mã hoá
+  đơn, nền nhấn + câu nhắc nhập đúng nguyên văn). Mỗi dòng một nút "Sao chép"; **số tiền sao chép là số nguyên trơn** (`String(Math.trunc(amountVnd))`, không
+  dấu chấm/"đ"), còn hiển thị dạng `formatVndFull`.
+- Kết quả sao chép đọc qua **một** vùng `role="status"` `aria-live="polite"` chung của khối (không phải mỗi dòng một vùng); clipboard lỗi → câu hướng dẫn chép tay.
+- Tên ngân hàng (bảng L1 `bank_bins`): checkout gọi `getBankByBin(bin)` (hàm mới trong `lib/tenant-payment.ts`, trả `{ shortName, name } | null`); Studio billing
+  tra trong danh sách `banks` đã nạp sẵn ở trang (không gọi `getBankByBin`) ✅.
+
+### 5E. Lưu cấu hình cổng platform — kết quả trả về + form nạp lại (2026-10-24/25) ✅ `git diff`
+
+- `savePlatformProviderConfig(input)` (`lib/platform-payment.ts`) nay trả **`{ isEnabled, autoDisabled }`** (trước: `void`): `isEnabled` là trạng thái thật đã lưu,
+  `autoDisabled = identityChanged && input.isEnabled` — admin bật nhưng bị **tự tắt** vì định danh tài khoản/secret đổi (ADR-013).
+- 3 Server Action `saveManualQrAction`/`saveSepayAction`/`saveMomoAction` trả `PlatformPaymentActionState.message` khi `autoDisabled`: "Đã lưu. Phương thức đang
+  tắt vì thông tin tài khoản vừa thay đổi — bật lại và bấm Lưu thêm một lần để xác nhận."; không có thì form hiện "Đã lưu.".
+- Ba form (`manual-qr-form.tsx`, `sepay-form.tsx`, `momo-form.tsx`) đặt `key` theo dữ liệu đã lưu (`JSON.stringify(initial)`; MoMo bỏ `lastVerifiedAt` khỏi key
+  để "Kiểm tra kết nối" không xoá chữ đang gõ) → form dựng lại khớp DB sau mỗi lần lưu (React 19 reset form nhưng `<select defaultValue>`/Toggle không theo).
+- Điểm đọc cấu hình cổng platform mới `getPlatformPaymentConfigRow(provider)` — dùng ở `createRenewalInvoice` và webhook `POST /api/webhooks/platform/[provider]`
+  (thay `findUnique` trực tiếp); tách ra để integration test mock (xem
+  [[04-Operations-Runbooks/Publish-And-Rollback-Runbook|Publish-And-Rollback-Runbook]] §2.2.1).
+
 ---
 
 ## 6. Nguyên Tắc Bảo Mật Bắt Buộc (CLAUDE.md §7, không đổi theo module)
@@ -228,12 +278,14 @@ hoàn → hoá đơn `REFUNDED` + Free + payout `NULL`; từ chối cần lý do
 * [[Architecture-Overview]] — Ranh giới L1/L2 và RLS ([Architecture-Overview.md](./Architecture-Overview.md))
 * [docs/DECISIONS.md](../../docs/DECISIONS.md) — ADR-011 (bảng platform config sớm), ADR-012 (xác minh VietQR/CRC16),
   ADR-013 (dedupe/tự tắt config), ADR-019 (webhook Tenant qua job, khoảng lệch với Platform), ADR-021 (Hybrid
-  Monetization), ADR-041 (Bảng giá CMS, hạn mức -1/0, hoàn tiền gói 7 ngày)
+  Monetization), ADR-041 (Bảng giá CMS, hạn mức -1/0, hoàn tiền gói 7 ngày), ADR-056 (lịch sử hoá đơn gói, Đơn hàng gói dịch vụ, khối chuyển khoản, mã giảm giá tạo lại QR)
+* [[01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr|ADR-041 KB (≙ ADR-056)]] ([ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr.md](../01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr.md))
 * [[02-System-Specs/Pricing-Page-Specs|Pricing-Page-Specs]] — trang Bảng giá + CMS `pricing` ([Pricing-Page-Specs.md](./Pricing-Page-Specs.md))
 * [docs/GIEOCHU_HYBRID_MONETIZATION_BILLING_PROPOSAL_V2.md](../../docs/GIEOCHU_HYBRID_MONETIZATION_BILLING_PROPOSAL_V2.md)
 * [[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]] — job nền + cron (ADR-036) ([Background-Jobs-Specs.md](./Background-Jobs-Specs.md))
 * Mã nguồn: `packages/payments/src/*`, `apps/web/lib/{order,payment-process,platform-payment,subscription-billing,subscription-sweep,subscription-refund,tenant-payment,job-runner,job-handlers}.ts`,
-  `apps/web/app/admin/billing/refunds/`, `apps/web/app/studio/[tenantSlug]/billing/`,
+  `apps/web/app/admin/billing/{refunds,invoices,payment}/`, `apps/web/app/admin/subscriptions/`, `apps/web/app/admin/_ui/billing-labels.ts`,
+  `apps/web/app/_ui/bank-transfer-panel.tsx`, `apps/web/app/studio/[tenantSlug]/billing/`,
   `packages/core/src/billing/*`
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

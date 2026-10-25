@@ -10,7 +10,8 @@ date: 2026-10-23
 > `docs/ke-hoach-home-legal-menu-seo-2026-10-23.md` (§3, §8).
 >
 > **Đây không phải tư vấn pháp lý.** Danh sách chỉ ghi những thông tin còn thiếu và những điều khoản cần chủ dự án/luật sư
-> xác nhận trước khi công bố. Chưa có trang chính sách nào được phát hành; đã có bản dự thảo Điều khoản sử dụng (`docs/legal/drafts/dieu-khoan-su-dung.md`).
+> xác nhận trước khi công bố. Chưa có trang chính sách nào được phát hành; đã có bản dự thảo Điều khoản sử dụng (`docs/legal/drafts/dieu-khoan-su-dung.md`)
+> và 6 dự thảo đợt 2 (2026-10-24, `docs/ke-hoach-trang-phap-ly-dot-2-2026-10-24.md`).
 >
 > **Quy ước:**
 > - Trạng thái: `CHƯA CÓ` (chưa ai cung cấp) · `ĐANG HỎI` · `ĐÃ XÁC NHẬN` (ghi ngày + người xác nhận) · `KHÔNG ÁP DỤNG` (ghi lý do).
@@ -74,6 +75,8 @@ date: 2026-10-23
 | DL-05 | Cookie: hiện chỉ thấy 2 cookie phiên đăng nhập `gieochu_access`, `gieochu_refresh` (httpOnly) và không thấy analytics ✅ (grep code); cookie do hạ tầng (CDN/hosting) đặt ❓. Xác nhận chưa dùng analytics/quảng cáo | Quyết định gộp trang Cookie vào Bảo mật | Chủ dự án | ĐANG HỎI | Nếu sắp dùng analytics → cần trang Cookie + cơ chế lựa chọn |
 | DL-06 | Quy trình xử lý **sự cố dữ liệu** (ai, thông báo cho ai) | Brief §4.6 | Chủ dự án + luật sư | CHƯA CÓ | Bảo mật thiếu mục sự cố |
 | DL-07 | Kênh và quy trình tiếp nhận yêu cầu của chủ thể dữ liệu (xem, sửa, xoá, rút đồng ý) | Brief §4.6 | Chủ dự án | CHƯA CÓ | — |
+| DL-08 | **Vai trò của người bán** đối với dữ liệu người mua mà gian hàng nhận được (họ tên, email, lịch sử mua tại gian hàng; tin nhắn liên hệ) — bên kiểm soát độc lập hay bên xử lý thay Nền tảng; nghĩa vụ của người bán (mục đích được dùng, cấm chia sẻ/quảng cáo khi chưa đồng ý). Hiện trạng ✅: `apps/web/lib/customer-list.ts` chỉ đọc `users.email` + `user_profiles.fullName`; `StorefrontMessage` lưu tên/email/nội dung | Bảo mật mục 1, 4.2; Chính sách người bán mục 8 | Luật sư + chủ dự án | CHƯA CÓ | Bảo mật và Chính sách người bán không xuất bản được |
+| DL-09 | Thời gian lưu **nhật ký tải tài liệu** (`download_events`: thời điểm, tệp, **IP**). Hiện trạng ✅: không có bước dọn trong `/api/cron/daily` (khác audit log / IP báo cáo đã có hạn 12 tháng) — nếu chốt thời hạn thì cần thêm bước dọn (việc của Hiếu) | Bảo mật mục 7 | Chủ dự án + luật sư | CHƯA CÓ | Bảo mật mục 7 còn placeholder |
 
 ## 5. Bản quyền, nội dung, báo cáo vi phạm
 
@@ -87,6 +90,7 @@ date: 2026-10-23
 | BQ-06 | Thời gian **lưu hồ sơ khiếu nại** | Brief §5 | Chủ dự án + luật sư | CHƯA CÓ | — |
 | BQ-07 | Báo cáo "gian lận giao dịch": chấp nhận chỉ lưu mã đơn dạng văn bản (System Admin **không** đọc chi tiết đơn của tenant — CLAUDE.md §7.9 ✅) | Kế hoạch §3.5 | Chủ dự án | CHƯA CÓ | Không thêm loại báo cáo giao dịch |
 | BQ-08 | **Cam kết không xử lý chỉ dựa trên báo cáo chưa xem xét** — câu ở Điều khoản mục 11 "không gỡ tài liệu hay khoá tài khoản chỉ dựa trên một báo cáo chưa được xem xét". Hiện trạng: mọi quyết định xử lý báo cáo do admin thực hiện ở `/admin/reports`, không có xử lý tự động ✅ (audit kế hoạch L6) | Brief §3; đây là cam kết công khai, ràng buộc vận hành sau này | Chủ dự án + luật sư | CHƯA CÓ | Điều khoản mục 11 còn placeholder — không xuất bản được |
+| BQ-09 | **Yêu cầu khai báo tài liệu có sử dụng AI** (bắt buộc ghi trong mô tả, khuyến khích, hay không yêu cầu). Hiện trạng ✅: sản phẩm **không** có trường khai báo AI; nếu bắt buộc thì cần trường/ô xác nhận mới (việc của Hiếu, có thể cần migration) | Brief §4.2, §4.3 | Chủ dự án + luật sư | CHƯA CÓ | Chính sách nội dung mục 6, Cam kết bản quyền mục 6 còn placeholder |
 
 ## 6. Vận hành văn bản
 
@@ -98,14 +102,14 @@ date: 2026-10-23
 | VH-04 | Pháp luật áp dụng và cơ chế giải quyết tranh chấp (toà án/trọng tài, nơi giải quyết) | Brief §4.1. | Luật sư | CHƯA CÓ | Điều khoản thiếu mục tranh chấp |
 | VH-05 | Giới hạn trách nhiệm được diễn đạt phù hợp pháp luật, không loại trừ nghĩa vụ bắt buộc; không tuyên bố miễn toàn bộ trách nhiệm vì người bán cam kết | Brief §3, §4.1 | Luật sư | CHƯA CÓ | Điều khoản thiếu mục giới hạn trách nhiệm |
 | VH-06 | Giấy phép giới hạn người bán cấp cho nền tảng (lưu trữ, hiển thị, phân phối, quảng bá) và tuyên bố không chuyển quyền sở hữu | Brief §4.1 | Luật sư | CHƯA CÓ | — |
-| VH-07 | **Văn bản dẫn chiếu chưa phát hành** — Điều khoản dẫn tới văn bản khác chưa có (hiện: Chính sách bảo mật ở Điều khoản mục 13; văn bản này hoãn sang giai đoạn pháp lý theo ADR-050) | Không dẫn chiếu tới văn bản không tồn tại trên production | Chủ dự án | CHƯA CÓ | Điều khoản còn placeholder tới khi văn bản được dẫn chiếu xuất bản hoặc câu dẫn chiếu được sửa |
+| VH-07 | **Văn bản dẫn chiếu chưa phát hành** — Điều khoản dẫn tới văn bản khác chưa có (hiện: Chính sách bảo mật ở Điều khoản mục 13; văn bản này hoãn sang giai đoạn pháp lý theo ADR-050). *2026-10-24:* đã có dự thảo `docs/legal/drafts/chinh-sach-bao-mat.md` (đợt 2, chờ chốt); các dự thảo đợt 2 dẫn chiếu chéo nhau bằng `/<slug>` (URL cấp gốc, ADR-054) — chỉ xuất bản một văn bản khi mọi văn bản nó dẫn tới đã có bản hiệu lực, hoặc xuất bản đồng loạt (kế hoạch đợt 2 §7) | Không dẫn chiếu tới văn bản không tồn tại trên production | Chủ dự án | CHƯA CÓ | Điều khoản còn placeholder tới khi văn bản được dẫn chiếu xuất bản hoặc câu dẫn chiếu được sửa |
 
 ---
 
 ## 7. Điều khoản bắt buộc luật sư xác nhận trước khi công bố
 
 Tổng hợp từ các mục trên (không công bố khi chưa có xác nhận): KD-01, KD-02, KD-07, KD-09, KD-10, ND-01, ND-02, ND-04,
-ND-05, ND-08, DL-02, DL-03, DL-04, DL-06, BQ-01, BQ-02, BQ-03, BQ-04, BQ-08, VH-04, VH-05, VH-06.
+ND-05, ND-08, DL-02, DL-03, DL-04, DL-06, DL-08, DL-09, BQ-01, BQ-02, BQ-03, BQ-04, BQ-08, BQ-09, VH-04, VH-05, VH-06.
 
 ## 8. Nhật ký cập nhật checklist
 
@@ -113,3 +117,4 @@ ND-05, ND-08, DL-02, DL-03, DL-04, DL-06, BQ-01, BQ-02, BQ-03, BQ-04, BQ-08, VH-
 |---|---|---|
 | 2026-10-23 | Long | Bản đầu theo brief pháp lý §5 và audit code ngày 2026-10-23 |
 | 2026-10-23 | Long | Thêm ND-08 (tạm ngưng/chấm dứt tài khoản), VH-07 (văn bản dẫn chiếu chưa phát hành); BQ-08 (cam kết mục 11 Điều khoản) — theo Quốc chốt. Dự thảo Điều khoản: `docs/legal/drafts/dieu-khoan-su-dung.md` |
+| 2026-10-24 | Long | Đợt 2 (kế hoạch `docs/ke-hoach-trang-phap-ly-dot-2-2026-10-24.md`): thêm DL-08 (vai trò người bán với dữ liệu người mua), DL-09 (thời hạn lưu nhật ký tải có IP), BQ-09 (khai báo tài liệu dùng AI); cập nhật VH-07 và đầu file. 6 dự thảo mới trong `docs/legal/drafts/`: `chinh-sach-bao-mat`, `chinh-sach-noi-dung`, `cam-ket-ban-quyen`, `quyen-su-dung-tai-lieu`, `chinh-sach-nguoi-ban`, `lien-he` |

@@ -67,7 +67,7 @@ ràng buộc bằng chỉ dẫn, không phải cơ chế công cụ. **Nguồn s
 | `pnpm test` | Cả Jest (unit) và Vitest (integration) |
 | `pnpm test:unit` | Jest trong `packages/*` |
 | `pnpm test:integration` | Vitest trong `apps/web/tests/integration` |
-| `pnpm test:count` | Đếm số test case, đối chiếu mốc trong `scripts/count-tests.mjs` (trần gốc 91/50 mục 9; trần hiện 95/57 theo ADR-026 + ADR-037 + ADR-050 — số test thực 95/57 — đã chạm trần) |
+| `pnpm test:count` | Đếm số test case, đối chiếu mốc trong `scripts/count-tests.mjs` (trần gốc 91/50 mục 9; trần hiện 100/66 theo ADR-026 + ADR-037 + ADR-050 + ADR-053 + ADR-054 — số test thực 100/66 — đã chạm trần) |
 | `pnpm db:migrate` | `prisma migrate deploy` (dùng `PRISMA_MIGRATE_URL`, role owner) |
 | `pnpm db:seed` | `prisma db seed` (dùng `DATABASE_URL`, role `gieochu_app`) |
 | `pnpm --filter @gieochu/db run setup-app-role` | Tạo/cập nhật role Postgres `gieochu_app` (chạy 1 lần/môi trường Neon mới) |

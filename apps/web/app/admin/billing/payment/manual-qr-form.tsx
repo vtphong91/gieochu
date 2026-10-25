@@ -23,7 +23,9 @@ export function ManualQrForm({
   const [state, formAction, isPending] = useActionState(saveManualQrAction, initialState);
 
   return (
-    <form action={formAction}>
+    // React 19 tự reset form sau action, nhưng <select defaultValue> và trạng thái hiển thị của Toggle không theo
+    // giá trị mới từ server → key theo dữ liệu đã lưu để dựng lại form, khớp đúng DB sau mỗi lần lưu.
+    <form key={JSON.stringify(initial)} action={formAction}>
       <ConfigCard
         icon={<IconBank className="h-5 w-5" />}
         title="Chuyển khoản thủ công"
@@ -41,7 +43,7 @@ export function ManualQrForm({
         </SelectField>
         <TextField id="manual-accountNo" label="Số tài khoản" name="accountNo" defaultValue={initial.accountNo} required />
         <TextField id="manual-accountName" label="Tên chủ tài khoản" name="accountName" defaultValue={initial.accountName} required />
-        <FormBanner ok={Boolean(state.success)} message={state.error ?? (state.success ? "Đã lưu." : undefined)} />
+        <FormBanner ok={Boolean(state.success)} message={state.error ?? (state.success ? (state.message ?? "Đã lưu.") : undefined)} />
         <PrimaryButton loading={isPending}>{isPending ? "Đang lưu..." : "Lưu cấu hình"}</PrimaryButton>
       </ConfigCard>
     </form>

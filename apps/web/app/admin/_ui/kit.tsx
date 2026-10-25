@@ -19,6 +19,8 @@ const GREEN_LINE = "#BBF7D0";
 const GRAY_LINE = "#E5E7EB";
 const INK = brandColors.ink;
 const INK_SOFT = "#6B7280";
+/** Viền focus bàn phím theo màu primary runtime (không hex cứng). */
+const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-primary)]";
 
 /** Page header dùng chung mọi trang cấu hình/CMS: tiêu đề + mô tả + hành động phải. */
 export function AdminPageHeader({ title, subtitle, action }: { title: string; subtitle?: ReactNode; action?: ReactNode }) {
@@ -262,7 +264,7 @@ export function GhostLinkButton({ href, children }: { href: string; children: Re
   return (
     <Link
       href={href}
-      className="inline-flex items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition hover:bg-gray-50"
+      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border bg-white px-4 py-2.5 text-sm font-semibold transition hover:bg-gray-50 lg:min-h-0 ${FOCUS_RING}`}
       style={{ borderColor: GRAY_LINE, color: INK }}
     >
       {children}
@@ -431,6 +433,124 @@ export function TableCard({
       </div>
       <DataTable head={head}>{children}</DataTable>
     </section>
+  );
+}
+
+/**
+ * Tab dạng pill điều hướng qua URL (GET, không cần JS) — cùng hình thức `/admin/users`. Tab đang chọn: nền accent +
+ * chữ INK (≈5.4:1 với accent mặc định; chữ trắng trên accent chỉ ≈3.2:1, không đạt AA) và `aria-current="page"`.
+ * Cao 44px dưới lg (target chạm), gọn 36px từ lg.
+ */
+export function PillTabs({ label, items }: { label: string; items: { href: string; label: string; active: boolean }[] }) {
+  return (
+    <nav aria-label={label} className="mt-6">
+      <ul className="flex flex-wrap gap-2">
+        {items.map((item) => (
+          <li key={item.href}>
+            <Link
+              href={item.href}
+              aria-current={item.active ? "page" : undefined}
+              className={`inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-semibold transition-colors motion-reduce:transition-none lg:min-h-9 ${
+                item.active ? "" : "hover:bg-gray-50"
+              } ${FOCUS_RING}`}
+              style={
+                item.active
+                  ? { background: brandColors.accent, borderColor: brandColors.accent, color: INK }
+                  : { background: "white", borderColor: GRAY_LINE, color: "#4B5563" }
+              }
+            >
+              {item.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+/**
+ * Ô `<select>` trong thanh lọc GET — nhãn hiển thị (không chỉ placeholder), tuỳ chọn đầu "tất cả" = bỏ lọc.
+ * Chữ 16px dưới lg (tránh iOS tự zoom), cao 44px dưới lg.
+ */
+export function FilterSelect({
+  label,
+  name,
+  value,
+  allLabel,
+  options,
+}: {
+  label: string;
+  name: string;
+  value: string | undefined;
+  allLabel: string;
+  options: { value: string; label: string }[];
+}) {
+  const id = `filter-${name}`;
+  return (
+    <div className="flex w-full flex-col gap-1 sm:w-auto">
+      <label htmlFor={id} className="text-sm font-medium" style={{ color: INK_SOFT }}>
+        {label}
+      </label>
+      <select
+        id={id}
+        name={name}
+        defaultValue={value ?? ""}
+        className={`min-h-11 w-full rounded-lg border bg-white px-3 text-base sm:min-w-48 lg:min-h-10 lg:text-sm ${FOCUS_RING}`}
+        style={{ borderColor: GRAY_LINE, color: INK }}
+      >
+        <option value="">{allLabel}</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+/**
+ * Thanh lọc dạng form GET (server component, không JS) — các `FilterSelect` + nút "Lọc" + link "Xoá bộ lọc" khi đang
+ * lọc. Gửi form bỏ `page` (về trang 1); `hidden` giữ các tham số cần giữ (tab, pageSize...).
+ */
+export function FilterBar({
+  action,
+  label,
+  hidden,
+  active,
+  clearHref,
+  children,
+}: {
+  action: string;
+  label: string;
+  hidden?: Record<string, string | undefined>;
+  active: boolean;
+  clearHref: string;
+  children: ReactNode;
+}) {
+  return (
+    <form method="get" action={action} aria-label={label} className="mt-4 flex flex-wrap items-end gap-3">
+      {Object.entries(hidden ?? {}).map(([name, value]) => (value ? <input key={name} type="hidden" name={name} value={value} /> : null))}
+      {children}
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="submit"
+          className={`inline-flex min-h-11 cursor-pointer items-center justify-center rounded-lg border bg-white px-4 text-sm font-semibold transition-colors hover:bg-gray-50 motion-reduce:transition-none lg:min-h-10 ${FOCUS_RING}`}
+          style={{ borderColor: GRAY_LINE, color: INK }}
+        >
+          Lọc
+        </button>
+        {active ? (
+          <Link
+            href={clearHref}
+            className={`inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold underline-offset-2 hover:underline lg:min-h-10 ${FOCUS_RING}`}
+            style={{ color: brandColors.primary }}
+          >
+            Xoá bộ lọc
+          </Link>
+        ) : null}
+      </div>
+    </form>
   );
 }
 

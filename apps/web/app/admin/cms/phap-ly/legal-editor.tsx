@@ -287,7 +287,7 @@ function VersionPanel({
   function publish() {
     const when = effectiveAt ? `có hiệu lực từ ${describeLocalDateTime(effectiveAt)}` : "có hiệu lực ngay khi xuất bản";
     const ok = window.confirm(
-      `Xuất bản phiên bản ${legalVersionLabel(selected.version)} — ${when}?\n\nSau khi xuất bản không sửa được nội dung; muốn thay đổi phải tạo phiên bản mới. Khi có hiệu lực, form đăng ký sẽ link tới bản này.`,
+      `Xuất bản phiên bản ${legalVersionLabel(selected.version)} — ${when}?\n\nSau khi xuất bản không sửa được nội dung; muốn thay đổi phải tạo phiên bản mới. Khi có hiệu lực, trang công khai, link menu/footer và các form ghi chấp thuận sẽ dùng bản này.`,
     );
     if (!ok) return;
     run("publish", () => publishLegalVersionAction(documentKey, selected.id, effectiveAt), "Đã xuất bản phiên bản.");
@@ -295,7 +295,7 @@ function VersionPanel({
 
   function archive() {
     const warning = selected.isEffective
-      ? "\n\nĐây là bản ĐANG HIỆU LỰC — nếu không còn bản nào khác, trang công khai sẽ trả 404 và form đăng ký không còn link Điều khoản."
+      ? "\n\nĐây là bản ĐANG HIỆU LỰC — nếu không còn bản nào khác, trang công khai sẽ trả 404 và mọi link tới văn bản này tự ẩn."
       : "";
     if (!window.confirm(`Lưu trữ phiên bản ${legalVersionLabel(selected.version)}?${warning}`)) return;
     run("archive", () => archiveLegalVersionAction(documentKey, selected.id), "Đã lưu trữ phiên bản.");

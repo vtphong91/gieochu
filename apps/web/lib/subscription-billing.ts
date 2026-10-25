@@ -7,10 +7,16 @@ import {
   type SubscriptionStatus,
 } from "@gieochu/core";
 import { getPrismaClient, Prisma } from "@gieochu/db";
+import type {
+  PaymentProviderId as DbPaymentProviderId,
+  SubscriptionInvoiceStatus as DbInvoiceStatus,
+  SubscriptionStatus as DbSubscriptionStatus,
+} from "@gieochu/db";
 import { buildWebhookNotifyUrl, decryptSecret, getProvider, type PaymentProviderId } from "@gieochu/payments";
 import { getEnv } from "@gieochu/config";
 import { getSystemSettings } from "./system-settings";
 import { audit } from "./audit";
+import { getPlatformPaymentConfigRow } from "./platform-payment";
 
 const INVOICE_CODE_RETRIES = 10;
 
@@ -65,7 +71,7 @@ export async function createRenewalInvoice(tenantId: string, input: CreateRenewa
     throw new AppError({ code: "PLAN_INACTIVE", message: "Gói dịch vụ này hiện không khả dụng.", httpStatus: 400 });
   }
 
-  const platformConfigRow = await prisma.platformPaymentConfig.findUnique({ where: { provider: input.provider } });
+  const platformConfigRow = await getPlatformPaymentConfigRow(input.provider);
   if (!platformConfigRow?.isEnabled) {
     throw new AppError({ code: "PROVIDER_NOT_AVAILABLE", message: "Phương thức thanh toán này chưa sẵn sàng.", httpStatus: 400 });
   }
@@ -185,4 +191,118 @@ export async function confirmManualInvoicePayment(invoiceId: string, actorId: st
     throw new AppError({ code: "NOT_MANUAL_INVOICE", message: "Chỉ xác nhận thủ công cho hoá đơn QR thủ công.", httpStatus: 400 });
   }
   await markInvoicePaid(invoiceId, { source: "ADMIN_MANUAL_CONFIRM", actorId });
+}
+
+// ADR-056 — System Center: lịch sử hoá đơn gói (tab "Tất cả") và trang Thuê bao. Chỉ đọc bảng L1
+// (subscription_invoices, subscriptions, plans) + tên/slug gian hàng — không đơn hàng/khách hàng của tenant (§7.9).
+
+export const ADMIN_INVOICE_STATUSES = ["PENDING", "PAID", "EXPIRED", "VOID", "REFUNDED"] as const satisfies readonly DbInvoiceStatus[];
+export const ADMIN_INVOICE_PROVIDERS = ["MANUAL_QR", "SEPAY", "MOMO"] as const satisfies readonly DbPaymentProviderId[];
+export const ADMIN_SUBSCRIPTION_STATUSES = ["TRIALING", "ACTIVE", "PAST_DUE", "GRACE", "EXPIRED", "CANCELED"] as const satisfies readonly DbSubscriptionStatus[];
+
+export type AdminInvoiceStatus = (typeof ADMIN_INVOICE_STATUSES)[number];
+export type AdminInvoiceProvider = (typeof ADMIN_INVOICE_PROVIDERS)[number];
+export type AdminSubscriptionStatus = (typeof ADMIN_SUBSCRIPTION_STATUSES)[number];
+
+/** Giá trị query string không hợp lệ → undefined (bỏ lọc), không ném lỗi. */
+export function parseEnumParam<T extends string>(allowed: readonly T[], value: string | undefined): T | undefined {
+  return value !== undefined && (allowed as readonly string[]).includes(value) ? (value as T) : undefined;
+}
+
+export interface ListSubscriptionInvoicesInput {
+  status?: AdminInvoiceStatus;
+  provider?: AdminInvoiceProvider;
+  page: number;
+  pageSize: number;
+}
+
+/** ADR-056 mục 1 — mọi hoá đơn gói (mọi trạng thái/cổng), mới nhất trước, phân trang. */
+export async function listSubscriptionInvoices(input: ListSubscriptionInvoicesInput) {
+  const prisma = getPrismaClient();
+  const page = Math.max(1, Math.trunc(input.page) || 1);
+  const pageSize = Math.min(100, Math.max(1, Math.trunc(input.pageSize) || 20));
+  const where: Prisma.SubscriptionInvoiceWhereInput = {
+    ...(input.status ? { status: input.status } : {}),
+    ...(input.provider ? { provider: input.provider } : {}),
+  };
+  const [items, total] = await Promise.all([
+    prisma.subscriptionInvoice.findMany({
+      where,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      select: {
+        id: true,
+        code: true,
+        provider: true,
+        status: true,
+        amountVnd: true,
+        createdAt: true,
+        paidAt: true,
+        dueAt: true,
+        tenant: { select: { id: true, name: true, slug: true } },
+        plan: { select: { code: true, name: true } },
+      },
+    }),
+    prisma.subscriptionInvoice.count({ where }),
+  ]);
+  return { items, total, page, pageSize };
+}
+
+export interface ListSubscriptionsInput {
+  planCode?: string;
+  status?: AdminSubscriptionStatus;
+  page: number;
+  pageSize?: number;
+}
+
+/**
+ * ADR-056 mục 2 — danh sách thuê bao cho /admin/subscriptions. Sắp theo ngày hết hạn tăng dần; thuê bao gói miễn phí
+ * (không có hạn — currentPeriodEnd = currentPeriodStart) xếp sau các gói trả phí.
+ */
+export async function listSubscriptions(input: ListSubscriptionsInput) {
+  const prisma = getPrismaClient();
+  const page = Math.max(1, Math.trunc(input.page) || 1);
+  const pageSize = Math.min(100, Math.max(1, Math.trunc(input.pageSize ?? 20) || 20));
+  const where: Prisma.SubscriptionWhereInput = {
+    ...(input.planCode ? { plan: { code: input.planCode } } : {}),
+    ...(input.status ? { status: input.status } : {}),
+  };
+  const [rows, total] = await Promise.all([
+    prisma.subscription.findMany({
+      where,
+      orderBy: [{ plan: { isFree: "asc" } }, { currentPeriodEnd: "asc" }, { id: "asc" }],
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      select: {
+        id: true,
+        status: true,
+        currentPeriodStart: true,
+        currentPeriodEnd: true,
+        graceEndsAt: true,
+        plan: { select: { code: true, name: true, isFree: true } },
+        tenant: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            subscriptionInvoices: { orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1, select: { code: true, status: true } },
+          },
+        },
+      },
+    }),
+    prisma.subscription.count({ where }),
+  ]);
+  const items = rows.map(({ tenant: { subscriptionInvoices, ...tenant }, ...row }) => ({
+    ...row,
+    tenant,
+    latestInvoice: subscriptionInvoices[0] ?? null,
+  }));
+  return { items, total, page, pageSize };
+}
+
+/** Lựa chọn cho bộ lọc gói ở /admin/subscriptions (kể cả gói đã ngừng bán — thuê bao cũ vẫn có thể đang dùng). */
+export async function listPlanFilterOptions() {
+  const prisma = getPrismaClient();
+  return prisma.plan.findMany({ orderBy: [{ priceVnd: "asc" }, { code: "asc" }], select: { code: true, name: true } });
 }

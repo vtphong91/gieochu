@@ -33,7 +33,8 @@
     "./entitlement-remedy": "./src/download/entitlement-remedy.ts",
     "./account-profile": "./src/account/profile.ts",
     "./dashboard-range": "./src/stats/dashboard-range.ts",
-    "./customer-list": "./src/customer/customer-list.ts"
+    "./customer-list": "./src/customer/customer-list.ts",
+    "./editor-draft": "./src/content/editor-draft.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

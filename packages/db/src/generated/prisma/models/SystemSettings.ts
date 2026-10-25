@@ -47,6 +47,12 @@ export type SystemSettingsAvgAggregateOutputType = {
   orderPendingTtlMinutes: number | null
   invoicePendingTtlHours: number | null
   defaultDownloadLimit: number | null
+  sessionIdleMinutes: number | null
+  sessionAbsoluteHours: number | null
+  rememberMeDays: number | null
+  adminIdleMinutes: number | null
+  adminAbsoluteHours: number | null
+  sessionWarningMinutes: number | null
 }
 
 export type SystemSettingsSumAggregateOutputType = {
@@ -61,6 +67,12 @@ export type SystemSettingsSumAggregateOutputType = {
   orderPendingTtlMinutes: number | null
   invoicePendingTtlHours: number | null
   defaultDownloadLimit: number | null
+  sessionIdleMinutes: number | null
+  sessionAbsoluteHours: number | null
+  rememberMeDays: number | null
+  adminIdleMinutes: number | null
+  adminAbsoluteHours: number | null
+  sessionWarningMinutes: number | null
 }
 
 export type SystemSettingsMinAggregateOutputType = {
@@ -77,6 +89,12 @@ export type SystemSettingsMinAggregateOutputType = {
   orderPendingTtlMinutes: number | null
   invoicePendingTtlHours: number | null
   defaultDownloadLimit: number | null
+  sessionIdleMinutes: number | null
+  sessionAbsoluteHours: number | null
+  rememberMeDays: number | null
+  adminIdleMinutes: number | null
+  adminAbsoluteHours: number | null
+  sessionWarningMinutes: number | null
   updatedById: string | null
   updatedAt: Date | null
 }
@@ -95,6 +113,12 @@ export type SystemSettingsMaxAggregateOutputType = {
   orderPendingTtlMinutes: number | null
   invoicePendingTtlHours: number | null
   defaultDownloadLimit: number | null
+  sessionIdleMinutes: number | null
+  sessionAbsoluteHours: number | null
+  rememberMeDays: number | null
+  adminIdleMinutes: number | null
+  adminAbsoluteHours: number | null
+  sessionWarningMinutes: number | null
   updatedById: string | null
   updatedAt: Date | null
 }
@@ -113,6 +137,12 @@ export type SystemSettingsCountAggregateOutputType = {
   orderPendingTtlMinutes: number
   invoicePendingTtlHours: number
   defaultDownloadLimit: number
+  sessionIdleMinutes: number
+  sessionAbsoluteHours: number
+  rememberMeDays: number
+  adminIdleMinutes: number
+  adminAbsoluteHours: number
+  sessionWarningMinutes: number
   updatedById: number
   updatedAt: number
   _all: number
@@ -131,6 +161,12 @@ export type SystemSettingsAvgAggregateInputType = {
   orderPendingTtlMinutes?: true
   invoicePendingTtlHours?: true
   defaultDownloadLimit?: true
+  sessionIdleMinutes?: true
+  sessionAbsoluteHours?: true
+  rememberMeDays?: true
+  adminIdleMinutes?: true
+  adminAbsoluteHours?: true
+  sessionWarningMinutes?: true
 }
 
 export type SystemSettingsSumAggregateInputType = {
@@ -145,6 +181,12 @@ export type SystemSettingsSumAggregateInputType = {
   orderPendingTtlMinutes?: true
   invoicePendingTtlHours?: true
   defaultDownloadLimit?: true
+  sessionIdleMinutes?: true
+  sessionAbsoluteHours?: true
+  rememberMeDays?: true
+  adminIdleMinutes?: true
+  adminAbsoluteHours?: true
+  sessionWarningMinutes?: true
 }
 
 export type SystemSettingsMinAggregateInputType = {
@@ -161,6 +203,12 @@ export type SystemSettingsMinAggregateInputType = {
   orderPendingTtlMinutes?: true
   invoicePendingTtlHours?: true
   defaultDownloadLimit?: true
+  sessionIdleMinutes?: true
+  sessionAbsoluteHours?: true
+  rememberMeDays?: true
+  adminIdleMinutes?: true
+  adminAbsoluteHours?: true
+  sessionWarningMinutes?: true
   updatedById?: true
   updatedAt?: true
 }
@@ -179,6 +227,12 @@ export type SystemSettingsMaxAggregateInputType = {
   orderPendingTtlMinutes?: true
   invoicePendingTtlHours?: true
   defaultDownloadLimit?: true
+  sessionIdleMinutes?: true
+  sessionAbsoluteHours?: true
+  rememberMeDays?: true
+  adminIdleMinutes?: true
+  adminAbsoluteHours?: true
+  sessionWarningMinutes?: true
   updatedById?: true
   updatedAt?: true
 }
@@ -197,6 +251,12 @@ export type SystemSettingsCountAggregateInputType = {
   orderPendingTtlMinutes?: true
   invoicePendingTtlHours?: true
   defaultDownloadLimit?: true
+  sessionIdleMinutes?: true
+  sessionAbsoluteHours?: true
+  rememberMeDays?: true
+  adminIdleMinutes?: true
+  adminAbsoluteHours?: true
+  sessionWarningMinutes?: true
   updatedById?: true
   updatedAt?: true
   _all?: true
@@ -302,6 +362,12 @@ export type SystemSettingsGroupByOutputType = {
   orderPendingTtlMinutes: number
   invoicePendingTtlHours: number
   defaultDownloadLimit: number
+  sessionIdleMinutes: number
+  sessionAbsoluteHours: number
+  rememberMeDays: number
+  adminIdleMinutes: number
+  adminAbsoluteHours: number
+  sessionWarningMinutes: number
   updatedById: string | null
   updatedAt: Date
   _count: SystemSettingsCountAggregateOutputType | null
@@ -343,6 +409,12 @@ export type SystemSettingsWhereInput = {
   orderPendingTtlMinutes?: Prisma.IntFilter<"SystemSettings"> | number
   invoicePendingTtlHours?: Prisma.IntFilter<"SystemSettings"> | number
   defaultDownloadLimit?: Prisma.IntFilter<"SystemSettings"> | number
+  sessionIdleMinutes?: Prisma.IntFilter<"SystemSettings"> | number
+  sessionAbsoluteHours?: Prisma.IntFilter<"SystemSettings"> | number
+  rememberMeDays?: Prisma.IntFilter<"SystemSettings"> | number
+  adminIdleMinutes?: Prisma.IntFilter<"SystemSettings"> | number
+  adminAbsoluteHours?: Prisma.IntFilter<"SystemSettings"> | number
+  sessionWarningMinutes?: Prisma.IntFilter<"SystemSettings"> | number
   updatedById?: Prisma.StringNullableFilter<"SystemSettings"> | string | null
   updatedAt?: Prisma.DateTimeFilter<"SystemSettings"> | Date | string
 }
@@ -361,6 +433,12 @@ export type SystemSettingsOrderByWithRelationInput = {
   orderPendingTtlMinutes?: Prisma.SortOrder
   invoicePendingTtlHours?: Prisma.SortOrder
   defaultDownloadLimit?: Prisma.SortOrder
+  sessionIdleMinutes?: Prisma.SortOrder
+  sessionAbsoluteHours?: Prisma.SortOrder
+  rememberMeDays?: Prisma.SortOrder
+  adminIdleMinutes?: Prisma.SortOrder
+  adminAbsoluteHours?: Prisma.SortOrder
+  sessionWarningMinutes?: Prisma.SortOrder
   updatedById?: Prisma.SortOrderInput | Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -382,6 +460,12 @@ export type SystemSettingsWhereUniqueInput = Prisma.AtLeast<{
   orderPendingTtlMinutes?: Prisma.IntFilter<"SystemSettings"> | number
   invoicePendingTtlHours?: Prisma.IntFilter<"SystemSettings"> | number
   defaultDownloadLimit?: Prisma.IntFilter<"SystemSettings"> | number
+  sessionIdleMinutes?: Prisma.IntFilter<"SystemSettings"> | number
+  sessionAbsoluteHours?: Prisma.IntFilter<"SystemSettings"> | number
+  rememberMeDays?: Prisma.IntFilter<"SystemSettings"> | number
+  adminIdleMinutes?: Prisma.IntFilter<"SystemSettings"> | number
+  adminAbsoluteHours?: Prisma.IntFilter<"SystemSettings"> | number
+  sessionWarningMinutes?: Prisma.IntFilter<"SystemSettings"> | number
   updatedById?: Prisma.StringNullableFilter<"SystemSettings"> | string | null
   updatedAt?: Prisma.DateTimeFilter<"SystemSettings"> | Date | string
 }, "id">
@@ -400,6 +484,12 @@ export type SystemSettingsOrderByWithAggregationInput = {
   orderPendingTtlMinutes?: Prisma.SortOrder
   invoicePendingTtlHours?: Prisma.SortOrder
   defaultDownloadLimit?: Prisma.SortOrder
+  sessionIdleMinutes?: Prisma.SortOrder
+  sessionAbsoluteHours?: Prisma.SortOrder
+  rememberMeDays?: Prisma.SortOrder
+  adminIdleMinutes?: Prisma.SortOrder
+  adminAbsoluteHours?: Prisma.SortOrder
+  sessionWarningMinutes?: Prisma.SortOrder
   updatedById?: Prisma.SortOrderInput | Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.SystemSettingsCountOrderByAggregateInput
@@ -426,6 +516,12 @@ export type SystemSettingsScalarWhereWithAggregatesInput = {
   orderPendingTtlMinutes?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
   invoicePendingTtlHours?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
   defaultDownloadLimit?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
+  sessionIdleMinutes?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
+  sessionAbsoluteHours?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
+  rememberMeDays?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
+  adminIdleMinutes?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
+  adminAbsoluteHours?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
+  sessionWarningMinutes?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
   updatedById?: Prisma.StringNullableWithAggregatesFilter<"SystemSettings"> | string | null
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"SystemSettings"> | Date | string
 }
@@ -444,6 +540,12 @@ export type SystemSettingsCreateInput = {
   orderPendingTtlMinutes?: number
   invoicePendingTtlHours?: number
   defaultDownloadLimit?: number
+  sessionIdleMinutes?: number
+  sessionAbsoluteHours?: number
+  rememberMeDays?: number
+  adminIdleMinutes?: number
+  adminAbsoluteHours?: number
+  sessionWarningMinutes?: number
   updatedById?: string | null
   updatedAt?: Date | string
 }
@@ -462,6 +564,12 @@ export type SystemSettingsUncheckedCreateInput = {
   orderPendingTtlMinutes?: number
   invoicePendingTtlHours?: number
   defaultDownloadLimit?: number
+  sessionIdleMinutes?: number
+  sessionAbsoluteHours?: number
+  rememberMeDays?: number
+  adminIdleMinutes?: number
+  adminAbsoluteHours?: number
+  sessionWarningMinutes?: number
   updatedById?: string | null
   updatedAt?: Date | string
 }
@@ -480,6 +588,12 @@ export type SystemSettingsUpdateInput = {
   orderPendingTtlMinutes?: Prisma.IntFieldUpdateOperationsInput | number
   invoicePendingTtlHours?: Prisma.IntFieldUpdateOperationsInput | number
   defaultDownloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
+  sessionIdleMinutes?: Prisma.IntFieldUpdateOperationsInput | number
+  sessionAbsoluteHours?: Prisma.IntFieldUpdateOperationsInput | number
+  rememberMeDays?: Prisma.IntFieldUpdateOperationsInput | number
+  adminIdleMinutes?: Prisma.IntFieldUpdateOperationsInput | number
+  adminAbsoluteHours?: Prisma.IntFieldUpdateOperationsInput | number
+  sessionWarningMinutes?: Prisma.IntFieldUpdateOperationsInput | number
   updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -498,6 +612,12 @@ export type SystemSettingsUncheckedUpdateInput = {
   orderPendingTtlMinutes?: Prisma.IntFieldUpdateOperationsInput | number
   invoicePendingTtlHours?: Prisma.IntFieldUpdateOperationsInput | number
   defaultDownloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
+  sessionIdleMinutes?: Prisma.IntFieldUpdateOperationsInput | number
+  sessionAbsoluteHours?: Prisma.IntFieldUpdateOperationsInput | number
+  rememberMeDays?: Prisma.IntFieldUpdateOperationsInput | number
+  adminIdleMinutes?: Prisma.IntFieldUpdateOperationsInput | number
+  adminAbsoluteHours?: Prisma.IntFieldUpdateOperationsInput | number
+  sessionWarningMinutes?: Prisma.IntFieldUpdateOperationsInput | number
   updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -516,6 +636,12 @@ export type SystemSettingsCreateManyInput = {
   orderPendingTtlMinutes?: number
   invoicePendingTtlHours?: number
   defaultDownloadLimit?: number
+  sessionIdleMinutes?: number
+  sessionAbsoluteHours?: number
+  rememberMeDays?: number
+  adminIdleMinutes?: number
+  adminAbsoluteHours?: number
+  sessionWarningMinutes?: number
   updatedById?: string | null
   updatedAt?: Date | string
 }
@@ -534,6 +660,12 @@ export type SystemSettingsUpdateManyMutationInput = {
   orderPendingTtlMinutes?: Prisma.IntFieldUpdateOperationsInput | number
   invoicePendingTtlHours?: Prisma.IntFieldUpdateOperationsInput | number
   defaultDownloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
+  sessionIdleMinutes?: Prisma.IntFieldUpdateOperationsInput | number
+  sessionAbsoluteHours?: Prisma.IntFieldUpdateOperationsInput | number
+  rememberMeDays?: Prisma.IntFieldUpdateOperationsInput | number
+  adminIdleMinutes?: Prisma.IntFieldUpdateOperationsInput | number
+  adminAbsoluteHours?: Prisma.IntFieldUpdateOperationsInput | number
+  sessionWarningMinutes?: Prisma.IntFieldUpdateOperationsInput | number
   updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -552,6 +684,12 @@ export type SystemSettingsUncheckedUpdateManyInput = {
   orderPendingTtlMinutes?: Prisma.IntFieldUpdateOperationsInput | number
   invoicePendingTtlHours?: Prisma.IntFieldUpdateOperationsInput | number
   defaultDownloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
+  sessionIdleMinutes?: Prisma.IntFieldUpdateOperationsInput | number
+  sessionAbsoluteHours?: Prisma.IntFieldUpdateOperationsInput | number
+  rememberMeDays?: Prisma.IntFieldUpdateOperationsInput | number
+  adminIdleMinutes?: Prisma.IntFieldUpdateOperationsInput | number
+  adminAbsoluteHours?: Prisma.IntFieldUpdateOperationsInput | number
+  sessionWarningMinutes?: Prisma.IntFieldUpdateOperationsInput | number
   updatedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -570,6 +708,12 @@ export type SystemSettingsCountOrderByAggregateInput = {
   orderPendingTtlMinutes?: Prisma.SortOrder
   invoicePendingTtlHours?: Prisma.SortOrder
   defaultDownloadLimit?: Prisma.SortOrder
+  sessionIdleMinutes?: Prisma.SortOrder
+  sessionAbsoluteHours?: Prisma.SortOrder
+  rememberMeDays?: Prisma.SortOrder
+  adminIdleMinutes?: Prisma.SortOrder
+  adminAbsoluteHours?: Prisma.SortOrder
+  sessionWarningMinutes?: Prisma.SortOrder
   updatedById?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -586,6 +730,12 @@ export type SystemSettingsAvgOrderByAggregateInput = {
   orderPendingTtlMinutes?: Prisma.SortOrder
   invoicePendingTtlHours?: Prisma.SortOrder
   defaultDownloadLimit?: Prisma.SortOrder
+  sessionIdleMinutes?: Prisma.SortOrder
+  sessionAbsoluteHours?: Prisma.SortOrder
+  rememberMeDays?: Prisma.SortOrder
+  adminIdleMinutes?: Prisma.SortOrder
+  adminAbsoluteHours?: Prisma.SortOrder
+  sessionWarningMinutes?: Prisma.SortOrder
 }
 
 export type SystemSettingsMaxOrderByAggregateInput = {
@@ -602,6 +752,12 @@ export type SystemSettingsMaxOrderByAggregateInput = {
   orderPendingTtlMinutes?: Prisma.SortOrder
   invoicePendingTtlHours?: Prisma.SortOrder
   defaultDownloadLimit?: Prisma.SortOrder
+  sessionIdleMinutes?: Prisma.SortOrder
+  sessionAbsoluteHours?: Prisma.SortOrder
+  rememberMeDays?: Prisma.SortOrder
+  adminIdleMinutes?: Prisma.SortOrder
+  adminAbsoluteHours?: Prisma.SortOrder
+  sessionWarningMinutes?: Prisma.SortOrder
   updatedById?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -620,6 +776,12 @@ export type SystemSettingsMinOrderByAggregateInput = {
   orderPendingTtlMinutes?: Prisma.SortOrder
   invoicePendingTtlHours?: Prisma.SortOrder
   defaultDownloadLimit?: Prisma.SortOrder
+  sessionIdleMinutes?: Prisma.SortOrder
+  sessionAbsoluteHours?: Prisma.SortOrder
+  rememberMeDays?: Prisma.SortOrder
+  adminIdleMinutes?: Prisma.SortOrder
+  adminAbsoluteHours?: Prisma.SortOrder
+  sessionWarningMinutes?: Prisma.SortOrder
   updatedById?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -636,6 +798,12 @@ export type SystemSettingsSumOrderByAggregateInput = {
   orderPendingTtlMinutes?: Prisma.SortOrder
   invoicePendingTtlHours?: Prisma.SortOrder
   defaultDownloadLimit?: Prisma.SortOrder
+  sessionIdleMinutes?: Prisma.SortOrder
+  sessionAbsoluteHours?: Prisma.SortOrder
+  rememberMeDays?: Prisma.SortOrder
+  adminIdleMinutes?: Prisma.SortOrder
+  adminAbsoluteHours?: Prisma.SortOrder
+  sessionWarningMinutes?: Prisma.SortOrder
 }
 
 
@@ -654,6 +822,12 @@ export type SystemSettingsSelect<ExtArgs extends runtime.Types.Extensions.Intern
   orderPendingTtlMinutes?: boolean
   invoicePendingTtlHours?: boolean
   defaultDownloadLimit?: boolean
+  sessionIdleMinutes?: boolean
+  sessionAbsoluteHours?: boolean
+  rememberMeDays?: boolean
+  adminIdleMinutes?: boolean
+  adminAbsoluteHours?: boolean
+  sessionWarningMinutes?: boolean
   updatedById?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["systemSettings"]>
@@ -672,6 +846,12 @@ export type SystemSettingsSelectCreateManyAndReturn<ExtArgs extends runtime.Type
   orderPendingTtlMinutes?: boolean
   invoicePendingTtlHours?: boolean
   defaultDownloadLimit?: boolean
+  sessionIdleMinutes?: boolean
+  sessionAbsoluteHours?: boolean
+  rememberMeDays?: boolean
+  adminIdleMinutes?: boolean
+  adminAbsoluteHours?: boolean
+  sessionWarningMinutes?: boolean
   updatedById?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["systemSettings"]>
@@ -690,6 +870,12 @@ export type SystemSettingsSelectUpdateManyAndReturn<ExtArgs extends runtime.Type
   orderPendingTtlMinutes?: boolean
   invoicePendingTtlHours?: boolean
   defaultDownloadLimit?: boolean
+  sessionIdleMinutes?: boolean
+  sessionAbsoluteHours?: boolean
+  rememberMeDays?: boolean
+  adminIdleMinutes?: boolean
+  adminAbsoluteHours?: boolean
+  sessionWarningMinutes?: boolean
   updatedById?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["systemSettings"]>
@@ -708,11 +894,17 @@ export type SystemSettingsSelectScalar = {
   orderPendingTtlMinutes?: boolean
   invoicePendingTtlHours?: boolean
   defaultDownloadLimit?: boolean
+  sessionIdleMinutes?: boolean
+  sessionAbsoluteHours?: boolean
+  rememberMeDays?: boolean
+  adminIdleMinutes?: boolean
+  adminAbsoluteHours?: boolean
+  sessionWarningMinutes?: boolean
   updatedById?: boolean
   updatedAt?: boolean
 }
 
-export type SystemSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "supportEmail" | "trialDays" | "graceDays" | "accessTokenTtlMinutes" | "refreshTokenTtlDays" | "emailVerifyTtlHours" | "passwordResetTtlMinutes" | "presignUploadTtlSeconds" | "presignDownloadTtlSeconds" | "orderPendingTtlMinutes" | "invoicePendingTtlHours" | "defaultDownloadLimit" | "updatedById" | "updatedAt", ExtArgs["result"]["systemSettings"]>
+export type SystemSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "supportEmail" | "trialDays" | "graceDays" | "accessTokenTtlMinutes" | "refreshTokenTtlDays" | "emailVerifyTtlHours" | "passwordResetTtlMinutes" | "presignUploadTtlSeconds" | "presignDownloadTtlSeconds" | "orderPendingTtlMinutes" | "invoicePendingTtlHours" | "defaultDownloadLimit" | "sessionIdleMinutes" | "sessionAbsoluteHours" | "rememberMeDays" | "adminIdleMinutes" | "adminAbsoluteHours" | "sessionWarningMinutes" | "updatedById" | "updatedAt", ExtArgs["result"]["systemSettings"]>
 
 export type $SystemSettingsPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "SystemSettings"
@@ -731,6 +923,16 @@ export type $SystemSettingsPayload<ExtArgs extends runtime.Types.Extensions.Inte
     orderPendingTtlMinutes: number
     invoicePendingTtlHours: number
     defaultDownloadLimit: number
+    /**
+     * ADR-053 chính sách phiên (min/max ở packages/core/src/settings/system-settings.ts). refreshTokenTtlDays ở trên
+     * không còn dùng sau khi code ADR-053 lên prod — thay bằng sessionAbsoluteHours/rememberMeDays (contract sau).
+     */
+    sessionIdleMinutes: number
+    sessionAbsoluteHours: number
+    rememberMeDays: number
+    adminIdleMinutes: number
+    adminAbsoluteHours: number
+    sessionWarningMinutes: number
     /**
      * User (SYSTEM_ADMIN) sửa lần cuối — không đặt FK để xoá user không chặn/đổi cấu hình.
      */
@@ -1172,6 +1374,12 @@ export interface SystemSettingsFieldRefs {
   readonly orderPendingTtlMinutes: Prisma.FieldRef<"SystemSettings", 'Int'>
   readonly invoicePendingTtlHours: Prisma.FieldRef<"SystemSettings", 'Int'>
   readonly defaultDownloadLimit: Prisma.FieldRef<"SystemSettings", 'Int'>
+  readonly sessionIdleMinutes: Prisma.FieldRef<"SystemSettings", 'Int'>
+  readonly sessionAbsoluteHours: Prisma.FieldRef<"SystemSettings", 'Int'>
+  readonly rememberMeDays: Prisma.FieldRef<"SystemSettings", 'Int'>
+  readonly adminIdleMinutes: Prisma.FieldRef<"SystemSettings", 'Int'>
+  readonly adminAbsoluteHours: Prisma.FieldRef<"SystemSettings", 'Int'>
+  readonly sessionWarningMinutes: Prisma.FieldRef<"SystemSettings", 'Int'>
   readonly updatedById: Prisma.FieldRef<"SystemSettings", 'String'>
   readonly updatedAt: Prisma.FieldRef<"SystemSettings", 'DateTime'>
 }

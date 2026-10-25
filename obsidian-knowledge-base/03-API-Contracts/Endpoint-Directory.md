@@ -5,7 +5,7 @@ tags:
   - endpoint
   - status/living
 date: 2026-06-15
-updated: 2026-10-23
+updated: 2026-10-25
 author: System Architect
 ---
 
@@ -55,6 +55,10 @@ author: System Architect
 > Đợt ADR-050 đợt 1 (menu CMS, trang chủ + SEO, Điều khoản có phiên bản — 2026-10-23, chưa commit) **không thêm `route.ts`** (đếm lại 2026-10-23: vẫn
 > **23 dưới `/api`, 24 toàn app** ✅) — `POST /api/auth/register` thêm `termsVersionId` + lỗi 409 `LEGAL_TERMS_CHANGED` (§3.1); Server Action/loader
 > menu, trang chủ (đổi chữ ký), văn bản pháp lý ở §26; §26 cũ (Liên kết) nay là §27.
+> Đợt ADR-054 (trang pháp lý đợt 2 — 2026-10-24, chưa commit) **thêm 1 `route.ts` ngoài `/api`**: redirect 308 `/phap-ly/[slug]` (§5.2) — đếm lại
+> 2026-10-24: **23 dưới `/api`, 25 toàn app** ✅. `POST /api/auth/register` thêm `privacyVersionId` + lỗi 409 `LEGAL_DOCUMENT_CHANGED` (§3.1); cron thêm bước
+> `download_events.purge` (§17); Server Action mới `saveLegalDocumentMetaAction` + `createTenantAction` đổi contract (§26.4, §26.5). Đợt ADR-053 bổ sung lần 3
+> (nháp tự động) **không thêm route** và **chưa có Server Action** — lib nền ở §26.6.
 
 ## 1. Quy Ước Chung
 
@@ -102,16 +106,16 @@ Không có tầng "Store Factory" hay middleware auth toàn cục cho API — m�
 
 | Method | Endpoint | Truy cập | Mô tả |
 | :-- | :-- | :-- | :-- |
-| `POST` | `/api/auth/register` | Public | Tạo `User` (status `PENDING`) + `UserProfile`, phát `VerificationToken` (`EMAIL_VERIFY`), gửi email kích hoạt qua `sendEmailNow()`. Không tạo `Tenant` — trở thành tenant là hành động riêng, tự nguyện qua `/studio`. Từ ADR-050: body thêm `termsVersionId` tuỳ chọn, ghi chấp thuận Điều khoản trong cùng transaction, lỗi mới 409 `LEGAL_TERMS_CHANGED` — §3.1. |
-| `POST` | `/api/auth/login` | Public | Xác thực email/mật khẩu, rate-limit 10 lần/15 phút theo email. Sai 5 lần liên tiếp (chỉ tính khi email tồn tại) → đặt `passwordResetRequired=true`, khoá đăng nhập tới khi qua `/forgot-password`. Thành công: set cookie `at`/`rt`. |
+| `POST` | `/api/auth/register` | Public | Tạo `User` (status `PENDING`) + `UserProfile`, phát `VerificationToken` (`EMAIL_VERIFY`), gửi email kích hoạt qua `sendEmailNow()`. Không tạo `Tenant` — trở thành tenant là hành động riêng, tự nguyện qua `/studio`. Từ ADR-050: body thêm `termsVersionId` tuỳ chọn, ghi chấp thuận Điều khoản trong cùng transaction, lỗi mới 409 `LEGAL_TERMS_CHANGED`. Từ ADR-054: thêm `privacyVersionId` tuỳ chọn (Chính sách bảo mật), lỗi 409 `LEGAL_DOCUMENT_CHANGED` — §3.1. |
+| `POST` | `/api/auth/login` | Public | Xác thực email/mật khẩu, rate-limit 10 lần/15 phút theo email. Sai 5 lần liên tiếp (chỉ tính khi email tồn tại) → đặt `passwordResetRequired=true`, khoá đăng nhập tới khi qua `/forgot-password`. Thành công: set cookie `at`/`rt`. Từ ADR-053: body thêm `rememberMe` tuỳ chọn (mặc định `false`), cookie session/persistent theo chính sách phiên — §3.2. |
 | `POST` | `/api/auth/logout` | Public (đọc cookie `rt` nếu có) | Revoke toàn bộ `RefreshToken` cùng `familyId`, xoá cookie `at`/`rt`. |
-| `POST` | `/api/auth/refresh` | Public (bắt buộc cookie `rt` hợp lệ) | Xoay refresh token (rotate-on-use); phát hiện **reuse** token đã bị thay thế → revoke cả `familyId`, trả `401 AUTH_REFRESH_REUSE`. |
+| `POST` | `/api/auth/refresh` | Public (bắt buộc cookie `rt` hợp lệ) | Xoay refresh token (rotate-on-use, nguyên tử từ ADR-053); phát hiện **reuse** token đã bị thay thế → revoke cả `familyId`, trả `401 AUTH_REFRESH_REUSE`. Từ ADR-053: ân hạn 30 giây → `401 AUTH_REFRESH_SUPERSEDED` (không revoke), kiểm `user.status`, idle/absolute timeout — mã lỗi đầy đủ §3.3. |
 | `POST` | `/api/auth/verify-email` | Public | Tiêu thụ `VerificationToken` loại `EMAIL_VERIFY` (hash so khớp `tokenHash`), chuyển `User.status` → `ACTIVE`, set `emailVerifiedAt`. |
 | `POST` | `/api/auth/resend-verification` | Public | Gửi lại token kích hoạt nếu `User.status === PENDING`; rate-limit 3 lần/giờ theo email; phản hồi giống nhau bất kể email tồn tại hay không (chống dò email). |
 | `POST` | `/api/auth/forgot-password` | Public | Luôn trả `200` với thông báo chung (chống dò email); nếu email tồn tại và `status=ACTIVE`, phát `VerificationToken` (`PASSWORD_RESET`) và gửi email. Rate-limit 5 lần/giờ theo email. |
 | `POST` | `/api/auth/reset-password` | Public | Tiêu thụ `VerificationToken` (`PASSWORD_RESET`), đặt mật khẩu mới, reset `failedLoginAttempts`/`passwordResetRequired`, **revoke mọi `RefreshToken`** đang hoạt động của user. |
 
-### 3.1. `POST /api/auth/register` — chấp thuận Điều khoản theo phiên bản (ADR-050) ✅ đọc `git diff` 2026-10-23
+### 3.1. `POST /api/auth/register` — chấp thuận Điều khoản (ADR-050) + Chính sách bảo mật (ADR-054) theo phiên bản ✅ đọc `git diff` 2026-10-23, 2026-10-24
 
 Body (zod `registerSchema`):
 
@@ -122,7 +126,8 @@ Body (zod `registerSchema`):
   fullName: string;         // trim, ≥ 1
   consent: true;            // bắt buộc như cũ
   accountType: "TENANT" | "CUSTOMER";
-  termsVersionId?: string;  // MỚI — trim, 1–64; id phiên bản Điều khoản người dùng thấy trên form
+  termsVersionId?: string;  // ADR-050 — trim, 1–64; id phiên bản Điều khoản người dùng thấy trên form
+  privacyVersionId?: string; // ADR-054 — trim, 1–64; id phiên bản Chính sách bảo mật (cùng ô đồng ý `consent`)
 }
 ```
 
@@ -132,11 +137,55 @@ Body (zod `registerSchema`):
 - Có bản hiệu lực + `termsVersionId` **khác** bản đó → **`409 { error: { code: "LEGAL_TERMS_CHANGED", message: "Điều khoản sử dụng vừa được cập
   nhật. Vui lòng tải lại trang, đọc bản mới rồi đăng ký lại.", requestId } }`**. Form hiện `error.message` ✅ `register-form.tsx`.
 - Có bản hiệu lực + không gửi `termsVersionId` (form cũ còn cache) → ghi chấp thuận bản đang hiệu lực.
-- Ghi `user_legal_acceptances { userId, versionId, acceptedAt = now }` **trong cùng `prisma.$transaction`** tạo `User` + `UserProfile` + `VerificationToken`.
-  Không lưu IP/User-Agent.
+- **ADR-054:** Chính sách bảo mật xử lý độc lập cùng luật (`getEffectiveLegalVersion("privacy", now)` + `resolveRegistrationPrivacyVersion`): chưa có bản
+  hiệu lực → bỏ qua; `privacyVersionId` khác bản hiệu lực → **`409 LEGAL_DOCUMENT_CHANGED`** ("Chính sách bảo mật vừa được cập nhật. Vui lòng tải lại
+  trang…"); không gửi → dùng bản hiệu lực.
+- Ghi `user_legal_acceptances { userId, versionId, acceptedAt = now }` cho mọi id đã chọn (0–2 dòng, `recordLegalAcceptances` — `createMany … skipDuplicates`)
+  **trong cùng `prisma.$transaction`** tạo `User` + `UserProfile` + `VerificationToken`. Không lưu IP/User-Agent.
 - Thứ tự kiểm: rate-limit → email đã đăng ký (409 `EMAIL_ALREADY_REGISTERED`) → hash mật khẩu → xác định phiên bản Điều khoản → transaction.
   Response thành công không đổi (`201 { message }`).
-- Trang `app/(auth)/register/page.tsx` truyền `terms = { versionId, href: "/phap-ly/dieu-khoan-su-dung", title } | null` cho `RegisterForm`.
+- Trang `app/(auth)/register/page.tsx` truyền `terms = { versionId, href: "/dieu-khoan-su-dung", title } | null` và (ADR-054) `privacy = { versionId,
+  href: "/chinh-sach-bao-mat", title } | null` cho `RegisterForm` (href dựng bằng `legalDocumentPath`; trước ADR-054 là `/phap-ly/dieu-khoan-su-dung`).
+
+### 3.2. `POST /api/auth/login` — "Ghi nhớ đăng nhập" (ADR-053) ✅ đọc code 2026-10-24
+
+Body (zod `loginSchema`):
+
+```ts
+{
+  email: string;          // email hợp lệ
+  password: string;       // ≥ 1
+  rememberMe?: boolean;   // MỚI — mặc định false. SYSTEM_ADMIN: server bỏ qua (luôn false)
+}
+```
+
+- Mã lỗi **không đổi** (`INVALID_CREDENTIALS` 401, `ACCOUNT_LOCKED` 403, `PASSWORD_RESET_REQUIRED` 403, `EMAIL_NOT_VERIFIED` 403, `RATE_LIMITED` 429,
+  `VALIDATION_ERROR` 400 — `rememberMe` sai kiểu bị zod từ chối). Response thành công không đổi: `200 { user: { id, email, role, profileCompleted,
+  landingPath } }`.
+- **Cookie** (thay đổi hành vi): phiên không ghi nhớ và SYSTEM_ADMIN → `at` và `rt` là **session cookie** (không `Max-Age`); `rememberMe` hiệu lực →
+  `rt` `Max-Age` = thời gian còn lại tới `sessionStartedAt + rememberMeDays`, `at` `Max-Age` = TTL access. TTL access = `accessTokenTtlMinutes`, kẹp ≤
+  idle khi phiên có idle. Access JWT thêm claim `rm`.
+- Bản ghi `refresh_tokens` mới ghi `rememberMe`, `sessionStartedAt = now`, `deviceLabel`; `expiresAt = now + absolute` (không còn `refreshTokenTtlDays`).
+- Client (`login-form.tsx`) sau 200 chuyển trang bằng `window.location.assign` (không `router.push`). Chi tiết: [[02-System-Specs/Auth-Session-Specs|Auth-Session-Specs]] §3.
+
+### 3.3. `POST /api/auth/refresh` — mã lỗi (ADR-053) ✅ đọc code 2026-10-24
+
+Không body. Thành công `200 { ok: true }` + cookie mới theo chính sách phiên (như §3.2). Lỗi luôn theo khung `{ error: { code, message, requestId } }`:
+
+| HTTP | `code` | Khi nào | Thu hồi family | Xoá cookie |
+| :-: | :-- | :-- | :-: | :-: |
+| 401 | `UNAUTHORIZED` | Thiếu cookie `rt`; không tìm thấy token; token hết `expiresAt` ("Phiên đăng nhập đã hết hạn.") | — | ✅ |
+| 401 | **`AUTH_REFRESH_SUPERSEDED`** (mới) | Token vừa bị request/tab khác thay **≤ 30 giây** (chưa bị thu hồi), hoặc thua race khi rotate | ❌ | ❌ |
+| 401 | `AUTH_REFRESH_REUSE` | Token đã thu hồi, hoặc bị thay **quá** 30 giây — ghi audit `AUTH_REFRESH_REUSE` (`revokedSessions`) | ✅ | ✅ |
+| 401 | **`ACCOUNT_LOCKED`** (mới ở route này) | User `LOCKED` (ở login là **403**) | ✅ | ✅ |
+| 401 | `UNAUTHORIZED` | User không còn / trạng thái khác `ACTIVE`, `LOCKED` (vd `PENDING`) | ✅ | ✅ |
+| 401 | **`SESSION_EXPIRED`** (mới) | Quá absolute tính từ `sessionStartedAt` | ✅ | ✅ |
+| 401 | **`SESSION_IDLE_TIMEOUT`** (mới) | Quá idle tính từ `createdAt` token hiện tại (phiên có idle) | ✅ | ✅ |
+
+- Thứ tự kiểm: cookie → bản ghi → trạng thái token → `user.status` → absolute → idle → rotate.
+- Phiên trước ADR-053 (`sessionStartedAt` NULL) không bị `SESSION_*` ở lần refresh đầu — bắt đầu đếm từ lần đó.
+- Client `SessionRefresh` coi `AUTH_REFRESH_SUPERSEDED` là "còn phiên"; `SESSION_IDLE_TIMEOUT`/`SESSION_EXPIRED` → `/login?het-phien=1&next=…`.
+  Chi tiết: [[02-System-Specs/Auth-Session-Specs|Auth-Session-Specs]] §4–§5.
 
 ## 4. Tài khoản khách hàng (`/api/me`) — 1 route
 
@@ -161,6 +210,16 @@ Body (zod `registerSchema`):
   (`[productSlug]/actions.ts`) và action đánh giá (§12.1). Route map đầy đủ:
   [[02-System-Specs/Product-Editor-And-Publishing-Specs|Product-Editor-And-Publishing-Specs]] §7A.
 - Chưa có test tự động cho redirect (BACKLOG) ❓.
+
+### 5.2. Route Handler ngoài `/api` — redirect URL văn bản pháp lý cũ (ADR-054) ✅ đọc code 2026-10-24
+
+| Method | Endpoint | Truy cập | Mô tả |
+| :-- | :-- | :-- | :-- |
+| `GET`, `HEAD` | `/phap-ly/[slug]` (`app/phap-ly/[slug]/route.ts`) | Public, chỉ đọc (không kiểm `Origin`) | Slug là văn bản đã khai báo (`legalKeyFromSlug`) → **308** `Location` **tương đối** = `legalDocumentPath(key)` + query gốc (không dựng origin từ `request.url`); slug lạ → **404** `text/plain`. **Không đọc DB** — văn bản chưa có bản hiệu lực vẫn redirect, trang đích tự 404. `dynamic = "force-dynamic"`. |
+
+- Trang văn bản cấp gốc `/dieu-khoan-su-dung`, `/chinh-sach-bao-mat`, `/chinh-sach-noi-dung`, `/cam-ket-ban-quyen`, `/quyen-su-dung-tai-lieu`,
+  `/chinh-sach-nguoi-ban`, `/lien-he` là `page.tsx` (không phải route handler) — [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]] §4.
+- Chưa có test tự động cho redirect ❓.
 
 ## 6. Studio — upload file sản phẩm (`/api/studio/[tenantSlug]/uploads`) — 4 route
 
@@ -483,9 +542,9 @@ Các action có sẵn của editor trang chủ (`saveHomeDraftAction`, `publishH
 
 | Hàm | File | Ghi chú |
 | :-- | :-- | :-- |
-| `getSystemSettings()` | `lib/system-settings.ts` | `cache()` theo request; parse phòng thủ → `SystemSettingsValues` (11 khoá) |
+| `getSystemSettings()` | `lib/system-settings.ts` | `cache()` theo request; parse phòng thủ → `SystemSettingsValues` (11 khoá; 17 từ ADR-053) |
 | `getSystemSettingsPageData()` | `lib/system-settings.ts` | Loader trang `/admin/settings/general` (không cache): `values`, `bounds`, `invalidKeys`, `inactiveKeys`, `inactiveReasons`, `isDefault`, `updatedAt`, `updatedByEmail` |
-| `getAccessTokenTtlSeconds()`, `getRefreshTokenTtl()` | `lib/jwt-context.ts` | TTL cho token **mới** |
+| `getAccessTokenTtlSeconds()`, ~~`getRefreshTokenTtl()`~~ | `lib/jwt-context.ts` | TTL cho token **mới**. Từ ADR-053 `getRefreshTokenTtl()` đã xoá, thay bằng `getSessionPolicy(role, rememberMe): Promise<SessionPolicy>`; `getAccessTokenTtlSeconds()` chỉ còn `lib/account-profile.ts` dùng |
 | `getEffectiveBrand()` | `lib/branding.ts` | `Brand { name, shortName, slogan }` = `resolveBrand(SystemBranding)`; thay `getBrand()` đã bỏ |
 | `getHomeStats`, `buildHomeStatItems`, `getHomeSearchCategories`, `getHomeFeaturedTenants`, `getHomeFeaturedProducts`, `listHomeTenantOptions`, `listHomeProductOptions` | `lib/home.ts` | Mọi truy vấn trong `withPublic`; không đọc `orders` |
 | `recomputeProductSoldCounts(productIds)` | `lib/product-sold-count.ts` | `withSystemJob`, gọi sau commit; lỗi chỉ log |
@@ -615,7 +674,7 @@ riêng khác chữ ("Mẫu / Template", "Đề thi / Đề kiểm tra") — BACK
 
 | Method | Endpoint | Truy cập | Mô tả |
 | :-- | :-- | :-- | :-- |
-| `GET` | `/api/cron/daily` | Header `Authorization: Bearer <CRON_SECRET>` (so sánh `timingSafeEqual` cả chuỗi; khác độ dài → từ chối trước). Không dùng cookie/session | Vercel Cron gọi mỗi ngày (`apps/web/vercel.json`: `0 20 * * *` UTC = 03:00 giờ VN). Chạy tuần tự, mỗi bước cô lập: `runSubscriptionSweep()` → `runOrderSweep()` → `superviseQueues([payment.process, file.scan])` → `audit.purgeExpired()` (bước `audit.purge`, thêm ở M12a — ADR-037) → `runStatsAggregation()` (bước `stats.aggregate`, thêm ở M12b — ADR-037) → `purgeExpiredAbuseReportIps()` (bước `abuse_report.ip_purge`, thêm ở M12c — ADR-038) → `drainQueues(cùng 2 hàng đợi, ngân sách 40 giây)`. `maxDuration = 60`, `dynamic = "force-dynamic"`. |
+| `GET` | `/api/cron/daily` | Header `Authorization: Bearer <CRON_SECRET>` (so sánh `timingSafeEqual` cả chuỗi; khác độ dài → từ chối trước). Không dùng cookie/session | Vercel Cron gọi mỗi ngày (`apps/web/vercel.json`: `0 20 * * *` UTC = 03:00 giờ VN). Chạy tuần tự, mỗi bước cô lập: `runSubscriptionSweep()` → `runOrderSweep()` → `superviseQueues([payment.process, file.scan])` → `audit.purgeExpired()` (bước `audit.purge`, thêm ở M12a — ADR-037) → `runStatsAggregation()` (bước `stats.aggregate`, thêm ở M12b — ADR-037) → `purgeExpiredAbuseReportIps()` (bước `abuse_report.ip_purge`, thêm ở M12c — ADR-038) → `purgeStaleRefreshTokens()` (bước `refresh_tokens.purge`, thêm ở ADR-053) → `purgeExpiredDownloadEvents()` (bước `download_events.purge`, thêm ở ADR-054) → `drainQueues(cùng 2 hàng đợi, ngân sách 40 giây)`. `maxDuration = 60`, `dynamic = "force-dynamic"`. |
 
 **Response** — chỉ số đếm, không dữ liệu tenant/đơn/khách (CLAUDE.md §7.9):
 
@@ -626,13 +685,15 @@ riêng khác chữ ("Mẫu / Template", "Đề thi / Đề kiểm tra") — BACK
 | `401` | `{ error: { code: "UNAUTHORIZED", message, requestId } }` | Thiếu/sai header `Authorization` |
 | `503` | `{ error: { code: "CRON_NOT_CONFIGURED", message, requestId } }` | Env `CRON_SECRET` chưa đặt (biến tuỳ chọn) |
 
-`results` = `{ subscriptionSweep, orderSweep, queueMaintenance, queues, auditPurge, statsAggregate, reportIpPurge }`, mỗi phần tử dạng `{ ok: true, result }` hoặc
+`results` = `{ subscriptionSweep, orderSweep, queueMaintenance, queues, auditPurge, statsAggregate, reportIpPurge, sessionPurge, downloadPurge }`, mỗi phần tử dạng `{ ok: true, result }` hoặc
 `{ ok: false }`: `subscriptionSweep.result = {}`; `orderSweep.result = { expired: number }` (số đơn chuyển `EXPIRED`); `queueMaintenance.result =
 { queues: number }`; `queues.result = { processed, failed, budgetExhausted }`; `auditPurge.result = { deleted: number, skipped: boolean }`
 (số dòng `audit_logs` > 12 tháng đã xoá; `skipped: true` khi bảng chưa tồn tại — M12a, ADR-037); `statsAggregate.result =
 { skipped, backfilled, fromDate, toDate, upserted }` (`StatsAggregationResult` — `fromDate`/`toDate` dạng `YYYY-MM-DD` ngày VN hoặc `null` khi
 `skipped`; `upserted` = số dòng (tenant, ngày) có hoạt động đã ghi; `backfilled: true` khi bảng trống và lần chạy này backfill — M12b, ADR-037); `reportIpPurge.result = { cleared: number, skipped: boolean }` (số báo cáo cũ hơn
-12 tháng vừa đặt `ip = NULL`; `skipped: true` khi bảng `abuse_reports` chưa tồn tại — M12c, ADR-038). Lưu ý: `500 CRON_STEP_FAILED` có thêm khoá `results`
+12 tháng vừa đặt `ip = NULL`; `skipped: true` khi bảng `abuse_reports` chưa tồn tại — M12c, ADR-038); `sessionPurge.result = { deleted: number }` (số dòng
+`refresh_tokens` có `expiresAt` hoặc `revokedAt` cũ hơn 90 ngày đã xoá — ADR-053); `downloadPurge.result = { deleted: number }` (số dòng `download_events`
+có `createdAt` cũ hơn 12 tháng đã xoá, chạy qua `withSystemJob` — ADR-054 mục 8; không có nhánh `skipped`). Lưu ý: `500 CRON_STEP_FAILED` có thêm khoá `results`
 ngoài khung lỗi chuẩn `{ error }`.
 
 ---
@@ -779,7 +840,7 @@ entitlementId)`; trả `RemedyActionState = { ok?, error?, code? }`; revalidate 
 | Studio sản phẩm/đánh giá/bài viết | Thao tác đổi trạng thái trên nội dung bị khoá → `CONTENT_MODERATION_LOCKED` 409 |
 | Studio đơn hàng — `grantExtraDownloads` | `REMEDY_DOWNLOAD_LIMIT_LOCKED` 409 khi entitlement có remedy |
 | Studio đơn hàng — trang `/studio/{slug}/orders` | Query mới `remedy=REFUND_REQUESTED` (`parseOrderRemedyFilter`, kết hợp `status`); `listOrders` trả thêm `refundRequested: boolean`, mỗi item kèm `entitlement { remedyStatus, remedyChosenAt }`. **Từ ADR-046** trang dùng `listOrdersPage` (§23), `remedy=REFUND_REQUESTED` giữ nguyên; `listOrders` đã xoá (ADR-047, §23.4) |
-| Checkout — `initiateOrderCheckout`, `applyCouponToOrder` | `PRODUCT_UNAVAILABLE` 409 khi tenant không `ACTIVE` hoặc sản phẩm không `PUBLISHED` |
+| Checkout — `initiateOrderCheckout`, `applyCouponToOrder` | `PRODUCT_UNAVAILABLE` 409 khi tenant không `ACTIVE` hoặc sản phẩm không `PUBLISHED` . Từ ADR-056 thêm `ORDER_CHANGED` 409 / `CHECKOUT_CREATE_FAILED` 502 (§27.3) |
 | Thư viện — `LibraryEntitlement` | Thêm `remedyStatus`, `refundAvailable`, `remedyChosenAt`, `remedyResolvedAt`, `finalDownloadFileCount`, `orderCode` |
 | `TenantNavItem` (sidebar Studio) | Thêm `badge?: { text, srText, urgent? }` |
 
@@ -886,6 +947,7 @@ code, formError?, fieldErrors?, values? }` (`values` để giữ nội dung đã
 | `requestEmailChangeAction(prev, formData)` | `requireVerified()` | `newEmail` + `currentPassword`; `EMAIL_TAKEN` khi email thuộc tài khoản khác; 3 lần/giờ/user (gộp gửi lại); tạo token `EMAIL_CHANGE` (TTL = `emailVerifyTtlHours`), xoá yêu cầu cũ; email tới email mới + báo email cũ |
 | `resendEmailChangeAction()` / `cancelEmailChangeAction()` | `requireVerified()` | Gửi lại (token mới, cũ vô hiệu) / huỷ (xoá token) |
 | `logoutAllDevicesAction()` | `requireUser()` | Thu hồi mọi refresh token, xoá cookie `at` + `rt` (`Path=/api/auth`), redirect `/login`; không audit |
+| `revokeSessionAction(formData)` (ADR-053) | `requireUser()` | Ô `sessionId` = `familyId`; `revokeAccountSession` lọc `userId` của người gọi (sai kiểu/rỗng/dài > 100 ký tự → ném `AppError` `VALIDATION_ERROR` 400, action không bắt; không khớp dòng nào → 404, action nuốt lỗi và chỉ làm mới danh sách); **trả `Promise<{ signedOut: boolean }>`** (không redirect ở server): thiết bị hiện tại → xoá cookie `at` + `rt` (`Path=/api/auth`), trả `{ signedOut: true }` — client (`_ui/session-cards.tsx`) **điều hướng cứng** `window.location.assign("/login")` (xoá client cache phiên cũ, ADR-053); thiết bị khác → `revalidatePath("/account/security")`, trả `{ signedOut: false }`; không audit. Loader `listAccountSessions(user): AccountSessionView[]` `{ id, deviceLabel, deviceKind, ip, startedAt, lastActiveAt, rememberMe, isCurrent }` (`lib/account-sessions.ts`) — `deviceKind: "desktop" \| "mobile" \| "tablet"` từ `describeDeviceKind(userAgent)` (`@gieochu/auth`, chỉ để chọn icon; UA trống → `desktop`) |
 | `confirmEmailChangeAction(prev, formData)` (`account/email/xac-nhan/actions.ts`) | **Không cần đăng nhập** | 20 lần/15 phút/IP; một transaction: đánh dấu token đã dùng (`usedAt IS NULL` → chống bấm 2 lần), đổi `User.email` + `emailVerifiedAt`, thu hồi **mọi** refresh token, vô hiệu token `PASSWORD_RESET`/`EMAIL_VERIFY` chưa dùng; lỗi hết hạn/đã dùng/không hợp lệ, `EMAIL_TAKEN`, `ACCOUNT_LOCKED`, `RATE_LIMITED`; email `email_changed` tới email cũ; xoá cookie nếu trình duyệt đang đăng nhập đúng tài khoản |
 
 Trang `/account/email/xac-nhan?token=…` — GET chỉ đọc (`previewEmailChangeToken` → `valid`/`expired`/`used`/`invalid`), xác nhận bằng nút
@@ -1169,7 +1231,7 @@ Trình duyệt **không** thấy các response này trực tiếp: theo file m�
 
 ---
 
-## 26. CMS menu, CMS trang chủ + SEO, văn bản pháp lý (ADR-050 đợt 1) ✅
+## 26. CMS menu, CMS trang chủ + SEO, văn bản pháp lý (ADR-050 đợt 1; ADR-054 đợt 2; nền nháp ADR-053 lần 3) ✅
 
 Đối chiếu working tree 2026-10-23 (chưa commit). **Không thêm `route.ts`** — đếm lại: 23 dưới `/api`, 24 toàn app ✅; route có sẵn đổi contract:
 `POST /api/auth/register` (§3.1). Nghiệp vụ: [[02-System-Specs/System-Cms-Menu-Home-Seo-Specs|System-Cms-Menu-Home-Seo-Specs]],
@@ -1192,7 +1254,7 @@ lỗi khác ném lại. Audit `MENU_CMS_UPDATED` `{ operation: "SAVE_DRAFT" | "P
 | :-- | :-- |
 | `getSiteMenu(): Promise<SiteMenuView>` | `cache()` theo request — dùng ở `SiteHeader` + `SiteFooter` |
 | `getPublishedSiteMenu(): Promise<SiteMenu>` | `cache()`; PUBLISHED hoặc mặc định (CTA mặc định có chữ "miễn phí" chỉ khi có `Plan` `isActive && isFree`) |
-| `resolveSiteMenu(menu, { brandName, slogan, year })` | Thuần — dùng chung trang công khai và xem trước |
+| `resolveSiteMenu(menu, { brandName, slogan, year, effectiveLegalKeys })` | Thuần — dùng chung trang công khai và xem trước. **ADR-054:** thêm `effectiveLegalKeys: ReadonlySet<LegalDocumentKey>` — link loại `legal` tới văn bản chưa hiệu lực bị bỏ, cột footer rỗng bị ẩn; `getSiteMenu()` lấy tập này từ `getEffectiveLegalKeys()` (`lib/legal.ts`) |
 | `currentDisplayYear(now?)` | Năm theo `DISPLAY_TIME_ZONE` |
 | `getSiteMenuEditorData(): Promise<SiteMenuEditorData>` | `{ menu (nháp ?? live ?? mặc định), live, hasDraft, status: "NONE"\|"DRAFT"\|"PUBLISHED", updatedAt }` — caller gác SYSTEM_ADMIN |
 
@@ -1239,24 +1301,101 @@ hằng `HOME_*_MAX`; kiểu `HomeCta`, `HomeCommunityView`, `HomePublishIssue`, 
 | `publishLegalVersionAction(key, versionId, effectiveAtLocal)` | `datetime-local` giờ VN, trống = ngay; cổng xuất bản + không lùi ngày | `LEGAL_VERSION_PUBLISHED` (+`effectiveAt` ISO) |
 | `archiveLegalVersionAction(key, versionId)` | chỉ bản PUBLISHED | `LEGAL_VERSION_ARCHIVED` |
 
-Mọi action `requireRole("SYSTEM_ADMIN")`; `key` phải là khoá trong `LEGAL_DOCUMENT_DEFS` (đợt 1 chỉ `"terms"`), `versionId` chuỗi 1–64; trả `LegalActionState
-{ success?, error?, versionId? }`. Audit scope `SYSTEM`, `targetType: "LegalDocumentVersion"`, metadata `{ key, version, … }` — không nội dung. Mã lỗi:
-[[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]] §8.
+| `saveLegalDocumentMetaAction(key, input)` (ADR-054) | `input = { summary, seoTitle, seoDescription }` (chuỗi; `cmsSeoSchema` 120/320 + `summary` ≤ 320; rỗng → `null`); lưu thẳng, không nháp; revalidate `/admin/cms/phap-ly` + `/{slug}` | `LEGAL_DOCUMENT_META_UPDATED` (`targetType: "LegalDocument"`, `targetId` = khoá, metadata `{ key, hasSummary, hasSeoTitle, hasSeoDescription }`) |
+
+Mọi action `requireRole("SYSTEM_ADMIN")`; `key` phải là khoá trong `LEGAL_DOCUMENT_DEFS` (đợt 1 chỉ `"terms"`; từ ADR-054 7 khoá), `versionId` chuỗi 1–64; trả `LegalActionState
+{ success?, error?, versionId? }`. 5 action phiên bản revalidate `/admin/cms/phap-ly`, `/{slug}`, `/register`, `/studio` và `revalidatePath("/", "layout")` (ADR-054). Audit scope `SYSTEM`, `targetType: "LegalDocumentVersion"`, metadata `{ key, version, … }` — không nội dung. Mã lỗi:
+[[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]] §9.
 
 Hàm lib (`lib/legal.ts`, không tự kiểm quyền): `sanitizeLegalHtml`, `ensureLegalDocument`, `listLegalVersions(key)`, `getEffectiveLegalVersion(key, now?)` →
 `EffectiveLegalVersion | null`, `createLegalDraft`, `updateLegalDraft`, `setLegalReviewStatus`, `publishLegalVersion`, `archiveLegalVersion`,
-`resolveRegistrationTermsVersion(effective, submittedId)`, `recordLegalAcceptance(tx, userId, versionId, acceptedAt)`. Subpath `@gieochu/core/legal`
-(hằng + luật thuần: `LEGAL_DOCUMENT_DEFS`, `legalDocumentPath`, `legalKeyFromSlug`, `LEGAL_PLACEHOLDER_MARKER`, `legalPublishBlockers`,
+`resolveRegistrationTermsVersion(effective, submittedId)`, `recordLegalAcceptance(tx, userId, versionId, acceptedAt)`. **ADR-054 thêm:** `getLegalDocumentMeta(key)`
+→ `LegalDocumentMeta | null` (`{ title, summary, seoTitle, seoDescription }`), `updateLegalDocumentMeta(spec, input)`, `listLegalDocumentStatuses(now?)` →
+`Map<LegalDocumentKey, { status: "NONE" | "DRAFT_ONLY" | "EFFECTIVE" | "SCHEDULED"; hasDraft }>`, `getEffectiveLegalKeys()` (`cache()`), `resolveAcceptedLegalVersion`,
+`resolveRegistrationPrivacyVersion`, `resolveSellerPolicyAcceptance(effective, { accepted, submittedVersionId })`, `recordLegalAcceptances(tx, userId, versionIds,
+acceptedAt)` (trả số dòng mới). Subpath `@gieochu/core/legal`
+(hằng + luật thuần: `LEGAL_DOCUMENT_DEFS`, `LEGAL_DOCUMENT_KEYS`, `LEGAL_DOCUMENT_ROOT_SLUGS`, `LEGAL_LEGACY_BASE_PATH`, `LEGAL_SUMMARY_MAX`, `legalDocumentPath` (từ ADR-054 trả `/{slug}`), `legalKeyFromSlug`, `LEGAL_PLACEHOLDER_MARKER`, `legalPublishBlockers`,
 `pickEffectiveLegalVersion`, `parseVnDateTimeLocal`, `legalVersionLabel`, `LEGAL_ERROR_CODES`…); `@gieochu/core/brand-token`
 (`escapeHtmlText`, `replaceBrandTokenInHtml`).
 
-Trang mới: `/admin/cms/menu`, `/admin/cms/phap-ly` (System Center), `/phap-ly/[slug]` (công khai — 404 khi chưa có bản hiệu lực).
+Trang mới: `/admin/cms/menu`, `/admin/cms/phap-ly` (System Center — từ ADR-054 chọn văn bản bằng `?van-ban=<khoá>`), `/phap-ly/[slug]` (công khai — 404 khi chưa có bản hiệu lực; **từ ADR-054 thay bằng 7 URL cấp gốc**, đường cũ redirect 308 — §5.2).
+`sanitizeRichTextHtml` (`@gieochu/core/content/sanitize-html`) thêm tuỳ chọn `trustedLinks?: { siteOrigin: string | null }` (chỉ cho văn bản pháp lý) và export
+`classifyRichTextLink(href, siteOrigin)` → `"internal" | "external" | "mailto"` — luật ở [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]] §3.5.
+
+### 26.5. Server Action — mở gian hàng có đồng ý Chính sách người bán (ADR-054 mục 5) ✅ đọc `git diff` 2026-10-24
+
+`createTenantAction` (`app/studio/actions.ts`) — form `StudioOnboardingForm` thêm 2 ô: `sellerPolicyAccepted` (checkbox, `"on"` → `true`) và
+`sellerPolicyVersionId` (hidden, trim 1–64, tuỳ chọn). Hai ô chỉ hiện khi `seller` có bản hiệu lực (`app/studio/page.tsx` truyền
+`sellerPolicy = { versionId, href: "/chinh-sach-nguoi-ban", title } | null`). Server **tự** đọc bản hiệu lực rồi `resolveSellerPolicyAcceptance`:
+- chưa có bản → bỏ qua; có bản mà không tích → `AppError` 400 **`LEGAL_ACCEPTANCE_REQUIRED`**; id gửi lên khác bản hiệu lực → 409 **`LEGAL_DOCUMENT_CHANGED`**;
+  action trả `{ error: message }` như các lỗi `AppError` khác.
+- `createTenantForUser(user, { name, slug, bio, acceptedLegalVersionIds })` (`lib/create-tenant.ts`, tham số mới tuỳ chọn) ghi `user_legal_acceptances`
+  trong **cùng transaction** tạo tenant (L1, không RLS; lỗi → rollback cả tenant).
+
+### 26.6. Lib nền nháp tự động editor (ADR-053 bổ sung lần 3) ✅ đọc code 2026-10-24 — chưa có Server Action
+
+| Export | Nơi | Ghi chú |
+| :-- | :-- | :-- |
+| `getDraft(scope, userId, ref)`, `saveDraft(scope, userId, input)`, `discardDraft(scope, userId, ref)`, `purgeStaleDrafts(now?)` | `apps/web/lib/editor-draft.ts` | `scope = { kind: "TENANT", tenantId } \| { kind: "SYSTEM" }`; `ref = { entityType, entityKey }`; `saveDraft` nhận `{ payload, clientId, expectedRevision, baseUpdatedAt?, overwrite? }` → `{ revision, updatedAt }`. **Không tự kiểm quyền người gọi** — Server Action tương lai phải `requireTenantMember`/`requireRole("SYSTEM_ADMIN")` mỗi lần |
+| `useServerAutosave(options)` | `apps/web/lib/use-server-autosave.ts` (client) | `save(args) → { ok: true, revision, updatedAt } \| { ok: false, code, message? }`; nghe `gieochu:session-expiring` |
+| Hằng, kiểu, `parseEditorDraftPayload`, `isValidEditorDraftKey`, `EDITOR_DRAFT_ERROR_CODES` | subpath `@gieochu/core/editor-draft` | Client import được |
+
+Mã lỗi `DRAFT_TOO_LARGE` (413), `DRAFT_INVALID` (400), `DRAFT_CONFLICT` (409) + `RATE_LIMITED`, `FORBIDDEN`, `NOT_FOUND`. Nghiệp vụ:
+[[02-System-Specs/Editor-Autosave-Drafts-Specs|Editor-Autosave-Drafts-Specs]].
 
 ---
 
-## 27. Tài Liệu Tham Chiếu & Liên Kết
+## 27. System Center hoá đơn/Đơn hàng gói, khối chuyển khoản, mã giảm giá tạo lại QR (ADR-056) ✅
+
+Đối chiếu working tree 2026-10-25 (chưa commit ✅ `git status`). **Không thêm `route.ts`** — đếm lại: 23 dưới `/api`, 25 toàn app ✅; **không migration**. Hai trang
+admin là Server Component gọi lib trực tiếp (guard `requireAdminAccess`). Nghiệp vụ: [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5C–§5E,
+[[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.9; quyết định
+[[01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr|ADR-041 KB (≙ ADR-056)]].
+
+### 27.1. Trang & tham số URL
+
+| Trang | Guard | Query string |
+| :-- | :-- | :-- |
+| `/admin/billing/invoices` | `requireAdminAccess` (SYSTEM_ADMIN, khác → 404) | `tab` = `cho-doi-soat` (mặc định, giá trị lạ cũng về đây) \| `tat-ca`. Chỉ tab `tat-ca`: `status` (`PENDING`\|`PAID`\|`EXPIRED`\|`VOID`\|`REFUNDED`), `provider` (`MANUAL_QR`\|`SEPAY`\|`MOMO`), `page`, `pageSize` (10/20/50/100, mặc định 20). Giá trị lạ → bỏ lọc |
+| `/admin/subscriptions` | `requireAdminAccess` | `plan` (mã gói có trong `listPlanFilterOptions`, khác → bỏ lọc), `status` (`TRIALING`\|`ACTIVE`\|`PAST_DUE`\|`GRACE`\|`EXPIRED`\|`CANCELED`), `page`, `pageSize` |
+
+Form lọc là `<form method="get">` (`FilterBar`) — gửi lại bỏ `page` (về trang 1), giữ `tab`/`pageSize` bằng input ẩn.
+
+### 27.2. Export mới của `apps/web/lib/subscription-billing.ts` (chỉ đọc bảng L1, §7.9)
+
+| Export | Ghi chú |
+| :-- | :-- |
+| `ADMIN_INVOICE_STATUSES`, `ADMIN_INVOICE_PROVIDERS`, `ADMIN_SUBSCRIPTION_STATUSES` + kiểu `AdminInvoiceStatus`/`AdminInvoiceProvider`/`AdminSubscriptionStatus` | Mảng `as const` khớp enum DB (`satisfies`) |
+| `parseEnumParam(allowed, value) → T \| undefined` | Không ném lỗi |
+| `listSubscriptionInvoices({ status?, provider?, page, pageSize }) → { items, total, page, pageSize }` | `page ≥ 1`, `pageSize` kẹp 1–100 (mặc định 20); `createdAt desc, id desc`; item `{ id, code, provider, status, amountVnd, createdAt, paidAt, dueAt, tenant { id, name, slug }, plan { code, name } }` |
+| `listSubscriptions({ planCode?, status?, page, pageSize? }) → { items, total, page, pageSize }` | Sắp `plan.isFree asc, currentPeriodEnd asc, id asc`; item `{ id, status, currentPeriodStart, currentPeriodEnd, graceEndsAt, plan { code, name, isFree }, tenant { id, name, slug }, latestInvoice { code, status } \| null }` |
+| `listPlanFilterOptions() → { code, name }[]` | Mọi gói (kể cả ngừng bán), `priceVnd asc, code asc` |
+
+### 27.3. Hàm lib khác đổi/thêm
+
+| Hàm | Thay đổi |
+| :-- | :-- |
+| `savePlatformProviderConfig(input)` (`lib/platform-payment.ts`) | Trả `{ isEnabled, autoDisabled }` (trước `void`). 3 action `save*Action` (`app/admin/billing/payment/actions.ts`) trả thêm `PlatformPaymentActionState.message` khi `autoDisabled` |
+| `getPlatformPaymentConfigRow(provider)` (`lib/platform-payment.ts`, mới) | Điểm đọc duy nhất dòng `platform_payment_configs` cho `createRenewalInvoice` và `POST /api/webhooks/platform/[provider]` (response webhook không đổi) |
+| `getBankByBin(bin)` (`lib/tenant-payment.ts`, mới) | `{ shortName, name } \| null` từ bảng L1 `bank_bins`; BIN rỗng → `null` |
+| `initiateOrderCheckout`, `applyCouponToOrder`, `removeCouponFromOrder` (`lib/order.ts`) | Mã lỗi mới **`ORDER_CHANGED` 409** (ghi có điều kiện thất bại — đơn vừa đổi tổng/cổng), **`CHECKOUT_CREATE_FAILED` 502** (cổng không tạo được checkout). Áp/gỡ mã khi đơn đã có `checkoutPayload` → tạo lại payload theo tổng mới. `ORDER_NOT_PENDING` 409 như cũ |
+
+### 27.4. Server Action checkout (`app/[tenantSlug]/checkout/[orderCode]/actions.ts`)
+
+| Action | Chữ ký | Ghi chú |
+| :-- | :-- | :-- |
+| `applyCouponAction` | `(tenantSlug, orderCode, prevState, formData) → CheckoutActionState` | Không đổi chữ ký; lỗi mới đi qua `{ error: message }` |
+| `removeCouponAction` | `(tenantSlug, orderCode, prevState, formData) → CheckoutActionState` | **Đổi** từ `(tenantSlug, orderCode) → void`: nay bắt `AppError` → `{ error: message }` (`ORDER_CHANGED`, `CHECKOUT_CREATE_FAILED`, `PROVIDER_NOT_AVAILABLE`, `ORDER_NOT_PENDING`) ✅ đọc code |
+| `selectProviderAction` | không đổi | Có thể nhận thêm `ORDER_CHANGED`/`CHECKOUT_CREATE_FAILED` |
+
+`CheckoutActionState = { error?: string }` (không trả `code`).
+
+---
+
+## 28. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
+* [[01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr|ADR-041 (≙ ADR-056)]] — hoá đơn/Đơn hàng gói, khối chuyển khoản, mã giảm giá tạo lại QR (§27) ([ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr.md](../01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr.md))
 * [[02-System-Specs/System-Cms-Menu-Home-Seo-Specs|System-Cms-Menu-Home-Seo-Specs]] ([System-Cms-Menu-Home-Seo-Specs.md](../02-System-Specs/System-Cms-Menu-Home-Seo-Specs.md)) · [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]] ([Legal-Documents-Specs.md](../02-System-Specs/Legal-Documents-Specs.md)) · [[01-Architecture-Decisions/ADR-035-Menu-Home-Seo-Versioned-Terms|ADR-035 (≙ ADR-050)]]
 * [[Database-Schema-Reference]] — Lược đồ dữ liệu ([Database-Schema-Reference.md](./Database-Schema-Reference.md))
 * [[03-API-Contracts/README|README]] — Giới thiệu thư mục ([README.md](./README.md))

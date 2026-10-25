@@ -76,7 +76,7 @@ Hàm thuần, không phụ thuộc Prisma (client component import được nhã
 | Export | Vai trò |
 | :-- | :-- |
 | `AUDIT_SCOPES`, `isAuditScope`, `AUDIT_SCOPE_LABELS` | 3 scope + nhãn ("Hệ thống", "Gian hàng", "Khách hàng") |
-| `AUDIT_ACTIONS` (50 — 27 từ M12a + 5 từ M12c/ADR-039 + 8 từ ADR-041 + 2 từ ADR-047 + 1 từ ADR-048 + 7 từ ADR-050), `isAuditAction`, `AUDIT_ACTION_LABELS`, `auditActionLabel` | Danh sách action + nhãn tiếng Việt; action lạ hiển thị nguyên chuỗi |
+| `AUDIT_ACTIONS` (52 — 27 từ M12a + 5 từ M12c/ADR-039 + 8 từ ADR-041 + 2 từ ADR-047 + 1 từ ADR-048 + 7 từ ADR-050 + 1 từ ADR-051 + 1 từ ADR-054), `isAuditAction`, `AUDIT_ACTION_LABELS`, `auditActionLabel` | Danh sách action + nhãn tiếng Việt; action lạ hiển thị nguyên chuỗi |
 | `sanitizeAuditMetadata` | Thay giá trị khoá nhạy cảm (khớp `pass(word)`, `secret`, `token`, `hash`, `authorization`, `cookie`, `api key`, `private key`, `signature`, `otp`) bằng `"[REDACTED]"` ở mọi độ sâu; bỏ giá trị không phải JSON; giới hạn độ sâu 4, 40 khoá, 50 phần tử mảng, chuỗi 500 ký tự; JSON > 4096 byte → chỉ còn `{ truncated: true }`. Không bao giờ ném |
 | `maskEmail` | `nguyen@gmail.com` → `n***@gmail.com` |
 | `extractAuditIp`, `normalizeAuditUserAgent` | IP = phần tử đầu `x-forwarded-for` (hoặc `x-real-ip`), cắt 64 ký tự; User-Agent cắt 512 |
@@ -110,10 +110,10 @@ Từ M12c (ADR-038, 2026-10-17) ✅: **`publishProduct(tenantId, productId, acto
 
 ---
 
-## 4. Action và nơi ghi ✅ (grep `audit.log(` 2026-10-16; cập nhật M12c 2026-10-17; cập nhật ADR-041 2026-10-17; cập nhật ADR-047 2026-10-18; cập nhật ADR-048 2026-10-23; cập nhật ADR-050 2026-10-23)
+## 4. Action và nơi ghi ✅ (grep `audit.log(` 2026-10-16; cập nhật M12c 2026-10-17; cập nhật ADR-041 2026-10-17; cập nhật ADR-047 2026-10-18; cập nhật ADR-048 2026-10-23; cập nhật ADR-050 2026-10-23; cập nhật ADR-051 + ADR-054 2026-10-24)
 
-**50** action trong `AUDIT_ACTIONS` ✅ (đếm working tree 2026-10-23, sau ADR-050): 21 theo đặc tả §"M12" + 6 bổ sung ở M12a (trước đây chỉ ghi `logger`) + 5 ở
-M12c/ADR-039 + 8 ở ADR-041 (Hồ sơ, Bảng giá CMS, hoàn tiền gói) + 2 ở ADR-047 (ghi chú nội bộ đơn) + 1 ở ADR-048 (ghi chú khách) + 7 ở ADR-050 (CMS trang chủ, menu, văn bản pháp lý). Thêm action không
+**52** action trong `AUDIT_ACTIONS` ✅ (đếm working tree 2026-10-24, sau ADR-051 của vuong + ADR-054; 50 ở 2026-10-23 sau ADR-050): 21 theo đặc tả §"M12" + 6 bổ sung ở M12a (trước đây chỉ ghi `logger`) + 5 ở
+M12c/ADR-039 + 8 ở ADR-041 (Hồ sơ, Bảng giá CMS, hoàn tiền gói) + 2 ở ADR-047 (ghi chú nội bộ đơn) + 1 ở ADR-048 (ghi chú khách) + 7 ở ADR-050 (CMS trang chủ, menu, văn bản pháp lý) + 1 ở ADR-051 (`PRODUCT_DELETED` — vuong, commit `c63b72b`) + 1 ở ADR-054 (`LEGAL_DOCUMENT_META_UPDATED`). Thêm action không
 cần DDL (`action` là chuỗi).
 
 | Action | Scope | Nơi ghi | Actor |
@@ -130,6 +130,7 @@ cần DDL (`action` là chuỗi).
 | `PAYMENT_CONFIG_UPDATED` | SYSTEM | `lib/platform-payment.ts` (lưu cấu hình; kiểm tra kết nối thành công tự bật) — chỉ cờ thay đổi, không secret | admin |
 | `PAYMENT_CONFIG_UPDATED` | TENANT | `lib/tenant-payment.ts` | thành viên |
 | `PRODUCT_PUBLISHED` / `PRODUCT_ARCHIVED` | TENANT | `lib/product.ts` | thành viên |
+| `PRODUCT_DELETED` | TENANT | `lib/product.ts` `deleteProduct` (sau transaction xoá) — `targetType: "Product"`, `targetId` = id tài liệu, metadata `{ title, slug, deletedFilesCount, freedStorageBytes }`. Nhãn "Xoá tài liệu" (ADR-051 — vuong; nghiệp vụ ở [[01-Architecture-Decisions/ADR-037-Product-Archive-Deletion-Storage-Cleanup|ADR-037 KB]]) ✅ code | thành viên |
 | `ORDER_MANUALLY_CONFIRMED` / `ORDER_REFUNDED` | TENANT | `lib/order.ts` | thành viên |
 | `COUPON_OVERUSED` | SYSTEM (+`tenantId`) | `lib/order.ts` `auditMarkOrderPaid` — gọi từ thanh toán 0đ, xác nhận tay, `payment-process.ts` (webhook) | null |
 | `ENTITLEMENT_EXTRA_GRANTED` / `ENTITLEMENT_REVOKED` | TENANT | `lib/entitlement.ts` | thành viên |
@@ -153,6 +154,7 @@ cần DDL (`action` là chuỗi).
 | `HOME_CMS_UPDATED` | SYSTEM | `app/admin/cms/home-editor/actions.ts` (`logChange`) — `targetType: "CmsPage"`, `targetId: "home"`, metadata chỉ `operation` (`SAVE_DRAFT`/`PUBLISH`/`RESTORE_LIVE`; khôi phục khi chưa có dòng → không ghi). Nhãn "Cập nhật trang chủ" (ADR-050) | admin |
 | `MENU_CMS_UPDATED` | SYSTEM | `app/admin/cms/menu/actions.ts` (`logChange`) — `targetType: "CmsPage"`, `targetId: "menu"`, metadata chỉ `operation` như trên. Nhãn "Cập nhật menu header/footer" (ADR-050) | admin |
 | `LEGAL_VERSION_CREATED` / `LEGAL_VERSION_UPDATED` / `LEGAL_REVIEW_STATUS_CHANGED` / `LEGAL_VERSION_PUBLISHED` / `LEGAL_VERSION_ARCHIVED` | SYSTEM | `app/admin/cms/phap-ly/actions.ts` (`logChange`, sau khi lib ghi xong) — `targetType: "LegalDocumentVersion"`, `targetId` = id phiên bản, metadata `{ key, version }` + `reviewStatus` (đổi rà soát) / `effectiveAt` ISO (xuất bản); **không** nội dung văn bản. Nhãn: "Tạo phiên bản văn bản pháp lý", "Sửa bản nháp văn bản pháp lý", "Đổi trạng thái rà soát pháp lý", "Xuất bản văn bản pháp lý", "Lưu trữ văn bản pháp lý" (ADR-050). Ghi chấp thuận khi đăng ký **không** audit | admin |
+| `LEGAL_DOCUMENT_META_UPDATED` | SYSTEM | `app/admin/cms/phap-ly/actions.ts` `saveLegalDocumentMetaAction` — `targetType: "LegalDocument"`, `targetId` = **khoá** văn bản (vd `privacy`), metadata `{ key, hasSummary, hasSeoTitle, hasSeoDescription }` (chỉ cờ, **không** nội dung). Nhãn "Cập nhật mô tả/SEO văn bản pháp lý" (ADR-054). Ghi chấp thuận khi đăng ký/mở gian hàng **không** audit | admin |
 | `SYSTEM_SETTINGS_UPDATED` | SYSTEM | `lib/system-settings.ts` (form "Cấu hình chung", metadata `changes` cũ→mới) và `app/admin/settings/actions.ts` (email hỗ trợ) | admin |
 
 **Có trong `AUDIT_ACTIONS` nhưng chưa nối:**

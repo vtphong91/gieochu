@@ -1,3 +1,5 @@
+import { LEGAL_DOCUMENT_ROOT_SLUGS } from "../legal/legal-document";
+
 /** Reserved path segments that can never be a tenant slug (docs §"M4"). */
 export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "admin",
@@ -26,8 +28,11 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "tim-kiem",
   "giao-vien",
   "kham-pha",
-  // ADR-050 mục 3: văn bản pháp lý `/phap-ly/{slug}` — route tĩnh cấp gốc thắng `app/[tenantSlug]`.
+  // ADR-050 mục 3: tiền tố cũ `/phap-ly/{slug}` (ADR-054: nay chỉ redirect 308) — giữ dành riêng.
   "phap-ly",
+  // ADR-054 mục 1: 7 văn bản pháp lý ở URL cấp gốc (`dieu-khoan-su-dung`, `chinh-sach-bao-mat`, `chinh-sach-noi-dung`,
+  // `cam-ket-ban-quyen`, `quyen-su-dung-tai-lieu`, `chinh-sach-nguoi-ban`, `lien-he`) — route tĩnh thắng `app/[tenantSlug]`.
+  ...LEGAL_DOCUMENT_ROOT_SLUGS,
 ]);
 
 export function isReservedSlug(slug: string): boolean {

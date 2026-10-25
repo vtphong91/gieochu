@@ -15,9 +15,13 @@ export function MomoForm({
   const [state, formAction, isPending] = useActionState(saveMomoAction, initialState);
   const [testResult, setTestResult] = useState<{ ok: boolean; message?: string } | null>(null);
   const [isTesting, startTest] = useTransition();
+  // `lastVerifiedAt` đổi khi bấm "Kiểm tra kết nối" — không đưa vào key để không xoá dữ liệu admin đang gõ dở.
+  const formKey = JSON.stringify({ ...initial, lastVerifiedAt: null });
 
   return (
-    <form action={formAction}>
+    // React 19 tự reset form sau action, nhưng <select defaultValue> và trạng thái hiển thị của Toggle không theo
+    // giá trị mới từ server → key theo dữ liệu đã lưu để dựng lại form, khớp đúng DB sau mỗi lần lưu.
+    <form key={formKey} action={formAction}>
       <ConfigCard
         icon={<IconWallet className="h-5 w-5" />}
         title="MoMo"
@@ -48,7 +52,7 @@ export function MomoForm({
           type="password"
           placeholder={initial.maskedSecret ? `Secret hiện tại: ${initial.maskedSecret} — để trống nếu giữ nguyên` : undefined}
         />
-        <FormBanner ok={Boolean(state.success)} message={state.error ?? (state.success ? "Đã lưu." : undefined)} />
+        <FormBanner ok={Boolean(state.success)} message={state.error ?? (state.success ? (state.message ?? "Đã lưu.") : undefined)} />
         <div className="flex flex-wrap gap-3">
           <PrimaryButton loading={isPending}>{isPending ? "Đang lưu..." : "Lưu cấu hình"}</PrimaryButton>
           <GhostButton

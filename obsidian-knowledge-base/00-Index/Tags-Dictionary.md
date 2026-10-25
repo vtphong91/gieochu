@@ -4,7 +4,7 @@ tags:
   - index
   - taxonomy
 date: 2026-09-26
-updated: 2026-10-23
+updated: 2026-10-25
 author: System Architect
 ---
 
@@ -36,13 +36,15 @@ giúp phân loại nội dung và tra cứu nhanh cho người và AI agent đ�
 | Thẻ | Phạm vi nghiệp vụ áp dụng |
 | :--- | :--- |
 | `#tenant` | Tenant workspace, storefront, onboarding, slug, branding |
-| `#billing` | Subscription, plan, hoá đơn, mô hình Free Forever + Paid (M3 v2) |
-| `#payment` | Cổng thanh toán Platform và Tenant (SePay/MoMo/VietQR QR thủ công), webhook, mã hoá secret |
+| `#billing` | Subscription, plan, hoá đơn, mô hình Free Forever + Paid (M3 v2); lịch sử hoá đơn gói + trang "Đơn hàng gói dịch vụ" ở System Center (ADR-056) |
+| `#payment` | Cổng thanh toán Platform và Tenant (SePay/MoMo/VietQR QR thủ công), webhook, mã hoá secret; khối chuyển khoản tải QR + sao chép `BankTransferPanel` (ADR-056) |
 | `#order` | Checkout, vòng đời đơn hàng, khuyến mãi/coupon; trang Đơn hàng Studio — danh sách + chi tiết (ADR-046), tìm không dấu + ghi chú nội bộ `order_notes` (ADR-047, `Studio-Orders-Specs`) |
 | `#product` | Sản phẩm (tài liệu số), file đính kèm, upload, giá |
 | `#download` | Thư viện khách hàng, token tải file, share link |
 | `#rbac` | Phân quyền — `SystemRole`/`TenantMemberRole`, bảng `Role`/`Permission` (ADR-022) |
 | `#auth` | Đăng ký/đăng nhập, JWT, refresh token, xác minh email |
+| `#autosave` | Tự lưu nháp editor lên server (ADR-053 bổ sung lần 3): bảng `tenant_editor_drafts`/`system_editor_drafts`, hook `useServerAutosave`, xung đột revision (`Editor-Autosave-Drafts-Specs`) |
+| `#session` | Phiên đăng nhập (ADR-053): "Ghi nhớ đăng nhập", idle/absolute timeout, ân hạn refresh, danh sách thiết bị (`Auth-Session-Specs`) |
 | `#system-admin` | Console quản trị cấp hệ thống (L1) |
 | `#customer` | Trải nghiệm khách hàng mua tài liệu; danh sách Khách hàng Studio `/studio/{slug}/customers` — số liệu khách, nhóm, ghi chú khách (ADR-048, `Studio-Customers-Specs`) |
 | `#reviews` | Đánh giá sản phẩm của khách đã mua (M10a, ADR-029): quyền đánh giá, kiểm duyệt/trả lời của tenant, điểm trung bình |
@@ -55,7 +57,7 @@ giúp phân loại nội dung và tra cứu nhanh cho người và AI agent đ�
 | `#pricing` | Trang Bảng giá `/pricing` + CMS `pricing` ở System Center (ADR-041 A): thẻ gói, gói năm ghép cặp, bảng so sánh, CTA theo người xem. Khác engine giá tài liệu `packages/core/src/pricing` (M6, dùng `#order`/`#product`) |
 | `#account` | Khu vực tài khoản cá nhân `/account` (ADR-041 C): hồ sơ, ảnh đại diện, đổi mật khẩu, đổi email, menu tài khoản |
 | `#cms` | CMS hệ thống ở System Center lưu nội dung trang công khai trong `cms_pages` (slug hệ thống `home`/`shop`/`pricing`/`menu`): menu header/footer, trang chủ theo brief, nháp/xuất bản/khôi phục (ADR-050, `System-Cms-Menu-Home-Seo-Specs`) |
-| `#legal` | Văn bản pháp lý có phiên bản + ghi nhận chấp thuận theo phiên bản (ADR-050): `legal_documents`, `legal_document_versions`, `user_legal_acceptances`, `/phap-ly/*`, `/admin/cms/phap-ly` (`Legal-Documents-Specs`, `Legal-Terms-Publishing-Runbook`) |
+| `#legal` | Văn bản pháp lý có phiên bản + ghi nhận chấp thuận theo phiên bản (ADR-050, ADR-054): `legal_documents`, `legal_document_versions`, `user_legal_acceptances`, 7 URL cấp gốc (`/dieu-khoan-su-dung`…`/lien-he`; `/phap-ly/*` redirect 308), `/admin/cms/phap-ly` (`Legal-Documents-Specs`, `Legal-Terms-Publishing-Runbook`) |
 | `#entitlement` | Quyền tải của người mua (`entitlements`) — lượt tải, thu hồi, quyền lợi khi tài liệu bị gỡ do vi phạm (ADR-039: tải lần cuối / yêu cầu hoàn tiền) |
 
 ---
@@ -68,6 +70,9 @@ giúp phân loại nội dung và tra cứu nhanh cho người và AI agent đ�
 | `#rls` | Row-Level Security — 4 scope `withTenant/withCustomer/withPublic/withSystemJob` |
 | `#security` | Mã hoá secret (AES-256-GCM), hash token, cookie httpOnly, CSP |
 | `#storage` | Upload file, presigned URL, S3-compatible bucket (Cloudflare R2/MinIO) |
+| `#minio` | MinIO tự host (S3-compatible) làm Storage Service: cấu hình, bucket riêng gian hàng, giám sát/đối soát dung lượng (ADR-044, ADR-052) |
+| `#cloudflare-r2` | Cloudflare R2 làm Storage Service song song MinIO (ADR-044, ADR-052) |
+| `#admin` | Trang/chức năng quản trị ở System Center `/admin` (vd giám sát bucket ADR-052); gần nghĩa `#system-admin` |
 | `#jobs` | Background job/cron qua `packages/jobs` (pg-boss) — từ ADR-036 xử lý trong app bằng `after()` + Vercel Cron `/api/cron/daily` (`Background-Jobs-Specs`) |
 | `#ui-ux` | Giao diện & trải nghiệm: bố cục, component, accessibility, responsive (owner thiết kế: Phong) |
 | `#design-system` | Design token (màu, font trong `theme.ts`), kit component dùng chung `admin/_ui/` |

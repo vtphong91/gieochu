@@ -54,11 +54,12 @@ SiteMenu
 - `id` 1–64 ký tự, **không trùng** trên toàn menu (mục, mục con, CTA, cột, link) — schema chặt từ chối khi lưu.
 - Mục header có `children` ≠ rỗng là **mục nhóm**: đích riêng bị bỏ qua (không bắt buộc hợp lệ). Khi render, nhóm không còn mục con hiển thị nào bị bỏ.
 
-### 2.2. 4 loại link (`NAV_LINK_KINDS`) và luật đích
+### 2.2. 5 loại link (`NAV_LINK_KINDS`) và luật đích (ADR-050: 4 loại; ADR-054 thêm `legal`)
 
 | `kind` | Nhãn editor | `target` hợp lệ | `href` dựng |
 | :-- | :-- | :-- | :-- |
 | `page` | Trang có sẵn | khoá trong `NAV_PAGE_PATHS` — `home` `/`, `shop` `/cua-hang`, `documents` `/cua-hang/tai-lieu`, `pricing` `/pricing`, `register` `/register`, `login` `/login` — hoặc `cms:<slug>` (slug chữ thường-số-gạch nối) | đường dẫn tương ứng / `/p/<slug>` |
+| `legal` | Văn bản pháp lý (ADR-054) | khoá trong `LEGAL_DOCUMENT_DEFS` (`terms`, `privacy`, `content_policy`, `copyright`, `usage_license`, `seller`, `contact`); khoá lạ → lỗi "Chọn một văn bản pháp lý." | `legalDocumentPath(key)` = `/{slug}` cấp gốc. Khi render, văn bản **chưa có bản hiệu lực** → link bị bỏ (§2.4) ✅ |
 | `internal` | Đường dẫn nội bộ | `isSafeInternalPath`: bắt đầu `/`, không `//`, không khoảng trắng/ký tự điều khiển/`\`, ≤ 500 | nguyên giá trị |
 | `external` | Liên kết ngoài | `isSafeExternalUrl`: chỉ `https://`, URL parse được, không user:pass, host không phải `localhost`/`*.localhost`/`*.vercel.app`/`0.0.0.0`/`::1`/`127.*`/`10.*`/`192.168.*`/`172.16–31.*` | nguyên giá trị |
 | `email` | Email | `isSafeEmailAddress` (≤ 254, nhập địa chỉ, **không** kèm `mailto:`) | `mailto:<email>` |
@@ -84,11 +85,13 @@ Subpath `@gieochu/core/cms-content-guard` (không phụ thuộc gì, client impo
 | Lưu | `siteMenuSchema` (chặt) | Link không hợp lệ/không an toàn → lỗi theo `path` chấm (vd `header.items.0.target`), tối đa 20 lỗi |
 | Đọc (render + nạp editor) | `parseSiteMenu(input)` (phòng thủ) | Mục/link hỏng bị bỏ **riêng**; header > 5 mục bị cắt; CTA hỏng → CTA mặc định; cột không còn link bị bỏ; không còn cột → cột mặc định; mô tả/bản quyền hỏng → mặc định; đầu vào không phải object → `null`. Id trùng (dữ liệu sửa tay) vẫn render |
 | Công khai | `getPublishedSiteMenu()` (`cache()` theo request) | Chỉ dùng `blocks` khi `status = PUBLISHED`; còn lại → `defaultSiteMenu()` |
-| Render | `resolveSiteMenu(menu, { brandName, slogan, year })` → `SiteMenuView` | Lọc `visible`, dựng `href` (đích hỏng bị bỏ), `external = !href.startsWith("/")`, thay `{năm}`/`{brand}` (chỉ 2 token, không phải template engine) |
-| Header/footer | `getSiteMenu()` | `SiteHeader` + `SiteFooter` cùng request chỉ đọc DB một lần; năm = `currentDisplayYear()` theo `DISPLAY_TIME_ZONE` |
+| Render | `resolveSiteMenu(menu, { brandName, slogan, year, effectiveLegalKeys })` → `SiteMenuView` | Lọc `visible`, bỏ link `legal` tới văn bản không nằm trong `effectiveLegalKeys` (ADR-054 — mọi vị trí: mục header, menu con, CTA, link footer; cột footer rỗng → bỏ cột), dựng `href` (đích hỏng bị bỏ), `external = !href.startsWith("/")`, thay `{năm}`/`{brand}` (chỉ 2 token, không phải template engine) |
+| Header/footer | `getSiteMenu()` | Đọc song song menu, thương hiệu và `getEffectiveLegalKeys()` (ADR-054, một truy vấn, `cache()`); `SiteHeader` + `SiteFooter` cùng request chỉ đọc DB một lần; năm = `currentDisplayYear()` theo `DISPLAY_TIME_ZONE` |
 
 **Menu mặc định** (`defaultSiteMenu()`) = menu trước ADR-050 bỏ mục không có link ("Giáo viên & Coach", cột "Công ty", cột "Pháp lý"): header
-"Bảng giá" → `pricing`, "Cửa hàng" → `shop`; CTA → `register`; footer 1 cột "Khám phá" (Cửa hàng, Bảng giá); bản quyền
+"Bảng giá" → `pricing`, "Cửa hàng" → `shop`; CTA → `register`; footer cột "Khám phá" (Cửa hàng, Bảng giá) và — từ ADR-054 — cột **"Thông tin"** (`col-info`, 7 link loại `legal`: Điều khoản sử dụng, Chính sách
+bảo mật, Chính sách nội dung, Cam kết bản quyền, Quyền sử dụng tài liệu, Chính sách người bán, Liên hệ — tự ẩn từng link/cả cột khi văn bản chưa hiệu
+lực) ✅ code. Menu **đã xuất bản** trên DB không tự có cột này — admin thêm trong CMS ❓; bản quyền
 `© {năm} {brand}. Bảo lưu mọi quyền.`
 
 **CTA "miễn phí" có điều kiện** ✅: khi dùng menu mặc định, nhãn CTA là `DEFAULT_HEADER_CTA_LABEL_FREE` ("Mở gian hàng miễn phí") **chỉ khi** có
