@@ -14,6 +14,9 @@ import { getDecryptedSystemSmtpConfig } from "./system-smtp";
  * `entitlement_remedy_customer` (ADR-039): báo từng khách đã mua tài liệu bị gỡ — log sẽ thành danh sách khách của
  * tenant. `remedy_refund_requested` (ADR-039): báo chủ tenant 1 khách yêu cầu hoàn tiền (kèm mã đơn) — cùng lý do.
  * (Email tổng hợp cho chủ tenant `entitlement_remedy_tenant` vẫn ghi log: tiêu đề không chứa dữ liệu khách.)
+ * `order_pending_manual` (ADR-059): báo chủ tenant có đơn chuyển khoản chờ xác nhận tay — tiêu đề có mã đơn, log sẽ thành
+ * danh sách đơn của tenant. `payment_mismatch` (ADR-059 bổ sung lần 2): báo chủ tenant giao dịch sai tiền cho 1 đơn — cùng lý do.
+ * (Email `invoice_pending_manual` báo admin có hoá đơn gói chờ đối soát là dữ liệu L1 — vẫn ghi log.)
  */
 const TENANT_CUSTOMER_FACING_TYPES = new Set([
   "order_paid",
@@ -22,9 +25,17 @@ const TENANT_CUSTOMER_FACING_TYPES = new Set([
   "review_new",
   "entitlement_remedy_customer",
   "remedy_refund_requested",
+  "order_pending_manual",
+  "payment_mismatch",
 ]);
 
 export const EMAIL_NOT_CONFIGURED = "EMAIL_NOT_CONFIGURED";
+
+/**
+ * ADR-059: lên lịch một việc (thường là gửi email báo) chạy SAU khi response đã gửi — Server Action truyền `after` của
+ * `next/server`. Hàm lib nhận tham số này thay vì tự gọi `after()` để test/script không vô tình gửi email.
+ */
+export type ScheduleAfterResponse = (task: () => Promise<void>) => void;
 
 /** Chưa có cả cấu hình SMTP ở System Center lẫn fallback env — báo lỗi nghiệp vụ tiếng Việt, không throw lỗi kỹ thuật. */
 export function emailNotConfiguredError(): AppError {

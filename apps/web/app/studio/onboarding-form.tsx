@@ -7,6 +7,8 @@ import { AuthCard } from "../(auth)/_ui/auth-card";
 import { ErrorBanner, SubmitButton, TextField } from "../(auth)/_ui/fields";
 import { BLUE, INK_SOFT, LINE } from "../(auth)/_ui/colors";
 import { IconExternalLink } from "../admin/_ui/icons";
+import { useFormDraft } from "../admin/_ui/use-form-draft";
+import { useUnsavedChanges } from "../admin/_ui/unsaved-changes";
 
 /** ADR-054 mục 5 — bản Chính sách người bán đang hiệu lực; `null` = chưa có (không hiện ô đồng ý). */
 export interface SellerPolicyInfo {
@@ -19,10 +21,18 @@ const initialState: CreateTenantActionState = {};
 
 export function StudioOnboardingForm({ brandName, siteHost, sellerPolicy }: { brandName: string; siteHost: string; sellerPolicy: SellerPolicyInfo | null }) {
   const [state, formAction, isPending] = useActionState(createTenantAction, initialState);
+  // Task 2.1: tạo lỗi (đường dẫn trùng…) không mất dữ liệu đã nhập; thành công thì action chuyển vào Studio.
+  const { dirty, formProps } = useFormDraft({
+    names: ["name", "slug", "bio", "sellerPolicyAccepted"],
+    initial: { name: "", slug: "", bio: "", sellerPolicyAccepted: false },
+    resetKey: sellerPolicy?.versionId ?? "",
+    failed: Boolean(state.error),
+  });
+  useUnsavedChanges(dirty, "Thông tin mở trang chưa được gửi. Rời trang và bỏ thay đổi?");
 
   return (
     <AuthCard title="Mở trang của bạn" subtitle={`Tạo trang bán tài liệu riêng của bạn trên ${brandName}.`}>
-      <form action={formAction} className="space-y-4">
+      <form action={formAction} className="space-y-4" {...formProps}>
         <TextField id="name" label="Tên trang" name="name" required />
         <div>
           <label className="block text-sm font-medium" htmlFor="slug" style={{ color: "#12213A" }}>

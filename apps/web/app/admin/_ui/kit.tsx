@@ -43,7 +43,8 @@ export function AdminPageHeader({ title, subtitle, action }: { title: string; su
 
 /** Grid nhiều card cấu hình xếp ngang thay vì 1 cột hẹp — auto-fit tránh khoảng trắng chết. */
 export function SettingsGrid({ children }: { children: ReactNode }) {
-  return <div className="mt-6 grid gap-6" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(380px, 960px))" }}>{children}</div>;
+  // Chủ dự án (2026-10-25): nội dung chính System Center/Studio luôn full width, các card xếp 1 cột.
+  return <div className="mt-6 grid grid-cols-1 gap-6">{children}</div>;
 }
 
 /**

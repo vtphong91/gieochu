@@ -5,10 +5,14 @@ import { z } from "zod";
 import { AppError } from "@gieochu/core";
 import { requireTenantMember } from "../../../../../lib/tenant";
 import { saveTenantProviderConfig } from "../../../../../lib/tenant-payment";
+import { readMomoManualForm } from "../../../../../lib/momo-manual-config";
+import { isMissingEnumValueError, MOMO_MANUAL_NOT_READY_MESSAGE } from "../../../../../lib/db-errors";
 
 export interface PaymentActionState {
   error?: string;
   success?: boolean;
+  /** ADR-059 bổ sung lần 2 (c): cảnh báo kèm lưu thành công (vd tiền tố SePay khác tiền tố mã đơn). */
+  warning?: string;
 }
 
 const manualQrSchema = z.object({
@@ -80,6 +84,14 @@ export async function saveSepayAction(
     throw error;
   }
   revalidatePath(`/studio/${tenantSlug}/settings/payments`);
+  // ADR-059 bổ sung lần 2 (c): không khoá tiền tố, nhưng cảnh báo rõ khi lệch tiền tố mã đơn. Hệ thống vẫn tự khớp theo mã đơn
+  // trong nội dung chuyển khoản; lệch chỉ ảnh hưởng việc SePay tự nhận diện "mã thanh toán" (vd tuỳ chọn bỏ qua giao dịch không có mã).
+  if (paymentPrefix.trim().toUpperCase() !== tenant.orderCodePrefix.toUpperCase()) {
+    return {
+      success: true,
+      warning: `Tiền tố "${paymentPrefix}" khác tiền tố mã đơn của gian hàng (${tenant.orderCodePrefix}). Mã đơn có dạng ${tenant.orderCodePrefix} + 6 ký tự — hãy đặt cấu trúc mã thanh toán bên SePay theo tiền tố ${tenant.orderCodePrefix}, nếu không SePay có thể không gửi hoặc không nhận diện giao dịch.`,
+    };
+  }
   return { success: true };
 }
 
@@ -118,6 +130,35 @@ export async function saveMomoAction(
     });
   } catch (error) {
     if (error instanceof AppError) return { error: "Thiếu secret key (bắt buộc khi lưu lần đầu)." };
+    throw error;
+  }
+  revalidatePath(`/studio/${tenantSlug}/settings/payments`);
+  return { success: true };
+}
+
+/**
+ * ADR-059 bổ sung lần 3 — "MoMo cá nhân (xác nhận tay)" của gian hàng (PaymentScope TENANT, `tenant_payment_configs` qua
+ * `withTenant` trong `saveTenantProviderConfig`). Chỉ publicConfig, không secret.
+ */
+export async function saveMomoManualAction(
+  tenantSlug: string,
+  _prevState: PaymentActionState,
+  formData: FormData,
+): Promise<PaymentActionState> {
+  const { tenant, user } = await requireTenantMember(tenantSlug);
+  const parsed = readMomoManualForm(formData);
+  if (!parsed.ok) return { error: parsed.error };
+  try {
+    await saveTenantProviderConfig(tenant.id, {
+      actorId: user.userId,
+      provider: "MOMO_MANUAL",
+      isEnabled: formData.get("isEnabled") === "on",
+      publicConfig: parsed.config,
+      secrets: {},
+    });
+  } catch (error) {
+    if (isMissingEnumValueError(error)) return { error: MOMO_MANUAL_NOT_READY_MESSAGE };
+    if (error instanceof AppError) return { error: error.message };
     throw error;
   }
   revalidatePath(`/studio/${tenantSlug}/settings/payments`);

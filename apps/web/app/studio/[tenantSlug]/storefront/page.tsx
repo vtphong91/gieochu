@@ -36,7 +36,8 @@ export default async function StudioStorefrontPage({ params }: { params: Promise
   }));
 
   return (
-    <main className="px-5 py-8 lg:px-8">
+    // Wrapper <div>: layout Studio đã có <main>.
+    <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader title="Trang bán hàng" subtitle="Sửa nội dung từng phần trên trang của bạn. Lưu nháp trước, bấm Xuất bản khi sẵn sàng." />
       <StorefrontEditor
         tenantSlug={tenant.slug}
@@ -48,6 +49,6 @@ export default async function StudioStorefrontPage({ params }: { params: Promise
         reviewOptions={reviewOptions}
         cloudinaryReady={cloudinaryReady}
       />
-    </main>
+    </div>
   );
 }

@@ -2,8 +2,10 @@
 
 import { useActionState } from "react";
 import { updateBrandingAction, type SettingsActionState } from "./actions";
-import { ConfigCard, FormBanner, PrimaryButton, TextField } from "../../../admin/_ui/kit";
+import { Badge, ConfigCard, FormBanner, PrimaryButton, TextField } from "../../../admin/_ui/kit";
 import { IconStore } from "../../../admin/_ui/icons";
+import { useFormDraft } from "../../../admin/_ui/use-form-draft";
+import { useUnsavedChanges } from "../../../admin/_ui/unsaved-changes";
 
 interface BrandingValues {
   name: string;
@@ -27,13 +29,33 @@ const SOCIAL_LABEL: Record<string, string> = {
   website: "Website",
 };
 
+const FIELDS = ["name", "bio", "primaryColor", "accentColor", "facebook", "youtube", "tiktok", "zalo", "website"] as const;
+
+/**
+ * Task 2.1 (ADR-058): giữ giá trị đã nhập khi lưu lỗi + cảnh báo rời trang khi chưa lưu. Action đã `revalidatePath` (Quốc,
+ * 2026-10-25), nên dữ liệu trang tự làm mới sau khi lưu; `keepOnSuccess` chỉ còn giữ giá trị vừa lưu trên ô trong lúc chờ
+ * dữ liệu mới về (React reset ô về `defaultValue` cũ trước khi props mới tới) — vô hại, giữ lại.
+ */
 export function BrandingForm({ tenantSlug, initial }: { tenantSlug: string; initial: BrandingValues }) {
   const action = updateBrandingAction.bind(null, tenantSlug);
   const [state, formAction, isPending] = useActionState(action, initialState);
+  const { dirty, formProps } = useFormDraft({
+    names: FIELDS,
+    initial: { ...initial },
+    resetKey: JSON.stringify(initial),
+    failed: Boolean(state.error),
+    keepOnSuccess: true,
+  });
+  useUnsavedChanges(dirty, "Thông tin trang có thay đổi chưa lưu. Rời trang và bỏ thay đổi?");
 
   return (
-    <form action={formAction}>
-      <ConfigCard icon={<IconStore className="h-5 w-5" />} title="Thông tin trang" description="Hiển thị trên trang cửa hàng công khai của bạn.">
+    <form action={formAction} {...formProps}>
+      <ConfigCard
+        icon={<IconStore className="h-5 w-5" />}
+        title="Thông tin trang"
+        badges={dirty ? <Badge tone="warning">Có thay đổi chưa lưu</Badge> : undefined}
+        description="Hiển thị trên trang cửa hàng công khai của bạn."
+      >
         <TextField id="name" label="Tên trang" name="name" defaultValue={initial.name} required />
         <div>
           <label className="mb-1.5 block text-sm font-medium" htmlFor="bio" style={{ color: "#12213A" }}>

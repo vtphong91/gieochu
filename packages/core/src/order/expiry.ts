@@ -15,6 +15,11 @@ export function effectiveOrderStatus<S extends OrderStatusValue>(status: S, expi
   return status;
 }
 
+/** Mốc cuối owner còn xác nhận tay được đơn (hết hạn thanh toán + cửa sổ trễ) — dùng chung cho kiểm tra và email báo (ADR-059). */
+export function manualConfirmDeadline(expiresAt: Date, lateWindowHours = 24): Date {
+  return new Date(expiresAt.getTime() + lateWindowHours * 60 * 60 * 1000);
+}
+
 /**
  * §"M8": "Xác nhận thanh toán thủ công (chỉ đơn PENDING hoặc EXPIRED trong
  * vòng 24 giờ; bắt buộc nhập ghi chú)". The 24h window is measured from the
@@ -30,9 +35,6 @@ export function canManuallyConfirmOrder(
 ): boolean {
   const effective = effectiveOrderStatus(status, expiresAt, now);
   if (effective === "PENDING") return true;
-  if (effective === "EXPIRED") {
-    const deadline = new Date(expiresAt.getTime() + lateWindowHours * 60 * 60 * 1000);
-    return now <= deadline;
-  }
+  if (effective === "EXPIRED") return now <= manualConfirmDeadline(expiresAt, lateWindowHours);
   return false;
 }

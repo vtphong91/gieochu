@@ -5,7 +5,7 @@ import { HOME_CMS_SLUG, isSystemCmsSlug } from "@gieochu/core";
 import { getHomeStats } from "../../../../lib/home";
 import { getHomeCmsEditorData } from "../../../../lib/home-cms";
 import { requireAdminAccess } from "../../../../lib/page-guards";
-import { AdminPageHeader, SettingsGrid } from "../../_ui/kit";
+import { AdminPageHeader } from "../../_ui/kit";
 import { ModuleTabs } from "../../_ui/module-tabs";
 import { CMS_HOME_TAB, CMS_TABS, CMS_TABS_LABEL } from "../_ui/cms-tabs";
 import { CmsPageForm } from "../cms-page-form";
@@ -54,7 +54,8 @@ export default async function AdminCmsEditPage({ params }: { params: Promise<{ s
   return (
     <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader title={`Sửa trang tuỳ chỉnh — ${page.title}`} />
-      <SettingsGrid>
+      {/* Full width theo khung app (quy tắc 2026-10-25) — thay SettingsGrid 2 cột. */}
+      <div className="mt-6">
         <CmsPageForm
           slugEditable={false}
           initial={{
@@ -66,7 +67,7 @@ export default async function AdminCmsEditPage({ params }: { params: Promise<{ s
             status: page.status,
           }}
         />
-      </SettingsGrid>
+      </div>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { isSystemCmsSlug } from "@gieochu/core";
 import { getEffectiveBrand } from "../../../lib/branding";
 import { brandColors } from "@gieochu/config/theme";
 import { getActivePlans } from "../../../lib/pricing";
+import { renderCmsRichText } from "../../../lib/cms-markdown";
 
 const beVietnamPro = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
@@ -58,6 +59,7 @@ export default async function CmsRenderedPage({ params }: { params: Promise<{ sl
   const brand = await getEffectiveBrand();
   const blocks = page.blocks as CmsBlocks;
   const plans = blocks.pricingTable?.source === "plans" ? await getActivePlans() : null;
+  const richTextHtml = typeof blocks.richText === "string" ? renderCmsRichText(blocks.richText, brand.name) : "";
 
   return (
     <div
@@ -131,10 +133,14 @@ export default async function CmsRenderedPage({ params }: { params: Promise<{ sl
           </section>
         ) : null}
 
-        {blocks.richText ? (
-          <section className="mt-12 max-w-2xl text-[15px] leading-[1.75] whitespace-pre-line" style={{ color: brandColors.ink }}>
-            {blocks.richText}
-          </section>
+        {richTextHtml ? (
+          // ADR-060: Markdown render ở server → HTML đã sanitize (không HTML thô/script/on*/javascript:), `{brand}` đã thay
+          // (lib/cms-markdown.ts). Typography dùng lại lớp của trang pháp lý.
+          <section
+            className="gieochu-rich-content gieochu-legal-content mt-12"
+            style={{ color: brandColors.ink }}
+            dangerouslySetInnerHTML={{ __html: richTextHtml }}
+          />
         ) : null}
 
         {plans ? (

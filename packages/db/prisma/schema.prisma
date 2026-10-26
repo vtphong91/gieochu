@@ -48,6 +48,10 @@ model User {
   /// mật khẩu) cho tới khi đặt lại mật khẩu qua /forgot-password, KHÔNG liên
   /// quan `status` (đó là khoá admin/email-chưa-xác-minh, khác concern).
   passwordResetRequired Boolean    @default(false)
+  /// ADR-061 Q1: false = tài khoản tạo từ "mua không cần đăng ký" (khách vãng lai), chưa tự đặt mật khẩu — `passwordHash` là
+  /// hash của chuỗi ngẫu nhiên không ai biết (không NULL để code cũ không vỡ). Thành true khi khách đặt mật khẩu qua email
+  /// "Kích hoạt tài khoản và đặt mật khẩu". Tài khoản có sẵn: true (DEFAULT).
+  hasPassword           Boolean    @default(true)
   createdAt             DateTime   @default(now())
   updatedAt             DateTime   @updatedAt
 
@@ -62,9 +66,9 @@ model User {
   downloadTokens       DownloadToken[]
   downloadEvents       DownloadEvent[]
   reviews              Review[]
-  abuseReportsFiled    AbuseReport[]       @relation("AbuseReportReporter")
-  abuseReportsResolved AbuseReport[]       @relation("AbuseReportResolver")
-  orderNotesAuthored   OrderNote[]         @relation("OrderNoteAuthor")
+  abuseReportsFiled    AbuseReport[]         @relation("AbuseReportReporter")
+  abuseReportsResolved AbuseReport[]         @relation("AbuseReportResolver")
+  orderNotesAuthored   OrderNote[]           @relation("OrderNoteAuthor")
   legalAcceptances     UserLegalAcceptance[]
   tenantEditorDrafts   TenantEditorDraft[]
   systemEditorDrafts   SystemEditorDraft[]
@@ -114,6 +118,9 @@ model RefreshToken {
   sessionStartedAt DateTime?
   /// ADR-053: nhãn thiết bị đã parse từ User-Agent ở server (vd "Chrome · Windows") cho danh sách thiết bị.
   deviceLabel      String?
+  /// ADR-061 Q1: phiên cấp ngay khi khách vãng lai tạo tài khoản ở trang thanh toán (user còn PENDING). Chỉ phiên có cờ này
+  /// được refresh khi user chưa xác minh email, và chỉ vào được các trang mua/xem đơn/tải (`requireCheckoutAccess`).
+  guestCheckout    Boolean   @default(false)
   createdAt        DateTime  @default(now())
 
   @@index([userId])
@@ -129,6 +136,8 @@ enum VerificationTokenType {
   PASSWORD_RESET
   /// ADR-041: đổi email đăng nhập — link gửi tới email MỚI (`newEmail`), xác nhận được khi chưa đăng nhập.
   EMAIL_CHANGE
+  /// ADR-061 Q1: "Kích hoạt tài khoản và đặt mật khẩu" cho khách vãng lai — một lần dùng: xác minh email + đặt mật khẩu.
+  GUEST_ACTIVATION
 }
 
 /// §5.1 Layer System — VERIFICATION_TOKENS (email activation + password reset)
@@ -498,23 +507,23 @@ enum ProductFileSource {
 /// cũ lọc `scanStatus = 'CLEAN'` nên tự loại dòng link; RLS nhánh public chỉ
 /// cho `sourceKind = 'FILE'`.
 model ProductFile {
-  id          String                 @id @default(cuid(2))
-  productId   String
-  product     Product                @relation(fields: [productId], references: [id], onDelete: Cascade)
-  tenantId    String
-  sourceKind  ProductFileSource      @default(FILE)
-  externalUrl String?
-  objectKey   String?                @unique
-  storageBucket String?
+  id              String                 @id @default(cuid(2))
+  productId       String
+  product         Product                @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tenantId        String
+  sourceKind      ProductFileSource      @default(FILE)
+  externalUrl     String?
+  objectKey       String?                @unique
+  storageBucket   String?
   storageProvider String?
-  fileName    String
-  mimeType    String?
-  sizeBytes   Int
-  sha256      String?
-  scanStatus  ProductFileScanStatus? @default(PENDING)
-  isPreview   Boolean                @default(false)
-  removedAt   DateTime?
-  createdAt   DateTime               @default(now())
+  fileName        String
+  mimeType        String?
+  sizeBytes       Int
+  sha256          String?
+  scanStatus      ProductFileScanStatus? @default(PENDING)
+  isPreview       Boolean                @default(false)
+  removedAt       DateTime?
+  createdAt       DateTime               @default(now())
 
   downloadTokens DownloadToken[]
   downloadEvents DownloadEvent[]
@@ -546,6 +555,10 @@ model SystemSettings {
   presignUploadTtlSeconds   Int      @default(600)
   presignDownloadTtlSeconds Int      @default(600)
   orderPendingTtlMinutes    Int      @default(60)
+  /// ADR-061/062: hạn giữ đơn tính từ lúc đặt đơn theo phương thức — xác nhận tay (ngân hàng, MoMo) và chưa chọn phương thức.
+  orderHoldManualHours      Int      @default(72)
+  /// ADR-061/062: hạn giữ đơn với cổng tự xác nhận (SePay; MoMo API nếu bật).
+  orderHoldAutoHours        Int      @default(48)
   invoicePendingTtlHours    Int      @default(24)
   defaultDownloadLimit      Int      @default(5)
   /// ADR-053 chính sách phiên (min/max ở packages/core/src/settings/system-settings.ts). refreshTokenTtlDays ở trên
@@ -694,6 +707,8 @@ enum PaymentProviderId {
   MANUAL_QR
   SEPAY
   MOMO
+  /// ADR-059 bổ sung lần 3 — ví MoMo cá nhân, khách chuyển tay, người nhận xác nhận tay (không webhook).
+  MOMO_MANUAL
 }
 
 /// §5.2 — TENANT_PAYMENT_CONFIGS. L2 (tenantId), RLS-protected like
@@ -941,31 +956,43 @@ enum OrderStatus {
 /// MVP is "mỗi đơn 1 sản phẩm" but `OrderItem` stays its own table (the
 /// spec's own forward note) so a future cart just adds more rows.
 model Order {
-  id              String             @id @default(cuid(2))
-  tenantId        String
-  tenant          Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  customerId      String
-  customer        User               @relation(fields: [customerId], references: [id])
-  code            String             @unique
-  status          OrderStatus        @default(PENDING)
-  subtotalVnd     Int
-  discountVnd     Int                @default(0)
-  totalVnd        Int
-  couponCode      String?
-  provider        PaymentProviderId?
+  id                             String             @id @default(cuid(2))
+  tenantId                       String
+  tenant                         Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customerId                     String
+  customer                       User               @relation(fields: [customerId], references: [id])
+  code                           String             @unique
+  status                         OrderStatus        @default(PENDING)
+  subtotalVnd                    Int
+  discountVnd                    Int                @default(0)
+  totalVnd                       Int
+  couponCode                     String?
+  provider                       PaymentProviderId?
   /// CheckoutResult (packages/payments) captured once the customer picks a
   /// provider on the checkout page — read back instead of re-calling the
   /// provider (MoMo's createCheckout hits their API), same as
   /// SubscriptionInvoice.checkoutPayload (M3).
-  checkoutPayload Json?
-  proofImageKey   String?
+  checkoutPayload                Json?
+  proofImageKey                  String?
   /// Ghi chú bắt buộc khi owner xác nhận thủ công (§"M8"), cùng mẫu với
   /// SubscriptionInvoice.confirmNote (M3).
-  confirmNote     String?
-  expiresAt       DateTime
-  paidAt          DateTime?
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  confirmNote                    String?
+  expiresAt                      DateTime
+  paidAt                         DateTime?
+  /// ADR-062 Q1: lúc khách bấm "Tôi đã chuyển khoản" (chỉ cổng xác nhận tay). Không đổi `status`. Hoàn tác → NULL.
+  customerDeclaredPaidAt         DateTime?
+  /// ADR-061 Q9/Q10 — các mốc chống gửi sót/trùng email (nhận nguyên tử bằng `UPDATE … WHERE col IS NULL`):
+  /// đã báo người bán "đơn chờ xác nhận tay" (một lần/đơn, kể cả khi khách đổi phương thức).
+  ownerManualNotifiedAt          DateTime?
+  /// đã báo người bán "khách báo đã chuyển" (ADR-062 Q1 — một lần/đơn, kể cả khi khách hoàn tác rồi báo lại).
+  ownerDeclaredPaidNotifiedAt    DateTime?
+  /// email cho khách lúc chọn phương thức (Q7): lần gửi gần nhất + phương thức đã gửi — đổi sang phương thức khác mới gửi lại.
+  customerPaymentEmailedAt       DateTime?
+  customerPaymentEmailedProvider PaymentProviderId?
+  /// email nhắc khách khi còn ≤ 24 giờ (Q7, cron hằng ngày) — một lần/đơn.
+  customerReminderSentAt         DateTime?
+  createdAt                      DateTime           @default(now())
+  updatedAt                      DateTime           @updatedAt
 
   items             OrderItem[]
   transactions      TenantPaymentTransaction[]
@@ -974,6 +1001,8 @@ model Order {
 
   @@index([tenantId])
   @@index([customerId])
+  /// ADR-061 Q7: cron nhắc khách + sweep hết hạn quét theo (status, expiresAt).
+  @@index([status, expiresAt])
   @@map("orders")
 }
 
@@ -1496,21 +1525,21 @@ enum LegalReviewStatus {
 /// ADR-050 mục 3 — văn bản pháp lý hệ thống (L1, không `tenantId`, không RLS). Một dòng/văn bản; đợt 1 chỉ `key = "terms"`
 /// (Điều khoản sử dụng, `/phap-ly/dieu-khoan-su-dung`). Ghi chỉ qua Server Action `requireRole("SYSTEM_ADMIN")` + audit.
 model LegalDocument {
-  id        String                 @id @default(cuid(2))
+  id             String                 @id @default(cuid(2))
   /// Khoá ổn định trong code (vd `terms`).
-  key       String                 @unique
+  key            String                 @unique
   /// Segment URL cấp gốc `/{slug}` (vd `dieu-khoan-su-dung`, ADR-054; trước đó dưới `/phap-ly/`).
-  slug      String                 @unique
-  title     String
+  slug           String                 @unique
+  title          String
   /// ADR-054 — mô tả ngắn (≤ 320, fallback mô tả SEO); sửa thẳng trong CMS, không theo phiên bản.
   summary        String?
   /// ADR-054 — tiêu đề SEO (≤ 120, token `{brand}`); trống → "{title} | {brand}".
   seoTitle       String?
   /// ADR-054 — mô tả SEO (≤ 320, token `{brand}`); trống → `summary`.
   seoDescription String?
-  createdAt DateTime               @default(now())
-  updatedAt DateTime               @updatedAt
-  versions  LegalDocumentVersion[]
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  versions       LegalDocumentVersion[]
 
   @@map("legal_documents")
 }
@@ -1519,26 +1548,26 @@ model LegalDocument {
 /// qua `sanitizeRichTextHtml` khi lưu; token `{brand}` thay lúc render (escape). Bản đang hiệu lực = PUBLISHED có
 /// `effectiveAt <= now()` mới nhất. Thời gian lưu UTC.
 model LegalDocumentVersion {
-  id            String                     @id @default(cuid(2))
-  documentId    String
-  document      LegalDocument              @relation(fields: [documentId], references: [id], onDelete: Restrict)
-  version       Int
-  status        LegalDocumentVersionStatus @default(DRAFT)
-  reviewStatus  LegalReviewStatus          @default(PENDING_LEGAL_REVIEW)
-  contentHtml   String
-  changeSummary String?
+  id             String                     @id @default(cuid(2))
+  documentId     String
+  document       LegalDocument              @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  version        Int
+  status         LegalDocumentVersionStatus @default(DRAFT)
+  reviewStatus   LegalReviewStatus          @default(PENDING_LEGAL_REVIEW)
+  contentHtml    String
+  changeSummary  String?
   /// Bắt buộc khi PUBLISHED/ARCHIVED (CHECK).
-  effectiveAt   DateTime?
-  publishedAt   DateTime?
+  effectiveAt    DateTime?
+  publishedAt    DateTime?
   /// ADR-057 — xuất bản dạng "Bản dự thảo" (bỏ qua cổng placeholder + rà soát): hiển thị công khai nhưng KHÔNG dùng để
   /// ghi nhận đồng ý. Đóng băng sau khi rời DRAFT (trigger `legal_document_versions_freeze_content`).
-  isDraftRelease Boolean @default(false)
+  isDraftRelease Boolean                    @default(false)
   /// Không FK (mẫu `updatedById`) — lịch sử không chặn xoá user.
-  publishedById String?
-  createdById   String?
-  createdAt     DateTime                   @default(now())
-  updatedAt     DateTime                   @updatedAt
-  acceptances   UserLegalAcceptance[]
+  publishedById  String?
+  createdById    String?
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
+  acceptances    UserLegalAcceptance[]
 
   @@unique([documentId, version])
   @@index([documentId, status, effectiveAt])
@@ -1620,4 +1649,19 @@ model SystemEditorDraft {
   @@unique([userId, entityType, entityKey])
   @@index([updatedAt])
   @@map("system_editor_drafts")
+}
+
+/// ADR-061 Q1 — bộ đếm giới hạn tần suất dùng chung giữa các instance (Vercel/VPS), thay cho bộ đếm trong bộ nhớ ở các luồng
+/// cần chống lạm dụng thật (tạo tài khoản khách vãng lai, gửi email kích hoạt). L1, không RLS. `key` là chuỗi đã băm
+/// (vd `guest_signup:ip:<sha256>` / `guest_signup:email:<sha256>`) — không lưu IP/email thô. Cron hằng ngày xoá dòng đã hết hạn.
+model RateLimitCounter {
+  id        String   @id @default(cuid(2))
+  key       String   @unique
+  count     Int      @default(0)
+  resetAt   DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([resetAt])
+  @@map("rate_limit_counters")
 }

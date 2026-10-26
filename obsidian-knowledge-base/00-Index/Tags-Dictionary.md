@@ -4,7 +4,7 @@ tags:
   - index
   - taxonomy
 date: 2026-09-26
-updated: 2026-10-25
+updated: 2026-10-26
 author: System Architect
 ---
 
@@ -37,7 +37,7 @@ giúp phân loại nội dung và tra cứu nhanh cho người và AI agent đ�
 | :--- | :--- |
 | `#tenant` | Tenant workspace, storefront, onboarding, slug, branding |
 | `#billing` | Subscription, plan, hoá đơn, mô hình Free Forever + Paid (M3 v2); lịch sử hoá đơn gói + trang "Đơn hàng gói dịch vụ" ở System Center (ADR-056) |
-| `#payment` | Cổng thanh toán Platform và Tenant (SePay/MoMo/VietQR QR thủ công), webhook, mã hoá secret; khối chuyển khoản tải QR + sao chép `BankTransferPanel` (ADR-056) |
+| `#payment` | Cổng thanh toán Platform và Tenant (SePay/MoMo/VietQR QR thủ công), webhook, mã hoá secret; khối chuyển khoản tải QR + sao chép `BankTransferPanel` (ADR-056); email báo xác nhận tay, giao dịch cổng, tiền tố SePay, chạy thử SePay (ADR-059, `SePay-Live-Test-Runbook`); MoMo cá nhân `MOMO_MANUAL` (ADR-059 bổ sung lần 3, `MoMo-Manual-Verification-Runbook`) |
 | `#order` | Checkout, vòng đời đơn hàng, khuyến mãi/coupon; trang Đơn hàng Studio — danh sách + chi tiết (ADR-046), tìm không dấu + ghi chú nội bộ `order_notes` (ADR-047, `Studio-Orders-Specs`) |
 | `#product` | Sản phẩm (tài liệu số), file đính kèm, upload, giá |
 | `#download` | Thư viện khách hàng, token tải file, share link |

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { requireAdminAccess } from "../../../../lib/page-guards";
 import { getDocumentCategory } from "../../../../lib/document-category";
 import { updateCategoryAction } from "../actions";
-import { AdminPageHeader, SettingsGrid } from "../../_ui/kit";
+import { AdminPageHeader } from "../../_ui/kit";
 import { CategoryForm } from "../category-form";
 
 export default async function AdminEditCategoryPage({ params }: { params: Promise<{ categoryId: string }> }) {
@@ -16,7 +16,8 @@ export default async function AdminEditCategoryPage({ params }: { params: Promis
     // Wrapper <div>: layout admin đã có <main>.
     <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader title={category.name} subtitle={`Sửa danh mục — /${category.slug}`} />
-      <SettingsGrid>
+      {/* Full width theo khung app (quy tắc 2026-10-25) — thay SettingsGrid 2 cột. */}
+      <div className="mt-6">
         <CategoryForm
           action={updateCategoryAction.bind(null, categoryId)}
           submitLabel="Lưu thay đổi"
@@ -31,7 +32,7 @@ export default async function AdminEditCategoryPage({ params }: { params: Promis
             ogImageUrl: category.ogImageUrl ?? "",
           }}
         />
-      </SettingsGrid>
+      </div>
     </div>
   );
 }

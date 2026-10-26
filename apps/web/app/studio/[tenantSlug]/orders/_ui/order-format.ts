@@ -47,6 +47,7 @@ export const PAYMENT_PROVIDER_LABEL: Record<string, string> = {
   MANUAL_QR: "QR chuyển khoản thủ công",
   SEPAY: "SePay (chuyển khoản tự động)",
   MOMO: "Ví MoMo",
+  MOMO_MANUAL: "MoMo (chuyển tay)",
 };
 
 function providerText(provider: string | null): string | null {

@@ -5,7 +5,7 @@ tags:
   - schema
   - status/living
 date: 2026-06-20
-updated: 2026-10-24
+updated: 2026-10-26
 author: System Architect
 ---
 
@@ -120,13 +120,13 @@ erDiagram
 | `SystemStorageConfig` | Cấu hình object storage duy nhất của platform (R2 prod); `encryptedSecrets` mã hoá **AES-256-GCM** bằng `STORAGE_ENCRYPTION_KEY` | — | — |
 | `SystemCloudinaryConfig` | Tài khoản Cloudinary cho ảnh CMS (khác `SystemStorageConfig` — đó là R2 cho file tài liệu/ảnh bìa sản phẩm); cùng mã hoá bằng `STORAGE_ENCRYPTION_KEY` | — | — |
 | `SystemSmtpConfig` | Cấu hình gửi email hệ thống (SMTP/Gmail App Password); `encryptedSecrets` mã hoá bằng `STORAGE_ENCRYPTION_KEY` | — | — |
-| `EmailSendLog` | Log email **cấp platform** (kích hoạt, reset mật khẩu, billing gửi cho tenant owner) — cố ý loại trừ các loại email hướng tới khách của tenant (`TENANT_CUSTOMER_FACING_TYPES` trong `apps/web/lib/email-dispatch.ts`: `order_paid`, `new_sale`, `storefront_message`, `review_new` (ADR-029), `entitlement_remedy_customer`, `remedy_refund_requested` (ADR-039) — ✅ đọc code 2026-10-17), để giữ ranh giới CLAUDE.md §7.9 | — | — |
+| `EmailSendLog` | Log email **cấp platform** (kích hoạt, reset mật khẩu, billing gửi cho tenant owner) — cố ý loại trừ các loại email hướng tới khách của tenant (`TENANT_CUSTOMER_FACING_TYPES` trong `apps/web/lib/email-dispatch.ts`: `order_paid`, `new_sale`, `storefront_message`, `review_new` (ADR-029), `entitlement_remedy_customer`, `remedy_refund_requested` (ADR-039), `order_pending_manual`, `payment_mismatch` (ADR-059 — ✅ đọc `git diff` 2026-10-26, chưa commit; `invoice_pending_manual` báo admin vẫn ghi log) — ✅ đọc code 2026-10-17), để giữ ranh giới CLAUDE.md §7.9 | — | — |
 | `DocumentCategory` | Danh mục tài liệu **cấp platform** do System Admin tạo trước (`/admin/categories`), không phải danh mục riêng từng tenant. Từ ADR-026 là đích FK của `Product.categoryId` (bảng L1 không RLS; `products` vẫn RLS như cũ) — Studio chỉ liệt kê danh mục `isActive` ✅ | Product (ADR-026) | — |
 | `SystemBranding` | Nhận diện thương hiệu nền tảng (khác `Tenant.branding` — đó là branding riêng từng tenant); field null = dùng mặc định từ `@gieochu/config/brand` | — | — |
 | `PlatformPaymentConfig` | Cấu hình cổng thanh toán **phí nền tảng** (Tenant → Gieo Chữ), 1 dòng/provider; `encryptedSecrets` mã hoá bằng `PAYMENT_ENCRYPTION_KEY` | — | `PaymentProviderId` |
 | `SubscriptionInvoice` | Hoá đơn phí nền tảng của 1 tenant — có `tenantId` nhưng **không** RLS (comment trong schema: "billing is system-managed... not RLS protected"); gác quyền ở app layer. ADR-041: trạng thái `REFUNDED` (không bao giờ quay lại `PAID` — `markInvoicePaid` bỏ qua) ✅ | Tenant, Plan, PlatformPaymentTransaction, SubscriptionRefundRequest | `SubscriptionInvoiceStatus` |
 | `SubscriptionRefundRequest` | (ADR-041 B — `@@map("subscription_refund_requests")`) Yêu cầu hoàn tiền gói: `tenantId` **unique** (FK `tenants` Cascade), `invoiceId` **unique** (FK `subscription_invoices` Cascade), `requestedById` (không FK), `reason?` (≤500), `payoutEncrypted?` (JSON `{bankBin, bankName, accountNo, accountName}` mã hoá AES-256-GCM bằng `PAYMENT_ENCRYPTION_KEY` — **dữ liệu cá nhân**, chỉ admin giải mã, NULL khi đã xử lý), `status` (mặc định `REQUESTED`), `amountVnd Int` (chụp từ hoá đơn, > 0), `adminNote?` (≤500, bắt buộc khi `REJECTED`), `decidedById?` (không FK), `decidedAt?`, `refundedAt?`, `createdAt`, `updatedAt`. Index `(status, createdAt)`. Có `tenantId` nhưng **không RLS** (L1, PaymentScope PLATFORM — như `subscription_invoices`); chủ gian hàng đọc/tạo dòng của mình qua `requireTenantMember` (OWNER), admin qua `requireRole(SYSTEM_ADMIN)` ✅ | Tenant, SubscriptionInvoice | `SubscriptionRefundStatus` |
-| `PlatformPaymentTransaction` | Mọi webhook thanh toán phí nền tảng đã qua xác thực chữ ký, khớp hoặc `UNMATCHED` để admin xử lý tay | SubscriptionInvoice | — |
+| `PlatformPaymentTransaction` | Mọi webhook thanh toán phí nền tảng đã qua xác thực chữ ký, khớp hoặc `UNMATCHED` để admin xử lý tay. **Không có cột trạng thái** — ADR-059 suy trạng thái từ `matchedInvoiceId` + trạng thái hoá đơn + `rawPayload` (tab "Giao dịch cổng"); admin gắn `matchedInvoiceId` khi xác nhận từ giao dịch (mỗi giao dịch một hoá đơn, kiểm ở app — không có unique). Không migration ✅ | SubscriptionInvoice | — |
 | `WebhookEvent` | Idempotency guard cho webhook (unique `scope+provider+providerEventId`), ghi qua `withSystemJob` | — | `WebhookScope` |
 | `BankBin` | Danh sách BIN ngân hàng (NAPAS/VietQR) cho form chọn ngân hàng khi cấu hình `MANUAL_QR`/`SEPAY` | — | — |
 | `DownloadToken` | Token tải file một-lần, TTL 60s — **L1 tuyệt đối, không RLS**: ranh giới bảo mật là "chỉ ai vừa yêu cầu mới giữ token thô" (giống RefreshToken/VerificationToken), không phải filter theo tenant/user row | Entitlement, ProductFile, User | — |
@@ -193,7 +193,7 @@ Gieo Chữ không có bảng nào gắn nhãn "L3" tách riêng — L3 là **gó
 | `ProductType` | `TEMPLATE` · `SLIDE` · `EBOOK` · `EXAM` · `OTHER` |
 | `ProductFileScanStatus` | `PENDING` · `CLEAN` · `REJECTED` (cột nullable từ ADR-026 — `NULL` với dòng link ngoài) |
 | `ProductFileSource` | `FILE` (mặc định) · `EXTERNAL_URL` (ADR-026) |
-| `PaymentProviderId` | `MANUAL_QR` · `SEPAY` · `MOMO` |
+| `PaymentProviderId` | `MANUAL_QR` · `SEPAY` · `MOMO` · `MOMO_MANUAL` (ADR-059 bổ sung lần 3 — migration expand-only `20261026150000_adr059_momo_manual`: `ALTER TYPE "PaymentProviderId" ADD VALUE IF NOT EXISTS 'MOMO_MANUAL'`, **chưa áp DB** ✅ đọc SQL 2026-10-26; giá trị enum mới chỉ dùng được sau khi transaction chứa lệnh commit) |
 | `SubscriptionInvoiceStatus` | `PENDING` · `PAID` · `EXPIRED` · `VOID` · `REFUNDED` (ADR-041 B — admin đã chuyển khoản hoàn 100%) |
 | `WebhookScope` | `PLATFORM` · `TENANT` |
 | `CouponType` | `PERCENT` · `FIXED` |

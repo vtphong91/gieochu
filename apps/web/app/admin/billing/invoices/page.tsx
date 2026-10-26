@@ -7,6 +7,8 @@ import {
   listSubscriptionInvoices,
   parseEnumParam,
 } from "../../../../lib/subscription-billing";
+import { isManualConfirmProvider } from "@gieochu/payments";
+import { listPlatformTransactions, PLATFORM_TXN_FILTERS, type PlatformTxnRow } from "../../../../lib/platform-transactions";
 import { AdminPageHeader, Badge, DataTable, EmptyState, FilterBar, FilterSelect, GhostLinkButton, PillTabs, Td, Tr } from "../../_ui/kit";
 import { IconReceipt } from "../../_ui/icons";
 import { Pagination } from "../../_ui/pagination";
@@ -16,18 +18,23 @@ import {
   INVOICE_PROVIDER_LABEL,
   INVOICE_STATUS_LABEL,
   INVOICE_STATUS_TONE,
+  PLATFORM_TXN_FILTER_LABEL,
+  PLATFORM_TXN_STATE_LABEL,
+  PLATFORM_TXN_STATE_TONE,
   formatAdminDateTime,
 } from "../../_ui/billing-labels";
-import { ConfirmButton } from "./confirm-button";
+import { ConfirmButton, ExpiredConfirmButton, TransactionConfirmButton } from "./confirm-button";
 
-type InvoiceTab = "cho-doi-soat" | "tat-ca";
+type InvoiceTab = "cho-doi-soat" | "tat-ca" | "giao-dich";
 
 const BASE_PATH = "/admin/billing/invoices";
 const ALL_TAB_PATH = `${BASE_PATH}?tab=tat-ca`;
+const TXN_TAB_PATH = `${BASE_PATH}?tab=giao-dich`;
 
 const TABS: { value: InvoiceTab; label: string }[] = [
   { value: "cho-doi-soat", label: "Chờ đối soát" },
   { value: "tat-ca", label: "Tất cả" },
+  { value: "giao-dich", label: "Giao dịch cổng" },
 ];
 
 /** Cột phụ: ẩn trên mobile (thông tin chính vẫn còn ở các cột khác), hiện từ md/lg. */
@@ -37,18 +44,24 @@ const HIDE_BELOW_LG = "hidden lg:table-cell";
 export default async function AdminBillingInvoicesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; status?: string; provider?: string; page?: string; pageSize?: string }>;
+  searchParams: Promise<{ tab?: string; status?: string; provider?: string; loai?: string; page?: string; pageSize?: string }>;
 }) {
   await requireAdminAccess("/admin/billing/invoices");
   const sp = await searchParams;
-  const tab: InvoiceTab = sp.tab === "tat-ca" ? "tat-ca" : "cho-doi-soat";
+  const tab: InvoiceTab = sp.tab === "tat-ca" || sp.tab === "giao-dich" ? sp.tab : "cho-doi-soat";
 
   // Wrapper <div>: layout admin đã có <main>.
   return (
     <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader
         title="Hoá đơn gói dịch vụ"
-        subtitle={tab === "cho-doi-soat" ? await pendingSubtitle() : "Mọi hoá đơn gói của các gian hàng, mới nhất trước — lọc theo trạng thái và cổng thanh toán."}
+        subtitle={
+          tab === "cho-doi-soat"
+            ? await pendingSubtitle()
+            : tab === "giao-dich"
+              ? "Giao dịch SePay/MoMo của cổng thu phí gói nhận qua webhook, mới nhất trước — soát giao dịch sai tiền, thiếu mã hoặc khớp nhưng hoá đơn chưa thanh toán."
+              : "Mọi hoá đơn gói của các gian hàng, mới nhất trước — lọc theo trạng thái và cổng thanh toán."
+        }
       />
 
       <PillTabs
@@ -56,7 +69,7 @@ export default async function AdminBillingInvoicesPage({
         items={TABS.map((item) => ({ href: `${BASE_PATH}?tab=${item.value}`, label: item.label, active: item.value === tab }))}
       />
 
-      {tab === "cho-doi-soat" ? <PendingTab /> : <AllInvoicesTab sp={sp} />}
+      {tab === "cho-doi-soat" ? <PendingTab /> : tab === "giao-dich" ? <TransactionsTab sp={sp} /> : <AllInvoicesTab sp={sp} />}
     </div>
   );
 }
@@ -215,12 +228,151 @@ async function AllInvoicesTab({ sp }: { sp: { status?: string; provider?: string
                       )}
                     </Td>
                     <Td className="text-right">
-                      {invoice.provider === "MANUAL_QR" && invoice.status === "PENDING" ? (
+                      {isManualConfirmProvider(invoice.provider) && invoice.status === "PENDING" ? (
                         <ConfirmButton invoiceId={invoice.id} invoiceCode={invoice.code} />
+                      ) : isManualConfirmProvider(invoice.provider) && invoice.status === "EXPIRED" ? (
+                        <ExpiredConfirmButton invoiceId={invoice.id} invoiceCode={invoice.code} amountLabel={formatVndFull(invoice.amountVnd)} />
                       ) : null}
                     </Td>
                   </Tr>
                 ))}
+              </DataTable>
+            </div>
+            <Pagination total={total} page={page} pageSize={pageSize} />
+          </>
+        )}
+      </div>
+    </>
+  );
+}
+
+function transactionHint(row: PlatformTxnRow): string | null {
+  switch (row.state) {
+    case "AMOUNT_MISMATCH":
+      if (!row.invoice || row.differenceVnd === null) return null;
+      return row.differenceVnd < 0
+        ? `Thiếu ${formatVndFull(-row.differenceVnd)} so với hoá đơn ${row.invoice.code} (${formatVndFull(row.invoice.amountVnd)}) — không xác nhận được.`
+        : `Thừa ${formatVndFull(row.differenceVnd)} so với hoá đơn ${row.invoice.code} (${formatVndFull(row.invoice.amountVnd)}).`;
+    case "INVOICE_NOT_FOUND":
+      return `Không có hoá đơn mã ${row.reference}.`;
+    case "NO_REFERENCE":
+      return "Nội dung chuyển khoản không có mã hoá đơn.";
+    case "MATCHED_NOT_APPLIED":
+      return row.invoice ? `Hoá đơn đang ở trạng thái “${INVOICE_STATUS_LABEL[row.invoice.status]}” khi tiền về.` : null;
+    default:
+      return null;
+  }
+}
+
+/** Nội dung khung xác nhận cho hoá đơn đã biết: chênh lệch + hoá đơn hết hạn sẽ tính lại kỳ. */
+function confirmHint(row: PlatformTxnRow): string | null {
+  if (!row.invoice) return null;
+  const parts: string[] = [];
+  if (row.differenceVnd !== null && row.differenceVnd > 0) parts.push(`Thừa ${formatVndFull(row.differenceVnd)} — ghi vào nhật ký, bạn hoàn ngoài hệ thống.`);
+  if (row.invoice.status === "EXPIRED") parts.push("Hoá đơn đã hết hạn: kỳ gói tính lại từ lúc xác nhận; bị chặn nếu gian hàng đã có hoá đơn mới hơn.");
+  return parts.length > 0 ? parts.join(" ") : null;
+}
+
+/**
+ * ADR-059 (B2) — giao dịch cổng thu phí gói (`platform_payment_transactions`, L1). ADR-059 bổ sung lần 2: từ giao dịch SePay chưa
+ * áp, admin xác nhận được hoá đơn đã chọn rõ (thiếu tiền bị chặn).
+ */
+async function TransactionsTab({ sp }: { sp: { loai?: string; page?: string; pageSize?: string } }) {
+  const filter = parseEnumParam(PLATFORM_TXN_FILTERS, sp.loai);
+  const { page, pageSize } = parsePagination(sp);
+  const { items, total } = await listPlatformTransactions({ filter, page, pageSize });
+
+  return (
+    <>
+      <FilterBar action={BASE_PATH} label="Lọc giao dịch" hidden={{ tab: "giao-dich", pageSize: sp.pageSize }} active={Boolean(filter)} clearHref={TXN_TAB_PATH}>
+        <FilterSelect
+          label="Tình trạng"
+          name="loai"
+          value={filter}
+          allLabel="Tất cả giao dịch"
+          options={PLATFORM_TXN_FILTERS.map((value) => ({ value, label: PLATFORM_TXN_FILTER_LABEL[value] }))}
+        />
+      </FilterBar>
+
+      <div className="mt-4">
+        {items.length === 0 ? (
+          filter ? (
+            <EmptyState
+              icon={<IconReceipt className="h-6 w-6" />}
+              title="Không có giao dịch nào khớp bộ lọc"
+              description="Thử chọn tình trạng khác."
+              action={<GhostLinkButton href={TXN_TAB_PATH}>Xoá bộ lọc</GhostLinkButton>}
+            />
+          ) : (
+            <EmptyState
+              icon={<IconReceipt className="h-6 w-6" />}
+              title="Chưa có giao dịch cổng nào"
+              description="Giao dịch xuất hiện khi SePay/MoMo gửi webhook về cổng thu phí gói của nền tảng."
+            />
+          )
+        ) : (
+          <>
+            <p className="mb-3 text-sm text-gray-600" aria-live="polite">
+              {filter ? "Khớp bộ lọc: " : "Tổng: "}
+              {total.toLocaleString("vi-VN")} giao dịch
+            </p>
+            <div className="overflow-x-auto">
+              <DataTable
+                head={["Thời điểm nhận", "Cổng", "Số tiền", "Nội dung", "Tình trạng", "Hoá đơn"]}
+                headClassName={[undefined, HIDE_BELOW_MD, "text-right", HIDE_BELOW_LG, undefined, undefined]}
+                caption="Giao dịch cổng thu phí gói"
+              >
+                {items.map((row) => {
+                  const hint = transactionHint(row);
+                  return (
+                    <Tr key={row.id}>
+                      <Td className="whitespace-nowrap text-gray-600 tabular-nums">
+                        {formatAdminDateTime(row.createdAt)}
+                        {row.providerTxnId ? <span className="block font-mono text-xs text-gray-500">#{row.providerTxnId}</span> : null}
+                      </Td>
+                      <Td className={`whitespace-nowrap ${HIDE_BELOW_MD}`}>{INVOICE_PROVIDER_LABEL[row.provider]}</Td>
+                      <Td className="text-right font-semibold whitespace-nowrap tabular-nums">{formatVndFull(row.amountVnd)}</Td>
+                      <Td className={`max-w-72 text-xs text-gray-600 [overflow-wrap:anywhere] ${HIDE_BELOW_LG}`}>
+                        {row.content ?? (
+                          <>
+                            <span aria-hidden="true">—</span>
+                            <span className="sr-only">Không có nội dung</span>
+                          </>
+                        )}
+                      </Td>
+                      <Td>
+                        <Badge tone={PLATFORM_TXN_STATE_TONE[row.state]}>{PLATFORM_TXN_STATE_LABEL[row.state]}</Badge>
+                        {row.duplicateOfInvoice ? (
+                          <span className="mt-1 block text-xs font-medium text-red-700">Nhiều giao dịch khớp cùng hoá đơn — kiểm tra trả trùng.</span>
+                        ) : null}
+                        {hint ? <span className="mt-1 block text-xs text-gray-600">{hint}</span> : null}
+                        {row.confirmable ? (
+                          <TransactionConfirmButton
+                            transactionId={row.id}
+                            defaultInvoiceCode={row.invoice?.code ?? row.reference ?? ""}
+                            receivedLabel={formatVndFull(row.amountVnd)}
+                            hint={confirmHint(row)}
+                          />
+                        ) : null}
+                      </Td>
+                      <Td>
+                        {row.invoice ? (
+                          <>
+                            <span className="font-mono text-xs whitespace-nowrap">{row.invoice.code}</span>
+                            <span className="block text-xs text-gray-500">
+                              {row.invoice.tenant.name} · {INVOICE_STATUS_LABEL[row.invoice.status]}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span aria-hidden="true">—</span>
+                            <span className="sr-only">Không có hoá đơn</span>
+                          </>
+                        )}
+                      </Td>
+                    </Tr>
+                  );
+                })}
               </DataTable>
             </div>
             <Pagination total={total} page={page} pageSize={pageSize} />

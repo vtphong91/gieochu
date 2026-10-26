@@ -11,6 +11,7 @@ import { getEnabledPlatformProviders } from "../../../../lib/platform-payment";
 import { RenewForm } from "./renew-form";
 import { BillingPoll } from "./billing-poll";
 import { BankTransferPanel } from "../../../_ui/bank-transfer-panel";
+import { WalletTransferPanel } from "../../../_ui/wallet-transfer-panel";
 import { AdminPageHeader, Badge, ConfigCard, DataTable, EmptyState, Notice, Td, Tr } from "../../../admin/_ui/kit";
 import { IconCard, IconReceipt } from "../../../admin/_ui/icons";
 import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
@@ -218,6 +219,21 @@ export default async function StudioBillingPage({
                     content={checkout.content}
                     referenceCode={pendingInvoice.code}
                     referenceNoun="hoá đơn"
+                  />
+                );
+              }
+              if (checkout.kind === "WALLET") {
+                // ADR-059 bổ sung lần 3 — MoMo cá nhân của nền tảng (PaymentScope PLATFORM), admin xác nhận tay.
+                return (
+                  <WalletTransferPanel
+                    phone={checkout.phone}
+                    accountName={checkout.accountName}
+                    content={checkout.content}
+                    amountVnd={pendingInvoice.amountVnd}
+                    qrImageDataUrl={checkout.qr?.qrImageDataUrl ?? null}
+                    referenceCode={pendingInvoice.code}
+                    referenceNoun="hoá đơn"
+                    laterHref={`/studio/${tenant.slug}`}
                   />
                 );
               }

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getEnv } from "@gieochu/config";
 import { buildWebhookNotifyUrl } from "@gieochu/payments";
 import { requireTenantMemberPage } from "../../../../../lib/page-guards";
@@ -5,7 +6,13 @@ import { listBankBins, listTenantProviderConfigs } from "../../../../../lib/tena
 import { ManualQrForm } from "./manual-qr-form";
 import { SepayForm } from "./sepay-form";
 import { MomoForm } from "./momo-form";
-import { AdminPageHeader, SettingsGrid } from "../../../../admin/_ui/kit";
+import { MomoManualForm } from "./momo-manual-form";
+import { AdminPageHeader } from "../../../../admin/_ui/kit";
+import { ModuleTabs } from "../../../../admin/_ui/module-tabs";
+import { STUDIO_SETTINGS_TABS_LABEL, studioSettingsTabs } from "../_ui/settings-tabs";
+
+/** ADR-058: title riêng theo tab (task 2.7). */
+export const metadata: Metadata = { title: "Thanh toán — Cài đặt" };
 
 export default async function StudioPaymentsSettingsPage({
   params,
@@ -20,18 +27,22 @@ export default async function StudioPaymentsSettingsPage({
   const manualQr = configs.find((c) => c.provider === "MANUAL_QR");
   const sepay = configs.find((c) => c.provider === "SEPAY");
   const momo = configs.find((c) => c.provider === "MOMO");
+  const momoManual = configs.find((c) => c.provider === "MOMO_MANUAL");
 
   const env = getEnv();
   const webhookUrl = buildWebhookNotifyUrl(env.APP_URL, { kind: "TENANT", tenantId: tenant.id }, "SEPAY");
 
   return (
-    <main className="px-5 py-8 lg:px-8">
+    // ADR-058: tab "Thanh toán" của nhóm Cài đặt — h1 là tên nhóm. Wrapper <div>: layout Studio đã có <main>.
+    <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader
-        title="Cấu hình thanh toán"
-        subtitle="Bật ít nhất một phương thức để xuất bản sản phẩm có giá > 0. Tiền về thẳng tài khoản của bạn."
+        title="Cài đặt"
+        subtitle="Thanh toán — bật ít nhất một phương thức để xuất bản sản phẩm có giá > 0. Tiền về thẳng tài khoản của bạn."
       />
+      <ModuleTabs label={STUDIO_SETTINGS_TABS_LABEL} items={studioSettingsTabs(tenant.slug)} current={`/studio/${tenant.slug}/settings/payments`} />
 
-      <SettingsGrid>
+      {/* ADR-058 (task 2.2): mỗi cổng là một khối thu gọn (cổng đang bật mở sẵn) — xếp 1 cột để khối thu gọn không lệch hàng. */}
+      <div className="mt-6 space-y-4">
         <ManualQrForm
           tenantSlug={tenant.slug}
           banks={banks}
@@ -40,6 +51,17 @@ export default async function StudioPaymentsSettingsPage({
             accountNo: String(manualQr?.publicConfig.accountNo ?? ""),
             accountName: String(manualQr?.publicConfig.accountName ?? ""),
             isEnabled: manualQr?.isEnabled ?? false,
+          }}
+        />
+
+        {/* ADR-059 bổ sung lần 3 — bật song song được với QR chuyển khoản. */}
+        <MomoManualForm
+          tenantSlug={tenant.slug}
+          initial={{
+            phone: String(momoManual?.publicConfig.phone ?? ""),
+            accountName: String(momoManual?.publicConfig.accountName ?? ""),
+            vietQrAccountNo: String(momoManual?.publicConfig.vietQrAccountNo ?? ""),
+            isEnabled: momoManual?.isEnabled ?? false,
           }}
         />
 
@@ -68,7 +90,7 @@ export default async function StudioPaymentsSettingsPage({
             maskedSecret: momo?.maskedSecrets.secretKey,
           }}
         />
-      </SettingsGrid>
+      </div>
 
       <div className="mt-8 rounded-2xl border bg-gray-50 p-5 text-sm text-gray-600" style={{ borderColor: "#E5E7EB" }}>
         <p className="font-medium text-gray-800">Bảo mật thông tin</p>
@@ -77,6 +99,6 @@ export default async function StudioPaymentsSettingsPage({
           <li>Key đã lưu không bao giờ hiển thị lại — hệ thống chỉ cho biết đã cấu hình hay chưa. Nhập key mới để ghi đè.</li>
         </ul>
       </div>
-    </main>
+    </div>
   );
 }

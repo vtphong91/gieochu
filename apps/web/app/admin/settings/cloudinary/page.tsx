@@ -1,6 +1,6 @@
 import { requireAdminAccess } from "../../../../lib/page-guards";
 import { getSystemCloudinaryConfig } from "../../../../lib/system-cloudinary";
-import { AdminPageHeader, SettingsGrid } from "../../_ui/kit";
+import { AdminPageHeader } from "../../_ui/kit";
 import { CloudinaryForm } from "./cloudinary-form";
 import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 
@@ -14,7 +14,8 @@ export default async function AdminCloudinarySettingsPage() {
     <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader title="Cloudinary Upload" subtitle="Tài khoản Cloudinary dùng để upload ảnh trong Landing Page CMS." />
 
-      <SettingsGrid>
+      {/* Full width theo khung app (quy tắc 2026-10-25) — thay SettingsGrid 2 cột. */}
+      <div className="mt-6">
         <CloudinaryForm
           initial={{
             cloudName: config?.publicConfig.cloudName ?? "",
@@ -27,7 +28,7 @@ export default async function AdminCloudinarySettingsPage() {
               : null,
           }}
         />
-      </SettingsGrid>
+      </div>
     </div>
   );
 }

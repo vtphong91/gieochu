@@ -150,6 +150,41 @@ body {
   border-top: 1px solid #e5e7eb;
   margin: 1.2em 0;
 }
+/* Bảng trong nội dung rich text (ADR-060 — Markdown → `table/thead/tbody/tr/th/td` trần, không wrapper). Bản thân `table`
+   thành khối cuộn ngang (`display:block` + `overflow-x:auto`, tối đa 100% cột) nên bảng rộng chỉ cuộn trong khung, trang
+   không cuộn ngang; trình duyệt bọc thead/tbody trong một bảng ẩn danh và `border-collapse` kế thừa xuống bảng đó. Ô có
+   `min-width` để trên mobile cột không bị ép quá hẹp (bảng 3 cột ≈ 26em → cuộn ở 375px, vừa khít ở cột 768px).
+   `overflow-wrap: break-word` ở ô ghi đè `anywhere` của `.gieochu-legal-content` — `anywhere` làm min-content của ô còn
+   1 ký tự, bảng sẽ bị bóp thay vì cuộn. Chữ = cỡ đoạn văn (1em). Màu = hex fallback token: line #e7dfc9, backgroundAlt
+   #f5eedd, ink #12213a (tương phản ink trên backgroundAlt ≈ 14:1). Dòng tiêu đề khác biệt bằng nền + đậm, không chỉ màu. */
+.gieochu-rich-content table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 1em 0;
+  border-collapse: collapse;
+  font-size: 1em;
+  line-height: 1.55;
+}
+.gieochu-rich-content :is(th, td) {
+  min-width: 8em;
+  padding: 0.5em 0.75em;
+  border: 1px solid #e7dfc9;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: break-word;
+}
+.gieochu-rich-content th {
+  background: #f5eedd;
+  color: #12213a;
+  font-weight: 650;
+}
+.gieochu-rich-content :is(th, td) > :first-child {
+  margin-top: 0;
+}
+.gieochu-rich-content :is(th, td) > :last-child {
+  margin-bottom: 0;
+}
 /* Văn bản pháp lý công khai (`app/{slug}` — `_ui/legal-document-page.tsx`, ADR-050 GĐ2 + ADR-054/057): đọc dài — chữ 16px
    (17px từ lg), dòng 1.75; khối chữ tối đa ~38em (~75–80 ký tự tiếng Việt/dòng, nằm trong cột 768px ADR-024). H2 có vạch ngăn
    mục, H3 tách rõ khỏi đoạn trước; danh sách lồng đổi kiểu dấu; link gạch chân dày khi hover/focus; `blockquote` thành ô ghi
@@ -337,8 +372,19 @@ body {
     orphans: 3;
     widows: 3;
   }
-  .legal-doc .gieochu-legal-content :is(blockquote, li) {
+  .legal-doc .gieochu-legal-content :is(blockquote, li, tr) {
     break-inside: avoid;
+  }
+  /* Bảng in ra giấy: bỏ khối cuộn (sẽ cắt cột), trả về bảng thường rộng hết trang; viền đen mảnh. */
+  .gieochu-rich-content table {
+    display: table;
+    width: 100%;
+    overflow: visible;
+  }
+  .legal-doc .gieochu-legal-content :is(th, td) {
+    min-width: 0;
+    border-color: #000;
+    background: #fff;
   }
   .legal-doc .gieochu-legal-content :is(strong, .legal-pending) {
     color: #000;

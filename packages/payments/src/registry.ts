@@ -1,12 +1,14 @@
 import { manualQrProvider } from "./providers/manual-qr";
 import { sepayProvider } from "./providers/sepay";
 import { momoProvider } from "./providers/momo";
+import { momoManualProvider } from "./providers/momo-manual";
 import type { PaymentProvider, PaymentProviderId, PaymentScope } from "./types";
 
 const PROVIDERS: Record<PaymentProviderId, PaymentProvider<never>> = {
   MANUAL_QR: manualQrProvider as PaymentProvider<never>,
   SEPAY: sepayProvider as PaymentProvider<never>,
   MOMO: momoProvider as PaymentProvider<never>,
+  MOMO_MANUAL: momoManualProvider as PaymentProvider<never>,
 };
 
 /**
@@ -35,4 +37,14 @@ export function buildWebhookNotifyUrl(appUrl: string, scope: PaymentScope, provi
       ? `/api/webhooks/platform/${providerSegment}`
       : `/api/webhooks/tenants/${scope.tenantId}/${providerSegment}`;
   return `${appUrl}${path}`;
+}
+
+/**
+ * ADR-059: cổng không tự đối soát — người nhận tiền (chủ gian hàng / System Admin) phải xác nhận tay theo sao kê. Hiện chỉ
+ * MANUAL_QR và MOMO_MANUAL (ADR-059 bổ sung lần 3) — dùng chung email báo + nút/luật xác nhận tay.
+ */
+export const MANUAL_CONFIRM_PROVIDERS = ["MANUAL_QR", "MOMO_MANUAL"] as const satisfies readonly PaymentProviderId[];
+
+export function isManualConfirmProvider(id: PaymentProviderId): boolean {
+  return (MANUAL_CONFIRM_PROVIDERS as readonly PaymentProviderId[]).includes(id);
 }

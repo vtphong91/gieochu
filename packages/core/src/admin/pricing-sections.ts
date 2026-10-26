@@ -134,7 +134,7 @@ export const PRICING_WHY_US_ICON_LABELS: Record<PricingWhyUsIcon, string> = {
 };
 
 /** Khớp `PaymentProviderId` (`@gieochu/payments`) — core không phụ thuộc payments; apps/web kiểm bằng `satisfies`. */
-export const PRICING_PAYMENT_PROVIDER_IDS = ["MANUAL_QR", "SEPAY", "MOMO"] as const;
+export const PRICING_PAYMENT_PROVIDER_IDS = ["MANUAL_QR", "SEPAY", "MOMO", "MOMO_MANUAL"] as const;
 export type PricingPaymentProviderId = (typeof PRICING_PAYMENT_PROVIDER_IDS)[number];
 
 export const PRICING_ROW_KINDS = ["limit", "feature", "custom"] as const;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 // Subpath (không qua barrel "@gieochu/core") — barrel kéo theo code server-only (argon2, pino).
 import {
@@ -21,6 +21,7 @@ import {
 import { Badge, GhostButton, PrimaryButton, SelectField, TextField } from "../../../admin/_ui/kit";
 import { IconCheckCircle, IconChevronDown, IconExternalLink, IconEye, IconEyeOff, IconPlus, IconTrash } from "../../../admin/_ui/icons";
 import { ImageUploadField } from "../../../admin/_ui/image-upload-field";
+import { useUnsavedChanges } from "../../../admin/_ui/unsaved-changes";
 import type { CloudinarySignatureResult } from "../../../_ui/cloudinary-actions";
 import {
   getTenantCloudinaryUploadSignatureAction,
@@ -555,12 +556,8 @@ export function StorefrontEditor({
   const [savedSnapshot, setSavedSnapshot] = useState(() => JSON.stringify(initialSections));
   const isDirty = JSON.stringify(sections) !== savedSnapshot;
 
-  useEffect(() => {
-    if (!isDirty) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [isDirty]);
+  // ADR-058 mục 5 (task 2.5): cờ "chưa lưu" đăng ký với provider của layout (beforeunload chung + chặn sidebar/"Về trang chủ").
+  useUnsavedChanges(isDirty, "Trang bán hàng có thay đổi chưa lưu. Rời trang và bỏ thay đổi?");
 
   const selected = sections.find((s) => s.id === selectedId) ?? sections[0];
   const uploadImage: UploadImageProps = {
@@ -659,7 +656,7 @@ export function StorefrontEditor({
           <div className="flex flex-wrap items-center gap-2" aria-live="polite">
             {isPublished ? <Badge tone="success">Đã xuất bản</Badge> : <Badge tone="neutral">Chưa xuất bản · đang dùng nội dung mẫu</Badge>}
             {hasDraft ? <Badge tone="warning">Đang có bản nháp chưa xuất bản</Badge> : null}
-            {isDirty ? <Badge tone="info">Có thay đổi chưa lưu</Badge> : null}
+            {isDirty ? <Badge tone="warning">Có thay đổi chưa lưu</Badge> : null}
           </div>
           <div className="flex flex-wrap gap-2">
             <Link

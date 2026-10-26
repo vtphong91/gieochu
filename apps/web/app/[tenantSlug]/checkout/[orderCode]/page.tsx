@@ -13,6 +13,7 @@ import { BankTransferPanel } from "../../../_ui/bank-transfer-panel";
 import { CheckoutPoll } from "./checkout-poll";
 import { CouponPanel } from "./coupon-panel";
 import { ProviderPanel } from "./provider-panel";
+import { WalletTransferPanel } from "../../../_ui/wallet-transfer-panel";
 import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 
 // ADR-025: checkout là trang HỆ THỐNG — màu lấy từ token hệ thống như trang chi tiết tài liệu.
@@ -123,7 +124,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ tenan
 
         {isPending ? (
           <section className="mt-4">
-            <CouponPanel tenantSlug={tenantSlug} orderCode={orderCode} appliedCode={order.couponCode} hasQrCheckout={checkout?.kind === "QR"} />
+            <CouponPanel tenantSlug={tenantSlug} orderCode={orderCode} appliedCode={order.couponCode} hasQrCheckout={checkout?.kind === "QR" || (checkout?.kind === "WALLET" && checkout.qr !== null)} />
           </section>
         ) : null}
 
@@ -143,6 +144,23 @@ export default async function CheckoutPage({ params }: { params: Promise<{ tenan
                       content={checkout.content}
                       referenceCode={order.code}
                       referenceNoun="đơn hàng"
+                    />
+                  </div>
+                </div>
+              ) : checkout.kind === "WALLET" ? (
+                // ADR-059 bổ sung lần 3 — MoMo cá nhân (chuyển tay). Số tiền lấy từ đơn (đã tính lại ở server), không từ payload.
+                <div>
+                  <h2 className="font-[family-name:var(--font-heading)] text-lg font-semibold">Chuyển tiền qua Ví MoMo</h2>
+                  <div className="mt-2">
+                    <WalletTransferPanel
+                      phone={checkout.phone}
+                      accountName={checkout.accountName}
+                      content={checkout.content}
+                      amountVnd={order.totalVnd}
+                      qrImageDataUrl={checkout.qr?.qrImageDataUrl ?? null}
+                      referenceCode={order.code}
+                      referenceNoun="đơn hàng"
+                      laterHref="/account/orders"
                     />
                   </div>
                 </div>

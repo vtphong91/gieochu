@@ -4,7 +4,10 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { AppError } from "@gieochu/core";
 import { requireRole } from "../../../../lib/session";
-import { savePlatformProviderConfig, testPlatformProviderConnection } from "../../../../lib/platform-payment";
+import { getPlatformPaymentConfigRow, savePlatformProviderConfig, testPlatformProviderConnection } from "../../../../lib/platform-payment";
+import { DEFAULT_INVOICE_CODE_PREFIX, normalizeInvoiceCodePrefix } from "../../../../lib/subscription-billing";
+import { readMomoManualForm } from "../../../../lib/momo-manual-config";
+import { isMissingEnumValueError, MOMO_MANUAL_NOT_READY_MESSAGE } from "../../../../lib/db-errors";
 
 export interface PlatformPaymentActionState {
   error?: string;
@@ -76,6 +79,7 @@ export async function saveSepayAction(
   const secret = String(formData.get("secret") ?? "").trim();
   const { authType, paymentPrefix, ...publicConfig } = parsed.data;
 
+  const previousPrefix = normalizeInvoiceCodePrefix(((await getPlatformPaymentConfigRow("SEPAY"))?.publicConfig as Record<string, unknown> | undefined)?.paymentPrefix);
   let result: { autoDisabled: boolean };
   try {
     result = await savePlatformProviderConfig({
@@ -90,7 +94,26 @@ export async function saveSepayAction(
     throw error;
   }
   revalidatePath("/admin/billing/payment");
-  return savedState(result);
+  return withPrefixWarning(savedState(result), paymentPrefix, previousPrefix);
+}
+
+/**
+ * ADR-059 bổ sung lần 2 (c): tiền tố không khoá, nhưng cảnh báo rõ khi lưu — (1) tiền tố có ký tự ngoài chữ/số không dùng làm mã
+ * hoá đơn được (hệ thống dùng SUB); (2) đổi tiền tố: hoá đơn đang chờ tạo với tiền tố cũ (khác SUB) không còn tự khớp.
+ */
+function withPrefixWarning(state: PlatformPaymentActionState, rawPrefix: string, previousPrefix: string | null): PlatformPaymentActionState {
+  const prefix = normalizeInvoiceCodePrefix(rawPrefix);
+  const warnings: string[] = [];
+  if (!prefix) {
+    warnings.push(`Cảnh báo: tiền tố "${rawPrefix}" có ký tự ngoài chữ/số nên hoá đơn SePay sẽ dùng tiền tố ${DEFAULT_INVOICE_CODE_PREFIX} — hãy đặt cấu trúc mã thanh toán bên SePay là ${DEFAULT_INVOICE_CODE_PREFIX}.`);
+  } else {
+    warnings.push(`Mã hoá đơn SePay mới sẽ có dạng ${prefix} + 8 ký tự — cấu trúc mã thanh toán bên SePay phải dùng đúng tiền tố ${prefix}.`);
+  }
+  if (previousPrefix && prefix && previousPrefix !== prefix && previousPrefix !== DEFAULT_INVOICE_CODE_PREFIX) {
+    warnings.push(`Hoá đơn đang chờ tạo với tiền tố cũ ${previousPrefix} sẽ không tự khớp nữa — kiểm tra ở tab "Giao dịch cổng".`);
+  }
+  const base = state.message ?? "Đã lưu.";
+  return { ...state, message: `${base} ${warnings.join(" ")}` };
 }
 
 const momoSchema = z.object({
@@ -135,4 +158,30 @@ export async function testMomoConnectionAction(): Promise<PlatformPaymentActionS
   const result = await testPlatformProviderConnection("MOMO", actor.userId);
   revalidatePath("/admin/billing/payment");
   return { testResult: result };
+}
+
+/** ADR-059 bổ sung lần 3 — "MoMo cá nhân (xác nhận tay)" của nền tảng (PaymentScope PLATFORM, thu phí gói). Không secret. */
+export async function saveMomoManualAction(
+  _prevState: PlatformPaymentActionState,
+  formData: FormData,
+): Promise<PlatformPaymentActionState> {
+  const actor = await requireRole("SYSTEM_ADMIN");
+  const parsed = readMomoManualForm(formData);
+  if (!parsed.ok) return { error: parsed.error };
+  let result: { autoDisabled: boolean };
+  try {
+    result = await savePlatformProviderConfig({
+      actorId: actor.userId,
+      provider: "MOMO_MANUAL",
+      isEnabled: formData.get("isEnabled") === "on",
+      publicConfig: parsed.config,
+      secrets: {},
+    });
+  } catch (error) {
+    if (isMissingEnumValueError(error)) return { error: MOMO_MANUAL_NOT_READY_MESSAGE };
+    if (error instanceof AppError) return { error: error.message };
+    throw error;
+  }
+  revalidatePath("/admin/billing/payment");
+  return savedState(result);
 }

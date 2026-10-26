@@ -34,7 +34,7 @@ const MATCH_STATUS: Record<string, { label: string; tone: "success" | "warning" 
   UNMATCHED: { label: "Không khớp đơn", tone: "warning" },
   MISMATCH_AMOUNT: { label: "Sai số tiền", tone: "danger" },
 };
-const PROVIDER_SHORT: Record<string, string> = { MANUAL_QR: "QR thủ công", SEPAY: "SePay", MOMO: "MoMo" };
+const PROVIDER_SHORT: Record<string, string> = { MANUAL_QR: "QR thủ công", SEPAY: "SePay", MOMO: "MoMo", MOMO_MANUAL: "MoMo (chuyển tay)" };
 
 export default async function StudioOrderDetailPage({
   params,

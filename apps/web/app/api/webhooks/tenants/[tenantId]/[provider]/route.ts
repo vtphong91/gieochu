@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { decryptSecret, extractSepayReference, getProvider, type PaymentProviderId } from "@gieochu/payments";
-import { logger } from "@gieochu/core";
+import { decryptSecret, extractSepayReferences, getProvider, type PaymentProviderId, type SepayWebhookBody } from "@gieochu/payments";
+import { logger, ORDER_CODE_SUFFIX_LENGTH } from "@gieochu/core";
 import { getEnv } from "@gieochu/config";
-import { withSystemJob } from "@gieochu/db";
+import { getPrismaClient, withSystemJob } from "@gieochu/db";
 import { QUEUE_NAMES } from "@gieochu/jobs";
 import { enqueuePaymentProcess } from "../../../../../../lib/jobs";
 import { scheduleQueueDrain } from "../../../../../../lib/job-runner";
@@ -57,13 +57,17 @@ export async function POST(
     return NextResponse.json({ error: "invalid_signature" }, { status: 401 });
   }
 
-  let parsedBody: unknown = {};
+  // ADR-059 bổ sung lần 2: body không phải JSON / thiếu trường bắt buộc → 400 + log (trước đây TypeError → 500). Form-encoded
+  // vẫn ngoài phạm vi (BACKLOG). Chữ ký đã hợp lệ ở trên nên log được coi là đáng tin để điều tra.
+  let parsedBody: unknown;
+  let event: ReturnType<typeof provider.parseWebhook>;
   try {
     parsedBody = JSON.parse(rawBody);
-  } catch {
-    // some providers may post form-encoded bodies; out of scope for M7
+    event = provider.parseWebhook(parsedBody);
+  } catch (error) {
+    logger.warn({ tenantId, provider: providerId, err: error }, "tenant payment webhook rejected: invalid body");
+    return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
-  const event = provider.parseWebhook(parsedBody);
 
   try {
     await withSystemJob((tx) =>
@@ -79,16 +83,27 @@ export async function POST(
   // SePay's parseWebhook can't know the tenant's paymentPrefix (no cfg param on the shared
   // interface) — extract the reference here, with cfg already decrypted above. MoMo's own
   // orderId already comes back as `event.reference` from parseWebhook.
-  const reference =
-    providerId === "SEPAY"
-      ? extractSepayReference(parsedBody as Parameters<typeof extractSepayReference>[0], (cfg as { paymentPrefix: string }).paymentPrefix)
-      : event.reference;
+  // ADR-059 bổ sung lần 2: thử cả tiền tố SePay người bán tự điền lẫn tiền tố mã đơn của gian hàng (mã đơn luôn mang tiền tố
+  // này, nội dung QR = mã đơn) → không bao giờ trượt khớp chỉ vì cấu hình lệch; chỉ bắt đúng độ dài mã đơn.
+  let referenceCandidates: string[] = [];
+  if (providerId === "SEPAY") {
+    const tenant = await getPrismaClient().tenant.findUnique({ where: { id: tenantId }, select: { orderCodePrefix: true } });
+    referenceCandidates = extractSepayReferences(
+      parsedBody as SepayWebhookBody,
+      [String((cfg as { paymentPrefix?: unknown }).paymentPrefix ?? ""), tenant?.orderCodePrefix ?? ""],
+      { codeLength: ORDER_CODE_SUFFIX_LENGTH },
+    );
+  } else if (event.reference) {
+    referenceCandidates = [event.reference];
+  }
+  const reference = referenceCandidates[0];
 
   await enqueuePaymentProcess({
     tenantId,
     provider: providerId,
     providerEventId: event.providerEventId,
     reference,
+    referenceCandidates,
     amountVnd: event.amountVnd,
     success: event.success,
     rawPayload: parsedBody,

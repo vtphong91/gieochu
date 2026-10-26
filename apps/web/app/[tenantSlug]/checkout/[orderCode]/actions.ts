@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { AppError } from "@gieochu/core";
 import type { PaymentProviderId } from "@gieochu/payments";
 import { requireVerifiedAccess } from "../../../../lib/page-guards";
@@ -10,7 +11,7 @@ export interface CheckoutActionState {
   error?: string;
 }
 
-const VALID_PROVIDERS: PaymentProviderId[] = ["MANUAL_QR", "SEPAY", "MOMO"];
+const VALID_PROVIDERS: PaymentProviderId[] = ["MANUAL_QR", "SEPAY", "MOMO", "MOMO_MANUAL"];
 
 export async function applyCouponAction(
   tenantSlug: string,
@@ -69,7 +70,8 @@ export async function selectProviderAction(
 
   const order = await getOrderForCustomer(user.userId, orderCode);
   try {
-    await initiateOrderCheckout(order.tenantId, order.id, user.userId, provider);
+    // ADR-059: email báo chủ gian hàng (đơn chờ xác nhận tay) gửi sau response.
+    await initiateOrderCheckout(order.tenantId, order.id, user.userId, provider, { scheduleNotification: (task) => after(task) });
   } catch (error) {
     if (error instanceof AppError) return { error: error.message };
     throw error;

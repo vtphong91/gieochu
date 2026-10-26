@@ -1,6 +1,8 @@
 /** Excludes 0/O and 1/I — the pair each digit/letter is most often confused with (§"M8": "6 ký tự base32 in hoa không gây nhầm lẫn"). */
 const ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 const SUFFIX_LENGTH = 6;
+/** Số ký tự sau tiền tố của mã đơn — dùng để tách mã khỏi nội dung chuyển khoản (ADR-059). */
+export const ORDER_CODE_SUFFIX_LENGTH = SUFFIX_LENGTH;
 
 /** §"M8": `{orderCodePrefix}{6 ký tự base32 in hoa}`, e.g. "HAN7K2QXM". */
 export function generateOrderCode(prefix: string): string {

@@ -6,6 +6,7 @@ import { requireVerifiedAccess } from "../../lib/page-guards";
 import { getEffectiveBrand } from "../../lib/branding";
 import { getAcceptanceLegalVersion } from "../../lib/legal";
 import { StudioOnboardingForm } from "./onboarding-form";
+import { UnsavedChangesProvider } from "../admin/_ui/unsaved-changes";
 import { PAPER } from "../(auth)/_ui/colors";
 
 export default async function StudioIndexPage() {
@@ -23,11 +24,14 @@ export default async function StudioIndexPage() {
   // ADR-054 mục 5: Chính sách người bán có bản hiệu lực → form hiện ô đồng ý (bắt buộc — server kiểm lại); chưa có → ẩn.
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-16" style={{ background: PAPER }}>
-      <StudioOnboardingForm
-        brandName={brand.name}
-        siteHost={siteHost}
-        sellerPolicy={sellerPolicy ? { versionId: sellerPolicy.versionId, href: legalDocumentPath("seller"), title: sellerPolicy.title } : null}
-      />
+      {/* Trang nằm ngoài layout Studio → tự bọc provider cảnh báo rời trang khi chưa lưu (ADR-058 mục 5). */}
+      <UnsavedChangesProvider>
+        <StudioOnboardingForm
+          brandName={brand.name}
+          siteHost={siteHost}
+          sellerPolicy={sellerPolicy ? { versionId: sellerPolicy.versionId, href: legalDocumentPath("seller"), title: sellerPolicy.title } : null}
+        />
+      </UnsavedChangesProvider>
     </main>
   );
 }

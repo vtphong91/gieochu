@@ -4,7 +4,7 @@ tags:
   - order
   - status/living
 date: 2026-09-26
-updated: 2026-10-25
+updated: 2026-10-26
 author: System Architect
 ---
 
@@ -196,6 +196,41 @@ hành vi code đọc được; luật nghiệp vụ là của ADR.
 - **UI:** ô mã giảm giá (`coupon-panel.tsx`) có nhãn, gợi ý "Nhập mã trước khi chọn cách thanh toán…", lỗi `role="alert"` trong panel, thành công báo "Đã cập nhật mã
   QR theo số tiền mới" khi đơn đã có QR — [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §24.3.
 
+### 3.10. Email báo người bán có đơn chờ xác nhận tay (ADR-059 B1) — working tree, chưa commit ✅ `git diff lib/order.ts`
+
+Quyết định: [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay|ADR-044 KB (≙ ADR-059)]]. Không đổi máy trạng thái đơn.
+
+- **`initiateOrderCheckout(tenantId, orderId, customerId, provider, options?)`** — tham số mới `options.scheduleNotification` (kiểu `ScheduleAfterResponse`,
+  `lib/email-dispatch.ts`). Trong cùng `withTenant` ghi payload, dòng đơn bị khoá `SELECT "provider" … FOR UPDATE` trước `updateMany`; `firstProviderSelection` =
+  provider **trước khi ghi** là `null`. Hai lần chọn cổng song song → chỉ một lần thấy `null`.
+- Gửi khi `firstProviderSelection` **và** `isManualConfirmProvider(provider)` (MANUAL_QR, MOMO_MANUAL — ADR-059 bổ sung lần 3, Payment-And-Billing §5J) **và** caller truyền lịch. `selectProviderAction` (checkout) truyền
+  `(task) => after(task)`. Chọn lại cổng, áp/gỡ mã giảm giá (tạo lại QR — §3.9) **không** gửi lại → mỗi đơn báo một lần.
+- **`notifyOwnerOfPendingManualOrder(tenantId, orderId)`** (chạy sau response): đọc `tenants.slug` + `owner.email` (L1, `getPrismaClient`) và đơn + `items.titleSnapshot`
+  dưới `withTenant` (L2). Bỏ qua nếu đơn không còn chờ hiệu lực (`isEffectivelyPending`) hoặc cổng không còn là loại xác nhận tay. Lỗi chỉ log, không ném.
+- Nội dung (`renderOrderAwaitingManualConfirmEmail`): tiêu đề chỉ có mã đơn ("Đơn {mã} chờ bạn xác nhận chuyển khoản"); thân có tên tài liệu (nối bằng dấu phẩy
+  nếu nhiều dòng), tổng tiền, **hạn thanh toán** (`expiresAt`) và **hạn chót xác nhận tay** (`manualConfirmDeadline(expiresAt)` = `expiresAt + 24h`), link
+  `/studio/{slug}/orders/{orderId}`. Không thông tin khách. Loại `order_pending_manual` thuộc `TENANT_CUSTOMER_FACING_TYPES` → **không** ghi `email_send_log`.
+- **`manualConfirmDeadline(expiresAt, lateWindowHours = 24)`** (`packages/core/src/order/expiry.ts`, mới) — `canManuallyConfirmOrder` nay dùng hàm này, hành vi cửa sổ
+  24h (§3.1) **không đổi**.
+
+### 3.11. Webhook gian hàng: nhiều mã ứng viên, email sai tiền, trang "Giao dịch cần xử lý" (ADR-059 bổ sung lần 2) ✅ `git diff`
+
+- **Mã ứng viên:** route `POST /api/webhooks/tenants/[tenantId]/sepay` đọc `referenceCandidates` bằng `extractSepayReferences(body, [cfg.paymentPrefix,
+  tenant.orderCodePrefix], { codeLength: 6 })`; `reference` = phần tử đầu. `processPaymentEvent` tìm các đơn có `code IN candidates` và lấy đơn đầu tiên theo thứ tự ưu
+  tiên; job cũ (không có `referenceCandidates`) dùng `reference`. MoMo giữ `event.reference`.
+- **Luật khớp không đổi:** không tìm thấy đơn → `UNMATCHED`; có đơn → ghi `MATCHED`/`MISMATCH_AMOUNT` theo `matchPaymentAmount`; chỉ `markOrderPaid` khi tiền vào thành
+  công + `MATCHED` + `canManuallyConfirmOrder` ✅.
+- **Email `payment_mismatch`** — khi tiền vào thành công (`success`) và có đơn nhưng `matchStatus ≠ MATCHED`: sau khi transaction commit, `notifyOwnerOfPaymentMismatch`
+  gửi chủ gian hàng: mã đơn, số nhận, số đơn cần, "thiếu/thừa N đ", tên cổng, link đơn + link `/studio/{slug}/orders/giao-dich`. Không ghi `email_send_log`. Một giao dịch chỉ
+  báo một lần vì dòng `tenant_payment_transactions` unique `(tenantId, provider, providerTxnId)` — job chạy lại sẽ lỗi ở bước ghi giao dịch trước khi tới email ✅ code
+  (comment). Email gửi **bất kể trạng thái đơn** (kể cả đơn đã FULFILLED/huỷ) — ✅ code, KB-Audit §41.
+- **Trang `/studio/{slug}/orders/giao-dich` "Giao dịch cần xử lý"** (`lib/tenant-payment-transactions.ts`, L2 qua `withTenant`, guard `requireTenantMemberPage` — OWNER):
+  giao dịch `matchStatus ∈ {UNMATCHED, MISMATCH_AMOUNT}`, **bỏ** giao dịch SePay tiền ra (`rawPayload->>'transferType' = 'out'`, lọc bằng SQL thô + `COALESCE` để giữ
+  dòng MoMo/payload cũ thiếu khoá). Mới nhất trước, 20/trang. Cột: thời điểm nhận + mã giao dịch cổng, cổng, số tiền, tình trạng, đơn (nếu có, kèm chênh lệch), nội dung
+  CK (≤ 160 ký tự). Chỉ xem — chủ gian hàng xác nhận tay ở trang chi tiết đơn (nếu còn trong cửa sổ 24h). Markup tối thiểu, Phong rà sau 🟡.
+- **Trang Đơn hàng** `/studio/{slug}/orders` hiện dòng cảnh báo "Có N giao dịch thanh toán cần xử lý…" + link khi `countTenantTransactionsNeedingAction > 0`.
+- **Không có trên trang này:** giao dịch `MATCHED` nhưng đến quá 24 giờ sau hạn đơn (không tự giao, cũng không vào danh sách) — chưa làm 🟡 (brief), KB-Audit §41.
+
 > **Hiển thị ở Studio (ADR-046, 2026-10-18 — working tree, chưa commit ✅ `git status`):** trang `/studio/{slug}/orders` lọc/đếm theo trạng thái
 > **hiệu lực** (`effectiveOrderStatus`) và chỉ hiện thao tác hợp lệ theo `orderAllowedActions` — `confirm` = `canManuallyConfirmOrder`, `cancel` =
 > hiệu lực PENDING, `refund` = FULFILLED ✅ đọc code. Đây chỉ là lớp hiển thị; các action vẫn tự kiểm luật ở §3 (không đổi). Xem
@@ -226,8 +261,9 @@ transaction — xem [[02-System-Specs/Reviews-Specs|Reviews-Specs]] §5. Xem th�
 * [[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]] — quyền lợi người mua khi tài liệu bị gỡ do vi phạm (ADR-039) ([Abuse-Reports-Specs.md](./Abuse-Reports-Specs.md))
 * [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]] — trang Đơn hàng Studio: danh sách lọc/tìm/phân trang + chi tiết, dòng thời gian đơn (ADR-046) ([Studio-Orders-Specs.md](./Studio-Orders-Specs.md))
 * [[01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr|ADR-041 KB (≙ ADR-056)]] — mã giảm giá sau khi đã có QR (§3.9) ([ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr.md](../01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr.md))
+* [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay|ADR-044 KB (≙ ADR-059)]] — email báo xác nhận tay, giao dịch cần xử lý (§3.10–§3.11) ([ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md](../01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md))
 * Mã nguồn: `packages/core/src/order/state.ts` (máy trạng thái), `packages/core/src/order/expiry.ts` (`effectiveOrderStatus`,
-  `canManuallyConfirmOrder`), `apps/web/lib/order.ts` (`markOrderPaid`, `cancelOrder`, `markOrderRefunded`, `runOrderSweep`),
+  `canManuallyConfirmOrder`, `manualConfirmDeadline`), `apps/web/lib/tenant-payment-transactions.ts`, `apps/web/lib/order.ts` (`markOrderPaid`, `cancelOrder`, `markOrderRefunded`, `runOrderSweep`),
   `apps/web/lib/payment-process.ts`, enum: `packages/db/prisma/schema.prisma`
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

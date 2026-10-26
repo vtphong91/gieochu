@@ -1,5 +1,6 @@
 import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 import type { AdminInvoiceProvider, AdminInvoiceStatus, AdminSubscriptionStatus } from "../../../lib/subscription-billing";
+import type { PlatformTxnFilter, PlatformTxnState } from "../../../lib/platform-transactions";
 
 /**
  * Nhãn tiếng Việt + tông badge cho hoá đơn gói / thuê bao (ADR-056) — dùng chung `/admin/billing/invoices` và
@@ -25,6 +26,7 @@ export const INVOICE_STATUS_TONE: Record<AdminInvoiceStatus, Tone> = {
 
 export const INVOICE_PROVIDER_LABEL: Record<AdminInvoiceProvider, string> = {
   MANUAL_QR: "QR thủ công",
+  MOMO_MANUAL: "MoMo (chuyển tay)",
   SEPAY: "SePay",
   MOMO: "MoMo",
 };
@@ -56,3 +58,28 @@ export function formatAdminDateTime(date: Date): string {
 export function formatAdminDate(date: Date): string {
   return date.toLocaleDateString("vi-VN", { timeZone: DISPLAY_TIME_ZONE, day: "2-digit", month: "2-digit", year: "numeric" });
 }
+
+/** ADR-059 (B2) — tình trạng giao dịch cổng thu phí gói (`platform_payment_transactions`), suy ra từ cột sẵn có. */
+export const PLATFORM_TXN_FILTER_LABEL: Record<PlatformTxnFilter, string> = {
+  "chua-khop": "Chưa khớp hoá đơn",
+  "khop-chua-ap": "Khớp nhưng hoá đơn chưa thanh toán",
+  "da-ap": "Đã áp vào hoá đơn",
+};
+
+export const PLATFORM_TXN_STATE_LABEL: Record<PlatformTxnState, string> = {
+  APPLIED: "Đã áp",
+  MATCHED_NOT_APPLIED: "Khớp, chưa áp",
+  AMOUNT_MISMATCH: "Sai số tiền",
+  INVOICE_NOT_FOUND: "Không tìm thấy hoá đơn",
+  NO_REFERENCE: "Thiếu mã hoá đơn",
+  NOT_INCOMING: "Không phải tiền vào",
+};
+
+export const PLATFORM_TXN_STATE_TONE: Record<PlatformTxnState, Tone> = {
+  APPLIED: "success",
+  MATCHED_NOT_APPLIED: "warning",
+  AMOUNT_MISMATCH: "danger",
+  INVOICE_NOT_FOUND: "danger",
+  NO_REFERENCE: "warning",
+  NOT_INCOMING: "neutral",
+};

@@ -93,7 +93,7 @@ export default async function AdminStorageSettingsPage({ searchParams }: PagePro
   };
 
   return (
-    <main className="px-5 py-8 lg:px-8 max-w-7xl mx-auto space-y-6">
+    <main className="px-5 py-8 lg:px-8 space-y-6">
       <AdminPageHeader
         title="Quản trị Lưu trữ (Storage Management)"
         subtitle="Hạ tầng lưu trữ đa nền tảng Cloudflare R2 & MinIO, Dedicated Bucket cho gian hàng và Công cụ di chuyển đồng bộ dữ liệu (ADR-038)."

@@ -26,7 +26,8 @@ export default async function StudioProductsPage({ params }: { params: Promise<{
   const products = await listProducts(tenant.id);
 
   return (
-    <main className="px-5 py-8 lg:px-8">
+    // Wrapper <div>: layout Studio đã có <main>.
+    <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader
         title="Sản phẩm"
         subtitle="Quản lý tài liệu — riêng tư, công khai, lưu trữ."
@@ -91,6 +92,6 @@ export default async function StudioProductsPage({ params }: { params: Promise<{
           </DataTable>
         </div>
       )}
-    </main>
+    </div>
   );
 }

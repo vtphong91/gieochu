@@ -1433,3 +1433,113 @@
   sidebar riêng **Nội dung → "Trang tuỳ chỉnh"** (danh sách `/admin/cms`, **ẩn các slug hệ thống** home/menu/shop/pricing);
   "Trang CMS" chỉ gồm 2 tab Trang chủ · Header & Footer. (b) Studio — trang sửa tài liệu **giữ nguyên, không thêm tab**,
   chỉ áp accordion cho các khối. (c) Migration ADR-057 (`isDraftRelease`) đã chạy 2026-10-25.
+
+## ADR-059 — Chuẩn bị chạy thử (beta): thanh toán đủ phương thức, email báo, MoMo cá nhân thủ công
+
+- **Bối cảnh (2026-10-25):** đề xuất `docs/de-xuat-chay-thu-thanh-toan-goi-tai-lieu-2026-10-25.md` (Long). Chủ dự án chốt:
+  1. **Beta chạy trên VPS** (production, ADR-049); Vercel giữ để thử chức năng mới.
+  2. **Đủ phương thức thanh toán**, ưu tiên **chuyển khoản QR thủ công**. **SePay hoàn thiện ngay giai đoạn này** (cả thu
+     phí gói lẫn gian hàng). **MoMo đổi sang dạng cá nhân, xác nhận tay** như chuyển khoản QR (khách chuyển qua app MoMo,
+     nội dung = mã đơn; người bán/admin bấm xác nhận). MoMo API (partner code/secret) **tạm ẩn**, giữ code để làm sau.
+  3. **Email báo** (Hiếu làm): đơn chờ xác nhận tay → báo **người bán** (email chủ gian hàng); hoá đơn gói chờ đối soát →
+     báo **admin** về địa chỉ lấy **động** từ trường "Email hỗ trợ" trong System Settings (không hard-code). Thêm nút
+     **xác nhận tay hoá đơn đã hết hạn** (có audit).
+  4. **Gói Free:** không hard-code hạn mức beta — System Admin tự chỉnh trong `/admin/plans` khi cần.
+- **Việc kéo theo:** màn hình admin xem giao dịch SePay chưa khớp (sai tiền/không tìm thấy hoá đơn) và xác nhận tay;
+  thử một giao dịch SePay thật nhỏ trước khi mở; nhập lại cấu hình SePay nền tảng (lần lưu đầu tự tắt — ADR-013, phải lưu 2 lần).
+- **Bổ sung ADR-059 (2026-10-25, chủ dự án chốt):** xác nhận tay hoá đơn gói **EXPIRED** (MANUAL_QR): (1) **chặn** nếu gian
+  hàng đã có hoá đơn tạo sau hoá đơn này đang PENDING hoặc PAID — admin hoàn tiền ngoài hệ thống; (2) khi xác nhận, **tính
+  lại kỳ** theo thời điểm xác nhận (`computeRenewalPeriod(now, currentPeriodEnd, plan)`), không dùng kỳ đã lưu; (3) vẫn
+  tính là "lần thanh toán gói đầu tiên" cho hoàn tiền 7 ngày (ADR-041), **ngày thanh toán = lúc admin xác nhận**. Audit ghi
+  rõ hoá đơn đã hết hạn. Email báo người bán/admin (B1) đã xong.
+- **Bổ sung ADR-059 lần 2 (2026-10-25, chủ dự án chốt — SePay):** (a) giao dịch **thiếu tiền → chặn** xác nhận tay; **thừa
+  hoặc đúng tiền → cho xác nhận** (hộp xác nhận, gắn giao dịch vào hoá đơn — mỗi giao dịch chỉ dùng 1 lần, audit ghi số
+  chênh; phần thừa admin hoàn ngoài hệ thống). (b) hoá đơn SePay **hết hạn** mà có giao dịch khớp đúng tiền → cho xác nhận
+  trễ theo **cùng luật** bổ sung ADR-059 (chặn nếu có hoá đơn mới hơn, tính lại kỳ). (c) **Tiền tố chuyển khoản do admin/
+  người bán tự điền** cho phù hợp cấu hình SePay — không khoá; hệ thống phải bảo đảm mã sinh ra dùng đúng tiền tố đã cấu
+  hình (hoặc cảnh báo rõ khi lệch) để không bao giờ "không khớp" vì cấu hình. (d) Studio có danh sách **"Giao dịch cần xử
+  lý"** (không tìm thấy đơn, sai tiền) + **email báo chủ gian hàng** khi có giao dịch sai tiền.
+
+- **Bổ sung ADR-059 lần 3 (2026-10-26, chủ dự án chốt — B3 MoMo cá nhân, đề xuất của Hiếu):** (1) MoMo cá nhân dùng cho
+  **cả** thu phí gói (platform) lẫn bán tài liệu (gian hàng). (2) **Phương án B:** provider mới `MOMO_MANUAL` (migration chỉ
+  `ALTER TYPE "PaymentProviderId" ADD VALUE`), xác nhận tay như MANUAL_QR (`isManualConfirmProvider`), bật song song được với
+  chuyển khoản ngân hàng. (3) **MoMo API giữ nguyên** cấu hình và code, để trạng thái tắt — không xoá, không tự sửa dữ liệu
+  (thay quyết định "tạm ẩn" ở mục 2). (4) Trang thanh toán hiện **ảnh QR MoMo + thông tin tài khoản MoMo** (số điện thoại,
+  tên chủ ví) để khách đối chiếu khi quét; **nội dung chuyển khoản tự sinh từ mã đơn/hoá đơn** (cùng luật tiền tố). Nếu
+  kiểm thử cho thấy VietQR không trỏ được tới ví MoMo → dự phòng theo đề xuất (F1: số điện thoại + tên + số tiền + nội dung,
+  nút sao chép) — chi tiết ảnh QR ở nhánh dự phòng chốt sau kiểm thử. (5) Thông tin MoMo của người bán **công khai ở trang
+  thanh toán** và phải được ghi rõ trong trang chính sách (người bán). (6) **Chủ dự án tự kiểm thử thật** (lưu QR "Nhận tiền",
+  giải mã, chuyển thử 1.000đ) trước khi Hiếu code.
+
+## ADR-060 — Trang tuỳ chỉnh (`/p/[slug]`) hiển thị Markdown + thay biến `{brand}`
+
+- **Bối cảnh (2026-10-26):** 3 dự thảo hướng dẫn khách hàng (`docs/du-thao-huong-dan/`, Long) cần tiêu đề, danh sách, bảng,
+  liên kết; khối `richText` của trang tuỳ chỉnh hiện chỉ in chữ thuần và không thay tên thương hiệu. Chủ dự án chọn
+  **phương án (a)**: nâng cấp hiển thị thay vì nhập chữ thuần.
+- **Quyết định:** khối chữ của trang tuỳ chỉnh được hiển thị như Markdown (dùng lại bộ hiển thị/làm sạch HTML đang dùng cho
+  trang pháp lý nếu có — không cho HTML thô/script từ nội dung), và thay `{brand}` bằng tên lấy từ `getEffectiveBrand()`.
+  Nội dung cũ là chữ thuần vẫn hiển thị đúng. Không đổi schema. Dự thảo dùng `{brand}` (đổi từ `{Tên nền tảng}`).
+
+## ADR-061 — Luồng mua của khách: đơn chờ thanh toán, thông báo, email (chốt một phần)
+
+- **Bối cảnh (2026-10-26):** phân tích `docs/phan-tich-gio-hang-don-cho-48h-2026-10-26.md` (Hiếu). Chủ dự án chốt:
+  - **Q2:** trang tài liệu chỉ một nút **"Mua ngay"** → trang thanh toán.
+  - **Q5:** giữ cửa sổ người bán **xác nhận trễ 24 giờ** sau hạn đơn.
+  - **Q6:** giới hạn mã giảm giá "mỗi khách" tính cả đơn chờ còn hiệu lực của khách; giới hạn tổng **không** giữ chỗ.
+  - **Q7:** email cho khách lúc chọn cách thanh toán (thông tin chuyển khoản + nút về trang thanh toán) + **1 lần nhắc** khi
+    còn ≤ 24 giờ (cron hằng ngày sẵn có).
+  - **Q8:** thông báo "Anh/Chị {name} có đơn cần thanh toán để hoàn tất đơn hàng!" **chỉ ở header khu vực Tài khoản**.
+  - **Q9:** người bán **không** nhận email tổng hợp; chỉ email khi có đơn mới và khi đơn thanh toán thành công.
+  - **Q10:** khách **được đổi phương thức thanh toán** của đơn đang chờ → email báo người bán phải chống sót/trùng (cột đánh
+    dấu trên `orders`, migration nhỏ).
+  - **Q12:** email "thanh toán thành công" có nút "Tải tài liệu" trỏ **Thư viện** (bắt buộc đăng nhập), không link tải trực tiếp.
+  - **Q13:** hạn giữ đơn **72 giờ** cho chuyển khoản ngân hàng thủ công và MoMo thủ công.
+- **Chốt tiếp (2026-10-26):**
+  - **Q1 — mua không cần đăng ký trước:** khách chưa đăng nhập điền Họ tên + Email + ô xác nhận thông tin/đồng ý Điều
+    khoản ở trang thanh toán → hệ thống tạo tài khoản và cho thanh toán ngay trên phiên đó; gửi email **"Kích hoạt tài
+    khoản và đặt mật khẩu"** (token một lần, lưu hash — vừa xác minh email vừa đặt mật khẩu). **Không** gửi mật khẩu qua
+    email. Sau thanh toán: tải được ngay trên phiên đó; đăng nhập lại/thiết bị khác cần kích hoạt qua email. Email đã có
+    tài khoản → yêu cầu đăng nhập, không tự gắn đơn. Thay quy tắc "tài khoản chưa xác minh không có phiên" (ADR-053) cho
+    riêng trường hợp này; cần chống lạm dụng (rate limit tạo tài khoản/gửi email).
+  - **Q3 — không làm Giỏ hàng** trong beta; vai trò giữ đơn chưa trả do danh sách "Đơn chờ thanh toán" trong Tài khoản +
+    thông báo header + email nhắc đảm nhận. Q4: mỗi đơn 1 tài liệu, hoàn cả đơn. Q11: bỏ.
+  - **Q9:** email người bán khi có **đơn thủ công chờ xác nhận** và khi **thanh toán thành công** (kể cả SePay); không gửi
+    cho đơn khách tạo rồi bỏ (chưa chọn cổng).
+  - **Q13 + Q5 (sửa):** hạn giữ đơn theo phương thức — **thủ công (ngân hàng, MoMo): 72 giờ; SePay: 48 giờ**. **Không cộng
+    thêm cửa sổ xác nhận trễ 24 giờ** — thay quyết định Q5 ở trên. Giao dịch SePay đến sau hạn hiện ở "Giao dịch cần xử lý".
+
+## ADR-062 — Layout trang thanh toán đơn tài liệu (`/{tenantSlug}/checkout/...`)
+
+- **Bối cảnh (2026-10-26):** đề xuất `docs/de-xuat-layout-checkout-tai-lieu-2026-10-26.md` (Phong), tham khảo 2 ảnh mẫu
+  của chủ dự án. Chủ dự án **đồng ý toàn bộ** Q1–Q12, trừ **Q6 (liên hệ người bán) — hoãn**.
+- **Quyết định:**
+  - **Q1:** nút **"Tôi đã chuyển khoản"** (chỉ cổng xác nhận tay) lưu thời điểm khách báo đã chuyển (cột mới, **không** đổi
+    `OrderStatus`), trang chuyển "Chờ người bán xác nhận", gửi **1 email** người bán "Khách báo đã chuyển đơn {mã}", Studio
+    ưu tiên đối soát; khách hoàn tác được. (Bổ sung danh sách email người bán ở ADR-061 Q9.)
+  - **Q2:** khách vãng lai — đơn tạo khi bấm "Tiếp tục thanh toán" sau khi điền form, không tạo lúc "Mua ngay"; trang trước
+    đó `/{tenantSlug}/checkout?tai-lieu={slug}`.
+  - **Q3:** hạn giữ đơn = **lúc đặt đơn + hạn của phương thức đang chọn** (thủ công 72 giờ, SePay 48 giờ); đổi phương thức
+    không gia hạn; chưa chọn phương thức = 72 giờ.
+  - **Q4:** khách **tự huỷ** được đơn đang chờ (có hộp xác nhận).
+  - **Q5:** desktop **2 cột** trong `container-page` (cột phải 22rem dính) — ngoại lệ của `container-narrow` (ADR-024).
+  - **Q7:** sau khi trả, "Tải tài liệu" → Thư viện, trỏ tới tài liệu vừa mua.
+  - **Q8:** SePay hiển thị cho khách là "Chuyển khoản (xác nhận tự động)".
+  - **Q9:** không logo NAPAS/ngân hàng trong beta — tên ngân hàng bằng chữ.
+  - **Q10:** mobile trang khách đặt **QR trước** các dòng sao chép; Studio billing giữ thứ tự cũ.
+  - **Q11:** khách vãng lai **1 ô** "xác nhận thông tin chính xác và đồng ý Điều khoản", không tick sẵn.
+  - **Q12:** dưới thông tin MoMo có link "Chính sách thanh toán của {gian hàng}".
+  - Không dùng popup cho MoMo; số tiền màu `ink` (không đỏ); timeline 4 bước; thanh hành động dính đáy trên mobile.
+
+- **Bổ sung ADR-062 (2026-10-26, chủ dự án chốt — đợt 1 luồng mua, migration `20261026180000_adr061_purchase_flow`):**
+  1. Phiên khách vãng lai (`refresh_tokens.guestCheckout`): idle/absolute như ADR-053, không "ghi nhớ", **absolute tối đa
+     24 giờ**; chỉ vào checkout, `/account/orders`, `/account/library`, API tải (`requireCheckoutAccess`).
+  2. Khách vãng lai tải theo đúng `downloadLimit` của tài liệu, không giới hạn riêng.
+  3. **Tiền — ngoại lệ của "không xác nhận trễ" (ADR-061):** đơn cổng xác nhận tay đã EXPIRED vẫn được người bán xác nhận
+     **nếu khách đã bấm "Tôi đã chuyển khoản" trước hạn** (`customerDeclaredPaidAt < expiresAt`); có audit.
+  4. Email đã thuộc tài khoản guest chưa kích hoạt → báo "Email này đã được dùng — đăng nhập hoặc gửi lại email kích hoạt";
+     không gắn đơn, không tạo phiên mới.
+  5. Token `GUEST_ACTIVATION` sống **7 ngày**, gửi lại được (huỷ token cũ), chỉ lưu hash, dùng một lần.
+  6. Email cho khách khi đổi phương thức: gửi lại khi phương thức khác lần đã gửi, **tối đa 3 email/đơn**.
+  7. Rate limit (bảng `rate_limit_counters`, khoá đã băm): tạo tài khoản guest 5/IP/giờ, 3/email/ngày; gửi lại email kích
+     hoạt 3/email/giờ.
+  8. Ô đồng ý duy nhất ghi nhận **Điều khoản + Chính sách bảo mật** bản hiệu lực (`UserLegalAcceptance`), câu chữ nêu cả hai.

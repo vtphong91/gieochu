@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getPrismaClient } from "@gieochu/db";
 import { requireAdminAccess } from "../../../../lib/page-guards";
-import { AdminPageHeader, SettingsGrid } from "../../_ui/kit";
+import { AdminPageHeader } from "../../_ui/kit";
 import { EditPlanForm } from "./edit-plan-form";
 import type { PlanFormValues } from "../plan-form";
 
@@ -31,9 +31,10 @@ export default async function AdminEditPlanPage({ params }: { params: Promise<{ 
     // Wrapper <div>: layout admin đã có <main>.
     <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader title={`Sửa gói — ${plan.name}`} />
-      <SettingsGrid>
+      {/* Full width theo khung app (quy tắc 2026-10-25) — thay SettingsGrid 2 cột. */}
+      <div className="mt-6">
         <EditPlanForm planId={planId} initial={initial} />
-      </SettingsGrid>
+      </div>
     </div>
   );
 }

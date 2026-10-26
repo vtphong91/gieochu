@@ -7,7 +7,7 @@ tags:
   - security
   - status/living
 date: 2026-10-23
-updated: 2026-10-23
+updated: 2026-10-26
 author: Long
 ---
 
@@ -270,6 +270,33 @@ cả khi chưa có dòng `home` (lần lưu đầu tạo dòng `DRAFT`, live = n
 
 ---
 
+## 4A. Trang tuỳ chỉnh `/p/[slug]` — khối `richText` hiển thị Markdown (ADR-060) ✅ đọc `git diff` 2026-10-26 (chưa commit)
+
+Quyết định: [[01-Architecture-Decisions/ADR-045-Custom-Page-Markdown-Brand-Token|ADR-045 KB (≙ ADR-060)]]. Không đổi schema (`CmsPage.blocks` vẫn JSON khối
+`hero`/`features`/`stats`/`testimonials`/`pricingTable`/`faq`/`richText`/`cta`), không migration, không thêm `route.ts`. Chỉ đổi cách **hiển thị** khối `richText`;
+các khối khác giữ nguyên.
+
+- **Nơi xử lý:** `renderCmsRichText(source, brandName)` (`apps/web/lib/cms-markdown.ts`, mới) — chạy ở **server** (Server Component `app/p/[slug]/page.tsx`), dùng
+  thư viện `marked` (GFM). Trang in kết quả bằng `dangerouslySetInnerHTML` trong `<section class="gieochu-rich-content gieochu-legal-content">` (dùng lại typography của
+  trang pháp lý). Chuỗi rỗng → không có section.
+- **Nhận:** Markdown GFM — tiêu đề, **đậm**/*nghiêng*, danh sách (có/không số), **bảng**, liên kết, trích dẫn.
+- **Không nhận:**
+  - **HTML thô** viết trong nội dung (khối hoặc inline) → escape thành chữ, không bao giờ thành thẻ (`<script>` hiện ra dạng văn bản).
+  - **Ảnh** — sanitize với `imageCloudName = null` nên mọi `<img>` bị bỏ.
+- **Làm sạch:** kết quả `marked` đi qua `sanitizeRichTextHtml` (`packages/core/src/content/sanitize-html.ts`) với `trustedLinks: { siteOrigin }` (ADR-054 — link
+  ngoài `target="_blank" rel="noopener noreferrer"`, link nội bộ cùng tab; chỉ `http`/`https`/`mailto`) và tuỳ chọn **mới `allowTables: true`** — thêm thẻ
+  `table/thead/tbody/tr/th/td`, **không** thuộc tính nào (bỏ `align`, `style`). Chỉ trang tuỳ chỉnh bật `allowTables`; nội dung Tiptap khác giữ whitelist cũ.
+- **Thay `{brand}`:** sau khi sanitize, bằng `replaceBrandTokenInHtml(html, brand.name)` (`@gieochu/core`, giá trị được escape); tên lấy từ `getEffectiveBrand()`.
+- **Quy tắc xuống dòng (tương thích nội dung chữ thuần cũ):**
+  - Nội dung **có tiêu đề** Markdown (dòng bắt đầu `#`…`######` + khoảng trắng) **hoặc có bảng** (dòng dạng `| … |`) → coi là tài liệu Markdown: xuống dòng đơn
+    trong một đoạn được **nối lại** thành một đoạn (chuẩn Markdown, `breaks: false`).
+  - **Không có** tiêu đề/bảng → mỗi xuống dòng thành `<br>` (`breaks: true`), dòng trống vẫn tách đoạn — nội dung cũ trước đây in `white-space: pre-line` hiển thị như cũ.
+- **Test:** thêm assert `allowTables` vào test có sẵn `sanitize-html.test.ts` ✅ `git diff --stat`; `pnpm test:count` = **100/100 unit, 66/66 integration** ✅ (Long chạy
+  2026-10-26) — không đổi. Thử trên trình duyệt với 3 dự thảo hướng dẫn ❓.
+- **Soạn nội dung:** dự thảo hướng dẫn khách hàng ở `docs/du-thao-huong-dan/` dùng `{brand}` (ADR-060), nhập vào **Nội dung → Trang tuỳ chỉnh**, khối `richText`.
+
+---
+
 ## 5. Test ✅
 
 `packages/core/src/admin/site-menu.test.ts` — **1 unit** (`describe("ADR-050 CMS menu and home sections")`): menu mặc định hợp lệ; link `javascript:`,
@@ -286,5 +313,6 @@ chỉ có link hỏng bị bỏ, đầu vào chuỗi → `null`); `testimonials`
 * [[02-System-Specs/Pricing-Page-Specs|Pricing-Page-Specs]] — SEO CMS Bảng giá dùng chung giới hạn ([Pricing-Page-Specs.md](./Pricing-Page-Specs.md)) · [[02-System-Specs/Shop-Marketplace-Specs|Shop-Marketplace-Specs]] — mẫu CMS slug hệ thống ([Shop-Marketplace-Specs.md](./Shop-Marketplace-Specs.md))
 * [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]] ([Legal-Documents-Specs.md](./Legal-Documents-Specs.md)) · [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]] §4
 * [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §26 ([Endpoint-Directory.md](../03-API-Contracts/Endpoint-Directory.md))
+* [[01-Architecture-Decisions/ADR-045-Custom-Page-Markdown-Brand-Token|ADR-045 KB (≙ ADR-060)]] — trang tuỳ chỉnh hiển thị Markdown (§4A) ([ADR-045-Custom-Page-Markdown-Brand-Token.md](../01-Architecture-Decisions/ADR-045-Custom-Page-Markdown-Brand-Token.md))
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

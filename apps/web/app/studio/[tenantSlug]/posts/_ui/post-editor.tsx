@@ -8,6 +8,8 @@ import { POST_MAX_IMAGES, POST_STATUS_LABELS, POST_TITLE_MAX_LENGTH } from "@gie
 import { TiptapEditor, type TiptapImageUpload } from "../../../../_ui/editor/tiptap-editor";
 import type { CloudinarySignatureResult } from "../../../../_ui/cloudinary-actions";
 import { Badge, ConfigCard, SelectField } from "../../../../admin/_ui/kit";
+import { CollapsibleSection, revealSection, sectionStatus, type SectionStatus } from "../../../../admin/_ui/collapsible-section";
+import { useUnsavedChanges } from "../../../../admin/_ui/unsaved-changes";
 import { ModerationLockBadge, ModerationLockNotice } from "../../../../admin/_ui/moderation-lock";
 import { IconAlertTriangle, IconCheckCircle, IconExternalLink, IconEyeOff, IconNewspaper, IconPackage, IconPin, IconShield, IconTrash } from "../../../../admin/_ui/icons";
 import { registerTenantImageAction } from "../../media-actions";
@@ -122,6 +124,15 @@ export function PostEditor(props: EditorProps) {
   const [body, setBody] = useState(post?.body ?? "");
   const [productId, setProductId] = useState(post?.productId ?? "");
   const [dirty, setDirty] = useState(false);
+  // ADR-058 (task 2.4): field đã sửa kể từ lần lưu gần nhất — CHỈ để hiện badge "Có thay đổi" theo khối. `dirty` vẫn là nguồn
+  // sự thật (lưu/tự lưu nháp dựa vào nó); tập này tự xoá khi `dirty` về false nên không phải sửa các chỗ setDirty(false).
+  const [changedFields, setChangedFields] = useState<ReadonlySet<string>>(() => new Set());
+  const [prevDirty, setPrevDirty] = useState(dirty);
+  if (dirty !== prevDirty) {
+    setPrevDirty(dirty);
+    if (!dirty) setChangedFields(new Set());
+  }
+  const touchField = (name: string) => setChangedFields((prev) => (prev.has(name) ? prev : new Set(prev).add(name)));
   const [pendingKey, setPendingKey] = useState<SubmitKey | null>(null);
   const [clientError, setClientError] = useState<PostActionState | null>(null);
 
@@ -169,13 +180,9 @@ export function PostEditor(props: EditorProps) {
     if (clientError) summaryRef.current?.focus();
   }, [clientError]);
 
-  // Cảnh báo khi rời trang còn thay đổi chưa lưu.
-  useEffect(() => {
-    if (!dirty) return;
-    const handler = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [dirty]);
+  // Cảnh báo khi rời trang còn thay đổi chưa lưu — provider của layout (ADR-058 mục 5): beforeunload chung + chặn điều
+  // hướng client (sidebar, "Về trang chủ").
+  useUnsavedChanges(dirty, "Bài viết có thay đổi chưa lưu. Rời trang và bỏ thay đổi?");
 
   // Thanh lưu nhanh (< xl) ẩn khi khối nút của card xuất bản đang trong tầm nhìn.
   useEffect(() => {
@@ -264,6 +271,19 @@ export function PostEditor(props: EditorProps) {
   const titleCount = countChars(title);
   const selectedProduct = productOptions.find((p) => p.id === productId) ?? null;
 
+  // ADR-058 (task 2.4): badge từng khối thu gọn — "N lỗi" > "Có thay đổi" > tóm tắt. Card Xuất bản không thu gọn.
+  const contentErrors = (fieldErrors.title ? 1 : 0) + (fieldErrors.body ? 1 : 0);
+  const productErrors = fieldErrors.productId ? 1 : 0;
+  const contentStatus = sectionStatus({ errorCount: contentErrors, dirty: dirty && (changedFields.has("title") || changedFields.has("body")) });
+  const productDirty = dirty && changedFields.has("productId");
+  const productStatus: SectionStatus =
+    productErrors > 0 || productDirty
+      ? sectionStatus({ errorCount: productErrors, dirty: productDirty })
+      : selectedProduct
+        ? { tone: "neutral", label: "Đã gắn 1 tài liệu" }
+        : { tone: "neutral", label: "Không gắn" };
+  const pinStatus: SectionStatus = post?.isPinned ? { tone: "info", label: "Đang ghim" } : { tone: "neutral", label: "Không ghim" };
+
   let statusMessage: ReactNode;
   if (isPending) statusMessage = pendingKey === "publish" ? "Đang đăng bài..." : pendingKey === "unpublish" ? "Đang gỡ bài..." : "Đang lưu...";
   else if (dirty)
@@ -333,7 +353,7 @@ export function PostEditor(props: EditorProps) {
     const product = productOptions.find((p) => p.id === post.productId) ?? null;
     return (
       <div className="studio-editor studio-post-editor">
-        <div className="mx-auto max-w-[1440px]">
+        <div>
           {header}
           <div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-8">
             <div className="min-w-0 space-y-6">
@@ -404,7 +424,7 @@ export function PostEditor(props: EditorProps) {
       className="studio-editor studio-post-editor"
       aria-label={isEdit ? "Sửa bài viết" : "Viết bài mới"}
     >
-      <div className="mx-auto max-w-[1440px]">
+      <div>
         {header}
 
         {noticeBanner ? <div className="mt-6">{noticeBanner}</div> : null}
@@ -427,7 +447,15 @@ export function PostEditor(props: EditorProps) {
                 {errorEntries.map(([field, message]) => (
                   <li key={field}>
                     {FIELD_LABEL[field] ? (
-                      <a href={`#${field}`} className="underline underline-offset-2">
+                      <a
+                        href={`#${field}`}
+                        className="underline underline-offset-2"
+                        onClick={() => {
+                          // Mở khối chứa ô (đồng bộ) trước khi trình duyệt nhảy tới ô — ô trong khối thu gọn đang `hidden`.
+                          if (field === "title" || field === "body") revealSection("bai-viet-noi-dung");
+                          else if (field === "productId") revealSection("bai-viet-tai-lieu");
+                        }}
+                      >
                         {FIELD_LABEL[field]}: {message}
                       </a>
                     ) : (
@@ -443,7 +471,15 @@ export function PostEditor(props: EditorProps) {
         <div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-8">
           {/* Cột chính: tiêu đề tuỳ chọn + nội dung */}
           <div className="min-w-0 space-y-6">
-            <ConfigCard icon={<IconNewspaper className="h-5 w-5" />} title="Nội dung bài viết" description={isEdit ? undefined : "Có thể sửa lại mọi thứ sau khi lưu."}>
+            <CollapsibleSection
+              id="bai-viet-noi-dung"
+              defaultOpen
+              icon={<IconNewspaper className="h-5 w-5" />}
+              title="Nội dung bài viết"
+              description={isEdit ? undefined : "Có thể sửa lại mọi thứ sau khi lưu."}
+              status={contentStatus}
+              errorCount={contentErrors}
+            >
               <div>
                 <div className="flex items-baseline justify-between gap-3">
                   <label htmlFor="title" className="block text-sm font-medium" style={{ color: brandColors.ink }}>
@@ -462,6 +498,7 @@ export function PostEditor(props: EditorProps) {
                   onChange={(e) => {
                     setTitle(e.target.value);
                     setDirty(true);
+                    touchField("title");
                   }}
                   aria-invalid={fieldErrors.title ? true : undefined}
                   aria-describedby={fieldErrors.title ? "title-error title-count" : "title-hint title-count"}
@@ -490,6 +527,7 @@ export function PostEditor(props: EditorProps) {
                     onChange={(html) => {
                       setBody(html);
                       setDirty(true);
+                      touchField("body");
                     }}
                     placeholder="Chia sẻ kinh nghiệm, cập nhật tài liệu mới, mẹo học tập..."
                     imageUpload={imageUpload}
@@ -516,13 +554,20 @@ export function PostEditor(props: EditorProps) {
                   </p>
                 ) : null}
               </div>
-            </ConfigCard>
+            </CollapsibleSection>
           </div>
 
           {/* Sidebar: DOM = [tài liệu, ghim, xuất bản]; ≥ xl card xuất bản lên đầu (không dính khi cuộn — ADR-030). */}
           <aside aria-label="Xuất bản và thuộc tính bài viết" className="flex min-w-0 flex-col gap-6">
             <div className="space-y-6">
-              <ConfigCard icon={<IconPackage className="h-5 w-5" />} title="Tài liệu liên quan" description="Gắn tối đa 1 tài liệu — hiện thành thẻ dưới bài viết.">
+              <CollapsibleSection
+                id="bai-viet-tai-lieu"
+                icon={<IconPackage className="h-5 w-5" />}
+                title="Tài liệu liên quan"
+                description="Gắn tối đa 1 tài liệu — hiện thành thẻ dưới bài viết."
+                status={productStatus}
+                errorCount={productErrors}
+              >
                 <SelectField
                   id="productId"
                   name="productId"
@@ -531,6 +576,7 @@ export function PostEditor(props: EditorProps) {
                   onChange={(e) => {
                     setProductId(e.target.value);
                     setDirty(true);
+                    touchField("productId");
                   }}
                   error={fieldErrors.productId}
                   hint={productOptions.length === 0 ? "Chưa có tài liệu nào để gắn." : undefined}
@@ -550,12 +596,13 @@ export function PostEditor(props: EditorProps) {
                       : "Tài liệu đang Riêng tư — thẻ tài liệu chỉ hiện dưới bài khi tài liệu được Công khai."}
                   </WarningNote>
                 ) : null}
-              </ConfigCard>
+              </CollapsibleSection>
 
-              <ConfigCard
+              <CollapsibleSection
+                id="bai-viet-ghim"
                 icon={<IconPin className="h-5 w-5" />}
                 title="Ghim bài"
-                badges={post?.isPinned ? <Badge tone="info">Đang ghim</Badge> : null}
+                status={pinStatus}
                 description="Bài ghim luôn đứng đầu trang Bài viết. Mỗi trang chỉ ghim 1 bài."
               >
                 {post ? (
@@ -578,7 +625,7 @@ export function PostEditor(props: EditorProps) {
                 ) : (
                   <LockedNotice>Lưu bài (nháp hoặc đăng) trước, rồi ghim được.</LockedNotice>
                 )}
-              </ConfigCard>
+              </CollapsibleSection>
             </div>
 
             {/* Card xuất bản: ≥ xl lên đầu sidebar, cuộn theo trang như các card khác. */}

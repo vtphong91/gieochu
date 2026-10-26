@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { decryptSecret, extractSepayReference, getProvider, type PaymentProviderId } from "@gieochu/payments";
+import { decryptSecret, getProvider, type PaymentProviderId } from "@gieochu/payments";
 import { logger } from "@gieochu/core";
 import { getEnv } from "@gieochu/config";
 import { getPrismaClient, Prisma, withSystemJob } from "@gieochu/db";
-import { markInvoicePaid } from "../../../../../lib/subscription-billing";
+import { markInvoicePaid, sepayInvoiceReferenceCandidates } from "../../../../../lib/subscription-billing";
 import { getPlatformPaymentConfigRow } from "../../../../../lib/platform-payment";
 
 const VALID_PROVIDERS = new Set<PaymentProviderId>(["SEPAY", "MOMO"]);
@@ -46,13 +46,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
     return NextResponse.json({ error: "invalid_signature" }, { status: 401 });
   }
 
-  let parsedBody: unknown = {};
+  // ADR-059 bổ sung lần 2: body không phải JSON / thiếu trường bắt buộc → 400 + log (trước đây TypeError → 500).
+  let parsedBody: unknown;
+  let event: ReturnType<typeof provider.parseWebhook>;
   try {
     parsedBody = JSON.parse(rawBody);
-  } catch {
-    // some providers may post form-encoded bodies; out of scope for M3
+    event = provider.parseWebhook(parsedBody);
+  } catch (error) {
+    logger.warn({ provider: providerId, err: error }, "platform payment webhook rejected: invalid body");
+    return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
-  const event = provider.parseWebhook(parsedBody);
 
   try {
     await withSystemJob((tx) =>
@@ -66,26 +69,28 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
   }
 
   let matchedInvoiceId: string | null = null;
+  let applyInvoiceId: string | null = null;
   if (event.success) {
-    const referenceCode =
-      providerId === "SEPAY"
-        ? extractSepayReference(parsedBody as Parameters<typeof extractSepayReference>[0], String((cfg as { paymentPrefix?: string }).paymentPrefix ?? "SUB"))
-        : event.reference;
+    // ADR-059 bổ sung lần 2: thử tiền tố đã cấu hình rồi `SUB` (hoá đơn cũ), đúng độ dài mã hoá đơn; lấy mã đầu tiên có hoá đơn.
+    const candidates =
+      providerId === "SEPAY" ? sepayInvoiceReferenceCandidates(parsedBody, (cfg as { paymentPrefix?: unknown }).paymentPrefix) : event.reference ? [event.reference] : [];
 
-    if (referenceCode) {
-      const invoice = await prisma.subscriptionInvoice.findUnique({ where: { code: referenceCode } });
+    if (candidates.length > 0) {
+      const found = await prisma.subscriptionInvoice.findMany({ where: { code: { in: candidates } } });
+      const invoice = candidates.map((code) => found.find((row) => row.code === code)).find((row) => row !== undefined);
       if (invoice && invoice.amountVnd === event.amountVnd) {
         matchedInvoiceId = invoice.id;
-        if (invoice.status === "PENDING") {
-          await markInvoicePaid(invoice.id);
-        }
+        if (invoice.status === "PENDING") applyInvoiceId = invoice.id;
       }
     }
   }
 
+  // ADR-059 (B2): ghi giao dịch TRƯỚC khi áp hoá đơn — webhook_events đã ghi nên lần thử lại của cổng bị bỏ qua; nếu áp hoá đơn
+  // lỗi giữa chừng, giao dịch vẫn còn (khớp, hoá đơn chưa thanh toán) để admin thấy ở tab "Giao dịch" thay vì mất dấu.
   await prisma.platformPaymentTransaction.create({
     data: { provider: providerId, amountVnd: event.amountVnd, rawPayload: parsedBody as Prisma.InputJsonValue, matchedInvoiceId },
   });
+  if (applyInvoiceId) await markInvoicePaid(applyInvoiceId);
 
   logger.info({ provider: providerId, providerEventId: event.providerEventId, matchedInvoiceId }, "platform payment webhook processed");
 

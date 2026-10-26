@@ -7,11 +7,16 @@ tags:
   - ui-ux
   - status/living
 date: 2026-10-18
-updated: 2026-10-23
+updated: 2026-10-26
 author: Long
 ---
 
 # 📐 Đặc Tả: Trang Đơn Hàng Studio — danh sách + chi tiết (`/studio/{slug}/orders` — ADR-046, ADR-047, ADR-048)
+
+> **Cập nhật ADR-059 bổ sung lần 2 (2026-10-26, Long đối chiếu `git diff`, chưa commit):** trang danh sách gọi thêm `countTenantTransactionsNeedingAction(tenant.id)`
+> và hiện dòng cảnh báo + link tới trang mới **`/studio/{slug}/orders/giao-dich` "Giao dịch cần xử lý"** (giao dịch `UNMATCHED` / `MISMATCH_AMOUNT`, L2 qua
+> `withTenant`, cùng guard OWNER) ✅. Đặc tả: [[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.11; contract:
+> [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §28. Các action tiền không đổi luật.
 
 > **Cập nhật ADR-048 (2026-10-23, Long đối chiếu code working tree):** thêm tham số `?khach=` (lọc đơn theo một khách, §2.1) và `OrderListPage.customer`;
 > trang Khách hàng mới: [[02-System-Specs/Studio-Customers-Specs|Studio-Customers-Specs]]. Đã xoá `listTenantCustomers` và `getOrderDashboardStats` khỏi

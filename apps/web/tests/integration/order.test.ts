@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { getPrismaClient, withCustomer, withPublic, withSystemJob, withTenant } from "@gieochu/db";
 import type { CheckoutQrResult } from "@gieochu/payments";
 import { QUEUE_NAMES } from "@gieochu/jobs";
@@ -21,8 +21,19 @@ import {
 import { addOrderNote, deleteOrderNote } from "../../lib/order-note";
 import { listCustomersPage, updateCustomerNote } from "../../lib/customer-list";
 import { processPaymentEvent } from "../../lib/payment-process";
+import { listTenantTransactionsNeedingAction } from "../../lib/tenant-payment-transactions";
 import { POST as tenantWebhook } from "../../app/api/webhooks/tenants/[tenantId]/[provider]/route";
 import type { CurrentUser } from "../../lib/session";
+
+// ADR-059: email báo chủ gian hàng (đơn chờ xác nhận tay) không gửi thật — chặn đúng loại này, loại khác giữ nguyên hành vi.
+const { sendEmailNowSpy } = vi.hoisted(() => ({ sendEmailNowSpy: vi.fn() }));
+vi.mock("../../lib/email-dispatch", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../lib/email-dispatch")>();
+  sendEmailNowSpy.mockImplementation(async (message: { type: string }) =>
+    message.type === "order_pending_manual" || message.type === "payment_mismatch" ? { ok: true } : actual.sendEmailNow(message as never),
+  );
+  return { ...actual, sendEmailNow: sendEmailNowSpy };
+});
 
 const prisma = getPrismaClient();
 const RUN_PREFIX = `m8test_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -100,7 +111,7 @@ describe("M8 checkout and orders", () => {
   });
 
   it("creates a PENDING order and a MANUAL_QR checkout returns the reference in the QR content", async () => {
-    const { tenant } = await createOwnerAndTenant("Manual QR Test", "manualqr");
+    const { owner, tenant } = await createOwnerAndTenant("Manual QR Test", "manualqr");
     const product = await createPublishedProduct(tenant.id, "de-thi", 100_000);
     const buyer = await createActiveUser(nextEmail());
 
@@ -115,10 +126,24 @@ describe("M8 checkout and orders", () => {
     expect(order.status).toBe("PENDING");
     expect(order.totalVnd).toBe(100_000);
 
-    const updated = await initiateOrderCheckout(tenant.id, order.id, buyer.id, "MANUAL_QR");
+    const scheduled: Array<() => Promise<void>> = [];
+    const scheduleNotification = (task: () => Promise<void>) => void scheduled.push(task);
+    const updated = await initiateOrderCheckout(tenant.id, order.id, buyer.id, "MANUAL_QR", { scheduleNotification });
     const checkout = updated.checkoutPayload as unknown as CheckoutQrResult;
     expect(checkout.kind).toBe("QR");
     expect(checkout.content).toBe(order.code);
+
+    // ADR-059: lần đầu đơn có QR thủ công → đúng 1 email báo chủ gian hàng (mã đơn, số tiền, link Studio); chọn lại cổng không báo nữa.
+    expect(scheduled).toHaveLength(1);
+    await initiateOrderCheckout(tenant.id, order.id, buyer.id, "MANUAL_QR", { scheduleNotification });
+    expect(scheduled).toHaveLength(1);
+    sendEmailNowSpy.mockClear();
+    await scheduled[0]!();
+    const notices = sendEmailNowSpy.mock.calls.map(([message]) => message).filter((message) => message.type === "order_pending_manual");
+    expect(notices).toHaveLength(1);
+    expect(notices[0]).toMatchObject({ to: owner.email, subject: expect.stringContaining(order.code) });
+    expect(notices[0].text).toContain("100.000đ");
+    expect(notices[0].text).toContain(`/studio/${tenant.slug}/orders/${order.id}`);
 
     // ADR-056 bổ sung: áp/gỡ mã SAU khi đã có QR → server tạo lại QR theo totalVnd mới (VietQR tag 54 = số tiền), nội dung CK giữ mã đơn.
     await createCoupon(tenant.id, { code: "QR10", type: "PERCENT", value: 10, isEnabled: true });
@@ -207,6 +232,17 @@ describe("M8 checkout and orders", () => {
 
     const eventCount = await prisma.webhookEvent.count({ where: { tenantId: tenant.id, providerEventId: `evt_${RUN_PREFIX}_1` } });
     expect(eventCount).toBe(1);
+
+    // ADR-059 bổ sung lần 2: body hỏng / thiếu trường (chữ ký hợp lệ) → 400, không 500, không ghi webhook_events.
+    const brokenBody = await tenantWebhook(signedSepayRequest(tenant.id, secret, "{not json"), {
+      params: Promise.resolve({ tenantId: tenant.id, provider: "sepay" }),
+    });
+    expect(brokenBody.status).toBe(400);
+    const missingFields = await tenantWebhook(signedSepayRequest(tenant.id, secret, JSON.stringify({ id: `evt_${RUN_PREFIX}_2`, transferType: "in" })), {
+      params: Promise.resolve({ tenantId: tenant.id, provider: "sepay" }),
+    });
+    expect(missingFields.status).toBe(400);
+    expect(await prisma.webhookEvent.count({ where: { tenantId: tenant.id, providerEventId: `evt_${RUN_PREFIX}_2` } })).toBe(0);
   });
 
   it("processPaymentEvent matches a SePay payment to its order and fulfills it", async () => {
@@ -251,7 +287,7 @@ describe("M8 checkout and orders", () => {
   });
 
   it("a wrong amount leaves the order PENDING and records a MISMATCH_AMOUNT transaction", async () => {
-    const { tenant } = await createOwnerAndTenant("Mismatch Test", "mismatch");
+    const { owner, tenant } = await createOwnerAndTenant("Mismatch Test", "mismatch");
     const product = await createPublishedProduct(tenant.id, "de-thi", 100_000);
     const buyer = await createActiveUser(nextEmail());
     const order = await createOrder(buyer.id, tenant.slug, product.id);
@@ -270,6 +306,43 @@ describe("M8 checkout and orders", () => {
     expect(stillPending.status).toBe("PENDING");
     expect(stillPending.allowedActions).toEqual(["view", "confirm", "cancel"]);
     expect(stillPending.transactions.some((t) => t.matchStatus === "MISMATCH_AMOUNT")).toBe(true);
+
+    // ADR-059 bổ sung lần 2 (d): email báo chủ gian hàng đúng 1 lần (job chạy lại cùng giao dịch không báo lại) + Studio
+    // "Giao dịch cần xử lý" (withTenant) liệt kê giao dịch sai tiền kèm đơn.
+    const mismatchEmails = () =>
+      sendEmailNowSpy.mock.calls.map(([message]) => message).filter((message) => message.type === "payment_mismatch" && message.to === owner.email);
+    expect(mismatchEmails()).toHaveLength(1);
+    expect(mismatchEmails()[0]).toMatchObject({ subject: expect.stringContaining(order.code) });
+    expect(mismatchEmails()[0].text).toContain("thiếu 10.000đ");
+    await expect(
+      processPaymentEvent({
+        tenantId: tenant.id,
+        provider: "SEPAY",
+        providerEventId: `evt_${RUN_PREFIX}_mismatch`,
+        reference: order.code,
+        amountVnd: 90_000,
+        success: true,
+        rawPayload: { test: true },
+      }),
+    ).rejects.toThrow();
+    expect(mismatchEmails()).toHaveLength(1);
+    const needingAction = await listTenantTransactionsNeedingAction(tenant.id, 1);
+    expect(needingAction.items).toHaveLength(1);
+    expect(needingAction.items[0]).toMatchObject({ matchStatus: "MISMATCH_AMOUNT", amountVnd: 90_000, order: { id: order.id, code: order.code } });
+    // RLS thật (ADR-010/020): tenant B không thấy giao dịch nào của tenant A — qua hàm lib lẫn truy vấn SQL không lọc tenantId
+    // dưới scope tenant B (chỉ policy RLS chặn).
+    const { tenant: otherTenant } = await createOwnerAndTenant("Mismatch Other", "mismatchother");
+    const otherView = await listTenantTransactionsNeedingAction(otherTenant.id, 1);
+    expect(otherView.total).toBe(0);
+    expect(otherView.items).toEqual([]);
+    const leaked = await withTenant(otherTenant.id, (tx) =>
+      tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "tenant_payment_transactions" WHERE "orderId" = ${order.id}`,
+    );
+    expect(leaked).toEqual([]);
+    const ownRows = await withTenant(tenant.id, (tx) =>
+      tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "tenant_payment_transactions" WHERE "orderId" = ${order.id}`,
+    );
+    expect(ownRows).toHaveLength(1);
   });
 
   it("the hourly sweep expires an overdue PENDING order without consuming its coupon", async () => {

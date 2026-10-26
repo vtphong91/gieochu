@@ -37,7 +37,8 @@ export default async function StudioMessagesPage({
   const pagerClass = "inline-flex min-h-11 items-center rounded-lg border bg-white px-4 text-sm font-semibold hover:bg-gray-50 lg:min-h-9";
 
   return (
-    <main className="px-5 py-8 lg:px-8">
+    // Wrapper <div>: layout Studio đã có <main>.
+    <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader
         title="Hộp thư"
         subtitle="Lời nhắn khách gửi qua form liên hệ trên trang bán hàng của bạn."
@@ -164,6 +165,6 @@ export default async function StudioMessagesPage({
           ) : null}
         </nav>
       ) : null}
-    </main>
+    </div>
   );
 }

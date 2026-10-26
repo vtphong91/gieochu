@@ -5,7 +5,7 @@ import { getCoupon } from "../../../../../lib/coupon";
 import { listProducts } from "../../../../../lib/product";
 import { CouponForm } from "../coupon-form";
 import { updateCouponAction } from "../actions";
-import { AdminPageHeader, SettingsGrid } from "../../../../admin/_ui/kit";
+import { AdminPageHeader } from "../../../../admin/_ui/kit";
 import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 
 /** Wall-clock time in Asia/Ho_Chi_Minh for a `datetime-local` input's defaultValue — same helper as the product edit page. */
@@ -43,12 +43,13 @@ export default async function EditCouponPage({
   const productIds = (coupon.productIds as string[] | null) ?? [];
 
   return (
-    <main className="px-5 py-8 lg:px-8">
+    // Wrapper <div>: layout Studio đã có <main>. Full width theo khung app.
+    <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader
         title={`Sửa mã "${coupon.code}"`}
         subtitle={`Đã dùng ${coupon.usedCount}${coupon.usageLimit != null ? ` / ${coupon.usageLimit}` : ""} lượt.`}
       />
-      <SettingsGrid>
+      <div className="mt-6">
         <CouponForm
           action={updateCouponAction.bind(null, tenantSlug, couponId)}
           submitLabel="Lưu"
@@ -67,7 +68,7 @@ export default async function EditCouponPage({
             isEnabled: coupon.isEnabled,
           }}
         />
-      </SettingsGrid>
-    </main>
+      </div>
+    </div>
   );
 }

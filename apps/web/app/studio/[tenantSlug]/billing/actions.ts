@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { AppError } from "@gieochu/core";
 import type { PaymentProviderId } from "@gieochu/payments";
 import { requireTenantMember } from "../../../../lib/tenant";
@@ -11,7 +12,7 @@ export interface BillingActionState {
   error?: string;
 }
 
-const VALID_PROVIDERS: PaymentProviderId[] = ["MANUAL_QR", "SEPAY", "MOMO"];
+const VALID_PROVIDERS: PaymentProviderId[] = ["MANUAL_QR", "SEPAY", "MOMO", "MOMO_MANUAL"];
 
 export async function renewSubscriptionAction(
   tenantSlug: string,
@@ -27,7 +28,8 @@ export async function renewSubscriptionAction(
   const planId = String(formData.get("planId") ?? "").trim() || undefined;
 
   try {
-    await createRenewalInvoice(tenant.id, { provider, planId });
+    // ADR-059: email báo admin (hoá đơn QR thủ công chờ đối soát) gửi sau response.
+    await createRenewalInvoice(tenant.id, { provider, planId }, { scheduleNotification: (task) => after(task) });
   } catch (error) {
     if (error instanceof AppError) return { error: error.message };
     throw error;

@@ -29,7 +29,7 @@ export function ProductEditorSkeleton({ label }: { label: string }) {
       <p className="sr-only" role="status">
         {label}
       </p>
-      <div className="mx-auto max-w-[1440px] animate-pulse motion-reduce:animate-none" aria-hidden="true">
+      <div className="animate-pulse motion-reduce:animate-none" aria-hidden="true">
         <Block className="h-8 w-72 max-w-full" />
         <Block className="mt-3 h-4 w-96 max-w-full" />
         <div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-8">

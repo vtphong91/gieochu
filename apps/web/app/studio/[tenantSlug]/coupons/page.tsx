@@ -11,7 +11,8 @@ export default async function StudioCouponsPage({ params }: { params: Promise<{ 
   const coupons = await listCoupons(tenant.id);
 
   return (
-    <main className="px-5 py-8 lg:px-8">
+    // Wrapper <div>: layout Studio đã có <main>.
+    <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader
         title="Mã giảm giá"
         subtitle="Quản lý mã khuyến mãi cho khách hàng."
@@ -47,6 +48,6 @@ export default async function StudioCouponsPage({ params }: { params: Promise<{ 
           </DataTable>
         )}
       </div>
-    </main>
+    </div>
   );
 }

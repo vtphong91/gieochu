@@ -55,3 +55,15 @@ export type {
 // ADR-041 B — hoàn tiền gói dịch vụ
 export { renderSubscriptionRefundEmail } from "./templates/subscription-refund";
 export type { SubscriptionRefundEmailData, SubscriptionRefundEmailStage } from "./templates/subscription-refund";
+
+// ADR-059 — báo đơn/hoá đơn chờ xác nhận tay
+export {
+  renderInvoiceAwaitingReconciliationEmail,
+  renderOrderAwaitingManualConfirmEmail,
+  renderPaymentAmountMismatchEmail,
+} from "./templates/manual-payment-pending";
+export type {
+  InvoiceAwaitingReconciliationTemplateData,
+  OrderAwaitingManualConfirmTemplateData,
+  PaymentAmountMismatchTemplateData,
+} from "./templates/manual-payment-pending";

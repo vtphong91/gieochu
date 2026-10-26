@@ -9,6 +9,7 @@ const PROVIDER_LABEL: Record<string, string> = {
   MANUAL_QR: "QR chuyển khoản thủ công",
   SEPAY: "SePay (tự động)",
   MOMO: "MoMo",
+  MOMO_MANUAL: "MoMo (chuyển tay)",
 };
 
 export function ProviderPanel({ tenantSlug, orderCode, enabledProviders }: { tenantSlug: string; orderCode: string; enabledProviders: string[] }) {

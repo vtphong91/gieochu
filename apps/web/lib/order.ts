@@ -7,10 +7,12 @@ import {
   canManuallyConfirmOrder,
   canPurchaseProduct,
   computeOrderExpiresAt,
+  DISPLAY_TIME_ZONE,
   effectiveOrderStatus,
   generateOrderCode,
   internalError,
   logger,
+  manualConfirmDeadline,
   notFound,
   REMEDY_REFUND_SLA_DAYS,
   resolveDashboardRange,
@@ -24,13 +26,14 @@ import {
   buildWebhookNotifyUrl,
   decryptSecret,
   getProvider,
+  isManualConfirmProvider,
   type PaymentProviderId,
 } from "@gieochu/payments";
 import { getEnv } from "@gieochu/config";
-import { renderNewSaleEmail, renderOrderPaidEmail } from "@gieochu/email";
+import { renderNewSaleEmail, renderOrderAwaitingManualConfirmEmail, renderOrderPaidEmail } from "@gieochu/email";
 import { assertTenantCanWrite } from "./tenant-write-guard";
 import { toCouponSnapshot } from "./coupon";
-import { sendEmailNow } from "./email-dispatch";
+import { sendEmailNow, type ScheduleAfterResponse } from "./email-dispatch";
 import { notifyPurchaseRemedyForOrder } from "./entitlement-remedy";
 import { getEffectiveBrand } from "./branding";
 import { getSystemSettings } from "./system-settings";
@@ -541,8 +544,27 @@ async function buildTenantCheckoutPayload(tenantId: string, order: { code: strin
 const orderChangedError = () =>
   new AppError({ code: "ORDER_CHANGED", message: "Đơn hàng vừa được cập nhật, vui lòng tải lại trang và thử lại.", httpStatus: 409 });
 
-/** Stores the checkout payload for the checkout page to read back. */
-export async function initiateOrderCheckout(tenantId: string, orderId: string, customerId: string, provider: PaymentProviderId) {
+export interface InitiateOrderCheckoutOptions {
+  /**
+   * ADR-059: lên lịch email báo chủ gian hàng có đơn chờ xác nhận tay (Server Action truyền `after` của next/server).
+   * Bỏ trống → không gửi (test, script).
+   */
+  scheduleNotification?: ScheduleAfterResponse;
+}
+
+/**
+ * Stores the checkout payload for the checkout page to read back.
+ * ADR-059: lần ĐẦU đơn được gắn cổng (provider đang null) và cổng là loại xác nhận tay (MANUAL_QR) → lên lịch email báo
+ * chủ gian hàng. Mỗi đơn chỉ báo một lần: chọn lại cổng / áp-gỡ mã giảm giá (tạo lại QR) không báo nữa; dòng đơn bị khoá
+ * `FOR UPDATE` nên hai lần chọn cổng song song chỉ một lần thấy provider = null.
+ */
+export async function initiateOrderCheckout(
+  tenantId: string,
+  orderId: string,
+  customerId: string,
+  provider: PaymentProviderId,
+  options: InitiateOrderCheckoutOptions = {},
+) {
   const order = await withTenant(tenantId, (tx) => tx.order.findUnique({ where: { id: orderId } }));
   if (!order || order.customerId !== customerId) throw notFound("Không tìm thấy đơn hàng.");
   if (!isEffectivelyPending(order)) {
@@ -553,14 +575,64 @@ export async function initiateOrderCheckout(tenantId: string, orderId: string, c
   const checkoutPayload = await buildTenantCheckoutPayload(tenantId, order, provider);
 
   // ADR-056 bổ sung: chỉ ghi nếu tổng tiền không đổi kể từ lúc đọc (áp/gỡ mã chạy song song) — QR không bao giờ lệch totalVnd.
-  return withTenant(tenantId, async (tx) => {
+  const { updated, firstProviderSelection } = await withTenant(tenantId, async (tx) => {
+    const locked = await tx.$queryRaw<{ provider: string | null }[]>`
+      SELECT "provider"::text AS "provider" FROM "orders" WHERE "id" = ${orderId} FOR UPDATE
+    `;
     const { count } = await tx.order.updateMany({
       where: { id: orderId, status: "PENDING", totalVnd: order.totalVnd },
       data: { provider, checkoutPayload },
     });
     if (count === 0) throw orderChangedError();
-    return tx.order.findUniqueOrThrow({ where: { id: orderId } });
+    return {
+      updated: await tx.order.findUniqueOrThrow({ where: { id: orderId } }),
+      firstProviderSelection: locked.length > 0 && locked[0]!.provider === null,
+    };
   });
+
+  if (firstProviderSelection && isManualConfirmProvider(provider) && options.scheduleNotification) {
+    options.scheduleNotification(() => notifyOwnerOfPendingManualOrder(tenantId, orderId));
+  }
+  return updated;
+}
+
+function formatDisplayDateTime(date: Date): string {
+  return date.toLocaleString("vi-VN", { timeZone: DISPLAY_TIME_ZONE });
+}
+
+/**
+ * ADR-059 mục 3 — email báo chủ gian hàng (L2, không qua admin — §7.9; loại `order_pending_manual` không ghi
+ * EmailSendLog) có đơn chuyển khoản chờ xác nhận tay. Gọi sau response; lỗi chỉ log, không ném. Đơn đã không còn chờ
+ * (vd đã xác nhận/huỷ trước khi email chạy) → bỏ qua.
+ */
+export async function notifyOwnerOfPendingManualOrder(tenantId: string, orderId: string): Promise<void> {
+  try {
+    // tenants/users là L1; orders/order_items là L2 → đọc dưới withTenant.
+    const tenant = await getPrismaClient().tenant.findUnique({
+      where: { id: tenantId },
+      select: { slug: true, owner: { select: { email: true } } },
+    });
+    const order = await withTenant(tenantId, (tx) =>
+      tx.order.findFirst({
+        where: { id: orderId, tenantId },
+        select: { id: true, code: true, status: true, totalVnd: true, expiresAt: true, provider: true, items: { select: { titleSnapshot: true } } },
+      }),
+    );
+    if (!tenant || !order || !order.provider || !isManualConfirmProvider(order.provider) || !isEffectivelyPending(order)) return;
+
+    const rendered = renderOrderAwaitingManualConfirmEmail({
+      orderCode: order.code,
+      productTitle: order.items.map((item) => item.titleSnapshot).join(", "),
+      totalVndDisplay: formatVnd(order.totalVnd),
+      expiresAtDisplay: formatDisplayDateTime(order.expiresAt),
+      confirmDeadlineDisplay: formatDisplayDateTime(manualConfirmDeadline(order.expiresAt)),
+      orderUrl: `${getEnv().APP_URL.replace(/\/+$/, "")}/studio/${tenant.slug}/orders/${order.id}`,
+    });
+    const result = await sendEmailNow({ type: "order_pending_manual", to: tenant.owner.email, ...rendered });
+    if (!result.ok) logger.warn({ tenantId, orderId, error: result.error }, "order.pending_manual: gửi email báo chủ gian hàng thất bại");
+  } catch (error) {
+    logger.warn({ tenantId, orderId, err: error }, "order.pending_manual: lỗi khi gửi email báo chủ gian hàng");
+  }
 }
 
 export async function getOrderForCustomer(customerId: string, orderCode: string) {
@@ -1175,7 +1247,7 @@ export interface OrderDetailView {
   notesAvailable: boolean;
 }
 
-const PROVIDER_LABELS: Record<PaymentProviderId, string> = { MANUAL_QR: "Chuyển khoản QR", SEPAY: "SePay", MOMO: "MoMo" };
+const PROVIDER_LABELS: Record<PaymentProviderId, string> = { MANUAL_QR: "Chuyển khoản QR", SEPAY: "SePay", MOMO: "MoMo", MOMO_MANUAL: "MoMo (chuyển tay)" };
 const MATCH_STATUS_LABELS: Record<string, string> = { MATCHED: "khớp đơn", UNMATCHED: "không khớp đơn", MISMATCH_AMOUNT: "sai số tiền" };
 const ORDER_TIMELINE_AUDIT_ACTIONS = [
   "ORDER_MANUALLY_CONFIRMED",

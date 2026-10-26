@@ -128,7 +128,8 @@ export type ProductFileSource = (typeof ProductFileSource)[keyof typeof ProductF
 export const PaymentProviderId = {
   MANUAL_QR: 'MANUAL_QR',
   SEPAY: 'SEPAY',
-  MOMO: 'MOMO'
+  MOMO: 'MOMO',
+  MOMO_MANUAL: 'MOMO_MANUAL'
 } as const
 
 export type PaymentProviderId = (typeof PaymentProviderId)[keyof typeof PaymentProviderId]

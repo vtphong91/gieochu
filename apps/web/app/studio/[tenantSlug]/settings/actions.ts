@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { isReservedSlug, isValidHexColor, isValidSocialLink, slugify, type SocialLinkKey } from "@gieochu/core";
@@ -75,6 +76,10 @@ export async function updateBrandingAction(
       },
     },
   });
+
+  // Tên/màu hiển thị ở Studio (sidebar) và trang gian hàng công khai — làm mới để không hiện dữ liệu cũ.
+  revalidatePath(`/studio/${tenantSlug}`, "layout");
+  revalidatePath(`/${tenantSlug}`, "layout");
 
   return { success: true };
 }

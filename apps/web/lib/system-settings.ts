@@ -41,6 +41,20 @@ async function loadSystemSettings(): Promise<SystemSettingsValues> {
 }
 
 /**
+ * ADR-059: địa chỉ "Email hỗ trợ" (`system_settings.supportEmail`, form /admin/settings) — đọc động lúc gửi (không cache,
+ * admin đổi có hiệu lực ngay). Trống / chưa có dòng / lỗi đọc → `null` (người gọi bỏ qua gửi, chỉ log).
+ */
+export async function getSupportEmail(): Promise<string | null> {
+  try {
+    const row = await getPrismaClient().systemSettings.findUnique({ where: { id: CONFIG_ID }, select: { supportEmail: true } });
+    return row?.supportEmail?.trim() || null;
+  } catch (error) {
+    logger.warn({ err: error }, "system_settings: không đọc được email hỗ trợ");
+    return null;
+  }
+}
+
+/**
  * Cấu hình hiệu lực. Trong request (RSC/Route Handler/Server Action) `cache()` dedupe theo request;
  * ngoài React (worker pg-boss, script) `cache()` là passthrough → mỗi lần gọi đọc lại DB, nên worker
  * gọi hàm này mỗi lần chạy job để nhận thay đổi mới mà không cần khởi động lại.

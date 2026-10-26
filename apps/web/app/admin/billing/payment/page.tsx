@@ -8,6 +8,7 @@ import { AdminPageHeader, Badge } from "../../_ui/kit";
 import { ManualQrForm } from "./manual-qr-form";
 import { SepayForm } from "./sepay-form";
 import { MomoForm } from "./momo-form";
+import { MomoManualForm } from "./momo-manual-form";
 import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 
 const COMING_SOON = [
@@ -24,6 +25,7 @@ export default async function AdminBillingPaymentPage() {
   const manualQr = configs.find((c) => c.provider === "MANUAL_QR");
   const sepay = configs.find((c) => c.provider === "SEPAY");
   const momo = configs.find((c) => c.provider === "MOMO");
+  const momoManual = configs.find((c) => c.provider === "MOMO_MANUAL");
 
   const env = getEnv();
   const webhookUrl = buildWebhookNotifyUrl(env.APP_URL, { kind: "PLATFORM" }, "SEPAY");
@@ -38,7 +40,7 @@ export default async function AdminBillingPaymentPage() {
 
       {/* ADR-058 (task 1.11): mỗi cổng là một khối thu gọn (cổng đang bật mở sẵn) — xếp 1 cột để khối thu gọn không lệch
           hàng với khối đang mở; giới hạn bề ngang cho dễ đọc form. */}
-      <div className="mt-6 max-w-5xl space-y-4">
+      <div className="mt-6 space-y-4">
         <ManualQrForm
           banks={banks}
           initial={{
@@ -46,6 +48,16 @@ export default async function AdminBillingPaymentPage() {
             accountNo: String(manualQr?.publicConfig.accountNo ?? ""),
             accountName: String(manualQr?.publicConfig.accountName ?? ""),
             isEnabled: manualQr?.isEnabled ?? false,
+          }}
+        />
+
+        {/* ADR-059 bổ sung lần 3 — bật song song được với chuyển khoản ngân hàng. */}
+        <MomoManualForm
+          initial={{
+            phone: String(momoManual?.publicConfig.phone ?? ""),
+            accountName: String(momoManual?.publicConfig.accountName ?? ""),
+            vietQrAccountNo: String(momoManual?.publicConfig.vietQrAccountNo ?? ""),
+            isEnabled: momoManual?.isEnabled ?? false,
           }}
         />
 

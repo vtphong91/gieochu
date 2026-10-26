@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getPrismaClient } from "@gieochu/db";
 import { requireAdminAccess } from "../../../lib/page-guards";
 import { togglePlanActiveAction } from "./actions";
-import { AdminPageHeader, Badge, DataTable, GhostLinkButton, PrimaryLinkButton, SettingsGrid, Td, Tr } from "../_ui/kit";
+import { AdminPageHeader, Badge, DataTable, GhostLinkButton, PrimaryLinkButton, Td, Tr } from "../_ui/kit";
 import { IconEdit, IconPlus, IconToggleOff, IconToggleOn } from "../_ui/icons";
 import { MenuItemButton, RowMenu } from "../_ui/row-menu";
 import { CreatePlanForm } from "./create-plan-form";
@@ -77,9 +77,10 @@ export default async function AdminPlansPage({ searchParams }: { searchParams: P
       {isCreating ? (
         <div className="mt-8">
           <h2 className="font-[family-name:var(--font-heading)] mb-3 font-semibold">Tạo gói mới</h2>
-          <SettingsGrid>
+          {/* Full width theo khung app (quy tắc 2026-10-25) — thay SettingsGrid 2 cột. */}
+          <div>
             <CreatePlanForm />
-          </SettingsGrid>
+          </div>
         </div>
       ) : null}
     </div>

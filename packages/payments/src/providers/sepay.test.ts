@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { extractSepayReference, sepayProvider } from "./sepay";
+import { extractSepayReference, extractSepayReferences, sepayProvider } from "./sepay";
 import type { SepayConfig } from "../types";
 
 const baseConfig: SepayConfig = {
@@ -62,5 +62,14 @@ describe("M7 SePay provider", () => {
     expect(event.success).toBe(true);
 
     expect(extractSepayReference(body, "HAN")).toBe("HAN7K2QXM");
+
+    // ADR-059 bổ sung lần 2: giới hạn độ dài mã → nội dung bị nối liền vẫn tách đúng; tiền tố được escape; thử nhiều tiền tố
+    // theo thứ tự (tiền tố cấu hình lệch vẫn khớp theo tiền tố mã đơn).
+    const glued = { ...body, content: "HAN7K2QXMNGUYENVANA" };
+    expect(extractSepayReference(glued, "HAN")).toBe("HAN7K2QXMNGUYENVANA");
+    expect(extractSepayReference(glued, "HAN", { codeLength: 6 })).toBe("HAN7K2QXM");
+    expect(extractSepayReference({ ...body, content: "thanh toan A1B2C3D4" }, "A.", { codeLength: 6 })).toBeUndefined();
+    expect(extractSepayReferences(glued, ["GC", "HAN"], { codeLength: 6 })).toEqual(["HAN7K2QXM"]);
+    expect(() => sepayProvider.parseWebhook({ id: 1, transferType: "in", transferAmount: 1000 })).toThrow();
   });
 });

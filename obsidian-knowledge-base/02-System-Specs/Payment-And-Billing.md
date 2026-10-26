@@ -5,7 +5,7 @@ tags:
   - billing
   - status/living
 date: 2026-09-26
-updated: 2026-10-25
+updated: 2026-10-26
 author: System Architect
 ---
 
@@ -33,14 +33,21 @@ tham số đầu — không có "chế độ mặc định" ngầm định nào 
 ## 2. Nhà Cung Cấp Thanh Toán (`PaymentProviderId`)
 
 ```prisma
-enum PaymentProviderId { MANUAL_QR  SEPAY  MOMO }
+enum PaymentProviderId { MANUAL_QR  SEPAY  MOMO  MOMO_MANUAL }
 ```
+
+`MOMO_MANUAL` thêm ở ADR-059 bổ sung lần 3 (migration `20261026150000_adr059_momo_manual` — **chưa áp DB**), §5J.
 
 - **`MANUAL_QR`**: tự dựng payload VietQR (EMVCo TLV + CRC-16/CCITT-FALSE, `packages/payments/src/vietqr.ts`)
   từ số tài khoản/BIN ngân hàng đã cấu hình — không gọi API bên thứ 3, owner tự đối soát bằng mắt hoặc xác
   nhận thủ công.
 - **`SEPAY`**: `authType` là `API_KEY` hoặc `HMAC_SHA256`, có `paymentPrefix` (khớp `Tenant.orderCodePrefix`
-  hoặc `"SUB"` cho platform) để đối soát nội dung chuyển khoản.
+  hoặc `"SUB"` cho platform) để đối soát nội dung chuyển khoản. Từ ADR-059 bổ sung lần 2 tiền tố **không khoá**: platform sinh mã hoá
+  đơn SePay theo `paymentPrefix`, gian hàng thử cả `paymentPrefix` lẫn `orderCodePrefix` khi đọc webhook — §5H ✅.
+- **`MOMO_MANUAL`** (ADR-059 bổ sung lần 3, chưa commit) ✅ code: ví MoMo cá nhân, khách chuyển tay, người nhận xác nhận tay; không webhook. Dùng cho **cả**
+  PLATFORM lẫn TENANT, bật song song được với chuyển khoản ngân hàng. Chi tiết §5J. **`MOMO`** (MoMo API) giữ nguyên cấu hình và code.
+- **Loại xác nhận tay** (`MANUAL_CONFIRM_PROVIDERS` / `isManualConfirmProvider`, `packages/payments/src/registry.ts`) ✅: **`MANUAL_QR`, `MOMO_MANUAL`** — dùng chung
+  email báo, nút và luật xác nhận tay / xác nhận trễ.
 - **`MOMO`**: `partnerCode`/`accessKey`/`secretKey`, môi trường `sandbox`/`production`, dùng `createCheckout`
   redirect (`CheckoutRedirectResult`) thay vì QR tĩnh.
 
@@ -67,8 +74,12 @@ sequenceDiagram
 
     P->>R: POST webhook (chữ ký/HMAC trong header)
     R->>R: verifyWebhook() — so sánh bằng timingSafeEqual, KHÔNG parse nghiệp vụ trước khi xác thực
-    alt Chữ ký sai / config không tồn tại
-        R-->>P: 404 (không hint lý do — theo M7 smoke-test thật)
+    alt Provider lạ / config không tồn tại hoặc tắt
+        R-->>P: 404 unsupported_provider / not_configured
+    else Chữ ký sai
+        R-->>P: 401 invalid_signature
+    else Body không phải JSON / thiếu trường bắt buộc (ADR-059)
+        R-->>P: 400 invalid_body (+ log warn)
     else Chữ ký đúng
         R->>DB: INSERT webhook_events (scope, provider, providerEventId) — unique constraint chặn trùng
         R->>J: enqueuePaymentProcess(...) — KHÔNG xử lý nghiệp vụ nặng trong request
@@ -97,7 +108,14 @@ sequenceDiagram
   thực + ghi `webhook_events` + đẩy job `payment.process`. Route webhook **Platform** (M3,
   `POST /api/webhooks/platform/[provider]`) xử lý đồng bộ trong request (gọi `markInvoicePaid()` trực tiếp) —
   **chưa được đồng bộ hoá lại** với M8 vì rủi ro sửa một module thanh toán đã ổn định/đã có test xanh ngoài
-  phạm vi công việc đang làm; ghi vào `docs/BACKLOG.md`.
+  phạm vi công việc đang làm; ghi vào `docs/BACKLOG.md`. Từ ADR-059 (B2) vẫn đồng bộ, nhưng **ghi `platform_payment_transactions` trước
+  rồi mới gọi `markInvoicePaid`** — §5G ✅.
+- **Mã trạng thái (đối chiếu code 2026-10-26) ✅:** cả 2 route: provider ngoài `SEPAY`/`MOMO` → 404 `unsupported_provider`; chưa cấu hình/tắt →
+  404 `not_configured`; **chữ ký sai → 401 `invalid_signature`**; body hỏng/thiếu trường (sau khi chữ ký đúng) → **400 `invalid_body`** (ADR-059 bổ sung
+  lần 2 — trước đây `TypeError` thành 500); sự kiện trùng → 200 `{ success: true }`. Trang này trước 2026-10-26 ghi "chữ ký sai → 404" — sai, xem
+  KB-Audit §41.
+- **Kiểm payload SePay** (`parseSepayWebhook`) ✅: body phải là object; bắt buộc `id` (chuỗi/số khác rỗng), `transferType ∈ {in, out}`, `transferAmount`
+  số nguyên ≥ 0 (nhận cả chuỗi số), `transactionDate` chuỗi.
 
 ---
 
@@ -259,6 +277,137 @@ Hành vi:
   (thay `findUnique` trực tiếp); tách ra để integration test mock (xem
   [[04-Operations-Runbooks/Publish-And-Rollback-Runbook|Publish-And-Rollback-Runbook]] §2.2.1).
 
+### 5F. Hoá đơn gói chờ đối soát: email báo admin + xác nhận trễ hoá đơn EXPIRED (ADR-059 B1 + bổ sung) — working tree, chưa commit ✅ `git diff`
+
+Quyết định: [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay|ADR-044 KB (≙ ADR-059)]]. Không migration.
+
+- **Email `invoice_pending_manual`** ✅ (`notifyAdminOfPendingManualInvoice`, `lib/subscription-billing.ts`; template
+  `renderInvoiceAwaitingReconciliationEmail` ở `packages/email/src/templates/manual-payment-pending.ts`):
+  - Người nhận: **"Email hỗ trợ"** — `getSupportEmail()` (`lib/system-settings.ts`) đọc `system_settings.supportEmail` **mỗi lần gửi** (không cache); trống/lỗi đọc
+    → `null` → bỏ qua + `logger.warn`, không lỗi.
+  - Chỉ khi `createRenewalInvoice` **vừa tạo** hoá đơn (`created = true`, không phải hoá đơn chờ được dùng lại) **và** cổng là loại xác nhận tay
+    (`isManualConfirmProvider` — MANUAL_QR, MOMO_MANUAL) **và** caller truyền `options.scheduleNotification`. Studio billing (`renewSubscriptionAction`)
+    truyền `(task) => after(task)`; test/script không truyền → không gửi.
+  - Lúc chạy (sau response) đọc lại hoá đơn; đã không còn PENDING / không còn MANUAL_QR → bỏ qua. Nội dung chỉ dữ liệu L1: mã hoá đơn, tên + slug gian hàng,
+    tên gói, số tiền, hạn thanh toán (giờ VN), link `/admin/billing/invoices` (§7.9).
+  - Có ghi `email_send_log` (không thuộc `TENANT_CUSTOMER_FACING_TYPES`).
+- **Xác nhận tay theo trạng thái** (`confirmManualInvoicePayment`) ✅:
+  | Hoá đơn (MANUAL_QR / MOMO_MANUAL) | Kết quả |
+  | :-- | :-- |
+  | PENDING | `markInvoicePaid(source: ADMIN_MANUAL_CONFIRM)` — kỳ đã lưu (như cũ) |
+  | EXPIRED | `confirmExpiredManualInvoice` (dưới) |
+  | PAID | no-op |
+  | VOID / REFUNDED | **409 `INVOICE_NOT_CONFIRMABLE`** |
+  | cổng tự đối soát (SEPAY, MOMO) | 400 `NOT_MANUAL_INVOICE` (như cũ) |
+- **`confirmExpiredManualInvoice`** ✅ — một transaction: khoá dòng `subscriptions` của gian hàng (`FOR UPDATE`) → đọc lại hoá đơn (PAID/REFUNDED → no-op
+  idempotent; không phải EXPIRED + cổng xác nhận tay → `INVOICE_NOT_CONFIRMABLE`) → chặn **`NEWER_INVOICE_EXISTS` 409** nếu có hoá đơn khác của gian hàng
+  `createdAt` sau hoá đơn này đang PENDING (kể cả đã quá hạn, chưa sweep) hoặc PAID → áp thanh toán với **kỳ tính lại**
+  `computeRenewalPeriod(now, subscription.currentPeriodEnd, plan)`, ghi đè `periodStart/periodEnd` của hoá đơn, `paidAt = now`. Cập nhật hoá đơn có điều
+  kiện `status = EXPIRED` → hai admin bấm cùng lúc chỉ một lần gia hạn.
+  - `paidAt` = lúc xác nhận nên cửa sổ hoàn tiền 7 ngày (§5B) tính từ lúc xác nhận; vẫn là "hoá đơn PAID đầu tiên" nếu trước đó chưa có hoá đơn PAID 🟡 (theo
+    ADR; `evaluateRefundEligibility` không đổi ✅).
+  - Audit `SUBSCRIPTION_PAID`, `source: ADMIN_MANUAL_CONFIRM` + `previousInvoiceStatus: "EXPIRED"`, `lateConfirmation: true`, `dueAt`,
+    `storedPeriodStart/End` (kỳ cũ), `periodRecomputed: true`, `periodStart/End` (kỳ mới) — [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]] §4.
+  - UI: nút **"Xác nhận trễ…"** ở dòng cổng xác nhận tay + EXPIRED (tab "Tất cả") — `ExpiredConfirmButton` ✅ code; xem trình duyệt ❓.
+- Test: assert thêm trong `subscription-billing.test.ts` (case có sẵn) ✅ đọc `git diff --stat`; chạy xanh 🟡 (Quốc báo). Gửi SMTP thật ❓.
+
+### 5G. Áp hoá đơn nguyên tử, webhook ghi giao dịch trước, tab "Giao dịch cổng" (ADR-059 B2) ✅ `git diff`
+
+- **Khoá chung** `lockSubscriptionRow(tx, tenantId)` = `SELECT … FROM subscriptions WHERE tenantId = … FOR UPDATE` (bảng L1). Dùng ở `createRenewalInvoice`,
+  `markInvoicePaid`, `confirmExpiredManualInvoice`, `confirmInvoiceFromPlatformTransaction`.
+- **`createRenewalInvoice`** — checkout (có thể gọi API cổng) tạo **trước** transaction để không giữ khoá qua mạng; rồi trong transaction có khoá: còn hoá đơn
+  PENDING chưa quá hạn → trả hoá đơn đó (`created = false`, bỏ checkout vừa tạo); không thì đọc lại thuê bao dưới khoá, tính kỳ, tạo hoá đơn. Hai lần tạo song song
+  không sinh 2 hoá đơn (thay cho dedupe chỉ-đọc của ADR-013 — vẫn cùng ý nghĩa).
+- **`markInvoicePaid`** — chỉ áp hoá đơn **PENDING**; mọi trạng thái khác (PAID, EXPIRED, VOID, REFUNDED) → no-op, không audit. Cập nhật có điều kiện
+  `status = PENDING` (`updateMany`), `count = 0` → no-op. Webhook và admin cùng lúc → chỉ 1 lần áp, 1 audit. Hoá đơn EXPIRED **không** đi đường này.
+  `InvoicePaidSource` vẫn chỉ `PLATFORM_WEBHOOK | ADMIN_MANUAL_CONFIRM`.
+- **Webhook platform** — tìm hoá đơn theo danh sách mã ứng viên (§5H); khớp mã **và** đúng số tiền → `matchedInvoiceId`; ghi `platform_payment_transactions`
+  **trước**, rồi mới `markInvoicePaid` nếu hoá đơn PENDING. Áp lỗi giữa chừng → giao dịch vẫn còn (khớp, hoá đơn chưa thanh toán) để admin thấy.
+- **Tab "Giao dịch cổng"** `/admin/billing/invoices?tab=giao-dich` (`lib/platform-transactions.ts` — `listPlatformTransactions`, chỉ bảng L1, §7.9). Bảng
+  không có cột trạng thái — **suy ra** từ `matchedInvoiceId` + trạng thái hoá đơn, với giao dịch chưa khớp thì từ `rawPayload` (cùng quy tắc mã của webhook):
+  | `state` | Nhãn | Khi nào |
+  | :-- | :-- | :-- |
+  | `APPLIED` | Đã áp | Đã khớp, hoá đơn PAID (hoặc REFUNDED sau đó) |
+  | `MATCHED_NOT_APPLIED` | Khớp, chưa áp | Đã khớp, hoá đơn chưa thanh toán (vd hết hạn khi tiền về) |
+  | `AMOUNT_MISMATCH` | Sai số tiền | Chưa khớp, có hoá đơn mang mã đọc được (webhook chỉ khớp khi đúng tiền) |
+  | `INVOICE_NOT_FOUND` | Không tìm thấy hoá đơn | Có mã đúng tiền tố nhưng không có hoá đơn |
+  | `NO_REFERENCE` | Thiếu mã hoá đơn | Nội dung không chứa mã |
+  | `NOT_INCOMING` | Không phải tiền vào | SePay `transferType ≠ in` / MoMo `resultCode ≠ 0` |
+  - Lọc `?loai=` (SQL): `chua-khop` (`matchedInvoiceId` null) · `khop-chua-ap` · `da-ap`; phân trang `page`/`pageSize` (kẹp 1–100, mặc định 20). Cột phụ:
+    `duplicateOfInvoice` (≥ 2 giao dịch khớp cùng hoá đơn — khách trả trùng), `differenceVnd`, `confirmable` (hiện nút xác nhận — §5H).
+
+### 5H. Xác nhận hoá đơn từ giao dịch SePay + tiền tố (ADR-059 B2b) ✅ `git diff`
+
+- **`confirmInvoiceFromPlatformTransaction(transactionId, invoiceCode, actorId)`** (Server Action `confirmInvoiceFromTransactionAction`, `requireRole("SYSTEM_ADMIN")`;
+  form chỉ gửi mã hoá đơn, server kiểm lại hết):
+  1. Mã rỗng → 400 `INVOICE_CODE_REQUIRED`; không có hoá đơn → 404 `INVOICE_NOT_FOUND`.
+  2. Transaction: khoá `subscriptions` + dòng giao dịch (`FOR UPDATE`; không có → 404 `TRANSACTION_NOT_FOUND`). Chỉ giao dịch **SePay tiền vào** (`rawPayload.transferType
+     = in`), khác → 400 `TRANSACTION_NOT_USABLE`.
+  3. Giao dịch đã gắn hoá đơn khác → 409 `TRANSACTION_ALREADY_USED`; hoá đơn PAID/REFUNDED → 409 `INVOICE_ALREADY_PAID`; không phải PENDING/EXPIRED → 409
+     `INVOICE_NOT_CONFIRMABLE`.
+  4. **Thiếu tiền** (`txn.amountVnd < invoice.amountVnd`) → 409 `TRANSACTION_UNDERPAID`. Đúng/thừa → tiếp.
+  5. Hoá đơn **EXPIRED** (mọi cổng, kể cả SEPAY — **chỉ qua đường này**) → chặn `NEWER_INVOICE_EXISTS` như §5F, áp với kỳ tính lại; PENDING → kỳ đã lưu.
+  6. Gắn `matchedInvoiceId` có điều kiện (chưa gắn hoặc gắn đúng hoá đơn này) → mỗi giao dịch dùng một lần.
+  7. Audit `SUBSCRIPTION_PAID`, **`source: ADMIN_TRANSACTION_CONFIRM`**, `transactionId`, `transactionProvider`, `receivedAmountVnd`, `amountVnd`, **`differenceVnd`**
+     (+ metadata trễ nếu EXPIRED). Phần thừa admin hoàn ngoài hệ thống 🟡.
+- **Tiền tố platform:** hoá đơn **SEPAY mới** sinh mã `normalizeInvoiceCodePrefix(paymentPrefix)` + 8 ký tự; prefix hợp lệ = chữ/số 1–10 ký tự sau khi viết hoa, không
+  hợp lệ → `SUB` + `logger.warn`. Cổng khác vẫn `SUB`. Mã đã có không đổi. Webhook/tab Giao dịch đọc mã bằng `sepayInvoiceReferenceCandidates(payload, prefix)`: thử
+  tiền tố đã cấu hình rồi `SUB`, đúng **8** ký tự (`INVOICE_CODE_SUFFIX_LENGTH`). Lưu cấu hình SePay (`/admin/billing/payment`) luôn kèm câu cảnh báo/nhắc dạng mã;
+  đổi tiền tố khi tiền tố cũ khác `SUB` → cảnh báo hoá đơn chờ cũ không còn tự khớp.
+- **Tiền tố gian hàng:** **không đổi** cách sinh mã đơn (`orderCodePrefix` + 6 ký tự). Webhook tenant thử cả `paymentPrefix` lẫn `orderCodePrefix`, đúng **6** ký tự
+  (`ORDER_CODE_SUFFIX_LENGTH`); job nhận `referenceCandidates` (job cũ chỉ có `reference` vẫn chạy). Lưu cấu hình SePay Studio trả `warning` khi `paymentPrefix` khác
+  `orderCodePrefix` (vẫn lưu thành công).
+- **Đọc mã** (`extractSepayReferences`, `packages/payments`) — tiền tố được **escape** regex; `code` (SePay tự nhận diện) trước, rồi `content`; `codeLength` cắt đúng độ
+  dài nên nội dung bị ngân hàng nối liền (`SUBABCDEFGHNGUYENVANA`) vẫn tách đúng mã. `extractSepayReference` cũ giữ, gọi qua hàm mới.
+
+### 5I. Danh mục email thanh toán do ADR-059 thêm ✅ code
+
+| `type` | Người nhận | Khi nào | Nơi gửi | Ghi `email_send_log` |
+| :-- | :-- | :-- | :-- | :-- |
+| `order_pending_manual` | Chủ gian hàng | Đơn gắn cổng xác nhận tay lần đầu | `notifyOwnerOfPendingManualOrder` (`lib/order.ts`), `after()` | Không |
+| `invoice_pending_manual` | "Email hỗ trợ" | Hoá đơn gói xác nhận tay (QR thủ công / MoMo chuyển tay) vừa tạo — nội dung có `methodLabel` | `notifyAdminOfPendingManualInvoice` (`lib/subscription-billing.ts`), `after()` | Có |
+| `payment_mismatch` | Chủ gian hàng | Giao dịch cổng tiền vào khớp mã đơn, sai số tiền | `notifyOwnerOfPaymentMismatch` (`lib/payment-process.ts`), sau commit trong job | Không |
+
+Chi tiết phía đơn hàng: [[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.10–§3.11. **Chưa có** email cho giao dịch `UNMATCHED` và cho giao dịch khớp tiền nhưng
+đến quá 24 giờ sau hạn đơn 🟡 (brief). Gửi tới hộp thư thật ❓.
+
+### 5J. MoMo cá nhân xác nhận tay — `MOMO_MANUAL` (ADR-059 bổ sung lần 3, B3) — working tree, chưa commit; **migration chưa áp** ✅ `git diff`
+
+Quyết định: [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay|ADR-044 KB (≙ ADR-059)]] §3.6. Kiểm chứng trước khi bật QR:
+[[04-Operations-Runbooks/MoMo-Manual-Verification-Runbook|MoMo-Manual-Verification-Runbook]].
+
+- **Phạm vi:** provider mới cho **cả PLATFORM** (`/admin/billing/payment`, hoá đơn gói) **lẫn TENANT** (`/studio/{slug}/settings/payments`, đơn tài liệu). Form
+  `momo-manual-form.tsx` ở hai nơi, đọc chung `readMomoManualForm` (`apps/web/lib/momo-manual-config.ts`).
+- **Cấu hình** (`momoManualProvider.validateConfig`, `packages/payments/src/providers/momo-manual.ts`) — không có secret:
+  | Trường | Nhãn form | Luật |
+  | :-- | :-- | :-- |
+  | `phone` | Số điện thoại MoMo | Chuẩn hoá `0xxxxxxxxx` (nhận `+84`/`84`, bỏ dấu cách/chấm/gạch), đầu số `03/05/07/08/09` |
+  | `accountName` | Tên chủ ví | Bỏ dấu, `đ` → `D`, VIẾT HOA, 2–70 ký tự `A–Z0–9` và khoảng trắng |
+  | `vietQrAccountNo` | Số tài khoản VietQR của ví (tuỳ chọn) | Viết hoa, bỏ khoảng trắng, chữ/số 6–30 ký tự; trống → bỏ |
+- **Checkout kiểu `WALLET`** (`CheckoutWalletResult`, `packages/payments/src/types.ts`): `{ kind: "WALLET", wallet: "MOMO", phone, accountName, content, amountVnd, qr }`.
+  `content` = mã đơn / mã hoá đơn (cùng luật tiền tố như MANUAL_QR). Có `vietQrAccountNo` → `qr` = VietQR dựng bằng `buildVietQrPayload` với BIN hằng
+  **`MOMO_VIETQR_BIN = "970454"`** (⚠️ **chờ kiểm chứng thật**, comment code) + số tài khoản ví; không có → `qr = null` = **phương án F1** (chỉ thông tin + nút
+  sao chép). `CheckoutResult` nay là `CheckoutQrResult | CheckoutRedirectResult | CheckoutWalletResult`.
+- **Giao diện:** `WalletTransferPanel` (`apps/web/app/_ui/wallet-transfer-panel.tsx`) dùng ở checkout đơn tài liệu và trang gói Studio: các ô chỉ đọc có nút sao chép
+  (Ví MoMo, Số điện thoại MoMo, Tên chủ tài khoản, Nội dung chuyển khoản, Số tiền), ảnh QR nếu có, "Chuyển khoản sau" (link), "Tôi đã chuyển khoản" chỉ hiện lời
+  nhắn tại chỗ — **không** đổi trạng thái đơn. Markup tối thiểu, Phong hoàn thiện sau 🟡 (comment code). Nhãn cổng: "MoMo (chuyển tay)" (checkout, Studio, admin),
+  "Ví MoMo (chuyển tay)" (Bảng giá).
+- **Xác nhận:** cùng luật MANUAL_QR — đơn tài liệu: chủ gian hàng xác nhận tay (`canManuallyConfirmOrder`); hoá đơn gói: `confirmManualInvoicePayment` (PENDING) và
+  **xác nhận trễ** `confirmExpiredManualInvoice` (EXPIRED — chặn `NEWER_INVOICE_EXISTS`, tính lại kỳ), tab "Chờ đối soát" lọc mọi cổng xác nhận tay
+  (`notIn` các cổng tự đối soát) ✅ code.
+- **Không webhook:** `verifyWebhook` luôn `false`, `parseWebhook` ném lỗi. Route `/api/webhooks/platform/momo_manual` và `/api/webhooks/tenants/{id}/momo_manual`
+  → **404 `unsupported_provider`** (không nằm trong `VALID_PROVIDERS`) ✅ code.
+- **Email:** `invoice_pending_manual` (báo admin) truyền `methodLabel` — "chuyển tiền MoMo (xác nhận tay)" hoặc "chuyển khoản QR thủ công" ✅. `order_pending_manual`
+  (báo người bán) cũng gửi cho MOMO_MANUAL nhưng **template không có `methodLabel`** — câu chữ vẫn "Khách vừa chọn chuyển khoản…" ✅ code — KB-Audit §43.
+- **Tự tắt khi đổi định danh (ADR-013) — chỉ cấu hình platform:** `accountIdentity` (`lib/platform-payment.ts`) với MOMO_MANUAL = `{ phone, vietQrAccountNo }` →
+  đổi số điện thoại hoặc số TK VietQR làm cổng **tự tắt**, phải lưu lại lần nữa. Cấu hình tenant không có cơ chế tự tắt (như các cổng tenant khác) ✅ code.
+- **Trước khi áp migration:** DB chưa có giá trị enum → Postgres 22P02; `isMissingEnumValueError` (`lib/db-errors.ts`) bắt ở 2 action lưu cấu hình → báo
+  `MOMO_MANUAL_NOT_READY_MESSAGE` ("Hệ thống chưa sẵn sàng cho MoMo cá nhân…"), danh sách hoá đơn lọc `MOMO_MANUAL` coi như rỗng — không 500 ✅ code.
+- **MoMo API (`MOMO`)** giữ nguyên cấu hình và code, để trạng thái tắt — không xoá, không tự sửa dữ liệu (thay quyết định "tạm ẩn" ở ADR-059 mục 2) 🟡 ADR.
+- **Việc cần làm — Chính sách người bán** 🟡 (ADR-059 lần 3 mục 5): số điện thoại và tên chủ ví MoMo của người bán **công khai ở trang thanh toán** → phải ghi rõ trong
+  "Chính sách người bán". **Chưa sửa** văn bản trong CMS (ngoài phạm vi; ghi ở `docs/PLAN.md`).
+- **Test:** `pnpm test:count` = **100/100 unit, 66/66 integration** ✅ (Long chạy). Kiểm thật với ví MoMo + app ngân hàng ❓ (runbook).
+
 ---
 
 ## 6. Nguyên Tắc Bảo Mật Bắt Buộc (CLAUDE.md §7, không đổi theo module)
@@ -278,14 +427,18 @@ Hành vi:
 * [[Architecture-Overview]] — Ranh giới L1/L2 và RLS ([Architecture-Overview.md](./Architecture-Overview.md))
 * [docs/DECISIONS.md](../../docs/DECISIONS.md) — ADR-011 (bảng platform config sớm), ADR-012 (xác minh VietQR/CRC16),
   ADR-013 (dedupe/tự tắt config), ADR-019 (webhook Tenant qua job, khoảng lệch với Platform), ADR-021 (Hybrid
-  Monetization), ADR-041 (Bảng giá CMS, hạn mức -1/0, hoàn tiền gói 7 ngày), ADR-056 (lịch sử hoá đơn gói, Đơn hàng gói dịch vụ, khối chuyển khoản, mã giảm giá tạo lại QR)
+  Monetization), ADR-041 (Bảng giá CMS, hạn mức -1/0, hoàn tiền gói 7 ngày), ADR-056 (lịch sử hoá đơn gói, Đơn hàng gói dịch vụ, khối chuyển khoản, mã giảm giá tạo lại QR),
+  ADR-059 (beta: email báo xác nhận tay, xác nhận trễ hoá đơn EXPIRED, giao dịch cổng, tiền tố SePay)
+* [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay|ADR-044 KB (≙ ADR-059)]] ([ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md](../01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md)) ·
+  [[04-Operations-Runbooks/SePay-Live-Test-Runbook|SePay-Live-Test-Runbook]] ([SePay-Live-Test-Runbook.md](../04-Operations-Runbooks/SePay-Live-Test-Runbook.md))
 * [[01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr|ADR-041 KB (≙ ADR-056)]] ([ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr.md](../01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr.md))
 * [[02-System-Specs/Pricing-Page-Specs|Pricing-Page-Specs]] — trang Bảng giá + CMS `pricing` ([Pricing-Page-Specs.md](./Pricing-Page-Specs.md))
 * [docs/GIEOCHU_HYBRID_MONETIZATION_BILLING_PROPOSAL_V2.md](../../docs/GIEOCHU_HYBRID_MONETIZATION_BILLING_PROPOSAL_V2.md)
 * [[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]] — job nền + cron (ADR-036) ([Background-Jobs-Specs.md](./Background-Jobs-Specs.md))
-* Mã nguồn: `packages/payments/src/*`, `apps/web/lib/{order,payment-process,platform-payment,subscription-billing,subscription-sweep,subscription-refund,tenant-payment,job-runner,job-handlers}.ts`,
+* Mã nguồn: `packages/payments/src/*`, `apps/web/lib/{order,payment-process,platform-payment,platform-transactions,tenant-payment-transactions,subscription-billing,subscription-sweep,subscription-refund,tenant-payment,job-runner,job-handlers}.ts`,
+  `packages/email/src/templates/manual-payment-pending.ts`, `apps/web/app/studio/[tenantSlug]/orders/giao-dich/`,
   `apps/web/app/admin/billing/{refunds,invoices,payment}/`, `apps/web/app/admin/subscriptions/`, `apps/web/app/admin/_ui/billing-labels.ts`,
-  `apps/web/app/_ui/bank-transfer-panel.tsx`, `apps/web/app/studio/[tenantSlug]/billing/`,
+  `apps/web/app/_ui/bank-transfer-panel.tsx`, `apps/web/app/_ui/wallet-transfer-panel.tsx`, `apps/web/lib/momo-manual-config.ts`, `apps/web/lib/db-errors.ts`, `apps/web/app/studio/[tenantSlug]/billing/`,
   `packages/core/src/billing/*`
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

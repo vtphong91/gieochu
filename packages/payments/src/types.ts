@@ -5,7 +5,7 @@
  */
 export type PaymentScope = { kind: "PLATFORM" } | { kind: "TENANT"; tenantId: string };
 
-export type PaymentProviderId = "MANUAL_QR" | "SEPAY" | "MOMO";
+export type PaymentProviderId = "MANUAL_QR" | "SEPAY" | "MOMO" | "MOMO_MANUAL";
 
 export interface CheckoutQrResult {
   kind: "QR";
@@ -20,7 +20,22 @@ export interface CheckoutRedirectResult {
   url: string;
 }
 
-export type CheckoutResult = CheckoutQrResult | CheckoutRedirectResult;
+/**
+ * ADR-059 bổ sung lần 3 — ví điện tử chuyển tay (MOMO_MANUAL): thông tin để khách tự chuyển trong app ví, kèm VietQR khi người
+ * nhận có "số tài khoản nhận VietQR" (`qr`), không có thì `null` (chỉ hiện thông tin + nút sao chép). Không chứa secret.
+ */
+export interface CheckoutWalletResult {
+  kind: "WALLET";
+  wallet: "MOMO";
+  phone: string;
+  accountName: string;
+  /** Nội dung chuyển khoản bắt buộc = mã đơn / mã hoá đơn. */
+  content: string;
+  amountVnd: number;
+  qr: { qrPayload: string; qrImageDataUrl: string; bin: string; accountNo: string } | null;
+}
+
+export type CheckoutResult = CheckoutQrResult | CheckoutRedirectResult | CheckoutWalletResult;
 
 export interface NormalizedPaymentEvent {
   providerEventId: string;
@@ -73,6 +88,16 @@ export interface SepayConfig extends ManualQrConfig {
   secret: string;
   /** matches the tenant's orderCodePrefix (or "SUB" for platform) — §"M7" */
   paymentPrefix: string;
+}
+
+/** ADR-059 bổ sung lần 3 — chỉ publicConfig, không secret. */
+export interface MomoManualConfig {
+  /** 0xxxxxxxxx đã chuẩn hoá. */
+  phone: string;
+  /** VIẾT HOA không dấu. */
+  accountName: string;
+  /** Tuỳ chọn — số tài khoản nhận VietQR của ví (lấy từ QR "Nhận tiền" trong app MoMo). */
+  vietQrAccountNo?: string;
 }
 
 export interface MomoConfig {

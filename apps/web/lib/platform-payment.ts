@@ -20,6 +20,8 @@ export interface SavePlatformProviderConfigInput {
 /** The account/secret "identity" per provider — used to detect a change worth re-verifying (see below). */
 function accountIdentity(provider: PaymentProviderId, cfg: PublicProviderConfig): unknown {
   if (provider === "MOMO") return cfg.partnerCode;
+  // ADR-059 bổ sung lần 3: đổi số điện thoại / số TK VietQR của ví → tự tắt, phải lưu lại để xác nhận (ADR-013).
+  if (provider === "MOMO_MANUAL") return { phone: cfg.phone, vietQrAccountNo: cfg.vietQrAccountNo ?? null };
   return { bankBin: cfg.bankBin, accountNo: cfg.accountNo };
 }
 

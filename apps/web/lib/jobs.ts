@@ -54,6 +54,11 @@ export interface PaymentProcessJobData {
   provider: PaymentProviderId;
   providerEventId: string;
   reference: string | undefined;
+  /**
+   * ADR-059 bổ sung lần 2: mọi mã đọc được theo thứ tự ưu tiên (tiền tố SePay đã cấu hình, rồi tiền tố mã đơn) — job chọn mã đầu
+   * tiên khớp một đơn. Job cũ trong hàng đợi không có trường này → dùng `reference`.
+   */
+  referenceCandidates?: string[];
   amountVnd: number;
   /** From `NormalizedPaymentEvent.success` — a failed/reversed transfer event never matches an order. */
   success: boolean;

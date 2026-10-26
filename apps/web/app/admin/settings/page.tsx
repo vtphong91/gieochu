@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getPrismaClient } from "@gieochu/db";
 import { requireAdminAccess } from "../../../lib/page-guards";
-import { AdminPageHeader, SettingsGrid } from "../_ui/kit";
+import { AdminPageHeader } from "../_ui/kit";
 import { ModuleTabs } from "../_ui/module-tabs";
 import { SETTINGS_SUPPORT_EMAIL_TAB, SETTINGS_TABS, SETTINGS_TABS_LABEL } from "./_ui/settings-tabs";
 import { SettingsForm } from "./settings-form";
@@ -21,13 +21,14 @@ export default async function AdminSettingsPage() {
       <AdminPageHeader title="Cấu hình chung" subtitle="Email hỗ trợ — địa chỉ liên hệ hỗ trợ của nền tảng, hiển thị cho người dùng khi cần trợ giúp." />
       <ModuleTabs label={SETTINGS_TABS_LABEL} items={SETTINGS_TABS} current={SETTINGS_SUPPORT_EMAIL_TAB} />
 
-      <SettingsGrid>
+      {/* Full width theo khung app (quy tắc 2026-10-25) — thay SettingsGrid 2 cột. */}
+      <div className="mt-6">
         <SettingsForm
           initial={{
             supportEmail: settings?.supportEmail ?? "",
           }}
         />
-      </SettingsGrid>
+      </div>
     </div>
   );
 }

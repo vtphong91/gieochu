@@ -1115,7 +1115,7 @@ Checklist pháp lý: `docs/legal/LEGAL_REVIEW_CHECKLIST.md`.
 - **Còn mở:** commit/deploy; xem UI thật. Runbook pháp lý đã bỏ thao tác Lưu trữ (Quốc chốt 2026-10-25).
 - **Tài liệu:** bản trích `01-Architecture-Decisions/ADR-042-Legal-Drafts-Import-Preview-Draft-Release.md` (≙ ADR-057), `03-API-Contracts/Endpoint-Directory.md` §3.1, §26.4, §26.5, `04-Operations-Runbooks/Legal-Terms-Publishing-Runbook.md` §1, §3, `02-System-Specs/Legal-Documents-Specs.md` §2, §5 (viết lại), §6, `04-Operations-Runbooks/UI-Design-System.md` §13.7, `00-Index/KB-Audit-2026-09-26.md` §38.
 
-## Điều hướng tab theo chức năng + accordion + cảnh báo rời trang (ADR-058 + bổ sung) — GĐ 0 xong; GĐ 1 xong trừ 1.10, chưa commit — 2026-10-25
+## Điều hướng tab theo chức năng + accordion + cảnh báo rời trang (ADR-058 + bổ sung) — GĐ 0, GĐ 1, GĐ 2 xong; chỉ còn 1.10, chưa commit — 2026-10-25
 
 **Chủ dự án chốt 2026-10-25 (ADR-058).** Kế hoạch: `docs/ke-hoach-toi-uu-layout-tab-accordion-2026-10-25.md`. Chỉ lớp trình bày; URL không đổi, không migration, không đổi Server Action. Mỗi task Quốc duyệt rồi mới làm task sau.
 
@@ -1140,11 +1140,75 @@ Checklist pháp lý: `docs/legal/LEGAL_REVIEW_CHECKLIST.md`.
   - ✅ **1.12a** Gói dịch vụ 3 khối (trang tạo gói mở cả 3), Danh mục 4 khối, Trang tuỳ chỉnh 2 khối — `useFormDraft` + `useUnsavedChanges`; sửa `<main>` lồng.
   - ✅ **1.12b** Component mới `admin/_ui/in-page-tabs.tsx` (`InPageTabs`, tab ARIA kiểu pill, panel luôn mounted) cho Thương hiệu (sửa lỗi mất dữ liệu khi chuyển tab) và SMTP; Cloudinary `useFormDraft` (không ghi lại API key/secret) + `useUnsavedChanges`, không accordion.
   - ✅ **1.13** Sửa `<main>` lồng (users, roles, tenants); Email hỗ trợ `useFormDraft` + `useUnsavedChanges`.
-  - ⏸ **1.10** Lưu trữ file — tạm hoãn, chờ Vương xong ADR-055 (kèm sửa `<main>` lồng ở `settings/storage/page.tsx`).
-- **Còn mở:** 1.10; thử trình duyệt toàn GĐ 1 (hộp hỏi rời trang, giữ dữ liệu khi lưu lỗi, phím tab, 375px); `admin/error.tsx` còn `<main>` lồng, các trang tab chưa có `metadata.title` riêng (KB-Audit §39); 3 editor Studio còn `beforeunload` riêng.
-- **Tiếp theo:** GĐ 2 Studio (2.1 → 2.6) — thứ tự ở kế hoạch §6; 1.10 khi Vương xong ADR-055.
+  - ✅ **1.14** `metadata.title` riêng cho 5 trang tab (Trang CMS ×2, Cấu hình chung ×3); `admin/error.tsx` bỏ `<main>` lồng; câu mô tả SEO trang chủ + Bảng giá khớp action; badge "Có thay đổi chưa lưu" thống nhất sắc `warning`.
+  - ✅ **1.15** 8 trang System Center bỏ `SettingsGrid`, xếp 1 cột full width (Email hỗ trợ, Cloudinary, gói tạo/sửa, danh mục tạo/sửa, trang tuỳ chỉnh tạo/sửa).
+  - ⏸ **1.10** Lưu trữ file — tạm hoãn, chờ Vương xong ADR-055 (kèm accordion, `useFormDraft` có secret, `useUnsavedChanges`, sửa `<main>` lồng ở `settings/storage/page.tsx`).
+- **Quy tắc full width (chủ dự án chốt 2026-10-25):** nội dung chính System Center + Studio luôn full width theo khung app, khối xếp 1 cột; không `max-w`/`mx-auto` ở khung form/editor, chỉ giữ ở cấp component. Quốc sửa tận gốc `SettingsGrid` (`admin/_ui/kit.tsx`) thành `mt-6 grid grid-cols-1 gap-6`, bỏ `max-w` ở `post-editor.tsx`, `admin/settings/storage/page.tsx`, trang Cấu hình thanh toán và 2 trang Cài đặt Studio; Phong bỏ `max-w-[1440px]` ở `product-editor.tsx`/`editor-skeleton.tsx` (2.3a). Không trang nào còn dùng `SettingsGrid`.
+- **GĐ 2 — Studio (Quốc duyệt 2026-10-25; xong hết, không task nào hoãn; xong code + verify, chưa thử trình duyệt):**
+  - ✅ **2.1** `ModuleTabs` "Cài đặt" (Thông tin & thương hiệu · Thanh toán; `studio/[tenantSlug]/settings/_ui/settings-tabs.ts`), h1 "Cài đặt", bỏ link chữ cuối trang, sửa `<main>` lồng 2 trang; sidebar không cần `match`. `useFormDraft` + `useUnsavedChanges` cho `branding-form` (`keepOnSuccess`), `slug-form`, `studio/onboarding-form.tsx` (trang onboarding ngoài layout Studio → bọc `UnsavedChangesProvider` ngay trong `studio/page.tsx`). Quốc thêm `revalidatePath` layout `/studio/{slug}` và `/{slug}` trong `updateBrandingAction`.
+  - ✅ **2.2** Thanh toán tenant: QR thủ công · SePay · MoMo mỗi cổng 1 khối, cổng đang bật thì mở, badge trạng thái; không ghi lại secret; form có `key` → sửa Toggle lệch khi cổng tự tắt; xếp 1 cột.
+  - ✅ **2.3a** Editor tài liệu (giữ bố cục 2 cột, không thêm tab): khối Thông tin (mở) / Giá & khuyến mãi (mở sẵn ở trang Tạo) / Danh mục & loại / Thẻ / Giới hạn lượt tải / Link chia sẻ private; Ảnh đại diện, Tệp tài liệu, card Xuất bản không thu gọn. `changedFields`/`touchField` chỉ cho badge, `dirty` vẫn là nguồn sự thật (lưu ý khi gắn tự lưu nháp). `beforeunload` → `useUnsavedChanges`; full width.
+  - ✅ **2.3b** Link chia sẻ: `useFormDraft` không ghi lại mật khẩu link; hook hỗ trợ nhóm checkbox cùng tên (`RadioNodeList`); `fieldset/legend`; sửa `<main>` lồng; bỏ `SettingsGrid`.
+  - ✅ **2.4** Editor bài viết: khối Nội dung bài viết (mở) / Tài liệu liên quan / Ghim bài; `beforeunload` → `useUnsavedChanges`.
+  - ✅ **2.5** Trang bán hàng: kết luận không dùng accordion (list-detail chỉ hiện 1 section; mục ghim đổi hành vi hiển thị nên không giấu); badge → `warning`; `beforeunload` → `useUnsavedChanges`; sửa `<main>` lồng.
+  - ✅ **2.6** Mã giảm giá 4 khối (Thông tin mã mở; Điều kiện & giới hạn, Thời gian áp dụng, Áp dụng cho sản phẩm thu gọn); `useFormDraft` trả thêm `values` cho badge tóm tắt. Rà 2 form ghi chú (đơn hàng, khách hàng): ô có kiểm soát → không cần `useFormDraft`. Sửa `<main>` lồng (coupons ×3, messages, products).
+- **Hạ tầng sau GĐ 2:** `useFormDraft` có `names`, `secretNames`, `initial`, `resetKey`, `failed`, `keepOnSuccess`; trả `dirty`, `dirtyOf`, `values`, `formProps`; hỗ trợ nhóm checkbox. Không còn `<main>` lồng và không còn `beforeunload` riêng trong System Center lẫn Studio, trừ Lưu trữ file (1.10).
+- **Còn mở:** 1.10 (chờ Vương); thử trình duyệt toàn GĐ 1 + GĐ 2 (hộp hỏi rời trang, giữ dữ liệu khi lưu lỗi, phím tab, 375px); 2 trang tab Cài đặt Studio chưa có `metadata.title` riêng, comment cũ ở `branding-form.tsx`/`product-editor.tsx`, 2 form billing Studio mức nguy cơ thấp chưa task nhận (KB-Audit §40 — chờ Quốc quyết).
+- **Tiếp theo:** 1.10 khi Vương xong ADR-055.
 - **Test:** `pnpm test:count` vẫn **100/66**.
-- **Tài liệu:** bản trích `01-Architecture-Decisions/ADR-043-Module-Tabs-Accordion-Unsaved-Guard.md` (≙ ADR-058), `04-Operations-Runbooks/UI-Design-System.md` §5, §11.1, §12.5, §12.6, §25, `00-Index/KB-Audit-2026-09-26.md` §38, §39.
+- **Tài liệu:** bản trích `01-Architecture-Decisions/ADR-043-Module-Tabs-Accordion-Unsaved-Guard.md` (≙ ADR-058), `04-Operations-Runbooks/UI-Design-System.md` §4.4, §5 (quy tắc full width), §8.7, §9.1, §11.1, §11.3, §12.5, §12.6, §25, `00-Index/KB-Audit-2026-09-26.md` §38, §39, §40.
+
+## Chuẩn bị chạy thử beta: thanh toán, email báo, giao dịch cổng (ADR-059 + 3 lần bổ sung) — B1, B2, B2b, B3 xong code, chưa commit; migration B3 chưa áp — 2026-10-25 → 26
+
+**Chủ dự án chốt 2026-10-25 (ADR-059).** Đề xuất: `docs/de-xuat-chay-thu-thanh-toan-goi-tai-lieu-2026-10-25.md`. Beta chạy trên VPS (ADR-049). Không migration, không thêm `route.ts` (23 dưới `/api`, 25 toàn app).
+
+- ✅ **B1 — Email báo + xác nhận trễ:**
+  - Email `order_pending_manual` báo chủ gian hàng khi đơn gắn cổng thủ công **lần đầu** (khoá đơn `FOR UPDATE`, gửi bằng `after()`), không ghi `email_send_log`.
+  - Email `invoice_pending_manual` báo admin tới "Email hỗ trợ" (`getSupportEmail()`, đọc động), chỉ khi hoá đơn **vừa tạo**.
+  - Template `packages/email/src/templates/manual-payment-pending.ts`; helper `manualConfirmDeadline`, `isManualConfirmProvider` (hiện chỉ MANUAL_QR).
+  - Xác nhận trễ hoá đơn MANUAL_QR EXPIRED (`confirmExpiredManualInvoice`, nút "Xác nhận trễ…"): chặn `NEWER_INVOICE_EXISTS`; tính lại kỳ bằng `computeRenewalPeriod`; `paidAt` = lúc xác nhận; khoá `subscriptions` FOR UPDATE; audit `lateConfirmation`, `periodRecomputed`, kỳ cũ/mới; mã lỗi `INVOICE_NOT_CONFIRMABLE`.
+- ✅ **B2 — Nguyên tử + giao dịch cổng:** khoá race `createRenewalInvoice` (checkout tạo trước transaction); `markInvoicePaid` chỉ áp hoá đơn PENDING, idempotent (VOID/REFUNDED không xác nhận được); webhook platform ghi giao dịch trước khi áp hoá đơn; tab "Giao dịch cổng" `/admin/billing/invoices?tab=giao-dich` (`lib/platform-transactions.ts`, lọc chưa khớp / khớp chưa áp / đã áp, phân loại từng dòng); runbook chạy thử SePay.
+- ✅ **B2b — SePay:**
+  - Xác nhận hoá đơn từ giao dịch (`confirmInvoiceFromPlatformTransaction`): thiếu tiền chặn `TRANSACTION_UNDERPAID`, thừa/đúng cho; mỗi giao dịch một lần (`TRANSACTION_ALREADY_USED`); `INVOICE_ALREADY_PAID`; hoá đơn EXPIRED đi nhánh trễ (cả SEPAY, chỉ qua đường này); audit source `ADMIN_TRANSACTION_CONFIRM`, `differenceVnd`.
+  - Tiền tố: hoá đơn SEPAY mới theo `paymentPrefix` (chữ/số ≤ 10, không thì SUB), webhook thử nhiều tiền tố, cảnh báo khi lưu; gian hàng giữ cách sinh mã đơn, webhook thử `paymentPrefix` + `orderCodePrefix`, form cảnh báo khi lệch; regex escape tiền tố + `codeLength` (8 / 6).
+  - Studio `/studio/{slug}/orders/giao-dich` "Giao dịch cần xử lý" (UNMATCHED, MISMATCH_AMOUNT; `withTenant`); trang Đơn hàng báo số giao dịch cần xử lý.
+  - Email `payment_mismatch` báo chủ gian hàng (sau commit trong job, không ghi log). Webhook body hỏng/thiếu trường → 400 `invalid_body` (platform + tenant).
+- ✅ **B3 — MoMo cá nhân xác nhận tay (Bổ sung ADR-059 lần 3, chủ dự án chốt 2026-10-26):** xong code, chưa commit.
+  - Provider mới `MOMO_MANUAL` cho cả PLATFORM (`/admin/billing/payment`) lẫn TENANT (`/studio/{slug}/settings/payments`); cấu hình `phone`, `accountName`, `vietQrAccountNo` (tuỳ chọn), không secret.
+  - Checkout kiểu `WALLET` (`WalletTransferPanel`): có `vietQrAccountNo` thì sinh VietQR với `MOMO_VIETQR_BIN = 970454` (**chờ kiểm chứng**), không có thì chỉ thông tin + sao chép (F1).
+  - Xác nhận tay + xác nhận trễ chung luật MANUAL_QR (`MANUAL_CONFIRM_PROVIDERS`); không webhook (route trả 404); email báo admin có `methodLabel`; cấu hình platform tự tắt khi đổi số điện thoại / số TK VietQR (ADR-013). MoMo API giữ nguyên, để tắt.
+  - Migration expand-only `20261026150000_adr059_momo_manual` (`ALTER TYPE "PaymentProviderId" ADD VALUE 'MOMO_MANUAL'`) — **chưa áp**, chờ Quốc duyệt; trước khi áp, lưu cấu hình báo "chưa sẵn sàng" thay vì 500.
+  - **Việc cần làm:** chạy runbook kiểm chứng MoMo (giải mã QR "Nhận tiền", chuyển thử 1.000đ) trước khi điền số TK VietQR; ghi vào **Chính sách người bán** rằng số điện thoại + tên chủ ví MoMo công khai ở trang thanh toán (chưa sửa văn bản trong CMS); `order_pending_manual` chưa có `methodLabel` (KB-Audit §43).
+- **Chưa làm:** email cho giao dịch UNMATCHED và cho giao dịch khớp nhưng quá 24 giờ sau hạn đơn; kiểm trường payload MoMo.
+- **Còn mở:** commit/deploy; chạy runbook SePay thật (giao dịch nhỏ, lưu cấu hình 2 lần — ADR-013); SMTP thật; **hạn đơn chờ thanh toán trong beta (60 phút hay 24 giờ) chưa chốt**; các điểm KB-Audit §41 chờ Quốc quyết.
+- **Test:** assert thêm trong case có sẵn (`sepay.test.ts`, `order.test.ts`, `subscription-billing.test.ts`) — `pnpm test:count` vẫn **100/66**.
+- **Tài liệu:** bản trích `01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md` (≙ ADR-059, §3.6 cho B3), `02-System-Specs/Payment-And-Billing.md` §2, §3, §5F–§5J, runbook `04-Operations-Runbooks/MoMo-Manual-Verification-Runbook.md`, `03-API-Contracts/Endpoint-Directory.md` §28.5, KB-Audit §43, `02-System-Specs/Order-State-Machine.md` §3.10–§3.11, `02-System-Specs/Audit-Log-Specs.md` §4, `03-API-Contracts/Endpoint-Directory.md` §9, §28, `03-API-Contracts/Database-Schema-Reference.md`, runbook mới `04-Operations-Runbooks/SePay-Live-Test-Runbook.md`, `00-Index/KB-Audit-2026-09-26.md` §41.
+
+## Trang tuỳ chỉnh hiển thị Markdown + `{brand}` (ADR-060) — xong code, chưa commit; không migration — 2026-10-26
+
+**Chủ dự án chốt 2026-10-26 (ADR-060, phương án a).**
+
+- Khối `richText` của `/p/[slug]` render Markdown GFM ở server (`apps/web/lib/cms-markdown.ts`, thư viện `marked`): tiêu đề, đậm/nghiêng, danh sách, bảng, liên kết, trích dẫn. Không HTML thô (escape thành chữ), không ảnh.
+- Làm sạch bằng `sanitizeRichTextHtml` + `trustedLinks`, tuỳ chọn mới `allowTables` (`packages/core/src/content/sanitize-html.ts`, chỉ trang tuỳ chỉnh bật); thay `{brand}` sau khi sanitize.
+- Xuống dòng: nội dung có tiêu đề/bảng → xuống dòng đơn nối thành đoạn; không có → mỗi xuống dòng thành `<br>` (nội dung chữ thuần cũ hiển thị như trước).
+- CSS bảng trong rich text (Phong, `globals.css`): cuộn ngang ngay trên `table`, ô tối thiểu 8em, dòng tiêu đề nền `#f5eedd`, bản in về bảng thường. Rủi ro: vùng cuộn chưa có `tabindex`.
+- 3 dự thảo hướng dẫn khách hàng `docs/du-thao-huong-dan/` (đăng ký, kích hoạt, mua và tải) dùng `{brand}`; trang mua viết theo ADR-061, chưa đăng được khi còn dấu [CHƯA CÓ — ADR-061].
+- **Test:** assert thêm trong `sanitize-html.test.ts` — `pnpm test:count` vẫn **100/66**.
+- **Còn mở:** commit/deploy; thử trình duyệt 3 dự thảo; phạm vi luật in bảng ở trang tuỳ chỉnh (KB-Audit §42 mục 1).
+- **Tài liệu:** bản trích `01-Architecture-Decisions/ADR-045-Custom-Page-Markdown-Brand-Token.md` (≙ ADR-060), `02-System-Specs/System-Cms-Menu-Home-Seo-Specs.md` §4A, `04-Operations-Runbooks/UI-Design-System.md` §3.1, `00-Index/KB-Audit-2026-09-26.md` §42.
+
+## Luồng mua của khách: đơn chờ thanh toán, thông báo, email (ADR-061) — đã chốt, chưa triển khai — 2026-10-26
+
+**Chủ dự án chốt 2026-10-26 (ADR-061 + "Chốt tiếp").** Phân tích: `docs/phan-tich-gio-hang-don-cho-48h-2026-10-26.md` (Hiếu).
+
+- ⬜ Chỉ nút "Mua ngay"; không Giỏ hàng; mỗi đơn 1 tài liệu, hoàn cả đơn.
+- ⬜ Mua không cần đăng ký trước: Họ tên + Email + ô xác nhận → tự tạo tài khoản, thanh toán và tải ngay trên phiên đó; email "Kích hoạt tài khoản và đặt mật khẩu" (token một lần, lưu hash); email đã có tài khoản → yêu cầu đăng nhập; rate limit tạo tài khoản/gửi email. Thay một phần ADR-053.
+- ⬜ Hạn giữ đơn: thủ công (ngân hàng, MoMo) 72 giờ, SePay 48 giờ; không cửa sổ xác nhận trễ 24 giờ; giao dịch SePay đến sau hạn hiện ở "Giao dịch cần xử lý".
+- ⬜ Danh sách "Đơn chờ thanh toán" + thông báo header khu vực Tài khoản; email khách lúc chọn cổng + 1 lần nhắc khi còn ≤ 24 giờ; email thanh toán thành công có nút "Tải tài liệu" về Thư viện.
+- ⬜ Khách đổi được phương thức thanh toán; email người bán chống sót/trùng (cột đánh dấu trên `orders`, migration nhỏ — Quốc duyệt); người bán chỉ nhận email khi đơn thủ công chờ xác nhận và khi thanh toán thành công.
+- ⬜ Giới hạn mã giảm giá "mỗi khách" tính cả đơn chờ còn hiệu lực.
+- **Còn mở:** MoMo thủ công chờ kiểm thử thật; spec `Order-State-Machine`/`Auth-Session-Specs` chỉ sửa khi có code.
+- **Tài liệu:** bản trích `01-Architecture-Decisions/ADR-046-Customer-Purchase-Flow-Pending-Orders-Notifications.md` (≙ ADR-061, đã chốt chưa triển khai), `00-Index/KB-Audit-2026-09-26.md` §42.
 
 ## Integration test không ghi cấu hình dùng chung + form cấu hình thanh toán (2026-10-24 → 25)
 

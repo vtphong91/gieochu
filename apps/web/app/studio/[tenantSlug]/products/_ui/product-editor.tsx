@@ -16,7 +16,9 @@ import {
   updateProductAction,
   type ProductActionState,
 } from "../actions";
-import { ConfigCard, SelectField, TextField } from "../../../../admin/_ui/kit";
+import { SelectField, TextField } from "../../../../admin/_ui/kit";
+import { CollapsibleSection, revealSection, sectionStatus, type SectionStatus } from "../../../../admin/_ui/collapsible-section";
+import { useUnsavedChanges } from "../../../../admin/_ui/unsaved-changes";
 import { IconAlertTriangle, IconCard, IconCheckCircle, IconDoc, IconExternalLink, IconEye, IconPackage, IconTag } from "../../../../admin/_ui/icons";
 import { DeliverySourcesCard, type EditorFile, type EditorLink, type EnsureProductResult } from "./delivery-sources";
 import { CoverImageCard } from "./cover-image-card";
@@ -57,6 +59,26 @@ const FIELD_LABEL: Record<string, string> = {
  * không phải dữ liệu sản phẩm nên không tính.
  */
 const PRODUCT_FIELDS = new Set(Object.keys(FIELD_LABEL).filter((key) => key !== "rightsConfirmed"));
+
+/**
+ * ADR-058 (task 2.3a): khối thu gọn → field. Dùng để đếm lỗi/"có thay đổi" theo khối và mở đúng khối khi bấm link trong
+ * tóm tắt lỗi. Ảnh đại diện, Tệp tài liệu (component riêng) và card Xuất bản KHÔNG thu gọn.
+ */
+const SECTION_FIELDS = {
+  "tai-lieu-thong-tin": ["title", "slug", "summary", "description"],
+  "tai-lieu-gia": ["priceVnd", "salePriceVnd", "saleStartsAt", "saleEndsAt"],
+  "tai-lieu-danh-muc": ["categoryId", "type"],
+  "tai-lieu-the": ["tags"],
+  "tai-lieu-luot-tai": ["downloadLimit"],
+} as const satisfies Record<string, readonly string[]>;
+type SectionId = keyof typeof SECTION_FIELDS;
+
+function sectionOfField(field: string): SectionId | null {
+  for (const [id, fields] of Object.entries(SECTION_FIELDS) as [SectionId, readonly string[]][]) {
+    if (fields.includes(field)) return id;
+  }
+  return null;
+}
 
 /** ADR-038 mục 7: thông điệp khi bấm Xuất bản mà chưa tích ô cam kết bản quyền. */
 const RIGHTS_REQUIRED_MESSAGE = "Hãy tích ô cam kết bản quyền trước khi xuất bản.";
@@ -131,7 +153,7 @@ function countChars(value: string): number {
 
 /**
  * Editor Tạo/Sửa sản phẩm dùng chung (ADR-026 §5 + ADR-027). Bố cục:
- * - ≥ xl: khung tối đa 1440px căn giữa vùng làm việc; cột chính `minmax(0,1fr)` (Thông tin → Giá → Ảnh → Tệp) +
+ * - ≥ xl: full width theo khung app (quy tắc 2026-10-25); cột chính `minmax(0,1fr)` (Thông tin → Giá → Ảnh → Tệp) +
  *   sidebar 360px sát phải. Card xuất bản (PublishCard: hiển thị → checklist → trạng thái lưu → nút) đứng đầu
  *   sidebar và dính khi cuộn; các card thuộc tính còn lại cuộn bình thường (trượt dưới card xuất bản).
  * - < xl: 1 cột; card xuất bản ở CUỐI form (đúng trình tự điền → lưu), kèm thanh lưu nhanh dính đáy chỉ hiện khi
@@ -195,6 +217,15 @@ export function ProductEditor(props: EditorProps) {
   const moderationLock = product?.moderationLock ?? null;
 
   const [dirty, setDirty] = useState(false);
+  // ADR-058 (task 2.3a): field đã sửa kể từ lần lưu gần nhất — CHỈ để hiện badge "Có thay đổi" theo khối. `dirty` vẫn là
+  // nguồn sự thật (lưu/tự lưu nháp dựa vào nó); tập này tự xoá khi `dirty` về false nên không phải sửa các chỗ setDirty(false).
+  const [changedFields, setChangedFields] = useState<ReadonlySet<string>>(() => new Set());
+  const [prevDirty, setPrevDirty] = useState(dirty);
+  if (dirty !== prevDirty) {
+    setPrevDirty(dirty);
+    if (!dirty) setChangedFields(new Set());
+  }
+  const touchField = (name: string) => setChangedFields((prev) => (prev.has(name) ? prev : new Set(prev).add(name)));
   const [pendingKey, setPendingKey] = useState<SubmitIntent["key"] | null>(null);
   const [summaryText, setSummaryText] = useState(product?.summary ?? "");
   const [description, setDescription] = useState(product?.description ?? "");
@@ -281,15 +312,12 @@ export function ProductEditor(props: EditorProps) {
     if (draftState && (draftState.fieldErrors || draftState.error)) summaryRef.current?.focus();
   }, [draftState]);
 
-  // Cảnh báo khi rời trang còn thay đổi chưa lưu hoặc còn file đang tải.
-  useEffect(() => {
-    if (!dirty && !uploading) return;
-    const handler = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-    };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [dirty, uploading]);
+  // Cảnh báo khi rời trang còn thay đổi chưa lưu hoặc còn file đang tải — provider của layout (ADR-058 mục 5): beforeunload
+  // chung + chặn điều hướng client (sidebar, tab, "Về trang chủ").
+  useUnsavedChanges(
+    dirty || uploading,
+    uploading ? "Còn file đang tải lên — rời trang sẽ dừng tải. Vẫn rời trang?" : "Tài liệu có thay đổi chưa lưu. Rời trang và bỏ thay đổi?",
+  );
 
   // Thanh lưu nhanh (< xl) ẩn khi khối nút của card xuất bản đang trong tầm nhìn — tránh hai nút Lưu cạnh nhau.
   useEffect(() => {
@@ -435,7 +463,10 @@ export function ProductEditor(props: EditorProps) {
 
   function markDirty(target: EventTarget) {
     const el = target as HTMLInputElement;
-    if (el.form === formRef.current && PRODUCT_FIELDS.has(el.name)) setDirty(true);
+    if (el.form === formRef.current && PRODUCT_FIELDS.has(el.name)) {
+      setDirty(true);
+      touchField(el.name);
+    }
     if (titleGate && el.name === "title" && el.value.trim() !== "") setTitleGate(false);
   }
 
@@ -447,6 +478,19 @@ export function ProductEditor(props: EditorProps) {
   const titleError = fieldErrors.title ?? (titleGate ? TITLE_GATE_MESSAGE : undefined);
   const priceNumber = Number(price);
   const inactiveCategory = isEdit && props.currentCategory && !props.currentCategory.isActive ? props.currentCategory : null;
+
+  // Badge từng khối thu gọn: "N lỗi" > "Có thay đổi" > tóm tắt giá trị (thấy được cả khi thu gọn).
+  const sectionErrors = (id: SectionId) => SECTION_FIELDS[id].filter((field) => fieldErrors[field]).length;
+  const sectionDirty = (id: SectionId) => dirty && SECTION_FIELDS[id].some((field) => changedFields.has(field));
+  const blockStatus = (id: SectionId, summary?: SectionStatus): SectionStatus => {
+    const errors = sectionErrors(id);
+    if (errors > 0 || sectionDirty(id) || !summary) return sectionStatus({ errorCount: errors, dirty: sectionDirty(id) });
+    return summary;
+  };
+  const priceSummary: SectionStatus | undefined =
+    Number.isFinite(priceNumber) && price !== "" ? { tone: "neutral", label: priceNumber === 0 ? "Miễn phí" : `${vnd.format(priceNumber)} ₫` } : undefined;
+  const categoryName = categories.find((c) => c.id === categoryId)?.name ?? (inactiveCategory?.id === categoryId ? inactiveCategory.name : undefined);
+  const categorySummary: SectionStatus = categoryName ? { tone: "neutral", label: categoryName } : { tone: "warning", label: "Chưa chọn danh mục" };
   const creatingDraft = draftPhase === "creating";
   const busy = isPending || statusPending || creatingDraft;
   const hasResult = Object.keys(state).length > 0;
@@ -583,7 +627,8 @@ export function ProductEditor(props: EditorProps) {
       className="studio-editor"
       aria-label={isEdit ? "Sửa sản phẩm" : "Tạo sản phẩm"}
     >
-      <div className="mx-auto max-w-[1440px]">
+      {/* Full width theo khung app (chủ dự án chốt 2026-10-25 — không giới hạn bề ngang nội dung chính). */}
+      <div>
         {header}
 
         {noticeBanner ? <div className="mt-6">{noticeBanner}</div> : null}
@@ -606,7 +651,15 @@ export function ProductEditor(props: EditorProps) {
                 {errorEntries.map(([field, message]) => (
                   <li key={field}>
                     {FIELD_LABEL[field] ? (
-                      <a href={`#${field}`} className="underline underline-offset-2">
+                      <a
+                        href={`#${field}`}
+                        className="underline underline-offset-2"
+                        onClick={() => {
+                          // Mở khối chứa ô (đồng bộ) trước khi trình duyệt nhảy tới ô — ô trong khối thu gọn đang `hidden`.
+                          const section = sectionOfField(field);
+                          if (section) revealSection(section);
+                        }}
+                      >
                         {FIELD_LABEL[field]}: {message}
                       </a>
                     ) : (
@@ -622,10 +675,14 @@ export function ProductEditor(props: EditorProps) {
         <div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-8">
           {/* Cột chính: Thông tin → Giá → Ảnh → Tệp */}
           <div className="min-w-0 space-y-6">
-            <ConfigCard
+            <CollapsibleSection
+              id="tai-lieu-thong-tin"
+              defaultOpen
               icon={<IconPackage className="h-5 w-5" />}
               title="Thông tin tài liệu"
               description={isEdit ? undefined : "Có thể sửa lại mọi thứ sau khi lưu."}
+              status={blockStatus("tai-lieu-thong-tin")}
+              errorCount={sectionErrors("tai-lieu-thong-tin")}
             >
               <div className="space-y-4">
                 <TextField
@@ -724,6 +781,7 @@ export function ProductEditor(props: EditorProps) {
                     onChange={(html) => {
                       setDescription(html);
                       setDirty(true);
+                      touchField("description");
                     }}
                     placeholder="Nội dung tài liệu, dành cho ai, định dạng file, cách sử dụng..."
                     imageUpload={descriptionImageUpload}
@@ -735,12 +793,17 @@ export function ProductEditor(props: EditorProps) {
                   </p>
                 ) : null}
               </div>
-            </ConfigCard>
+            </CollapsibleSection>
 
-            <ConfigCard
+            {/* Trang Tạo mở sẵn: giá mặc định 0 = miễn phí, ẩn đi dễ xuất bản nhầm tài liệu miễn phí. */}
+            <CollapsibleSection
+              id="tai-lieu-gia"
+              defaultOpen={!isEdit}
               icon={<IconCard className="h-5 w-5" />}
               title="Giá & khuyến mãi"
               description="Số nguyên, đơn vị đồng, không dấu chấm. Giá gốc 0 = miễn phí."
+              status={blockStatus("tai-lieu-gia", priceSummary)}
+              errorCount={sectionErrors("tai-lieu-gia")}
             >
               <div className="grid gap-4 md:grid-cols-2">
                 <TextField
@@ -801,7 +864,7 @@ export function ProductEditor(props: EditorProps) {
                   Để trống thời gian = áp dụng ngay và không hết hạn.
                 </p>
               </fieldset>
-            </ConfigCard>
+            </CollapsibleSection>
 
             <CoverImageCard
               tenantSlug={tenantSlug}
@@ -839,7 +902,13 @@ export function ProductEditor(props: EditorProps) {
           {/* Sidebar: DOM = [thuộc tính..., xuất bản] (điền rồi mới lưu); ≥ xl card xuất bản lên đầu (không dính khi cuộn — ADR-030). */}
           <aside aria-label="Thuộc tính và xuất bản tài liệu" className="flex min-w-0 flex-col gap-6">
             <div className="space-y-6">
-              <ConfigCard icon={<IconTag className="h-5 w-5" />} title="Danh mục & loại">
+              <CollapsibleSection
+                id="tai-lieu-danh-muc"
+                icon={<IconTag className="h-5 w-5" />}
+                title="Danh mục & loại"
+                status={blockStatus("tai-lieu-danh-muc", categorySummary)}
+                errorCount={sectionErrors("tai-lieu-danh-muc")}
+              >
                 {inactiveCategory ? (
                   <WarningNote title="Danh mục hiện tại đã ngừng hoạt động">
                     “{inactiveCategory.name}” không còn được dùng. Hãy chọn danh mục khác thì mới lưu
@@ -874,21 +943,36 @@ export function ProductEditor(props: EditorProps) {
                     </option>
                   ))}
                 </SelectField>
-              </ConfigCard>
+              </CollapsibleSection>
 
-              <ConfigCard icon={<IconTag className="h-5 w-5" />} title="Thẻ">
+              <CollapsibleSection
+                id="tai-lieu-the"
+                icon={<IconTag className="h-5 w-5" />}
+                title="Thẻ"
+                status={blockStatus("tai-lieu-the")}
+                errorCount={sectionErrors("tai-lieu-the")}
+              >
                 <TagInput
                   id="tags"
                   name="tags"
                   label="Cấp học, môn học, chủ đề"
                   initial={product?.tags ?? []}
-                  onChange={() => setDirty(true)}
+                  onChange={() => {
+                    setDirty(true);
+                    touchField("tags");
+                  }}
                   error={fieldErrors.tags}
                   hint="Nhấn Enter hoặc dấu phẩy để thêm thẻ."
                 />
-              </ConfigCard>
+              </CollapsibleSection>
 
-              <ConfigCard icon={<IconDoc className="h-5 w-5" />} title="Giới hạn lượt tải">
+              <CollapsibleSection
+                id="tai-lieu-luot-tai"
+                icon={<IconDoc className="h-5 w-5" />}
+                title="Giới hạn lượt tải"
+                status={blockStatus("tai-lieu-luot-tai")}
+                errorCount={sectionErrors("tai-lieu-luot-tai")}
+              >
                 <TextField
                   id="downloadLimit"
                   name="downloadLimit"
@@ -906,10 +990,11 @@ export function ProductEditor(props: EditorProps) {
                       : "0 = không giới hạn. Tối đa 1000. Áp dụng cho cả file và link."
                   }
                 />
-              </ConfigCard>
+              </CollapsibleSection>
 
               {productId ? (
-                <ConfigCard
+                <CollapsibleSection
+                  id="tai-lieu-link-chia-se"
                   icon={<IconExternalLink className="h-5 w-5" />}
                   title="Link chia sẻ private"
                   description="Tạo link tải riêng cho một người, không cần đăng nhập."
@@ -921,7 +1006,7 @@ export function ProductEditor(props: EditorProps) {
                   >
                     Quản lý link chia sẻ <IconExternalLink className="h-3.5 w-3.5" />
                   </Link>
-                </ConfigCard>
+                </CollapsibleSection>
               ) : null}
             </div>
 

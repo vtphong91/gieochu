@@ -22,5 +22,10 @@ describe("ADR-028 rich text sanitizer image policy", () => {
 
     // Chưa cấu hình Cloudinary hệ thống → không ảnh nào qua được.
     expect(sanitizeRichTextHtml(html, { imageCloudName: null })).toBe("<p>Mở đầu</p>");
+
+    // ADR-060: bảng chỉ giữ khi `allowTables` (trang tuỳ chỉnh), và không giữ thuộc tính nào.
+    const table = `<table><tr><td align="center" onclick="x()" style="color:red">Ô</td></tr></table>`;
+    expect(sanitizeRichTextHtml(table, { imageCloudName: null })).toBe("Ô");
+    expect(sanitizeRichTextHtml(table, { imageCloudName: null, allowTables: true })).toBe("<table><tr><td>Ô</td></tr></table>");
   });
 });

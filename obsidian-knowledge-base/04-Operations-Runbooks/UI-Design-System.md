@@ -5,7 +5,7 @@ tags:
   - design-system
   - status/living
 date: 2026-05-24
-updated: 2026-10-25
+updated: 2026-10-26
 author: System Architect
 ---
 
@@ -153,6 +153,26 @@ sai lúc tải trang, không cần JS runtime nào khác.
 - Component trong `kit.tsx` áp heading font qua class Tailwind arbitrary value:
   `font-[family-name:var(--font-heading)]` (xem `AdminPageHeader`, `ConfigCard`, `TableCard`, `EmptyState`).
 
+### 3.1. Nội dung rich text `.gieochu-rich-content` — bảng (ADR-060) ✅ đọc `git diff apps/web/app/globals.css` 2026-10-26 (chưa commit)
+
+Quyết định thiết kế của Phong (brief Quốc 2026-10-26). Bảng chỉ xuất hiện ở trang tuỳ chỉnh `/p/[slug]` (Markdown → `table/thead/tbody/tr/th/td` trần,
+không thuộc tính — [[02-System-Specs/System-Cms-Menu-Home-Seo-Specs|System-Cms-Menu-Home-Seo-Specs]] §4A); trang dùng `gieochu-rich-content
+gieochu-legal-content` (typography trang pháp lý §22.3). CSS ở `apps/web/app/globals.css`.
+
+- **Cuộn ngang khi hẹp:** đặt thẳng trên thẻ `table` — `display: block`, `overflow-x: auto`, `max-width: 100%` — **không** dùng wrapper. Bảng rộng chỉ cuộn
+  trong khung, trang không cuộn ngang. `border-collapse: collapse`, `margin: 1em 0`, chữ cỡ đoạn văn (`1em`), `line-height: 1.55`.
+- **Ô (`th`, `td`):** rộng tối thiểu **8em** (bảng 3 cột ≈ 26em → cuộn ở 375px, vừa ở cột 768px); `padding: 0.5em 0.75em`; viền **1px** màu line **`#e7dfc9`**;
+  căn trái, `vertical-align: top`; phần tử đầu/cuối trong ô bỏ margin.
+- **Dòng tiêu đề (`th`):** nền backgroundAlt **`#f5eedd`**, chữ ink **`#12213a`**, đậm **650** (tương phản ≈ 14:1 theo comment code; khác biệt bằng nền + độ
+  đậm, không chỉ màu).
+- **Ngắt chữ trong ô:** `overflow-wrap: break-word` — **ghi đè** `anywhere` của `.gieochu-legal-content` (với `anywhere`, min-content của ô còn 1 ký tự, bảng bị
+  bóp thay vì cuộn).
+- **Khi in (`@media print`):** bảng trở về `display: table`, `width: 100%`, `overflow: visible`; ô viền đen `#000`, nền trắng, `min-width: 0`; **không ngắt trang
+  giữa một hàng** (`tr` `break-inside: avoid`).
+  - Lưu ý phạm vi ✅ code: luật viền đen/nền trắng của ô và không ngắt hàng nằm dưới selector `.legal-doc .gieochu-legal-content` (trang văn bản pháp lý); trên
+    trang tuỳ chỉnh `/p/[slug]` (không có `.legal-doc`) chỉ luật `display: table` / `width: 100%` áp dụng — KB-Audit §42.
+- **Rủi ro còn treo:** vùng cuộn (`table`) **chưa có `tabindex`** → trên Safari có thể không cuộn được bằng bàn phím ❓ (chưa thử).
+
 ---
 
 ## 4. Độ Rộng Layout & Container (ADR-024)
@@ -200,8 +220,8 @@ Mẫu trên phản ánh cách `apps/web/app/_home-sections.tsx` đang viết (se
 ### 4.4. Ngoại lệ — app shell có sidebar
 
 Khu vực `/admin/*`, `/studio/*`, `/account/*` **không** dùng `container-page` ở mức trang: vùng làm việc fluid theo
-sidebar. Nội dung dạng đọc/form bên trong vẫn có thể dùng `container-prose`/`container-narrow` hoặc `max-w-*` của
-kit admin (§5). Nguồn: ADR-024. Ba shell cùng sidebar 288px và khung nội dung `px-5 py-8 lg:px-8` ✅ — khác chỗ đặt: Studio/System
+sidebar. Nguồn: ADR-024. **Từ 2026-10-25** (chủ dự án chốt): nội dung chính `/admin`, `/studio` luôn **full width**, khối xếp 1 cột, không
+`max-w-*` ở khung form/editor — `max-w` chỉ ở cấp component (quy tắc ở §5). `/account` không thuộc phạm vi quy tắc này (giữ mẫu §18.5). Ba shell cùng sidebar 288px và khung nội dung `px-5 py-8 lg:px-8` ✅ — khác chỗ đặt: Studio/System
 Center đặt padding này ở **từng trang** (`<main>` của layout không padding), còn `/account` đặt ngay trên `<main>` của
 `AccountShell` nên trang con không tự đặt. `/account` đồng bộ 2026-10-23 và có mẫu "form trong trang fluid" bằng container
 query — xem §18.5.
@@ -263,8 +283,8 @@ module that depends on useState into a Server Component module".
 | Component | Vai trò |
 | :--- | :--- |
 | `AdminPageHeader` | Tiêu đề trang + mô tả + khối hành động bên phải — dùng ở đầu mọi trang cấu hình/CMS |
-| `SettingsGrid` | Grid nhiều `ConfigCard` xếp ngang, `auto-fit` tránh khoảng trắng chết. ⚠️ Cột `minmax(380px, 960px)` → **cuộn ngang ở viewport 375px** ✅ (đọc code; BACKLOG). Trang "Cấu hình chung" không dùng component này (lưới riêng `xl:grid-cols-2`) |
-| `MainAsideGrid` | (ADR-026) Bố cục 2 cột `main` + `aside` (`aside` có `aria-label` qua `asideLabel`): 1 cột dưới `xl`, từ `xl` là `minmax(0,1fr) 320px`, `items-start`, `gap-6` ✅. Editor sản phẩm **không** dùng component này — tự dựng lưới riêng `minmax(0,1fr) 360px` trong `<form>`, khung 1440px (§9.1) |
+| `SettingsGrid` | Từ 2026-10-25 (Quốc sửa tận gốc theo quy tắc full width bên dưới): `mt-6 grid grid-cols-1 gap-6` — **1 cột, full width** ✅ đọc `kit.tsx`. Trước đây là lưới `auto-fit` cột `minmax(380px, 960px)` (gây cuộn ngang ở 375px — lỗi này hết cùng bản sửa). Component còn trong kit nhưng **không trang nào dùng nữa** ✅ grep (System Center bỏ ở task 1.15, share-links ở 2.3b, coupons bỏ import ở 2.6; Lưu trữ file không dùng). Trang mới: xếp khối trực tiếp, không cần bọc |
+| `MainAsideGrid` | (ADR-026) Bố cục 2 cột `main` + `aside` (`aside` có `aria-label` qua `asideLabel`): 1 cột dưới `xl`, từ `xl` là `minmax(0,1fr) 320px`, `items-start`, `gap-6` ✅. Editor sản phẩm **không** dùng component này — tự dựng lưới riêng `minmax(0,1fr) 360px` trong `<form>`, nay full width (đã bỏ khung 1440px, task 2.3a — §9.1) |
 | `ConfigCard` | Card cấu hình 1 module: icon + tiêu đề + badge trạng thái + toggle bên phải + nội dung + footer |
 | `TableCard` | Card bọc 1 bảng tham khảo — icon + tiêu đề + mô tả, không có toggle (khác `ConfigCard`) |
 | `Badge` | Huy hiệu trạng thái, 5 tone: `success` / `warning` / `danger` / `neutral` / `info` |
@@ -278,15 +298,26 @@ module that depends on useState into a Server Component module".
 | `EmptyState` | Trạng thái rỗng: icon + tiêu đề + mô tả + hành động gợi ý |
 | `PillTabs` | (ADR-056) Tab dạng pill bằng link GET — **lọc/góc nhìn của cùng một danh sách** trong một trang (§24.1). Không dùng để gom các trang khác nhau (dùng `ModuleTabs`, §25) |
 
-**Component dùng chung ngoài `kit.tsx`** (ADR-058 GĐ 0 + GĐ 1, client component, file riêng trong `apps/web/app/admin/_ui/`) ✅ đọc code 2026-10-25 (chưa commit) — chi tiết §25:
+**Quy tắc bố cục full width** (chủ dự án chốt 2026-10-25 🟡 brief Quốc + kế hoạch ADR-058 mục "Quy tắc bố cục"; trạng thái code ✅ grep 2026-10-25):
+* Nội dung chính trong **System Center và Studio luôn full width theo khung app**, đồng bộ toàn hệ thống. **Không** giới hạn bề ngang form/editor bằng
+  `max-w-*`/`mx-auto` ở khung trang; **không** xếp card thành lưới nhiều cột khiến card chỉ chiếm nửa màn hình. Các khối xếp **1 cột**; cột phụ bên phải chỉ
+  dùng khi có lý do (editor tài liệu/bài viết, `MainAsideGrid`).
+* **Được** giữ `max-w`/`mx-auto` ở **cấp component**: độ rộng ô nhập ngắn, ô bảng, khối lỗi/trạng thái trống ở giữa, đoạn mô tả dưới tiêu đề (dòng chữ dễ đọc).
+* Đã áp: `SettingsGrid` thành 1 cột (sửa ở gốc); bỏ `mx-auto max-w-[1440px]` ở `post-editor.tsx` (2 chỗ) và `max-w-7xl mx-auto` ở `admin/settings/storage/page.tsx`
+  (Quốc); bỏ `max-w-[1440px]` ở `product-editor.tsx`/`editor-skeleton.tsx` (2.3a); trang Cài đặt + Thanh toán Studio và Cấu hình thanh toán System Center
+  (Quốc) ✅ grep không còn `max-w-[1440px]`/`max-w-7xl`/`max-w-5xl` ở các file này. `max-w`/`mx-auto` còn lại trong `admin/**`, `studio/**` đều ở cấp component 🟡 (theo
+  rà của Phong, Long chỉ kiểm các file trên).
+* Không mâu thuẫn ADR-024 (§4.4 — app shell fluid theo sidebar); quy tắc này siết thêm: bỏ cả giới hạn bề ngang ở cấp form/editor.
+
+**Component dùng chung ngoài `kit.tsx`** (ADR-058 GĐ 0–2, client component, file riêng trong `apps/web/app/admin/_ui/`) ✅ đọc code 2026-10-25 (chưa commit) — chi tiết §25:
 
 | Component (file) | Vai trò |
 | :--- | :--- |
-| `ModuleTabs` (`module-tabs.tsx`) | Tab ngang đầu trang gom **các trang con cùng một chức năng** (mỗi tab một URL). `<nav>` + link `aria-current="page"`, không `tablist`, không dropdown. Dùng ở nhóm **Trang CMS** (task 1.1) và **Cấu hình chung** (task 1.7) — §12.6 |
+| `ModuleTabs` (`module-tabs.tsx`) | Tab ngang đầu trang gom **các trang con cùng một chức năng** (mỗi tab một URL). `<nav>` + link `aria-current="page"`, không `tablist`, không dropdown. Dùng ở nhóm **Trang CMS** (task 1.1), **Cấu hình chung** (task 1.7) — §12.6 — và **Cài đặt** Studio (task 2.1) — §11.1 |
 | `InPageTabs` (`in-page-tabs.tsx`) — GĐ 1 | Tab ARIA thật **trong một trang** (không đổi URL), kiểu pill; **mọi panel luôn mounted**. Dùng ở SMTP và Nhận diện thương hiệu — §25.6 |
-| `CollapsibleSection` + `sectionStatus()` + `revealSection()` (`collapsible-section.tsx`) | Khối thu gọn kiểu section Rank Math (tiêu đề + badge trạng thái có chữ + chevron); `status` nhận một hoặc **mảng** badge. Đã áp ở GĐ 1 cho 9 trang System Center — bảng §25.3 |
-| `useFormDraft` (`use-form-draft.ts`, hook) — GĐ 1 | Giữ giá trị đã nhập khi **lưu lỗi** cho form không kiểm soát + `useActionState`; không ghi lại secret; cờ "có thay đổi" — §25.7 |
-| `UnsavedChangesProvider`, `useUnsavedChanges`, `useLeaveGuard`, `GuardedLink` (`unsaved-changes.tsx`) | Cảnh báo rời trang khi còn thay đổi chưa lưu — `beforeunload` chung + chặn điều hướng client qua `onNavigate` của `next/link`. Provider đã bọc ở layout `/admin` và `/studio/{slug}` |
+| `CollapsibleSection` + `sectionStatus()` + `revealSection()` (`collapsible-section.tsx`) | Khối thu gọn kiểu section Rank Math (tiêu đề + badge trạng thái có chữ + chevron); `status` nhận một hoặc **mảng** badge. Đã áp ở GĐ 1 cho 9 trang System Center và GĐ 2 cho 5 form/editor Studio (thanh toán, tài liệu, bài viết, mã giảm giá…) — bảng §25.3 |
+| `useFormDraft` (`use-form-draft.ts`, hook) — GĐ 1, mở rộng GĐ 2 | Giữ giá trị đã nhập khi **lưu lỗi** cho form không kiểm soát + `useActionState`; không ghi lại secret (`secretNames`); `failed`, `keepOnSuccess`, `dirtyOf`, trả `values`; hỗ trợ nhóm checkbox cùng tên — §25.7 |
+| `UnsavedChangesProvider`, `useUnsavedChanges`, `useLeaveGuard`, `GuardedLink` (`unsaved-changes.tsx`) | Cảnh báo rời trang khi còn thay đổi chưa lưu — `beforeunload` chung + chặn điều hướng client qua `onNavigate` của `next/link`. Provider bọc ở layout `/admin`, `/studio/{slug}` và trang onboarding `/studio` (nằm ngoài layout Studio) |
 | `navMatchLength`, `pickActiveHref` (`nav-match.ts`, không phải component) | Luật chọn mục sidebar đang sáng, có trường `match` (§25.5) |
 
 **Quy tắc bắt buộc khi thêm trang quản trị mới** (System Center hoặc Studio): tái dùng các component trên
@@ -498,7 +529,9 @@ layout gửi **key chuỗi** (`icon: "grid"`), Client Component giữ bảng `NA
 
 - Thanh trạng thái **sticky** đầu vùng cuộn, `aria-live="polite"`, dùng `Badge`: **Đã xuất bản** (success) hoặc
   "Chưa xuất bản · đang dùng nội dung mẫu" (neutral); **Đang có bản nháp chưa xuất bản** (warning); **Có thay đổi
-  chưa lưu** (info — so snapshot JSON, kèm cảnh báo `beforeunload`).
+  chưa lưu** (từ task 2.5: `warning` — sắc chung mọi thanh nút, §25.3; so snapshot JSON; cảnh báo rời trang qua `useUnsavedChanges`, §25.4) ✅ đọc code.
+- Task 2.5 (ADR-058): **không** dùng accordion — list-detail chỉ hiện 1 section; "Đánh giá ghim"/"Tài liệu nổi bật" đổi hành vi hiển thị nên không giấu
+  (lý do §25.3). Trang bọc `<div>` (bỏ `<main>` lồng).
 - Nút: Xem trang (tab mới, sr-only ghi rõ "hiển thị bản đã xuất bản") · Khôi phục bản đang hiển thị (`window.confirm`,
   tắt khi không có nháp) · Lưu nháp · Xuất bản.
 - Banner vàng khi chưa xuất bản ("khách không thấy phần đánh giá mẫu"); banner xám khi Cloudinary chưa sẵn sàng.
@@ -519,8 +552,10 @@ layout gửi **key chuỗi** (`icon: "grid"`), Client Component giữ bảng `NA
 ### 9.1. Bố cục editor: cột chính + sidebar, card xuất bản đứng đầu (không dính — ADR-030) ✅
 
 - Trang Tạo và Sửa dùng chung `ProductEditor` (`_ui/product-editor.tsx`). Toàn trang là **một `<form class="studio-editor">`**
-  (`aria-label` "Tạo sản phẩm"/"Sửa sản phẩm"), bên trong khung `mx-auto max-w-[1440px]` căn giữa vùng làm việc (app
-  shell Studio — ngoại lệ §4.4; skeleton `editor-skeleton.tsx` dùng cùng khung).
+  (`aria-label` "Tạo sản phẩm"/"Sửa sản phẩm"), **full width** theo khung app (task 2.3a bỏ khung `mx-auto max-w-[1440px]` cũ,
+  cả ở skeleton `editor-skeleton.tsx` — quy tắc §5) ✅ grep. ⚠️ Comment đầu `product-editor.tsx` còn ghi "khung tối đa 1440px" (cũ, KB-Audit §40).
+- **Accordion (task 2.3a, ADR-058; "Bổ sung ADR-058" (b) — giữ bố cục 2 cột, không thêm tab):** các khối Thông tin / Giá / Danh mục & loại / Thẻ / Lượt
+  tải / Link chia sẻ là `CollapsibleSection`; Ảnh đại diện, Tệp tài liệu, card Xuất bản **không thu gọn** — chi tiết bảng §25.3.
 - **≥ xl:** lưới `xl:grid-cols-[minmax(0,1fr)_360px]` (`gap-6`, `xl:gap-8`). **Cột chính** theo thứ tự: Thông tin tài liệu
   (tiêu đề, đường dẫn, mô tả ngắn, mô tả Tiptap) → **Giá & khuyến mãi** → **Ảnh đại diện** (`CoverImageCard`) → **Tệp tài
   liệu** (`DeliverySourcesCard`). **Sidebar 360px:** card xuất bản `PublishCard` ở **đầu** (đưa lên bằng `xl:order-first`),
@@ -541,10 +576,11 @@ layout gửi **key chuỗi** (`icon: "grid"`), Client Component giữ bảng `NA
   `touch-action: manipulation`; `.studio-editor .gieochu-editor-content { min-height: 12.5rem }` (khung mô tả thấp hơn
   mặc định 280px để các card Giá/Ảnh/Tệp không bị đẩy quá sâu).
 - Tóm tắt lỗi đầu form (`role="alert"`, link tới từng field); focus tự chuyển: lỗi lưu → tóm tắt lỗi, bị chặn công khai
-  → checklist (tôn trọng `prefers-reduced-motion` khi cuộn). Cảnh báo `beforeunload` khi còn thay đổi chưa lưu **hoặc còn
-  file đang tải**. Skeleton `loading.tsx` cho trang Tạo và Sửa.
+  → checklist (tôn trọng `prefers-reduced-motion` khi cuộn); từ task 2.3a tóm tắt lỗi mở đúng khối chứa ô lỗi. Cảnh báo rời trang
+  khi còn thay đổi chưa lưu **hoặc còn file đang tải** — từ task 2.3a qua `useUnsavedChanges(dirty || uploading, …)` (§25.4; trước đó là
+  `beforeunload` riêng, không chặn bấm sidebar) ✅ đọc code. Skeleton `loading.tsx` cho trang Tạo và Sửa.
 - **Landmark:** trang Tạo/Sửa (và skeleton) bọc bằng `<div>`, **không** `<main>` — `studio/[tenantSlug]/layout.tsx` đã có
-  `<main>`. Quy tắc cho mọi trang con Studio: dùng `<div>`. Các trang Studio khác còn `<main>` lồng (BACKLOG, §9.10).
+  `<main>`. Quy tắc cho mọi trang con Studio: dùng `<div>`. Từ GĐ 2 ADR-058 không còn trang Studio nào lồng `<main>` ✅ grep (§25.8).
 
 ### 9.2. Quy ước form trong editor ✅
 
@@ -685,9 +721,8 @@ layout gửi **key chuỗi** (`icon: "grid"`), Client Component giữ bảng `NA
 
 ### 9.10. Việc còn mở (BACKLOG, liên quan UI)
 
-`<main>` lồng nhau ở các trang Studio khác (đếm 2026-09-27 ✅: 14 trang — `page.tsx` tổng quan, `billing`, `coupons` ×3,
-`customers`, `messages`, `orders` ×2, `products` (danh sách), `share-links`, `settings` ×2, `storefront`; trang Tạo/Sửa/Xem
-trước đã sửa); trang Xem trước nằm trong khung Studio (muốn toàn trang cần tách route group); 404 trả HTTP 200 khi
+~~`<main>` lồng nhau ở các trang Studio khác~~ — ✅ hết từ GĐ 2 ADR-058 (2026-10-25, grep: chỉ layout Studio và trang onboarding `studio/page.tsx`
+— nằm ngoài layout — còn `<main>`; §25.8); trang Xem trước nằm trong khung Studio (muốn toàn trang cần tách route group); 404 trả HTTP 200 khi
 `loading.tsx` đã stream (trang Sửa/Xem trước sai tenant); token màu chữ thành công; nhãn danh sách sản phẩm; tên danh
 mục ở trang công khai; nút toolbar editor 32px < 44px trên mobile; upload nhiều ảnh cùng lúc trong editor; dòng "Đã dùng
 X/Y MB ảnh" (cần action đọc hạn mức); kiểm bằng mắt các trang cần đăng nhập ❓.
@@ -787,10 +822,15 @@ Từ ADR-042 sidebar Studio dùng `SidebarNav` chung (§5.1) với `storageKey="
 
 Trước ADR-042: danh sách phẳng 11 mục (12 với OWNER), số đếm nằm trong nhãn "(N)" — đã thay. Mục BACKLOG "nhóm mục khi sidebar dài" đã xong.
 
-**Theo ADR-058 — CHƯA áp dụng** (menu Studio chưa đổi ✅ đọc code 2026-10-25; Provider cảnh báo rời trang đã bọc layout Studio, §25.4). Kế hoạch 🟡:
-task 2.1 gom **Cài đặt** `/settings` + **Thanh toán** `/settings/payments` thành `ModuleTabs` "Cài đặt" (Thông tin & thương hiệu · Thanh toán), mục
-sidebar "Cài đặt" thêm `match`, bỏ link chữ ở cuối trang Cài đặt. **Trang sửa tài liệu** `/products/{id}` **giữ nguyên bố cục, không thêm tab**
-("Bổ sung ADR-058" (b)) — trang Link chia sẻ vẫn là trang riêng; chỉ áp accordion cho các khối (task 2.3, §25.3).
+**Theo ADR-058 — đã áp task 2.1** ✅ đọc code 2026-10-25 (working tree, chưa commit; chưa thử trình duyệt ❓):
+* `ModuleTabs` **"Cài đặt"** gồm 2 tab **Thông tin & thương hiệu** (`/studio/{slug}/settings`) · **Thanh toán** (`/studio/{slug}/settings/payments`). Một nguồn:
+  `studio/[tenantSlug]/settings/_ui/settings-tabs.ts` (`studioSettingsTabs(tenantSlug)`, `STUDIO_SETTINGS_TABS_LABEL` = "Các trang trong Cài đặt"). Cả 2 trang
+  h1 **"Cài đặt"**, subtitle bắt đầu bằng tên tab. Đã bỏ link chữ "Thanh toán" ở cuối trang Cài đặt; 2 trang bọc `<div>` (bỏ `<main>` lồng).
+* Sidebar **không đổi** và **không cần `match`**: href `/studio/{slug}/settings` đã khớp tiền tố `/settings/payments` (luật §25.5) nên mục "Cài đặt" sáng ở cả
+  2 tab 🟡 (Phong rà bằng script; Long đọc luật khớp tiền tố trong `nav-match.ts`, khớp).
+* Hai trang tab **không** khai `metadata.title` riêng ✅ grep (khác System Center sau task 1.14) — KB-Audit §40.
+* **Trang sửa tài liệu** `/products/{id}` **giữ nguyên bố cục, không thêm tab** ("Bổ sung ADR-058" (b)) — trang Link chia sẻ vẫn là trang riêng; accordion
+  cho các khối (task 2.3a/2.3b, §25.3).
 
 ### 11.2. Studio → Bài viết — danh sách (`studio/[tenantSlug]/posts/page.tsx` + `_ui/post-list.tsx`)
 
@@ -811,7 +851,9 @@ sidebar "Cài đặt" thêm `match`, bỏ link chữ ở cuối trang Cài đặ
 
 ### 11.3. Editor bài viết (`_ui/post-editor.tsx`, client) — trang `posts/new` và `posts/[postId]`
 
-- **Khung như editor sản phẩm (§9.1):** tối đa 1440px; ≥ `xl` lưới `minmax(0,1fr) 360px` — cột chính (tiêu đề tuỳ chọn +
+- **Accordion (task 2.4, ADR-058)** ✅ đọc code: **Nội dung bài viết** (mở) · **Tài liệu liên quan** · **Ghim bài** (thu gọn) — bảng §25.3. Card Xuất bản và
+  chế độ xem bài bị ẩn không đổi. Cảnh báo rời trang qua `useUnsavedChanges` (thay `beforeunload` riêng).
+- **Khung như editor sản phẩm (§9.1):** full width (Quốc bỏ `mx-auto max-w-[1440px]` 2 chỗ, 2026-10-25 ✅ grep); ≥ `xl` lưới `minmax(0,1fr) 360px` — cột chính (tiêu đề tuỳ chọn +
   nội dung Tiptap) + sidebar (card xuất bản đứng đầu bằng `xl:order-first`, **không dính** khi cuộn — ADR-030 §3 ✅ đọc `post-editor.tsx`
   2026-09-28; card "Tài liệu liên quan" và "Ghim" ở dưới, cả sidebar cuộn cùng trang); < `xl` 1 cột, card xuất bản ở **cuối**
   + thanh lưu nhanh `.studio-save-bar` dính đáy khi có thay đổi (giữ nguyên).
@@ -968,7 +1010,8 @@ Từ ADR-042 (2026-10-17 ✅): `AdminSidebarNav` là lớp cấu hình trên `Si
 * Nhóm tab một nguồn: `admin/settings/_ui/settings-tabs.ts` (`SETTINGS_TABS`, `SETTINGS_GENERAL_TAB`, `SETTINGS_SUPPORT_EMAIL_TAB`, `SETTINGS_SMTP_TAB`,
   `SETTINGS_TABS_LABEL` = "Các trang trong Cấu hình chung") dùng chung cho `settings/general/page.tsx`, `settings/page.tsx`, `settings/smtp/page.tsx`. Cả 3 tab có h1
   **"Cấu hình chung"**, subtitle bắt đầu bằng tên tab ("Email hỗ trợ — …", "Cấu hình Email (SMTP) — …"). Đã bỏ mục "Email hỗ trợ" và "Cấu hình Mail" khỏi sidebar.
-* Ba trang tab **không** khai `metadata` riêng ✅ grep (chỉ `settings/storage/page.tsx` có) — kế hoạch §3.1 nói `metadata.title` riêng theo tab (KB-Audit §39).
+* **`metadata.title` riêng theo tab** (task 1.14) ✅ grep: "Cấu hình chung", "Email hỗ trợ — Cấu hình chung", "Cấu hình Email (SMTP) — Cấu hình chung"; Trang CMS:
+  "Trang chủ — Trang CMS" (`generateMetadata` của `cms/[slug]`, slug khác → "Sửa trang tuỳ chỉnh"), "Header & Footer — Trang CMS". Đóng KB-Audit §39 mục 1.
 
 **Số mục:** sidebar System Center hiện **21 mục** ✅ đếm `ADMIN_STANDALONE` (1) + `ADMIN_GROUPS` (Người dùng 2 · Kinh doanh 3 · Nội dung 6 · Tài chính 3 · Cấu hình
 hệ thống 4 · Giám sát 2) — khớp kế hoạch §2.1 bản sửa "23 → 21". Không đổi nhóm, URL mọi trang giữ nguyên.
@@ -983,7 +1026,7 @@ hệ thống 4 · Giám sát 2) — khớp kế hoạch §2.1 bản sửa "23 �
 
 ### 12.8. Việc còn mở (BACKLOG, liên quan UI)
 
-* `SettingsGrid` `minmax(380px, …)` gây cuộn ngang ở 375px.
+* ~~`SettingsGrid` `minmax(380px, …)` gây cuộn ngang ở 375px~~ — ✅ hết: `SettingsGrid` nay 1 cột full width (2026-10-25, §5).
 * Editor CMS trang chủ: "Xem trang chủ ↗" là `<Link>` bọc `<button>` (phần tử tương tác lồng nhau).
 * ~~Chip/ô tìm trang chủ chưa thành link~~ — ✅ xong ở ADR-035 GĐ2 (§12.3).
 
@@ -1096,7 +1139,8 @@ Bổ sung cho §12.4 (props cũ giữ nguyên, trang chủ không đổi hành v
   thấy ô → tiêu đề form `tabIndex=-1`). Không gọi server khi còn lỗi; server vẫn validate lại.
 * **Xác nhận khôi phục:** `window.confirm` nêu rõ đích ("bản đang hiển thị" hoặc "cấu hình mặc định") và "không hoàn tác được";
   khôi phục xong dựng lại form (`formVersion`) để ô gõ tay bỏ chuỗi dở.
-* **Cảnh báo rời trang:** `beforeunload` chỉ gắn khi có thay đổi chưa lưu (so snapshot JSON).
+* **Cảnh báo rời trang:** chỉ bật khi có thay đổi chưa lưu (so snapshot JSON) — từ task 1.5 (ADR-058) qua `useUnsavedChanges` của provider layout (§25.4),
+  không còn `beforeunload` riêng ✅ grep.
 * **Ghi chú dữ liệu thật** đầu form từng khu vực (`LiveDataNote` = `Notice tone="info"`): CMS chỉ lưu nhãn/cấu hình, thẻ lấy từ
   dữ liệu thật. "Mọi ô chữ đều bắt buộc."
 * **Khung chờ** `app/admin/cms/shop/loading.tsx`: cùng khung với trang (tránh nhảy layout), `aria-busy`, `role="status"` ẩn,
@@ -2094,15 +2138,18 @@ thiết bị thật ❓.
 
 ---
 
-## 25. Điều Hướng Nhóm Trang (`ModuleTabs`), Tab Nội Bộ (`InPageTabs`), Accordion (`CollapsibleSection`), Giữ Dữ Liệu Khi Lưu Lỗi, Cảnh Báo Rời Trang (ADR-058 GĐ 0 + GĐ 1) ✅ đọc code 2026-10-25 (chưa commit)
+## 25. Điều Hướng Nhóm Trang (`ModuleTabs`), Tab Nội Bộ (`InPageTabs`), Accordion (`CollapsibleSection`), Giữ Dữ Liệu Khi Lưu Lỗi, Cảnh Báo Rời Trang (ADR-058 GĐ 0 + GĐ 1 + GĐ 2) ✅ đọc code 2026-10-25 (chưa commit)
 
 Quyết định: [[01-Architecture-Decisions/ADR-043-Module-Tabs-Accordion-Unsaved-Guard|ADR-043 KB (≙ ADR-058, gồm "Bổ sung ADR-058")]]. Kế hoạch
 (Phong, có đánh dấu trạng thái từng task): `docs/ke-hoach-toi-uu-layout-tab-accordion-2026-10-25.md`. Tiến độ:
 * **GĐ 0 xong** task **0.1–0.4** (component + guard + trường `match` + KB).
-* **GĐ 1 (System Center) xong, trừ 1.10** — 1.1, 1.2, 1.2b, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.8b, 1.9, 1.11, 1.12a, 1.12b, 1.13 (Quốc báo code xong + verify 2026-10-25;
-  code working tree chưa commit ✅ `git status`). **1.10 (Lưu trữ file) tạm hoãn — chờ Vương xong ADR-055.**
-* GĐ 2 (Studio) chưa làm.
-* `pnpm test:count` = **100/66** ✅ (Long chạy 2026-10-25). Chỉ lớp trình bày: không migration, không đổi Server Action, URL không đổi 🟡 (kế hoạch/brief).
+* **GĐ 1 (System Center) xong, trừ 1.10** — 1.1, 1.2, 1.2b, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.8b, 1.9, 1.11, 1.12a, 1.12b, 1.13, **1.14** (metadata/câu SEO/sắc badge),
+  **1.15** (8 trang bỏ `SettingsGrid`) (Quốc báo code xong + verify 2026-10-25; code working tree chưa commit ✅ `git status`). **1.10 (Lưu trữ file) tạm hoãn —
+  chờ Vương xong ADR-055** — là task **duy nhất** còn lại của toàn kế hoạch.
+* **GĐ 2 (Studio) xong hết, không task nào hoãn** — 2.1, 2.2, 2.3a, 2.3b, 2.4, 2.5 (kết luận không accordion), 2.6 (Quốc báo xong 2026-10-25; ✅ đọc code working tree).
+* Quy tắc **full width** cho System Center + Studio (chủ dự án chốt 2026-10-25) — §5.
+* `pnpm test:count` = **100/66** ✅ (Long chạy 2026-10-25, sau GĐ 2). Chỉ lớp trình bày: không migration, URL không đổi 🟡 (kế hoạch/brief). Ngoại lệ phía server
+  duy nhất: Quốc thêm `revalidatePath` vào `updateBrandingAction` (Studio) ✅ đọc code — xem §25.7.
 * **Chưa thử trên trình duyệt** (Quốc báo): hộp hỏi rời trang, giữ dữ liệu khi lưu lỗi, phím mũi tên tab, accordion mở/đóng, 375px, trình đọc màn hình ❓.
 
 ### 25.1. Quy tắc chọn pattern (kế hoạch §4 — đã chốt ADR-058)
@@ -2123,11 +2170,13 @@ Ràng buộc:
 * Tối đa 2 tầng tab trên một màn và hai tầng phải khác kiểu. Không lồng accordion.
 * **Card chứa nút hành động chính (Lưu/Xuất bản) không thu gọn** và không tính là "khối đầu tiên". Lỗi ở khối thu gọn thì khối tự mở.
 * Trang thanh toán: cổng **đang bật thì mở**, cổng tắt thu gọn (`defaultOpen={enabled}`).
-* h1 của trang có tab = **tên nhóm** (giống nhau ở mọi tab); tên trang con là phần đầu subtitle ✅ (Trang CMS, Cấu hình chung). `metadata.title` riêng theo tab
-  🟡 kế hoạch §3.1 — **chưa** trang tab nào khai `metadata` ✅ grep (KB-Audit §39).
+* h1 của trang có tab = **tên nhóm** (giống nhau ở mọi tab); tên trang con là phần đầu subtitle ✅ (Trang CMS, Cấu hình chung, Cài đặt Studio). `metadata.title` riêng
+  theo tab: System Center đã khai cho 5 trang tab (task 1.14, §12.6) ✅ grep; 2 trang tab **Cài đặt Studio chưa khai** ✅ grep (KB-Audit §40).
 * Không áp accordion khi không có lợi: **Cửa hàng** (editor list-detail chỉ hiện 1 section; section dài nhất là Hero ~9 ô, mọi ô chữ bắt buộc, không có SEO/nhóm tuỳ
-  chọn — thu gọn nhóm bắt buộc trái quy tắc), **Cloudinary** (1 khối), **Báo cáo vi phạm** (trang xử lý, không phải form cấu hình) 🟡 kế hoạch task 1.5/1.12b.
+  chọn — thu gọn nhóm bắt buộc trái quy tắc), **Cloudinary** (1 khối), **Báo cáo vi phạm** (trang xử lý, không phải form cấu hình), **Trang bán hàng Studio**
+  (list-detail chỉ hiện 1 section, section dài nhất ~8–10 điều khiển; "Đánh giá ghim"/"Tài liệu nổi bật" đổi hành vi hiển thị nên không giấu) 🟡 kế hoạch task 1.5/1.12b/2.5.
   SEO của `/cua-hang` chưa có trong CMS — thuộc kế hoạch SEO tổng thể làm sau 🟡.
+* **Full width** (chủ dự án chốt 2026-10-25): khối xếp 1 cột, không `max-w` ở khung form/editor — quy tắc đầy đủ ở §5.
 * Studio áp cùng quy tắc; **không** làm trang tài khoản khách hàng `/account`.
 
 ### 25.2. `ModuleTabs` (`apps/web/app/admin/_ui/module-tabs.tsx`, client) ✅
@@ -2187,13 +2236,13 @@ khối có `status={sectionStatus({ errorCount, dirty })}` và `errorCount` riê
 
 | Trang (file) | Task | Khối (id) — mặc định | Badge |
 | :-- | :-: | :-- | :-- |
-| Trang chủ (`cms/home-editor/home-sections-editor.tsx`) | 1.2, 1.2b | Danh sách section list-detail giữ nguyên; **SEO trang chủ** (`seo`) **luôn thu gọn** | SEO: lỗi/"Có thay đổi"/"N cảnh báo"/"Dùng mặc định" (trên). Thanh nút có `Badge tone="info"` "Có thay đổi chưa lưu" |
+| Trang chủ (`cms/home-editor/home-sections-editor.tsx`) | 1.2, 1.2b, 1.14 | Danh sách section list-detail giữ nguyên; **SEO trang chủ** (`seo`) **luôn thu gọn** | SEO: lỗi/"Có thay đổi"/"N cảnh báo"/"Dùng mặc định" (trên). Thanh nút có badge "Có thay đổi chưa lưu" — từ 1.14 sắc `warning` (trước là `info`) |
 | Header & Footer (`cms/menu/menu-editor.tsx`) | 1.3 | Menu đầu trang **mở** · Nút kêu gọi · Chân trang (thu gọn) | Trên |
 | Bảng giá (`cms/pricing/_ui/pricing-sections-editor.tsx`) | 1.4 | List-detail giữ nguyên; **SEO trang Bảng giá** (`seo`) **luôn thu gọn** | `sectionStatus({ dirty, empty, emptyLabel: "Dùng mặc định" })` |
 | Cửa hàng (`cms/shop/_ui/shop-sections-editor.tsx`) | 1.5 | **Không accordion** (lý do §25.1) — chỉ chuyển sang `useUnsavedChanges` | — |
 | Chính sách sử dụng — Mô tả & SEO (`cms/phap-ly/legal-meta-form.tsx`) | 1.6 | **Tối ưu SEO** (`seo`) thu gọn khi tải — thay disclosure tự viết bằng `CollapsibleSection`, giữ hành vi ADR-057 | **Mảng** 2 badge: "Đã điền x/3" (`info`, hoặc `neutral` khi 0) + "Có thay đổi chưa lưu" (`warning`, khi dirty) |
 | Cấu hình chung (`settings/general/general-settings-form.tsx`) | 1.9 | Bảo mật & phiên **mở** · Chính sách phiên đăng nhập · Nghiệp vụ (thu gọn) — §12.5 | `sectionStatus({ errorCount, dirty })` theo nhóm; nhóm lỗi tự mở |
-| Cấu hình thanh toán (`billing/payment/{manual-qr,sepay,momo}-form.tsx`) | 1.11 | Chuyển khoản thủ công · SePay · MoMo — `defaultOpen={initial.isEnabled}` (**cổng đang bật thì mở**). Xếp 1 cột (`max-w-5xl`) | `sectionStatus({ errorCount, dirty, empty: !isEnabled, emptyLabel: đã cấu hình ? "Đang tắt" : "Chưa cấu hình", okLabel: "Đang bật" })` |
+| Cấu hình thanh toán (`billing/payment/{manual-qr,sepay,momo}-form.tsx`) | 1.11 | Chuyển khoản thủ công · SePay · MoMo — `defaultOpen={initial.isEnabled}` (**cổng đang bật thì mở**). Xếp 1 cột, full width (Quốc bỏ `max-w-5xl`, 2026-10-25) | `sectionStatus({ errorCount, dirty, empty: !isEnabled, emptyLabel: đã cấu hình ? "Đang tắt" : "Chưa cấu hình", okLabel: "Đang bật" })` |
 | Gói dịch vụ (`plans/plan-form.tsx`, `create-plan-form.tsx`) | 1.12a | Thông tin gói (`goi-thong-tin`) **mở** · Giới hạn sử dụng (`goi-gioi-han`) · Gói Free & tính năng (`goi-tinh-nang`) thu gọn khi sửa; **trang tạo gói mở cả 3** (`expandAll` — giới hạn mặc định 0 = "không được phép", ẩn đi dễ tạo nhầm gói) | `sectionStatus({ dirty })` theo nhóm ô (`dirtyOf`) |
 | Danh mục (`categories/category-form.tsx`) | 1.12a | Thông tin danh mục **mở** · Mô tả chi tiết · Hình ảnh · SEO (`seo`, luôn thu gọn) | "Có thay đổi"; trống: "Chưa có" / "Chưa có ảnh" / "Dùng mặc định" |
 | Trang tuỳ chỉnh (`cms/cms-page-form.tsx`) | 1.12a | Nội dung trang (`trang-noi-dung`) **mở** · SEO (`seo`, thu gọn) | "Có thay đổi"; SEO trống: "Dùng mặc định" |
@@ -2202,15 +2251,37 @@ khối có `status={sectionStatus({ errorCount, dirty })}` và `errorCount` riê
 Quy ước cài đặt chung rút ra (✅ code): khối cổng thanh toán đặt **ngoài** `<form key>` để trạng thái mở và thông báo tự tắt (ADR-013) không mất khi form dựng
 lại sau lần lưu; Toggle `isEnabled` nằm **trong** khối (không ở `actions`) để ô vẫn thuộc form có key. SEO luôn là khối cuối, không bao giờ `defaultOpen`.
 
-Kế hoạch áp còn lại (🟡, chưa làm): Lưu trữ file (1.10 — Cấu hình R2/MinIO mở · Đồng bộ dữ liệu · Giám sát bucket thu gọn; đóng khối không dừng tiến trình),
-cổng thanh toán Studio (2.2), **editor tài liệu Studio** — giữ bố cục, Thông tin tài liệu mở, các khối khác thu gọn có badge, card Xuất bản không thu gọn (2.3),
-editor bài viết (2.4), storefront (2.5), mã giảm giá (2.6).
+**Badge "Có thay đổi chưa lưu"** ở thanh nút và khối: **một sắc chung `warning`** (task 1.14 System Center, 2.5 Trang bán hàng Studio) ✅ grep — mọi `Badge` mang chữ
+này trong `admin/**`, `studio/**` đều `tone="warning"` (badge `neutral` "Chưa lưu · … mặc định" là trạng thái khác). Câu mô tả SEO trang chủ và Bảng giá (1.14):
+"SEO không có bản nháp: bấm Lưu nháp hoặc Xuất bản đều ghi SEO và áp dụng ngay cho trang…" ✅ đọc JSX — hành vi lưu của action 🟡 (Quốc/Phong báo khớp; Long không
+lần lại action).
+
+**Bảng áp dụng GĐ 2 — Studio** (✅ đọc code working tree 2026-10-25, chưa commit; chưa thử trình duyệt ❓):
+
+| Trang (file) | Task | Khối — mặc định | Badge / ghi chú |
+| :-- | :-: | :-- | :-- |
+| Cài đặt — Thông tin & thương hiệu (`settings/page.tsx`, `branding-form.tsx`, `slug-form.tsx`) | 2.1 | Không accordion (trang 2 form) — `ModuleTabs` "Cài đặt" (§11.1) | `useFormDraft` + `useUnsavedChanges` cho cả 2 form. `branding-form` dùng **`keepOnSuccess`** (§25.7) |
+| Onboarding mở gian hàng (`studio/page.tsx`, `studio/onboarding-form.tsx`) | 2.1 | Không accordion | `useFormDraft` + `useUnsavedChanges`; trang nằm **ngoài** layout Studio nên tự bọc `UnsavedChangesProvider` ngay trong page ✅ |
+| Cài đặt — Thanh toán (`settings/payments/{manual-qr,sepay,momo}-form.tsx`, `page.tsx`) | 2.2 | QR thủ công · SePay · MoMo, mỗi cổng 1 khối, `defaultOpen={initial.isEnabled}` (**cổng đang bật thì mở**); xếp 1 cột | Như 1.11: "Đang bật"/"Đang tắt"/"Chưa cấu hình"/"1 lỗi"/"Có thay đổi". Khối ngoài `<form key>`; form có `key = JSON.stringify(initial)` để Toggle khớp DB khi cổng bị tự tắt; `secretNames`: SePay `secret`, MoMo `secretKey` (không ghi lại). Dòng cảnh báo tự tắt giữ nguyên |
+| Editor tài liệu (`products/_ui/product-editor.tsx`, `editor-skeleton.tsx`) | 2.3a | Giữ bố cục 2 cột, **không thêm tab**. **Thông tin tài liệu** (`tai-lieu-thong-tin`, mở) · **Giá & khuyến mãi** (`tai-lieu-gia` — thu gọn khi Sửa, **mở sẵn ở trang Tạo** vì giá 0 = miễn phí) · **Danh mục & loại** · **Thẻ** · **Giới hạn lượt tải** · **Link chia sẻ private** (thu gọn). **Không thu gọn:** Ảnh đại diện, Tệp tài liệu, card Xuất bản | "N lỗi" > "Có thay đổi" > tóm tắt (giá "Miễn phí"/"50.000 ₫"; tên danh mục hoặc "Chưa chọn danh mục" `warning`). Tóm tắt lỗi mở đúng khối (`SECTION_FIELDS`). Cờ chưa lưu `dirty \|\| uploading`. Full width |
+| Link chia sẻ (`products/[productId]/share-links/page.tsx`, `share-link-form.tsx`) | 2.3b | Không accordion | `useFormDraft` (mật khẩu link trong `secretNames` — không ghi lại) + badge + `useUnsavedChanges` (tắt khi đã tạo link). Nhóm chọn file là `fieldset/legend`, dòng ≥ 44px; `useFormDraft` hỗ trợ nhóm checkbox cùng tên. Bỏ `SettingsGrid`, bỏ `<main>` lồng |
+| Editor bài viết (`posts/_ui/post-editor.tsx`) | 2.4 | **Nội dung bài viết** (mở) · **Tài liệu liên quan** · **Ghim bài** (thu gọn) | Tài liệu: "Đã gắn 1 tài liệu"/"Không gắn"; Ghim: "Đang ghim" (`info`)/"Không ghim"; "N lỗi"/"Có thay đổi" ưu tiên hơn tóm tắt. Card Xuất bản + chế độ xem bài bị ẩn không đổi; tóm tắt lỗi mở đúng khối |
+| Trang bán hàng (`storefront/storefront-editor.tsx`, `page.tsx`) | 2.5 | **Không accordion** (lý do §25.1) | Badge "Có thay đổi chưa lưu" → `warning`; `useUnsavedChanges`; bỏ `<main>` lồng |
+| Mã giảm giá (`coupons/coupon-form.tsx`, `page.tsx`, `new/page.tsx`, `[couponId]/page.tsx`) | 2.6 | **Thông tin mã giảm giá** (mở) · **Điều kiện & giới hạn lượt dùng** · **Thời gian áp dụng** · **Áp dụng cho sản phẩm** (thu gọn — cả ở trang Tạo, vì mọi ô thu gọn đều tuỳ chọn, trống = không giới hạn) | Tóm tắt từ `values` của `useFormDraft`: "Không giới hạn"/"Có điều kiện", "Áp dụng ngay, không hết hạn"/"Có thời hạn", "Tất cả sản phẩm"/"N sản phẩm"; "Có thay đổi" ưu tiên. Nhóm chọn sản phẩm `fieldset/legend`, dòng ≥ 44px. Bỏ `<main>` lồng (3 trang coupons + `messages`, `products`), bỏ import `SettingsGrid` |
+
+**Lưu ý `changedFields` / `touchField` (2.3a, 2.4)** ✅ đọc code: hai editor tự quản `dirty` (không dùng `useFormDraft` — submit thủ công, §9.2). Để có badge theo khối,
+editor giữ thêm tập `changedFields` (tên ô đã sửa từ lần lưu gần nhất), ghi qua `touchField(name)` (từ `onChange` của form và các ô tự quản như mô tả Tiptap, thẻ).
+**`dirty` vẫn là nguồn sự thật** cho lưu, cảnh báo rời trang và tự lưu nháp (comment code: "lưu/tự lưu nháp dựa vào nó" — khi gắn hook tự lưu nháp
+`useServerAutosave` của "Bổ sung ADR-053 lần 3" vào editor, phải dựa vào `dirty`, **không** dựa vào `changedFields`; hiện hook **chưa** gắn editor nào ✅ grep —
+[[02-System-Specs/Editor-Autosave-Drafts-Specs|Editor-Autosave-Drafts-Specs]]); `changedFields` **chỉ** dùng cho badge
+(`sectionDirty = dirty && khối có ô trong changedFields`) và **tự xoá khi `dirty` về false**, nên không phải sửa các chỗ `setDirty(false)`. Thêm ô mới vào editor:
+khai tên ô vào `SECTION_FIELDS` của khối (để badge + tóm tắt lỗi mở đúng khối) và gọi `touchField` nếu ô tự quản state.
 
 ### 25.4. Cảnh báo rời trang khi chưa lưu (`apps/web/app/admin/_ui/unsaved-changes.tsx`, client) ✅
 
 | API | Vai trò |
 | :-- | :-- |
-| `UnsavedChangesProvider` | Bọc ở `admin/layout.tsx` và `studio/[tenantSlug]/layout.tsx`. Giữ danh sách nguồn đang "dirty" trong ref (không render lại) và gắn **một** listener `beforeunload` (tải lại, đóng tab, gõ URL, link ngoài) |
+| `UnsavedChangesProvider` | Bọc ở `admin/layout.tsx`, `studio/[tenantSlug]/layout.tsx` và — từ task 2.1 — ngay trong `studio/page.tsx` (trang onboarding mở gian hàng nằm ngoài layout Studio) ✅. Giữ danh sách nguồn đang "dirty" trong ref (không render lại) và gắn **một** listener `beforeunload` (tải lại, đóng tab, gõ URL, link ngoài) |
 | `useUnsavedChanges(dirty, message?)` | Editor/form đăng ký cờ chưa lưu; nhiều nguồn trên một trang được (vd nội dung + khối SEO lưu riêng); hết dirty hoặc unmount thì tự gỡ. Câu hỏi mặc định: "Trang đang có thay đổi chưa lưu. Rời trang và bỏ các thay đổi này?" (nhiều nguồn dirty → luôn câu mặc định) |
 | `useLeaveGuard()` | Trả handler cho `onNavigate` của `next/link`: còn dirty → `window.confirm`; người dùng huỷ → `preventDefault()` chặn điều hướng client. Đồng ý thì không xoá cờ (editor unmount tự gỡ) |
 | `GuardedLink` | `next/link` có sẵn guard, dùng được trong Server Component (layout) vì không nhận prop hàm |
@@ -2225,9 +2296,11 @@ editor bài viết (2.4), storefront (2.5), mã giảm giá (2.6).
   trang chủ (1.2b), Header & Footer (1.3), Bảng giá (1.4), Cửa hàng (1.5), Chính sách sử dụng — nội dung + Mô tả & SEO (0.2/1.6), SMTP (1.8b), Cấu hình chung (1.9),
   Email hỗ trợ (1.13), thanh toán ×3 (1.11), Gói dịch vụ, Danh mục, Trang tuỳ chỉnh (1.12a), Thương hiệu — Tên & Slogan + Màu sắc (1.12b), Cloudinary (1.12b).
   Không còn editor System Center nào tự gắn `beforeunload` (chỉ còn trong comment) ✅ grep.
-* **Còn lại:** Lưu trữ file (`settings/storage/*`, task 1.10 — chưa có cờ chưa lưu) và 3 editor Studio vẫn tự gắn `beforeunload` riêng ✅ grep —
-  `studio/[tenantSlug]/posts/_ui/post-editor.tsx`, `studio/[tenantSlug]/products/_ui/product-editor.tsx`, `studio/[tenantSlug]/storefront/storefront-editor.tsx`
-  (chưa hỏi lại khi bấm sidebar; chuyển ở GĐ 2).
+* **Đã áp `useUnsavedChanges` ở Studio (GĐ 2)** ✅ grep — 11 file: Thông tin & thương hiệu + đổi đường dẫn (`branding-form`, `slug-form`), onboarding (2.1), thanh toán ×3
+  (2.2), editor tài liệu — gồm cả lúc còn file đang tải (2.3a), Link chia sẻ — tắt khi đã tạo link (2.3b), editor bài viết (2.4), Trang bán hàng (2.5), mã giảm giá (2.6).
+  3 editor trước đây tự gắn `beforeunload` (bài viết, tài liệu, Trang bán hàng) đã chuyển sang provider — nay bấm sidebar/tab cũng được hỏi lại.
+* **Không còn `beforeunload` riêng** ở cả System Center lẫn Studio (chỉ còn trong comment và trong provider) ✅ grep. **Ngoại lệ duy nhất:** Lưu trữ file
+  (`admin/settings/storage/*`, task 1.10 — chưa có cờ chưa lưu, chờ Vương).
 * Thương hiệu: ảnh (logo/favicon/OG) lưu ngay khi chọn nên không cần cảnh báo 🟡 (comment code).
 
 ### 25.5. Trường `match` của mục sidebar (`apps/web/app/admin/_ui/nav-match.ts`) ✅
@@ -2258,50 +2331,60 @@ type InPageTab = { id: string; label: string; panel: ReactNode };
   **Nhận diện thương hiệu** (`settings/branding/branding-editor.tsx` — Logo & Icon · Favicon & OG · Tên & Slogan · Màu sắc · Xem trước; panel có viền, nền trắng).
 * Chọn: khung cùng một màn, không đổi URL → `InPageTabs`; đổi URL (`?tab=`) → `PillTabs`.
 
-### 25.7. Giữ dữ liệu khi lưu lỗi — `useFormDraft` (`apps/web/app/admin/_ui/use-form-draft.ts`, client hook) ✅ (task 1.8b, 1.11)
+### 25.7. Giữ dữ liệu khi lưu lỗi — `useFormDraft` (`apps/web/app/admin/_ui/use-form-draft.ts`, client hook) ✅ (task 1.8b, 1.11; mở rộng 2.1, 2.3b, 2.6)
 
 Vấn đề (🟡 Phong/Quốc báo, khớp comment code): React 19 **reset ô không kiểm soát sau mọi lần form action chạy xong, kể cả khi action trả lỗi** → form
 `useActionState` + `<form action>` + `defaultValue` mất dữ liệu đã gõ khi lưu lỗi.
 
 ```ts
-const { dirty, dirtyOf, formProps } = useFormDraft({ names, secretNames, initial, resetKey, failed });
+const { dirty, dirtyOf, values, formProps } = useFormDraft({ names, secretNames, initial, resetKey, failed, keepOnSuccess });
 <form key={resetKey} action={formAction} {...formProps}>…</form>
 ```
 
-| Tham số / trả về | Hành vi (theo code) |
+| Tham số / trả về | Hành vi (theo code ✅ đọc `use-form-draft.ts` 2026-10-25) |
 | :-- | :-- |
-| `names` | Ô được theo dõi **và ghi lại** sau khi lưu lỗi (input/select/textarea có `name`; checkbox lưu boolean) |
-| `secretNames?` | Ô bí mật (mật khẩu, secret, API key) — chỉ theo dõi "đang nhập" (khác rỗng = có thay đổi); **không bao giờ ghi lại** vào DOM. Để trống = giữ giá trị đã lưu |
+| `names` | Ô được theo dõi **và ghi lại** sau khi lưu lỗi (input/select/textarea có `name`; checkbox đơn lưu boolean) |
+| Nhóm checkbox cùng `name` (từ 2.3b) | `form.elements.namedItem(name)` trả `RadioNodeList` → lưu dạng chuỗi các `value` đang tích, nối bằng dấu phẩy; ghi lại thì tích đúng các ô có `value` trong tập. Giả định `value` là id cuid2 (không chứa dấu phẩy). Dùng ở chọn file (Link chia sẻ) và chọn sản phẩm (Mã giảm giá) |
+| `secretNames?` | Ô bí mật (mật khẩu, secret, API key) — chỉ theo dõi "đang nhập" (khác rỗng = có thay đổi); **không bao giờ ghi lại** vào DOM, kể cả với `keepOnSuccess`. Để trống = giữ giá trị đã lưu |
 | `initial` | Giá trị đã lưu, khớp `defaultValue`/`defaultChecked` của các ô `names` |
-| `resetKey` | Đổi (vd form dựng lại theo dữ liệu server sau khi lưu thành công) → coi như sạch, theo `initial` mới |
+| `resetKey` | Đổi (vd form dựng lại theo dữ liệu server sau khi lưu thành công) → coi như sạch, `values` và mốc "đã lưu" theo `initial` mới |
 | `failed` | Kết quả action hiện tại là lỗi (vd `Boolean(state.error)`). **Chỉ ghi lại khi lần lưu vừa rồi thất bại** — form tạo mới lưu thành công vẫn được làm trống |
-| `formProps` | `onChange` (đọc lại giá trị), `onSubmit` (chụp giá trị `names`), `onReset` (tick sau: form còn trong DOM + `failed` → ghi bản chụp vào ô) |
-| `dirty` / `dirtyOf(names)` | "Có thay đổi" = ô `names` khác `initial` hoặc có ô bí mật đang nhập; `dirtyOf` cho badge từng khối |
+| `keepOnSuccess?` (`false`, từ 2.1) | Dành cho action lưu thành công **không làm mới dữ liệu trang** (`initial` giữ giá trị cũ → React reset ô về giá trị cũ, trông như chưa lưu): ghi lại giá trị vừa gửi cả khi thành công và **lấy làm mốc "đã lưu" mới** (secret vẫn không ghi lại) |
+| `formProps` | `onChange` (đọc lại giá trị), `onSubmit` (chụp giá trị `names`), `onReset` (tick sau: form còn trong DOM → `failed` thì ghi bản chụp; không lỗi + `keepOnSuccess` thì ghi bản chụp và đặt làm mốc) |
+| `dirty` / `dirtyOf(names)` | "Có thay đổi" = ô `names` khác **mốc đã lưu** (mặc định `initial`) hoặc có ô bí mật đang nhập; `dirtyOf` cho badge từng khối |
+| `values` (từ 2.6) | Giá trị hiện tại của các ô được theo dõi (đọc lại sau mỗi lần đổi) — dùng cho **badge tóm tắt khi khối thu gọn** (vd Mã giảm giá: "Có điều kiện", "N sản phẩm") |
 
-* Đã áp: thanh toán ×3 (secret: SePay `secret`, MoMo `secretKey`), Gói dịch vụ, Danh mục, Trang tuỳ chỉnh, Thương hiệu (Tên & Slogan), Cloudinary (secret: `apiKey`,
-  `apiSecret`), Email hỗ trợ ✅ grep. Secret vẫn chỉ hiển thị `••••abcd`. Cloudinary: form có `key` theo dữ liệu server để Toggle khớp trạng thái thật kể cả khi bị
-  tự tắt; `lastVerifiedAt` không vào key nên bấm "Kiểm tra kết nối" không xoá dữ liệu đang gõ ✅ comment code.
+* Đã áp ✅ grep — **System Center:** thanh toán ×3 (secret: SePay `secret`, MoMo `secretKey`), Gói dịch vụ, Danh mục, Trang tuỳ chỉnh, Thương hiệu (Tên & Slogan),
+  Cloudinary (secret: `apiKey`, `apiSecret`), Email hỗ trợ. **Studio:** Thông tin & thương hiệu (`branding-form`, `keepOnSuccess`), đổi đường dẫn (`slug-form`),
+  onboarding (2.1); thanh toán ×3 (2.2 — secret SePay `secret`, MoMo `secretKey`); Link chia sẻ (2.3b — secret `password`); Mã giảm giá (2.6 — dùng `values`).
+  Secret vẫn chỉ hiển thị `••••abcd`. Cloudinary: form có `key` theo dữ liệu server để Toggle khớp trạng thái thật kể cả khi bị tự tắt; `lastVerifiedAt` không vào
+  key nên bấm "Kiểm tra kết nối" không xoá dữ liệu đang gõ ✅ comment code.
+* **`branding-form` + `revalidatePath`:** lúc làm 2.1, `updateBrandingAction` (`studio/[tenantSlug]/settings/actions.ts`) không làm mới trang nên form bật `keepOnSuccess`.
+  Sau đó Quốc thêm `revalidatePath(`/studio/${tenantSlug}`, "layout")` và `revalidatePath(`/${tenantSlug}`, "layout")` (tên/màu hiện ở sidebar Studio và trang gian
+  hàng công khai) ✅ đọc code. Form **vẫn** bật `keepOnSuccess` và comment còn ghi "action lưu xong không làm mới dữ liệu trang" — lệch, KB-Audit §40.
 * **SMTP** giữ dữ liệu bằng cách riêng trong `smtp-tabs.tsx` (task 1.8b, có trước hook): chụp giá trị lúc gửi, ghi lại sau reset **trừ mật khẩu** ✅ đọc code — không
   dùng `useFormDraft`.
-* **Cấu hình chung** (ô có kiểm soát) và **Màu sắc** thương hiệu (đã kiểm soát) không cần hook.
-* Danh sách form còn nguy cơ (Lưu trữ file 1.10; form Studio thanh toán/branding/mã giảm giá/slug/onboarding/share link…) — bảng trong kế hoạch §6 (mục "Form có nguy
-  cơ mất dữ liệu khi lưu lỗi"), không chép lại ở đây.
+* **Không cần hook** (ô có kiểm soát — React không reset): Cấu hình chung, Màu sắc thương hiệu; editor tài liệu/bài viết (submit thủ công, §9.2); 2 form ghi chú
+  Studio — `orders/[orderId]/order-note-actions.tsx` và `customers/_ui/customer-row-actions.tsx` (ô `value` + state; ghi chú khách trong dialog, lỗi hiện trong hộp,
+  hộp vẫn mở) — đã rà ở 2.6, kết luận không sửa 🟡 (kết luận của Phong, khớp mô tả trong kế hoạch).
+* Form còn nguy cơ: chỉ còn **Lưu trữ file** (`admin/settings/storage/storage-form.tsx`, có secret — 1.10) 🟡 theo bảng kế hoạch §6; nhóm "Thấp" `billing/refund-request-form.tsx`,
+  `billing/renew-form.tsx` ghi "gộp vào task áp dụng của trang" — chưa task GĐ 2 nào nhận ✅ grep (không dùng hook) — KB-Audit §40.
 
-### 25.8. Lỗi có sẵn đã sửa trong GĐ 1 ✅ đọc code (chưa thử trình duyệt ❓)
+### 25.8. Lỗi có sẵn đã sửa trong GĐ 1 + GĐ 2 ✅ đọc code (chưa thử trình duyệt ❓)
 
 | Lỗi | Nguyên nhân | Sửa (task) |
 | :-- | :-- | :-- |
 | Thương hiệu: sửa Tên/Màu rồi sang tab khác → **mất dữ liệu đang nhập** | Tab cũ chỉ render panel đang chọn (unmount panel khác) | `InPageTabs`, mọi panel luôn mounted (1.12b) |
 | SMTP: chọn cổng 465 → xem tab khác → quay lại tự về 587 | Như trên — state cục bộ port/secure mất khi unmount | `InPageTabs` (1.8, 1.12b) |
-| Thanh toán: **Toggle hiển thị lệch** trạng thái sau khi lưu lỗi | React reset ô checkbox về `defaultChecked` sau action lỗi, còn hình switch giữ state riêng 🟡 (Quốc báo) | `isEnabled` thuộc `names` của `useFormDraft` → ghi lại sau lưu lỗi; form có `key` theo dữ liệu đã lưu (1.11) |
-| **`<main>` lồng** trong `<main>` của `admin/layout.tsx` | Trang tự bọc `<main>` | Đổi sang `<div>` ở mọi trang System Center (1.1, 1.7, 1.12a, 1.12b, 1.13). **Còn `settings/storage/page.tsx`** (sửa cùng 1.10) ✅ grep. Ngoài danh sách: `admin/error.tsx` vẫn render `<main>` bên trong layout (KB-Audit §39) |
+| Thanh toán System Center: **Toggle hiển thị lệch** trạng thái sau khi lưu lỗi | React reset ô checkbox về `defaultChecked` sau action lỗi, còn hình switch giữ state riêng 🟡 (Quốc báo) | `isEnabled` thuộc `names` của `useFormDraft` → ghi lại sau lưu lỗi; form có `key` theo dữ liệu đã lưu (1.11) |
+| Thanh toán **Studio**: **Toggle lệch** khi cổng **tự tắt** (ADR-013) | Form chưa có `key` → `defaultChecked` mới từ server không áp vào ô đã mount 🟡 (Phong/Quốc báo, khớp comment code) | Form có `key = JSON.stringify(initial)`, khối thu gọn nằm ngoài form để giữ trạng thái mở (2.2) ✅ đọc code |
+| **`<main>` lồng** trong `<main>` của layout | Trang tự bọc `<main>` | **System Center:** `<div>` ở mọi trang (1.1, 1.7, 1.12a, 1.12b, 1.13) + `admin/error.tsx` (1.14). **Studio:** đủ 9 trang — `settings`, `settings/payments` (2.1/2.2), `share-links` (2.3b), `storefront` (2.5), `coupons` ×3, `messages`, `products` (2.6). ✅ grep: thẻ `<main>` thật chỉ còn ở 2 layout, `studio/page.tsx` (onboarding, ngoài layout Studio — không lồng) và **`admin/settings/storage/page.tsx`** (sửa cùng 1.10) |
 
 ### 25.9. Việc còn mở
 
-* 1.10 Lưu trữ file (accordion, `useFormDraft` có secret, `useUnsavedChanges`, `<main>` lồng) — chờ Vương xong ADR-055.
-* GĐ 2 Studio (2.1–2.6): `ModuleTabs` "Cài đặt", accordion editor tài liệu/bài viết, 3 editor còn `beforeunload` riêng, form Studio còn nguy cơ mất dữ liệu,
-  9 trang Studio còn `<main>` lồng trong layout ✅ grep (coupons ×3, messages, products, share-links, settings, settings/payments, storefront).
-* Kiểm trình duyệt thật cho toàn GĐ 1 ❓.
+* **1.10 Lưu trữ file** (accordion, `useFormDraft` có secret, `useUnsavedChanges`, `<main>` lồng) — chờ Vương xong ADR-055. Là task duy nhất còn lại của kế hoạch ADR-058.
+* 2 trang tab Cài đặt Studio chưa có `metadata.title` riêng; comment cũ ở `branding-form.tsx` và `product-editor.tsx` (KB-Audit §40) — chờ Quốc quyết.
+* Kiểm trình duyệt thật cho toàn GĐ 1 + GĐ 2 ❓.
 
 ---
 
@@ -2334,7 +2417,7 @@ const { dirty, dirtyOf, formProps } = useFormDraft({ names, secretNames, initial
 * `apps/web/app/studio/[tenantSlug]/customers/**` (gồm `_ui/{customer-list,customer-row-actions,customer-format,customer-skeleton}.ts(x)`), `apps/web/app/studio/[tenantSlug]/orders/_ui/order-filter-form.tsx` (prop `label`) (§21) · [[02-System-Specs/Studio-Customers-Specs|Studio-Customers-Specs]] ([Studio-Customers-Specs.md](../02-System-Specs/Studio-Customers-Specs.md)) · [[01-Architecture-Decisions/ADR-033-Studio-Customers-List-Upgrade|ADR-033 (≙ ADR-048)]]
 * `apps/web/app/_ui/{nav-link,nav-dropdown,mobile-nav,site-header,site-footer}.tsx` (§1.1.1), `apps/web/app/_home-sections.tsx` (§12.9), `apps/web/app/admin/cms/{menu,phap-ly}/*` (§13.7), `apps/web/app/phap-ly/[slug]/{page.tsx,_ui/legal-toc.ts}` (§22) · [[02-System-Specs/System-Cms-Menu-Home-Seo-Specs|System-Cms-Menu-Home-Seo-Specs]] · [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]] · [[01-Architecture-Decisions/ADR-035-Menu-Home-Seo-Versioned-Terms|ADR-035 (≙ ADR-050)]]
 * `apps/web/app/admin/_ui/{kit,billing-labels,icons}.ts(x)`, `apps/web/app/admin/billing/invoices/page.tsx`, `apps/web/app/admin/subscriptions/page.tsx`, `apps/web/app/_ui/bank-transfer-panel.tsx`, `apps/web/app/[tenantSlug]/checkout/[orderCode]/{page,coupon-panel}.tsx`, `apps/web/app/studio/[tenantSlug]/billing/page.tsx` (§24) · [[01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr|ADR-041 (≙ ADR-056)]]
-* `apps/web/app/admin/_ui/{module-tabs,collapsible-section,unsaved-changes,in-page-tabs}.tsx`, `apps/web/app/admin/_ui/{nav-match,use-form-draft}.ts`, `apps/web/app/admin/cms/_ui/cms-tabs.ts`, `apps/web/app/admin/settings/_ui/settings-tabs.ts`, `apps/web/app/admin/_ui/sidebar-nav.tsx` (`match`), `apps/web/app/admin/layout.tsx`, `apps/web/app/studio/[tenantSlug]/layout.tsx` (Provider), `docs/ke-hoach-toi-uu-layout-tab-accordion-2026-10-25.md` (§25) · [[01-Architecture-Decisions/ADR-043-Module-Tabs-Accordion-Unsaved-Guard|ADR-043 (≙ ADR-058)]] · [[01-Architecture-Decisions/ADR-042-Legal-Drafts-Import-Preview-Draft-Release|ADR-042 (≙ ADR-057)]] (§13.7)
+* `apps/web/app/admin/_ui/{module-tabs,collapsible-section,unsaved-changes,in-page-tabs}.tsx`, `apps/web/app/admin/_ui/{nav-match,use-form-draft}.ts`, `apps/web/app/admin/cms/_ui/cms-tabs.ts`, `apps/web/app/admin/settings/_ui/settings-tabs.ts`, `apps/web/app/admin/_ui/sidebar-nav.tsx` (`match`), `apps/web/app/admin/layout.tsx`, `apps/web/app/studio/[tenantSlug]/layout.tsx` (Provider), `apps/web/app/studio/page.tsx` (Provider onboarding), `apps/web/app/studio/[tenantSlug]/settings/_ui/settings-tabs.ts`, `apps/web/app/studio/[tenantSlug]/{settings,settings/payments,products/_ui,products/[productId]/share-links,posts/_ui,storefront,coupons}/*` (GĐ 2), `docs/ke-hoach-toi-uu-layout-tab-accordion-2026-10-25.md` (§5 quy tắc full width, §11.1, §25) · [[01-Architecture-Decisions/ADR-043-Module-Tabs-Accordion-Unsaved-Guard|ADR-043 (≙ ADR-058)]] · [[01-Architecture-Decisions/ADR-042-Legal-Drafts-Import-Preview-Draft-Release|ADR-042 (≙ ADR-057)]] (§13.7)
 * [[04-Operations-Runbooks/README|Quay lại danh mục Operations Runbooks]]
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

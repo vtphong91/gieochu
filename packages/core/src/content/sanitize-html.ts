@@ -67,7 +67,14 @@ export interface SanitizeRichTextOptions {
    * `target`. `target`/`rel` có sẵn trong HTML luôn bị bỏ và dựng lại. Không truyền = hành vi cũ (bỏ mọi `target`/`rel`).
    */
   trustedLinks?: { siteOrigin: string | null };
+  /**
+   * ADR-060 — CHỈ cho trang tuỳ chỉnh (Markdown do System Admin soạn): cho thêm bảng `table/thead/tbody/tr/th/td`, không
+   * thuộc tính nào (bỏ `align`, `style`…). Editor Tiptap không sinh bảng nên nội dung khác giữ whitelist cũ.
+   */
+  allowTables?: boolean;
 }
+
+const TABLE_TAGS = ["table", "thead", "tbody", "tr", "th", "td"];
 
 /** ADR-054 mục 7 — phân loại `href` (đã qua kiểm scheme của sanitize-html) cho chế độ `trustedLinks`. */
 export function classifyRichTextLink(href: string, siteOrigin: string | null): "internal" | "external" | "mailto" {
@@ -95,7 +102,7 @@ export function classifyRichTextLink(href: string, siteOrigin: string | null): "
  * và chạy lại khi render (lớp phòng thủ thứ hai).
  */
 export function sanitizeRichTextHtml(html: string, options: SanitizeRichTextOptions): string {
-  const { imageCloudName, imageWidth, trustedLinks } = options;
+  const { imageCloudName, imageWidth, trustedLinks, allowTables } = options;
   const isAllowedImageSrc = (src: string | undefined): boolean => Boolean(src && imageCloudName && isCloudinaryImageUrl(src, imageCloudName));
 
   // Lưu ý: `allowedAttributes` của `a` chỉ có `href` nên `target`/`rel` thêm ở transform dưới bị lọc bỏ ở chế độ thường
@@ -116,7 +123,7 @@ export function sanitizeRichTextHtml(html: string, options: SanitizeRichTextOpti
     : sanitizeHtmlLib.simpleTransform("a", { rel: "noopener noreferrer nofollow", target: "_blank" });
 
   return sanitizeHtmlLib(html, {
-    allowedTags: ALLOWED_TAGS,
+    allowedTags: allowTables ? [...ALLOWED_TAGS, ...TABLE_TAGS] : ALLOWED_TAGS,
     allowedAttributes: trustedLinks ? { ...ALLOWED_ATTRIBUTES, a: ["href", "target", "rel"] } : ALLOWED_ATTRIBUTES,
     allowedStyles: ALLOWED_STYLES,
     allowedSchemes: ["http", "https", "mailto"],

@@ -64,7 +64,7 @@ export type { TenantMemberRole } from "./tenant/membership";
 
 export { addBillingPeriod, computeGraceEndsAt, computeRenewalPeriod } from "./billing/period";
 export type { PlanInterval, PlanIntervalInfo } from "./billing/period";
-export { generateInvoiceCode, isValidInvoiceCode } from "./billing/invoice-code";
+export { generateInvoiceCode, INVOICE_CODE_SUFFIX_LENGTH, isValidInvoiceCode } from "./billing/invoice-code";
 export { transitionSubscriptionStatus } from "./billing/subscription-state";
 export type { SubscriptionEvent, SubscriptionStatus } from "./billing/subscription-state";
 export {
@@ -180,8 +180,8 @@ export type { ReviewHiddenReasonValue, ReviewTextResult, TenantReviewHideReason 
 
 export { transitionOrderStatus } from "./order/state";
 export type { OrderEvent, OrderStatus } from "./order/state";
-export { generateOrderCode, isValidOrderCode } from "./order/code";
-export { canManuallyConfirmOrder, computeOrderExpiresAt, effectiveOrderStatus } from "./order/expiry";
+export { generateOrderCode, isValidOrderCode, ORDER_CODE_SUFFIX_LENGTH } from "./order/code";
+export { canManuallyConfirmOrder, computeOrderExpiresAt, effectiveOrderStatus, manualConfirmDeadline } from "./order/expiry";
 export { matchPaymentAmount } from "./order/payment-match";
 export type { PaymentMatchStatus } from "./order/payment-match";
 export { calculateOrderPricing } from "./order/pricing";

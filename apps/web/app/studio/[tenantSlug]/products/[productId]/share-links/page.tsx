@@ -6,7 +6,7 @@ import { getProduct } from "../../../../../../lib/product";
 import { listShareLinks } from "../../../../../../lib/share-link";
 import { ShareLinkForm } from "./share-link-form";
 import { RevokeButton } from "./revoke-button";
-import { AdminPageHeader, Badge, DataTable, EmptyState, SettingsGrid, Td, Tr } from "../../../../../admin/_ui/kit";
+import { AdminPageHeader, Badge, DataTable, EmptyState, Td, Tr } from "../../../../../admin/_ui/kit";
 import { IconLinkChain } from "../../../../../_ui/editor/toolbar-icons";
 import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 
@@ -36,17 +36,18 @@ export default async function ShareLinksPage({
   const env = getEnv();
 
   return (
-    <main className="px-5 py-8 lg:px-8">
+    // Wrapper <div>: layout Studio đã có <main>. Full width theo khung app (quy tắc 2026-10-25, thay SettingsGrid).
+    <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader title="Link chia sẻ private" subtitle={product.title} />
 
-      <SettingsGrid>
+      <div className="mt-6">
         <ShareLinkForm
           tenantSlug={tenantSlug}
           productId={productId}
           files={files.filter((f) => !f.isPreview).map((f) => ({ id: f.id, fileName: f.fileName }))}
           appUrl={env.APP_URL}
         />
-      </SettingsGrid>
+      </div>
 
       <div className="mt-6">
         {shareLinks.length === 0 ? (
@@ -67,6 +68,6 @@ export default async function ShareLinksPage({
           </DataTable>
         )}
       </div>
-    </main>
+    </div>
   );
 }

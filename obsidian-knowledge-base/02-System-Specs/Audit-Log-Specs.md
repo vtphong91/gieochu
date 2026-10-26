@@ -8,7 +8,7 @@ tags:
   - database
   - status/living
 date: 2026-10-16
-updated: 2026-10-23
+updated: 2026-10-26
 author: Long
 ---
 
@@ -126,7 +126,7 @@ cần DDL (`action` là chuỗi).
 | `TENANT_LOCKED` / `TENANT_UNLOCKED` | SYSTEM (+`tenantId`) | `lib/tenant-lock.ts` — gọi từ `app/admin/tenants/actions.ts`; `TENANT_LOCKED` còn ghi khi xử lý báo cáo `LOCK_TENANT` (metadata `source: "ABUSE_REPORT"`, chỉ khi tenant chưa khoá) | admin |
 | `TENANT_SLUG_CHANGED` | TENANT | `app/studio/[tenantSlug]/settings/actions.ts` — `{ from, to }` | thành viên |
 | `PLAN_CREATED` / `PLAN_UPDATED` | SYSTEM | `app/admin/plans/actions.ts` (tạo, sửa, bật/tắt) | admin |
-| `SUBSCRIPTION_PAID` | SYSTEM (+`tenantId`) | `lib/subscription-billing.ts` `markInvoicePaid` | null (webhook) hoặc admin (xác nhận tay) |
+| `SUBSCRIPTION_PAID` | SYSTEM (+`tenantId`) | `lib/subscription-billing.ts` — 3 nơi ghi, phân biệt bằng `metadata.source` (ADR-059, ✅ `git diff` 2026-10-26, chưa commit): `markInvoicePaid` (`PLATFORM_WEBHOOK` hoặc `ADMIN_MANUAL_CONFIRM`; metadata `provider`, `planId`, `previousPlanId`, `amountVnd`, `periodEnd`, `reactivated`); `confirmExpiredManualInvoice` (`ADMIN_MANUAL_CONFIRM` + `previousInvoiceStatus: "EXPIRED"`, `lateConfirmation: true`, `dueAt`, `storedPeriodStart/End`, `periodRecomputed: true`, `periodStart/End`); `confirmInvoiceFromPlatformTransaction` (**`ADMIN_TRANSACTION_CONFIRM`** + `transactionId`, `transactionProvider`, `receivedAmountVnd`, `differenceVnd`, kèm metadata trễ nếu hoá đơn EXPIRED, không thì `periodEnd`). Không thêm action mới | null (webhook) hoặc admin (xác nhận tay / từ giao dịch) |
 | `PAYMENT_CONFIG_UPDATED` | SYSTEM | `lib/platform-payment.ts` (lưu cấu hình; kiểm tra kết nối thành công tự bật) — chỉ cờ thay đổi, không secret | admin |
 | `PAYMENT_CONFIG_UPDATED` | TENANT | `lib/tenant-payment.ts` | thành viên |
 | `PRODUCT_PUBLISHED` / `PRODUCT_ARCHIVED` | TENANT | `lib/product.ts` | thành viên |

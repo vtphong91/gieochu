@@ -174,6 +174,30 @@ chính (Lưu/Xuất bản) không thu gọn** và không tính là "khối đầ
 
 ---
 
+### Quy tắc bố cục: full width (chủ dự án chốt 2026-10-25)
+
+Nội dung chính trong System Center và Studio **luôn full width theo khung app**, đồng bộ toàn hệ thống. **Không** giới hạn
+bề ngang form/editor bằng `max-w-*`/`mx-auto` ở khung trang, **không** xếp card thành lưới nhiều cột khiến card chỉ chiếm
+nửa màn hình. Các khối xếp 1 cột; cột phụ bên phải chỉ dùng khi có lý do (editor tài liệu/bài viết, `MainAsideGrid`).
+Được phép giữ `max-w`/`mx-auto` ở cấp **component** (độ rộng ô nhập ngắn, ô bảng, khối lỗi/trạng thái trống ở giữa, đoạn
+mô tả dưới tiêu đề để dòng chữ dễ đọc).
+
+**Sửa ở gốc (Quốc, 2026-10-25):** `SettingsGrid` trong `admin/_ui/kit.tsx` nay là `mt-6 grid grid-cols-1 gap-6` (1 cột, full
+width) — mọi trang còn dùng nó tự full width. Quốc cũng bỏ `mx-auto max-w-[1440px]` ở `post-editor.tsx` (2 chỗ) và
+`max-w-7xl mx-auto` ở `admin/settings/storage/page.tsx`. Long cần cập nhật mô tả `SettingsGrid` ở `UI-Design-System.md` §5.
+
+Kết quả rà (2026-10-25, sau khi sửa ở gốc):
+
+| Trang / file | Trạng thái |
+|---|---|
+| 8 trang System Center (Email hỗ trợ, Cloudinary, gói tạo/sửa, danh mục tạo/sửa, trang tuỳ chỉnh tạo/sửa) | Đã bỏ hẳn `SettingsGrid` (task 1.15) — full width |
+| `studio/[tenantSlug]/products/[productId]/share-links/page.tsx` | Đã bỏ `SettingsGrid` (task 2.3b) — full width |
+| `studio/[tenantSlug]/settings/page.tsx`, `settings/payments/page.tsx`, `admin/billing/payment/page.tsx` | Quốc đã sửa — full width |
+| `studio/[tenantSlug]/products/_ui/product-editor.tsx`, `editor-skeleton.tsx` | Đã bỏ `max-w-[1440px]` (task 2.3a) |
+| `studio/[tenantSlug]/posts/_ui/post-editor.tsx`, `admin/settings/storage/page.tsx` | Quốc đã sửa |
+| `studio/[tenantSlug]/coupons/new/page.tsx`, `coupons/[couponId]/page.tsx` | Đã bỏ hẳn `SettingsGrid` (task 2.6) — full width. Toàn `app/` không còn trang nào dùng `SettingsGrid` (component vẫn còn trong kit, 1 cột full width) |
+| Khung trang khác trong `admin/**`, `studio/**` | **Không còn vi phạm.** `max-w`/`mx-auto` còn lại đều ở cấp component: đoạn mô tả `roles` (`max-w-2xl`), ô màu thương hiệu, ô bảng/ghi chú SMTP, trạng thái trống, khối lỗi ở giữa của `error.tsx` Studio (tổng quan, khách hàng, đơn hàng), ô ngày của bộ chọn khoảng ngày |
+
 ## 5. Đặc tả component
 
 ### 5.1. `ModuleTabs` (`apps/web/app/admin/_ui/module-tabs.tsx`, client)
@@ -265,6 +289,7 @@ Verify mỗi task: `pnpm --filter web exec tsc -p tsconfig.json --noEmit`, `esli
 | **1.12b** | `admin/_ui/in-page-tabs.tsx` (mới), `settings/branding/*`, `settings/cloudinary/*`, `settings/smtp/smtp-tabs.tsx` | **Đã làm (2026-10-25).** Tab nội bộ của Thương hiệu thành `InPageTabs` (tab ARIA kiểu pill, mọi panel luôn mounted — trước đây chuyển tab là mất dữ liệu Tên/Màu đang nhập). SMTP chuyển sang cùng component. Tên & Slogan: `useFormDraft` + badge + `useUnsavedChanges`; Màu (đã kiểm soát): badge + `useUnsavedChanges`. Cloudinary (1 khối, không accordion): `useFormDraft` (không ghi lại API key/secret), form có `key` để Toggle khớp khi bị tự tắt, badge + `useUnsavedChanges`. Báo cáo vi phạm: trang xử lý (không phải form cấu hình), không cần accordion. Sửa `<main>` lồng ở branding, cloudinary | 0.1, 1.11 | Không |
 | **1.13** | `admin/users/page.tsx`, `admin/roles/page.tsx`, `admin/tenants/page.tsx`, `admin/settings/settings-form.tsx` | **Đã làm (2026-10-25).** Sửa `<main>` lồng (3 trang). Form "Email hỗ trợ": `useFormDraft` + badge + `useUnsavedChanges`. `settings/storage/page.tsx` sửa cùng 1.10 | — | Không |
 | **1.14** | `cms/[slug]/page.tsx`, `cms/menu/page.tsx`, `settings/page.tsx`, `settings/general/page.tsx`, `settings/smtp/page.tsx`, `admin/error.tsx`, editor trang chủ, Bảng giá + các thanh nút | **Đã làm (2026-10-25)** — sửa lệch do Long rà GĐ 1: `metadata.title` riêng cho 5 trang tab ("Trang chủ — Trang CMS", "Header & Footer — Trang CMS", "Cấu hình chung", "Email hỗ trợ — Cấu hình chung", "Cấu hình Email (SMTP) — Cấu hình chung"); `admin/error.tsx` bỏ `<main>` lồng; câu mô tả SEO trang chủ và Bảng giá khớp action (Lưu nháp **và** Xuất bản đều ghi SEO vào cột live, áp dụng ngay nếu trang đã xuất bản); badge "Có thay đổi chưa lưu" dùng **một sắc chung `warning`** ở mọi thanh nút và khối | — | Không |
+| **1.15** | 8 trang System Center: `settings/page.tsx`, `settings/cloudinary`, `plans` (form tạo), `plans/[planId]`, `categories/new`, `categories/[categoryId]`, `cms/new`, `cms/[slug]` | **Đã làm (2026-10-25).** Bỏ `SettingsGrid`, xếp 1 cột full width. System Center không còn trang nào dùng `SettingsGrid` (trừ Storage — 1.10) | — | Không |
 
 **Form có nguy cơ mất dữ liệu khi lưu lỗi** (rà 2026-10-25, task 1.8b). Các form dưới đây dùng `useActionState` + `<form action>`
 với ô không kiểm soát. Mỗi form xử lý ở task áp dụng tương ứng, bằng cùng cách của SMTP (không ghi lại secret/mật khẩu):
@@ -275,34 +300,38 @@ với ô không kiểm soát. Mỗi form xử lý ở task áp dụng tương �
 | Cao | `admin/settings/storage/storage-form.tsx` (có secret) | 1.10 |
 | Cao | `admin/plans/plan-form.tsx`, `admin/cms/cms-page-form.tsx`, `admin/categories/category-form.tsx` (một phần) | 1.12a (đã làm) |
 | Cao | `admin/settings/cloudinary/cloudinary-form.tsx` (có secret), `admin/settings/branding/branding-editor.tsx` (một phần) | 1.12b (đã làm) |
-| Cao | `studio/[tenantSlug]/settings/payments/{sepay,momo,manual-qr}-form.tsx` (có secret), `settings/branding-form.tsx` | 2.1, 2.2 |
+| Cao | `studio/[tenantSlug]/settings/payments/{sepay,momo,manual-qr}-form.tsx` (có secret), `settings/branding-form.tsx` | 2.1, 2.2 (đã làm) |
 | Cao | `studio/[tenantSlug]/coupons/coupon-form.tsx` | 2.6 |
-| Thấp (1 ô) | `admin/settings/settings-form.tsx` (Email hỗ trợ), `studio/[tenantSlug]/settings/slug-form.tsx`, `billing/refund-request-form.tsx`, `billing/renew-form.tsx` | gộp vào task áp dụng của trang |
-| Cần rà kỹ | `studio/onboarding-form.tsx` → 2.1; `products/[productId]/share-links/share-link-form.tsx` → 2.3; `orders/[orderId]/order-note-actions.tsx`, `customers/_ui/customer-row-actions.tsx` → task Studio 2.x (Quốc gắn khi lập) | theo task Studio đã ghi (Quốc chốt 2026-10-25) |
+| Thấp (1–2 ô) | `admin/settings/settings-form.tsx` (Email hỗ trợ) → 1.13 (đã làm); `studio/[tenantSlug]/settings/slug-form.tsx` → 2.1 (đã làm); `billing/renew-form.tsx` → 2.7 (đã làm: `useFormDraft` giữ lựa chọn gói/phương thức, không cảnh báo rời trang); `billing/refund-request-form.tsx` → **không cần**: gửi qua `onSubmit` trong transition (không qua prop `action`) nên React không reset form | đã xử lý (2026-10-25) |
+| Cần rà kỹ | `studio/onboarding-form.tsx` → 2.1 (đã làm); `products/[productId]/share-links/share-link-form.tsx` → 2.3b (đã làm); `orders/[orderId]/order-note-actions.tsx`, `customers/_ui/customer-row-actions.tsx` → rà ở 2.6: **không cần** — ô ghi chú là ô có kiểm soát (`value` + state), React không reset khi lưu lỗi; ghi chú khách nằm trong dialog, lỗi hiện ngay trong hộp và hộp vẫn mở | đã rà (2026-10-25) |
 | Không bị | `admin/settings/general/general-settings-form.tsx` (đã kiểm soát), `product-editor.tsx`, `post-editor.tsx`, `reports/_ui/report-actions.tsx`, `billing/refunds/refund-actions.tsx` (không dùng `<form action>`), các form chỉ có nút xác nhận | — |
 
 **Trạng thái GĐ 1 (2026-10-25):** đã xong 1.1, 1.2, 1.2b, 1.3, 1.4, 1.5 (kết luận không cần accordion), 1.6, 1.7, 1.8,
-1.8b, 1.9, 1.11, 1.12a, 1.12b, 1.13, 1.14. Còn duy nhất **1.10 tạm hoãn** (chờ Vương xong ADR-055).
+1.8b, 1.9, 1.11, 1.12a, 1.12b, 1.13, 1.14. Còn duy nhất **1.10 tạm hoãn** (chờ Vương xong ADR-055). 1.15 đã làm.
 
 ### GĐ 2 — Studio
 
 | Task | Trang / file | Việc | Phụ thuộc | Hiếu |
 |---|---|---|---|---|
-| **2.1** | `studio/[tenantSlug]/settings/page.tsx`, `settings/payments/page.tsx`, `layout.tsx` (menu `match`) | `ModuleTabs` "Cài đặt" (Thông tin & thương hiệu · Thanh toán). Bỏ link chữ cuối trang | 0.1–0.3 | Không |
-| **2.2** | `settings/payments/*-form.tsx` | Như 1.11 | 1.11 | Không |
-| **2.3** | `products/_ui/product-editor.tsx` (+ `cover-image-card`, `delivery-sources` nếu cần) | Giữ nguyên bố cục, **không thêm tab** (Bổ sung ADR-058 (b)). Accordion cho các khối: Thông tin tài liệu mở, các khối khác (Giá & khuyến mãi, Danh mục & loại, Thẻ, Giới hạn lượt tải, Link chia sẻ private) thu gọn có badge. Card Xuất bản không thu gọn | 0.1 | Không |
-| **2.4** | `posts/_ui/post-editor.tsx` | Nội dung bài mở, Tài liệu liên quan/Ghim thu gọn. Card Xuất bản không thu gọn | 0.1 | Không |
-| **2.5** | `storefront/storefront-editor.tsx` | Giữ list-detail. Rà nhóm field dài | 0.1 | Không |
-| **2.6** | `coupons/new`, `coupons/[couponId]` | Rà. Điều kiện nâng cao thu gọn nếu nhiều khối | 0.1 | Không |
+| **2.1** | `studio/[tenantSlug]/settings/page.tsx`, `settings/payments/page.tsx`, `settings/_ui/settings-tabs.ts` (mới), `branding-form.tsx`, `slug-form.tsx`, `studio/onboarding-form.tsx` + `studio/page.tsx` | **Đã làm (2026-10-25).** `ModuleTabs` "Cài đặt" (Thông tin & thương hiệu · Thanh toán), h1 "Cài đặt"; bỏ link chữ cuối trang; sửa `<main>` lồng 2 trang. Sidebar **không cần `match`**: href `/settings` đã khớp tiền tố `/settings/payments` (đã rà bằng script). `useFormDraft` + `useUnsavedChanges` cho 3 form. `branding-form` dùng `keepOnSuccess` vì action không `revalidatePath` (xem việc cho Hiếu). Trang onboarding nằm ngoài layout Studio → tự bọc `UnsavedChangesProvider` | 0.1–0.3 | **Đề xuất:** `updateBrandingAction` thêm `revalidatePath` |
+| **2.2** | `studio/[tenantSlug]/settings/payments/*-form.tsx`, `page.tsx` | **Đã làm (2026-10-25).** Như 1.11: QR thủ công · SePay · MoMo là khối thu gọn, `defaultOpen={đang bật}`, badge "Đang bật"/"Đang tắt"/"Chưa cấu hình"/"1 lỗi"/"Có thay đổi"; khối ngoài `<form key>` (form mới có `key` để Toggle khớp khi tự tắt); `useFormDraft` không ghi lại `secret`/`secretKey`; `useUnsavedChanges`; xếp 1 cột. Dòng cảnh báo tự tắt giữ nguyên | 1.11 | Không |
+| **2.3a** | `studio/[tenantSlug]/products/_ui/product-editor.tsx`, `editor-skeleton.tsx` | **Đã làm (2026-10-25).** Giữ bố cục 2 cột, không thêm tab. Khối thu gọn: Thông tin tài liệu (mở), Giá & khuyến mãi (thu gọn khi Sửa, **mở khi Tạo** — giá 0 = miễn phí), Danh mục & loại, Thẻ, Giới hạn lượt tải, Link chia sẻ private (thu gọn). Badge: "N lỗi" > "Có thay đổi" > tóm tắt (giá "Miễn phí"/"50.000 ₫", tên danh mục / "Chưa chọn danh mục"). Ảnh đại diện, Tệp tài liệu (component riêng — Vương vừa sửa) và card Xuất bản **không thu gọn**. Tóm tắt lỗi mở đúng khối. `beforeunload` → `useUnsavedChanges` (gồm cả lúc còn file đang tải). Bỏ `max-w-[1440px]` (full width) | 0.1, 0.2 | Không |
+| **2.3b** | `products/[productId]/share-links/page.tsx`, `share-link-form.tsx`, `admin/_ui/use-form-draft.ts` | **Đã làm (2026-10-25).** `useFormDraft` (không ghi lại mật khẩu link) + badge + `useUnsavedChanges` (tắt khi đã tạo link); `useFormDraft` hỗ trợ nhóm checkbox cùng tên. Nhóm chọn file thành `fieldset/legend`, dòng ≥ 44px. Sửa `<main>` lồng; bỏ `SettingsGrid` | 0.1 | Không |
+| **2.4** | `posts/_ui/post-editor.tsx` | **Đã làm (2026-10-25).** Khối thu gọn: Nội dung bài viết (mở), Tài liệu liên quan (thu gọn, badge "Đã gắn 1 tài liệu"/"Không gắn"), Ghim bài (thu gọn, badge "Đang ghim"/"Không ghim"); "N lỗi"/"Có thay đổi" ưu tiên hơn tóm tắt. Card Xuất bản và chế độ xem bài bị ẩn không đổi. Tóm tắt lỗi mở đúng khối. `beforeunload` → `useUnsavedChanges`. Cùng lưu ý tự lưu nháp như 2.3a: `dirty` giữ nguyên là nguồn sự thật, `changedFields` chỉ cho badge và tự xoá khi `dirty` về false | 0.1, 0.2 | Không |
+| **2.5** | `storefront/storefront-editor.tsx`, `storefront/page.tsx` | **Đã làm (2026-10-25) — kết luận: không cần accordion.** List-detail chỉ hiện 1 section; section dài nhất (Đánh giá, Tài liệu) khoảng 8–10 điều khiển. "Đánh giá ghim"/"Tài liệu nổi bật" đổi hành vi hiển thị (có ghim → chỉ hiện mục ghim) nên không giấu. Badge "Có thay đổi chưa lưu" → `warning`; `beforeunload` → `useUnsavedChanges`; sửa `<main>` lồng | 0.2 | Không |
+| **2.6** | `coupons/coupon-form.tsx`, `coupons/page.tsx`, `coupons/new/page.tsx`, `coupons/[couponId]/page.tsx`, `messages/page.tsx`, `products/page.tsx` | **Đã làm (2026-10-25).** Form mã giảm giá thành 4 khối: Thông tin mã (mở) · Điều kiện & giới hạn lượt dùng · Thời gian áp dụng · Áp dụng cho sản phẩm (thu gọn, badge tóm tắt "Không giới hạn"/"Có điều kiện", "Áp dụng ngay, không hết hạn"/"Có thời hạn", "Tất cả sản phẩm"/"N sản phẩm"; "Có thay đổi" ưu tiên). Mọi ô thu gọn đều tuỳ chọn, trống = không giới hạn → thu gọn cả ở trang Tạo. `useFormDraft` (thêm trả `values` cho badge) + `useUnsavedChanges`. Nhóm chọn sản phẩm: `fieldset/legend` rõ, dòng ≥ 44px. Rà 2 form ghi chú (xem bảng nguy cơ): không cần sửa. Sửa `<main>` lồng ở 3 trang coupons + `messages`, `products` (đóng danh sách 9 trang); bỏ import `SettingsGrid` | 0.1, 1.8b | Không |
 
-**`<main>` lồng ở Studio** (rà 2026-10-25, layout Studio đã có `<main>`): 9 trang — `coupons/page.tsx`, `coupons/new/page.tsx`,
-`coupons/[couponId]/page.tsx` → 2.6; `messages/page.tsx`, `products/page.tsx` → task Studio 2.x (Quốc gắn khi lập);
-`products/[productId]/share-links/page.tsx` → 2.3; `settings/page.tsx`, `settings/payments/page.tsx` → 2.1/2.2;
-`storefront/page.tsx` → 2.5. (`studio/page.tsx` không nằm trong layout Studio nên không lồng.) Badge "Có thay đổi chưa lưu"
-của `storefront-editor.tsx` đổi sang `warning` trong 2.5.
+| **2.7** | `settings/branding-form.tsx`, `products/_ui/product-editor.tsx`, `settings/page.tsx`, `settings/payments/page.tsx`, `billing/renew-form.tsx`, `share-link-form.tsx`, `coupon-form.tsx` | **Đã làm (2026-10-25)** — sửa lệch do Long rà GĐ 2: comment `keepOnSuccess` (giữ, action đã `revalidatePath`); bỏ comment "khung tối đa 1440px"; `metadata.title` "Thông tin & thương hiệu — Cài đặt", "Thanh toán — Cài đặt"; `renew-form` giữ lựa chọn khi lỗi, `refund-request-form` không cần (lý do ở bảng nguy cơ); `legend`/nhãn checkbox dùng `brandColors.ink` thay hex | — | Không |
 
-Thứ tự: 0.1 → 0.2 → 0.3 → 1.1 → 1.2 → 1.2b → 1.3 → 1.7 → 1.8 → 1.4 → 1.8b → 1.9 → 1.11 → 1.5 → 1.12a → 1.12b → 1.13 → (1.10 khi Vương xong ADR-055) → (1.6 khi phiên `/phap-ly`
-xong) → 2.1 → 2.2 → 2.3 → 2.4 → 2.5 → 2.6. Task Hiếu (ẩn slug hệ thống ở `/admin/cms`) làm song song sau 1.1.
+**`<main>` lồng ở Studio** (rà 2026-10-25, layout Studio đã có `<main>`): **đã sửa đủ 9 trang** — `settings`, `settings/payments`
+(2.1/2.2), `share-links` (2.3b), `storefront` (2.5), `coupons` ×3, `messages`, `products` (2.6). `studio/page.tsx` không nằm
+trong layout Studio nên không lồng. Badge "Có thay đổi chưa lưu" của `storefront-editor.tsx` đã đổi sang `warning` (2.5).
+
+**Trạng thái GĐ 2 (2026-10-25):** đã xong 2.1, 2.2, 2.3a, 2.3b, 2.4, 2.5 (kết luận không cần accordion), 2.6, 2.7. Không còn
+task hoãn trong GĐ 2. Việc mở đề xuất cho Hiếu: `updateBrandingAction` thêm `revalidatePath` — Quốc đã tự làm.
+
+Thứ tự: 0.1 → 0.2 → 0.3 → 1.1 → 1.2 → 1.2b → 1.3 → 1.7 → 1.8 → 1.4 → 1.8b → 1.9 → 1.11 → 1.5 → 1.12a → 1.12b → 1.13 → 1.14 → 1.15 → (1.10 khi Vương xong ADR-055) → (1.6 khi phiên `/phap-ly`
+xong) → 2.1 → 2.2 → 2.3a → 2.3b → 2.4 → 2.5 → 2.6. Task Hiếu (ẩn slug hệ thống ở `/admin/cms`) làm song song sau 1.1.
 
 ---
 
