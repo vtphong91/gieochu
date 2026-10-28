@@ -102,7 +102,7 @@ async function extractXlsx(buffer: Buffer): Promise<ExtractResult> {
   const wb = xlsx.read(buffer, { type: "buffer" });
   const sheetName = wb.SheetNames[0] ?? "Sheet1";
   const sheet = wb.Sheets[sheetName];
-  const rows = (xlsx.utils.sheet_to_json(sheet, { header: 1, defval: "" }) as unknown[][]) ?? [];
+  const rows = sheet ? (xlsx.utils.sheet_to_json(sheet, { header: 1, defval: "" }) as unknown[][]) : [];
   const sliced = sliceXlsxRows(rows);
   const bounded = truncateRowsToBudget(sliced.rows);
   const payload: XlsxPayload = {

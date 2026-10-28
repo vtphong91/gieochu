@@ -76,6 +76,7 @@ function useFocusTrap(active: boolean, panelRef: React.RefObject<HTMLDivElement 
       if (nodes.length === 0) return;
       const first = nodes[0];
       const last = nodes[nodes.length - 1];
+      if (!first || !last) return;
       const current = document.activeElement as HTMLElement | null;
       if (e.shiftKey) {
         if (current === first || !panel?.contains(current)) {
