@@ -1249,6 +1249,23 @@ Checklist pháp lý: `docs/legal/LEGAL_REVIEW_CHECKLIST.md`.
 - Chưa hỏi người dùng các quyết định ảnh hưởng tiền/bảo mật/dữ liệu cá nhân — sẽ dừng lại đúng lúc theo mục
   0.6 khi gặp.
 
+## ADR-063 — Xem trước 20% nội dung thật của file tài liệu (2026-10-27)
+
+- **Trạng thái:** code + UI + KB **xong, chưa commit** (working tree).
+- **Thực thi:** Hiếu (schema `ProductFilePreview`, migration `20261027120000_adr063_product_file_previews`,
+  lib `apps/web/lib/product-file-preview.ts`, route `GET /api/[tenantSlug]/[productSlug]/preview/[fileId]`,
+  hook `apps/web/lib/file-scan.ts`, 2 unit `packages/core/src/content/preview-extract.test.ts` + 2 integration
+  `apps/web/tests/integration/product-file-preview-route.test.ts`, nâng trần test 100→102 unit, 66→68
+  integration ở `scripts/count-tests.mjs`, pure helper `packages/core/src/content/preview-extract.ts`,
+  helper storage `packages/storage/src/read-object.ts`); Phong (polish section + modal UI, focus trap, Esc,
+  body scroll lock, animation CSS trong `globals.css`, icon + skeleton + error retry); Long (KB
+  [[ADR-047-Public-Product-File-Preview-20-Percent]] + updates Specs/Endpoints/Schema/Timeline/MOC/Audit/Tags).
+- **Chưa làm (cần Quốc):**
+  - `pnpm install` sạch để lockfile `pdf-parse@^1.1.1` (install cũ bị treo nhiều lần, cũng kéo `xlsx`/`marked` đã khai báo trước đó cài vào).
+  - Áp migration `20261027120000_adr063_product_file_previews` lên DB dùng chung sau khi Quốc duyệt (ADR-034).
+  - Rate limit 60 req/phút/IP (ADR-063 §5): bảng `rate_limit_counters` đã có nhưng chưa có helper public — route handler còn TODO.
+  - Chạy integration test sau khi áp migration ADR-061 + ADR-063 (hiện FAIL do DB thiếu `users.hasPassword`).
+
 ## Kế hoạch SEO tổng thể — hoãn (chủ dự án chốt 2026-10-24)
 
 - Không làm thêm chức năng SEO lẻ trong các phiên hiện tại; gom thành **một kế hoạch tổng thể cho toàn hệ thống** sau:

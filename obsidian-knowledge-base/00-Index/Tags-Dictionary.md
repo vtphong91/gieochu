@@ -40,6 +40,7 @@ giúp phân loại nội dung và tra cứu nhanh cho người và AI agent đ�
 | `#payment` | Cổng thanh toán Platform và Tenant (SePay/MoMo/VietQR QR thủ công), webhook, mã hoá secret; khối chuyển khoản tải QR + sao chép `BankTransferPanel` (ADR-056); email báo xác nhận tay, giao dịch cổng, tiền tố SePay, chạy thử SePay (ADR-059, `SePay-Live-Test-Runbook`); MoMo cá nhân `MOMO_MANUAL` (ADR-059 bổ sung lần 3, `MoMo-Manual-Verification-Runbook`) |
 | `#order` | Checkout, vòng đời đơn hàng, khuyến mãi/coupon; trang Đơn hàng Studio — danh sách + chi tiết (ADR-046), tìm không dấu + ghi chú nội bộ `order_notes` (ADR-047, `Studio-Orders-Specs`) |
 | `#product` | Sản phẩm (tài liệu số), file đính kèm, upload, giá |
+| `#product-preview` | Xem trước 20% nội dung thật của file tài liệu trên trang chi tiết công khai (ADR-063 ≙ KB [[01-Architecture-Decisions/ADR-047-Public-Product-File-Preview-20-Percent\|ADR-047]]): bảng cache `product_file_previews`, API `GET /api/{tenantSlug}/{productSlug}/preview/{fileId}`, 5 định dạng docx/xlsx/pdf/text/unsupported |
 | `#download` | Thư viện khách hàng, token tải file, share link |
 | `#rbac` | Phân quyền — `SystemRole`/`TenantMemberRole`, bảng `Role`/`Permission` (ADR-022) |
 | `#auth` | Đăng ký/đăng nhập, JWT, refresh token, xác minh email |

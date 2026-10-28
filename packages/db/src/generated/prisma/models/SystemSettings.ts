@@ -45,6 +45,8 @@ export type SystemSettingsAvgAggregateOutputType = {
   presignUploadTtlSeconds: number | null
   presignDownloadTtlSeconds: number | null
   orderPendingTtlMinutes: number | null
+  orderHoldManualHours: number | null
+  orderHoldAutoHours: number | null
   invoicePendingTtlHours: number | null
   defaultDownloadLimit: number | null
   sessionIdleMinutes: number | null
@@ -65,6 +67,8 @@ export type SystemSettingsSumAggregateOutputType = {
   presignUploadTtlSeconds: number | null
   presignDownloadTtlSeconds: number | null
   orderPendingTtlMinutes: number | null
+  orderHoldManualHours: number | null
+  orderHoldAutoHours: number | null
   invoicePendingTtlHours: number | null
   defaultDownloadLimit: number | null
   sessionIdleMinutes: number | null
@@ -87,6 +91,8 @@ export type SystemSettingsMinAggregateOutputType = {
   presignUploadTtlSeconds: number | null
   presignDownloadTtlSeconds: number | null
   orderPendingTtlMinutes: number | null
+  orderHoldManualHours: number | null
+  orderHoldAutoHours: number | null
   invoicePendingTtlHours: number | null
   defaultDownloadLimit: number | null
   sessionIdleMinutes: number | null
@@ -111,6 +117,8 @@ export type SystemSettingsMaxAggregateOutputType = {
   presignUploadTtlSeconds: number | null
   presignDownloadTtlSeconds: number | null
   orderPendingTtlMinutes: number | null
+  orderHoldManualHours: number | null
+  orderHoldAutoHours: number | null
   invoicePendingTtlHours: number | null
   defaultDownloadLimit: number | null
   sessionIdleMinutes: number | null
@@ -135,6 +143,8 @@ export type SystemSettingsCountAggregateOutputType = {
   presignUploadTtlSeconds: number
   presignDownloadTtlSeconds: number
   orderPendingTtlMinutes: number
+  orderHoldManualHours: number
+  orderHoldAutoHours: number
   invoicePendingTtlHours: number
   defaultDownloadLimit: number
   sessionIdleMinutes: number
@@ -159,6 +169,8 @@ export type SystemSettingsAvgAggregateInputType = {
   presignUploadTtlSeconds?: true
   presignDownloadTtlSeconds?: true
   orderPendingTtlMinutes?: true
+  orderHoldManualHours?: true
+  orderHoldAutoHours?: true
   invoicePendingTtlHours?: true
   defaultDownloadLimit?: true
   sessionIdleMinutes?: true
@@ -179,6 +191,8 @@ export type SystemSettingsSumAggregateInputType = {
   presignUploadTtlSeconds?: true
   presignDownloadTtlSeconds?: true
   orderPendingTtlMinutes?: true
+  orderHoldManualHours?: true
+  orderHoldAutoHours?: true
   invoicePendingTtlHours?: true
   defaultDownloadLimit?: true
   sessionIdleMinutes?: true
@@ -201,6 +215,8 @@ export type SystemSettingsMinAggregateInputType = {
   presignUploadTtlSeconds?: true
   presignDownloadTtlSeconds?: true
   orderPendingTtlMinutes?: true
+  orderHoldManualHours?: true
+  orderHoldAutoHours?: true
   invoicePendingTtlHours?: true
   defaultDownloadLimit?: true
   sessionIdleMinutes?: true
@@ -225,6 +241,8 @@ export type SystemSettingsMaxAggregateInputType = {
   presignUploadTtlSeconds?: true
   presignDownloadTtlSeconds?: true
   orderPendingTtlMinutes?: true
+  orderHoldManualHours?: true
+  orderHoldAutoHours?: true
   invoicePendingTtlHours?: true
   defaultDownloadLimit?: true
   sessionIdleMinutes?: true
@@ -249,6 +267,8 @@ export type SystemSettingsCountAggregateInputType = {
   presignUploadTtlSeconds?: true
   presignDownloadTtlSeconds?: true
   orderPendingTtlMinutes?: true
+  orderHoldManualHours?: true
+  orderHoldAutoHours?: true
   invoicePendingTtlHours?: true
   defaultDownloadLimit?: true
   sessionIdleMinutes?: true
@@ -360,6 +380,8 @@ export type SystemSettingsGroupByOutputType = {
   presignUploadTtlSeconds: number
   presignDownloadTtlSeconds: number
   orderPendingTtlMinutes: number
+  orderHoldManualHours: number
+  orderHoldAutoHours: number
   invoicePendingTtlHours: number
   defaultDownloadLimit: number
   sessionIdleMinutes: number
@@ -407,6 +429,8 @@ export type SystemSettingsWhereInput = {
   presignUploadTtlSeconds?: Prisma.IntFilter<"SystemSettings"> | number
   presignDownloadTtlSeconds?: Prisma.IntFilter<"SystemSettings"> | number
   orderPendingTtlMinutes?: Prisma.IntFilter<"SystemSettings"> | number
+  orderHoldManualHours?: Prisma.IntFilter<"SystemSettings"> | number
+  orderHoldAutoHours?: Prisma.IntFilter<"SystemSettings"> | number
   invoicePendingTtlHours?: Prisma.IntFilter<"SystemSettings"> | number
   defaultDownloadLimit?: Prisma.IntFilter<"SystemSettings"> | number
   sessionIdleMinutes?: Prisma.IntFilter<"SystemSettings"> | number
@@ -431,6 +455,8 @@ export type SystemSettingsOrderByWithRelationInput = {
   presignUploadTtlSeconds?: Prisma.SortOrder
   presignDownloadTtlSeconds?: Prisma.SortOrder
   orderPendingTtlMinutes?: Prisma.SortOrder
+  orderHoldManualHours?: Prisma.SortOrder
+  orderHoldAutoHours?: Prisma.SortOrder
   invoicePendingTtlHours?: Prisma.SortOrder
   defaultDownloadLimit?: Prisma.SortOrder
   sessionIdleMinutes?: Prisma.SortOrder
@@ -458,6 +484,8 @@ export type SystemSettingsWhereUniqueInput = Prisma.AtLeast<{
   presignUploadTtlSeconds?: Prisma.IntFilter<"SystemSettings"> | number
   presignDownloadTtlSeconds?: Prisma.IntFilter<"SystemSettings"> | number
   orderPendingTtlMinutes?: Prisma.IntFilter<"SystemSettings"> | number
+  orderHoldManualHours?: Prisma.IntFilter<"SystemSettings"> | number
+  orderHoldAutoHours?: Prisma.IntFilter<"SystemSettings"> | number
   invoicePendingTtlHours?: Prisma.IntFilter<"SystemSettings"> | number
   defaultDownloadLimit?: Prisma.IntFilter<"SystemSettings"> | number
   sessionIdleMinutes?: Prisma.IntFilter<"SystemSettings"> | number
@@ -482,6 +510,8 @@ export type SystemSettingsOrderByWithAggregationInput = {
   presignUploadTtlSeconds?: Prisma.SortOrder
   presignDownloadTtlSeconds?: Prisma.SortOrder
   orderPendingTtlMinutes?: Prisma.SortOrder
+  orderHoldManualHours?: Prisma.SortOrder
+  orderHoldAutoHours?: Prisma.SortOrder
   invoicePendingTtlHours?: Prisma.SortOrder
   defaultDownloadLimit?: Prisma.SortOrder
   sessionIdleMinutes?: Prisma.SortOrder
@@ -514,6 +544,8 @@ export type SystemSettingsScalarWhereWithAggregatesInput = {
   presignUploadTtlSeconds?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
   presignDownloadTtlSeconds?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
   orderPendingTtlMinutes?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
+  orderHoldManualHours?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
+  orderHoldAutoHours?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
   invoicePendingTtlHours?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
   defaultDownloadLimit?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
   sessionIdleMinutes?: Prisma.IntWithAggregatesFilter<"SystemSettings"> | number
@@ -538,6 +570,8 @@ export type SystemSettingsCreateInput = {
   presignUploadTtlSeconds?: number
   presignDownloadTtlSeconds?: number
   orderPendingTtlMinutes?: number
+  orderHoldManualHours?: number
+  orderHoldAutoHours?: number
   invoicePendingTtlHours?: number
   defaultDownloadLimit?: number
   sessionIdleMinutes?: number
@@ -562,6 +596,8 @@ export type SystemSettingsUncheckedCreateInput = {
   presignUploadTtlSeconds?: number
   presignDownloadTtlSeconds?: number
   orderPendingTtlMinutes?: number
+  orderHoldManualHours?: number
+  orderHoldAutoHours?: number
   invoicePendingTtlHours?: number
   defaultDownloadLimit?: number
   sessionIdleMinutes?: number
@@ -586,6 +622,8 @@ export type SystemSettingsUpdateInput = {
   presignUploadTtlSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   presignDownloadTtlSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   orderPendingTtlMinutes?: Prisma.IntFieldUpdateOperationsInput | number
+  orderHoldManualHours?: Prisma.IntFieldUpdateOperationsInput | number
+  orderHoldAutoHours?: Prisma.IntFieldUpdateOperationsInput | number
   invoicePendingTtlHours?: Prisma.IntFieldUpdateOperationsInput | number
   defaultDownloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   sessionIdleMinutes?: Prisma.IntFieldUpdateOperationsInput | number
@@ -610,6 +648,8 @@ export type SystemSettingsUncheckedUpdateInput = {
   presignUploadTtlSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   presignDownloadTtlSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   orderPendingTtlMinutes?: Prisma.IntFieldUpdateOperationsInput | number
+  orderHoldManualHours?: Prisma.IntFieldUpdateOperationsInput | number
+  orderHoldAutoHours?: Prisma.IntFieldUpdateOperationsInput | number
   invoicePendingTtlHours?: Prisma.IntFieldUpdateOperationsInput | number
   defaultDownloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   sessionIdleMinutes?: Prisma.IntFieldUpdateOperationsInput | number
@@ -634,6 +674,8 @@ export type SystemSettingsCreateManyInput = {
   presignUploadTtlSeconds?: number
   presignDownloadTtlSeconds?: number
   orderPendingTtlMinutes?: number
+  orderHoldManualHours?: number
+  orderHoldAutoHours?: number
   invoicePendingTtlHours?: number
   defaultDownloadLimit?: number
   sessionIdleMinutes?: number
@@ -658,6 +700,8 @@ export type SystemSettingsUpdateManyMutationInput = {
   presignUploadTtlSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   presignDownloadTtlSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   orderPendingTtlMinutes?: Prisma.IntFieldUpdateOperationsInput | number
+  orderHoldManualHours?: Prisma.IntFieldUpdateOperationsInput | number
+  orderHoldAutoHours?: Prisma.IntFieldUpdateOperationsInput | number
   invoicePendingTtlHours?: Prisma.IntFieldUpdateOperationsInput | number
   defaultDownloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   sessionIdleMinutes?: Prisma.IntFieldUpdateOperationsInput | number
@@ -682,6 +726,8 @@ export type SystemSettingsUncheckedUpdateManyInput = {
   presignUploadTtlSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   presignDownloadTtlSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   orderPendingTtlMinutes?: Prisma.IntFieldUpdateOperationsInput | number
+  orderHoldManualHours?: Prisma.IntFieldUpdateOperationsInput | number
+  orderHoldAutoHours?: Prisma.IntFieldUpdateOperationsInput | number
   invoicePendingTtlHours?: Prisma.IntFieldUpdateOperationsInput | number
   defaultDownloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
   sessionIdleMinutes?: Prisma.IntFieldUpdateOperationsInput | number
@@ -706,6 +752,8 @@ export type SystemSettingsCountOrderByAggregateInput = {
   presignUploadTtlSeconds?: Prisma.SortOrder
   presignDownloadTtlSeconds?: Prisma.SortOrder
   orderPendingTtlMinutes?: Prisma.SortOrder
+  orderHoldManualHours?: Prisma.SortOrder
+  orderHoldAutoHours?: Prisma.SortOrder
   invoicePendingTtlHours?: Prisma.SortOrder
   defaultDownloadLimit?: Prisma.SortOrder
   sessionIdleMinutes?: Prisma.SortOrder
@@ -728,6 +776,8 @@ export type SystemSettingsAvgOrderByAggregateInput = {
   presignUploadTtlSeconds?: Prisma.SortOrder
   presignDownloadTtlSeconds?: Prisma.SortOrder
   orderPendingTtlMinutes?: Prisma.SortOrder
+  orderHoldManualHours?: Prisma.SortOrder
+  orderHoldAutoHours?: Prisma.SortOrder
   invoicePendingTtlHours?: Prisma.SortOrder
   defaultDownloadLimit?: Prisma.SortOrder
   sessionIdleMinutes?: Prisma.SortOrder
@@ -750,6 +800,8 @@ export type SystemSettingsMaxOrderByAggregateInput = {
   presignUploadTtlSeconds?: Prisma.SortOrder
   presignDownloadTtlSeconds?: Prisma.SortOrder
   orderPendingTtlMinutes?: Prisma.SortOrder
+  orderHoldManualHours?: Prisma.SortOrder
+  orderHoldAutoHours?: Prisma.SortOrder
   invoicePendingTtlHours?: Prisma.SortOrder
   defaultDownloadLimit?: Prisma.SortOrder
   sessionIdleMinutes?: Prisma.SortOrder
@@ -774,6 +826,8 @@ export type SystemSettingsMinOrderByAggregateInput = {
   presignUploadTtlSeconds?: Prisma.SortOrder
   presignDownloadTtlSeconds?: Prisma.SortOrder
   orderPendingTtlMinutes?: Prisma.SortOrder
+  orderHoldManualHours?: Prisma.SortOrder
+  orderHoldAutoHours?: Prisma.SortOrder
   invoicePendingTtlHours?: Prisma.SortOrder
   defaultDownloadLimit?: Prisma.SortOrder
   sessionIdleMinutes?: Prisma.SortOrder
@@ -796,6 +850,8 @@ export type SystemSettingsSumOrderByAggregateInput = {
   presignUploadTtlSeconds?: Prisma.SortOrder
   presignDownloadTtlSeconds?: Prisma.SortOrder
   orderPendingTtlMinutes?: Prisma.SortOrder
+  orderHoldManualHours?: Prisma.SortOrder
+  orderHoldAutoHours?: Prisma.SortOrder
   invoicePendingTtlHours?: Prisma.SortOrder
   defaultDownloadLimit?: Prisma.SortOrder
   sessionIdleMinutes?: Prisma.SortOrder
@@ -820,6 +876,8 @@ export type SystemSettingsSelect<ExtArgs extends runtime.Types.Extensions.Intern
   presignUploadTtlSeconds?: boolean
   presignDownloadTtlSeconds?: boolean
   orderPendingTtlMinutes?: boolean
+  orderHoldManualHours?: boolean
+  orderHoldAutoHours?: boolean
   invoicePendingTtlHours?: boolean
   defaultDownloadLimit?: boolean
   sessionIdleMinutes?: boolean
@@ -844,6 +902,8 @@ export type SystemSettingsSelectCreateManyAndReturn<ExtArgs extends runtime.Type
   presignUploadTtlSeconds?: boolean
   presignDownloadTtlSeconds?: boolean
   orderPendingTtlMinutes?: boolean
+  orderHoldManualHours?: boolean
+  orderHoldAutoHours?: boolean
   invoicePendingTtlHours?: boolean
   defaultDownloadLimit?: boolean
   sessionIdleMinutes?: boolean
@@ -868,6 +928,8 @@ export type SystemSettingsSelectUpdateManyAndReturn<ExtArgs extends runtime.Type
   presignUploadTtlSeconds?: boolean
   presignDownloadTtlSeconds?: boolean
   orderPendingTtlMinutes?: boolean
+  orderHoldManualHours?: boolean
+  orderHoldAutoHours?: boolean
   invoicePendingTtlHours?: boolean
   defaultDownloadLimit?: boolean
   sessionIdleMinutes?: boolean
@@ -892,6 +954,8 @@ export type SystemSettingsSelectScalar = {
   presignUploadTtlSeconds?: boolean
   presignDownloadTtlSeconds?: boolean
   orderPendingTtlMinutes?: boolean
+  orderHoldManualHours?: boolean
+  orderHoldAutoHours?: boolean
   invoicePendingTtlHours?: boolean
   defaultDownloadLimit?: boolean
   sessionIdleMinutes?: boolean
@@ -904,7 +968,7 @@ export type SystemSettingsSelectScalar = {
   updatedAt?: boolean
 }
 
-export type SystemSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "supportEmail" | "trialDays" | "graceDays" | "accessTokenTtlMinutes" | "refreshTokenTtlDays" | "emailVerifyTtlHours" | "passwordResetTtlMinutes" | "presignUploadTtlSeconds" | "presignDownloadTtlSeconds" | "orderPendingTtlMinutes" | "invoicePendingTtlHours" | "defaultDownloadLimit" | "sessionIdleMinutes" | "sessionAbsoluteHours" | "rememberMeDays" | "adminIdleMinutes" | "adminAbsoluteHours" | "sessionWarningMinutes" | "updatedById" | "updatedAt", ExtArgs["result"]["systemSettings"]>
+export type SystemSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "supportEmail" | "trialDays" | "graceDays" | "accessTokenTtlMinutes" | "refreshTokenTtlDays" | "emailVerifyTtlHours" | "passwordResetTtlMinutes" | "presignUploadTtlSeconds" | "presignDownloadTtlSeconds" | "orderPendingTtlMinutes" | "orderHoldManualHours" | "orderHoldAutoHours" | "invoicePendingTtlHours" | "defaultDownloadLimit" | "sessionIdleMinutes" | "sessionAbsoluteHours" | "rememberMeDays" | "adminIdleMinutes" | "adminAbsoluteHours" | "sessionWarningMinutes" | "updatedById" | "updatedAt", ExtArgs["result"]["systemSettings"]>
 
 export type $SystemSettingsPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "SystemSettings"
@@ -921,6 +985,14 @@ export type $SystemSettingsPayload<ExtArgs extends runtime.Types.Extensions.Inte
     presignUploadTtlSeconds: number
     presignDownloadTtlSeconds: number
     orderPendingTtlMinutes: number
+    /**
+     * ADR-061/062: hạn giữ đơn tính từ lúc đặt đơn theo phương thức — xác nhận tay (ngân hàng, MoMo) và chưa chọn phương thức.
+     */
+    orderHoldManualHours: number
+    /**
+     * ADR-061/062: hạn giữ đơn với cổng tự xác nhận (SePay; MoMo API nếu bật).
+     */
+    orderHoldAutoHours: number
     invoicePendingTtlHours: number
     defaultDownloadLimit: number
     /**
@@ -1372,6 +1444,8 @@ export interface SystemSettingsFieldRefs {
   readonly presignUploadTtlSeconds: Prisma.FieldRef<"SystemSettings", 'Int'>
   readonly presignDownloadTtlSeconds: Prisma.FieldRef<"SystemSettings", 'Int'>
   readonly orderPendingTtlMinutes: Prisma.FieldRef<"SystemSettings", 'Int'>
+  readonly orderHoldManualHours: Prisma.FieldRef<"SystemSettings", 'Int'>
+  readonly orderHoldAutoHours: Prisma.FieldRef<"SystemSettings", 'Int'>
   readonly invoicePendingTtlHours: Prisma.FieldRef<"SystemSettings", 'Int'>
   readonly defaultDownloadLimit: Prisma.FieldRef<"SystemSettings", 'Int'>
   readonly sessionIdleMinutes: Prisma.FieldRef<"SystemSettings", 'Int'>

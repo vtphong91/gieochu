@@ -321,6 +321,7 @@ export type ProductFileWhereInput = {
   product?: Prisma.XOR<Prisma.ProductScalarRelationFilter, Prisma.ProductWhereInput>
   downloadTokens?: Prisma.DownloadTokenListRelationFilter
   downloadEvents?: Prisma.DownloadEventListRelationFilter
+  productFilePreview?: Prisma.XOR<Prisma.ProductFilePreviewNullableScalarRelationFilter, Prisma.ProductFilePreviewWhereInput> | null
 }
 
 export type ProductFileOrderByWithRelationInput = {
@@ -343,6 +344,7 @@ export type ProductFileOrderByWithRelationInput = {
   product?: Prisma.ProductOrderByWithRelationInput
   downloadTokens?: Prisma.DownloadTokenOrderByRelationAggregateInput
   downloadEvents?: Prisma.DownloadEventOrderByRelationAggregateInput
+  productFilePreview?: Prisma.ProductFilePreviewOrderByWithRelationInput
 }
 
 export type ProductFileWhereUniqueInput = Prisma.AtLeast<{
@@ -368,6 +370,7 @@ export type ProductFileWhereUniqueInput = Prisma.AtLeast<{
   product?: Prisma.XOR<Prisma.ProductScalarRelationFilter, Prisma.ProductWhereInput>
   downloadTokens?: Prisma.DownloadTokenListRelationFilter
   downloadEvents?: Prisma.DownloadEventListRelationFilter
+  productFilePreview?: Prisma.XOR<Prisma.ProductFilePreviewNullableScalarRelationFilter, Prisma.ProductFilePreviewWhereInput> | null
 }, "id" | "objectKey">
 
 export type ProductFileOrderByWithAggregationInput = {
@@ -435,6 +438,7 @@ export type ProductFileCreateInput = {
   product: Prisma.ProductCreateNestedOneWithoutFilesInput
   downloadTokens?: Prisma.DownloadTokenCreateNestedManyWithoutFileInput
   downloadEvents?: Prisma.DownloadEventCreateNestedManyWithoutFileInput
+  productFilePreview?: Prisma.ProductFilePreviewCreateNestedOneWithoutProductFileInput
 }
 
 export type ProductFileUncheckedCreateInput = {
@@ -456,6 +460,7 @@ export type ProductFileUncheckedCreateInput = {
   createdAt?: Date | string
   downloadTokens?: Prisma.DownloadTokenUncheckedCreateNestedManyWithoutFileInput
   downloadEvents?: Prisma.DownloadEventUncheckedCreateNestedManyWithoutFileInput
+  productFilePreview?: Prisma.ProductFilePreviewUncheckedCreateNestedOneWithoutProductFileInput
 }
 
 export type ProductFileUpdateInput = {
@@ -477,6 +482,7 @@ export type ProductFileUpdateInput = {
   product?: Prisma.ProductUpdateOneRequiredWithoutFilesNestedInput
   downloadTokens?: Prisma.DownloadTokenUpdateManyWithoutFileNestedInput
   downloadEvents?: Prisma.DownloadEventUpdateManyWithoutFileNestedInput
+  productFilePreview?: Prisma.ProductFilePreviewUpdateOneWithoutProductFileNestedInput
 }
 
 export type ProductFileUncheckedUpdateInput = {
@@ -498,6 +504,7 @@ export type ProductFileUncheckedUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   downloadTokens?: Prisma.DownloadTokenUncheckedUpdateManyWithoutFileNestedInput
   downloadEvents?: Prisma.DownloadEventUncheckedUpdateManyWithoutFileNestedInput
+  productFilePreview?: Prisma.ProductFilePreviewUncheckedUpdateOneWithoutProductFileNestedInput
 }
 
 export type ProductFileCreateManyInput = {
@@ -686,6 +693,20 @@ export type NullableEnumProductFileScanStatusFieldUpdateOperationsInput = {
   set?: $Enums.ProductFileScanStatus | null
 }
 
+export type ProductFileCreateNestedOneWithoutProductFilePreviewInput = {
+  create?: Prisma.XOR<Prisma.ProductFileCreateWithoutProductFilePreviewInput, Prisma.ProductFileUncheckedCreateWithoutProductFilePreviewInput>
+  connectOrCreate?: Prisma.ProductFileCreateOrConnectWithoutProductFilePreviewInput
+  connect?: Prisma.ProductFileWhereUniqueInput
+}
+
+export type ProductFileUpdateOneRequiredWithoutProductFilePreviewNestedInput = {
+  create?: Prisma.XOR<Prisma.ProductFileCreateWithoutProductFilePreviewInput, Prisma.ProductFileUncheckedCreateWithoutProductFilePreviewInput>
+  connectOrCreate?: Prisma.ProductFileCreateOrConnectWithoutProductFilePreviewInput
+  upsert?: Prisma.ProductFileUpsertWithoutProductFilePreviewInput
+  connect?: Prisma.ProductFileWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ProductFileUpdateToOneWithWhereWithoutProductFilePreviewInput, Prisma.ProductFileUpdateWithoutProductFilePreviewInput>, Prisma.ProductFileUncheckedUpdateWithoutProductFilePreviewInput>
+}
+
 export type ProductFileCreateNestedOneWithoutDownloadTokensInput = {
   create?: Prisma.XOR<Prisma.ProductFileCreateWithoutDownloadTokensInput, Prisma.ProductFileUncheckedCreateWithoutDownloadTokensInput>
   connectOrCreate?: Prisma.ProductFileCreateOrConnectWithoutDownloadTokensInput
@@ -732,6 +753,7 @@ export type ProductFileCreateWithoutProductInput = {
   createdAt?: Date | string
   downloadTokens?: Prisma.DownloadTokenCreateNestedManyWithoutFileInput
   downloadEvents?: Prisma.DownloadEventCreateNestedManyWithoutFileInput
+  productFilePreview?: Prisma.ProductFilePreviewCreateNestedOneWithoutProductFileInput
 }
 
 export type ProductFileUncheckedCreateWithoutProductInput = {
@@ -752,6 +774,7 @@ export type ProductFileUncheckedCreateWithoutProductInput = {
   createdAt?: Date | string
   downloadTokens?: Prisma.DownloadTokenUncheckedCreateNestedManyWithoutFileInput
   downloadEvents?: Prisma.DownloadEventUncheckedCreateNestedManyWithoutFileInput
+  productFilePreview?: Prisma.ProductFilePreviewUncheckedCreateNestedOneWithoutProductFileInput
 }
 
 export type ProductFileCreateOrConnectWithoutProductInput = {
@@ -802,6 +825,106 @@ export type ProductFileScalarWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"ProductFile"> | Date | string
 }
 
+export type ProductFileCreateWithoutProductFilePreviewInput = {
+  id?: string
+  tenantId: string
+  sourceKind?: $Enums.ProductFileSource
+  externalUrl?: string | null
+  objectKey?: string | null
+  storageBucket?: string | null
+  storageProvider?: string | null
+  fileName: string
+  mimeType?: string | null
+  sizeBytes: number
+  sha256?: string | null
+  scanStatus?: $Enums.ProductFileScanStatus | null
+  isPreview?: boolean
+  removedAt?: Date | string | null
+  createdAt?: Date | string
+  product: Prisma.ProductCreateNestedOneWithoutFilesInput
+  downloadTokens?: Prisma.DownloadTokenCreateNestedManyWithoutFileInput
+  downloadEvents?: Prisma.DownloadEventCreateNestedManyWithoutFileInput
+}
+
+export type ProductFileUncheckedCreateWithoutProductFilePreviewInput = {
+  id?: string
+  productId: string
+  tenantId: string
+  sourceKind?: $Enums.ProductFileSource
+  externalUrl?: string | null
+  objectKey?: string | null
+  storageBucket?: string | null
+  storageProvider?: string | null
+  fileName: string
+  mimeType?: string | null
+  sizeBytes: number
+  sha256?: string | null
+  scanStatus?: $Enums.ProductFileScanStatus | null
+  isPreview?: boolean
+  removedAt?: Date | string | null
+  createdAt?: Date | string
+  downloadTokens?: Prisma.DownloadTokenUncheckedCreateNestedManyWithoutFileInput
+  downloadEvents?: Prisma.DownloadEventUncheckedCreateNestedManyWithoutFileInput
+}
+
+export type ProductFileCreateOrConnectWithoutProductFilePreviewInput = {
+  where: Prisma.ProductFileWhereUniqueInput
+  create: Prisma.XOR<Prisma.ProductFileCreateWithoutProductFilePreviewInput, Prisma.ProductFileUncheckedCreateWithoutProductFilePreviewInput>
+}
+
+export type ProductFileUpsertWithoutProductFilePreviewInput = {
+  update: Prisma.XOR<Prisma.ProductFileUpdateWithoutProductFilePreviewInput, Prisma.ProductFileUncheckedUpdateWithoutProductFilePreviewInput>
+  create: Prisma.XOR<Prisma.ProductFileCreateWithoutProductFilePreviewInput, Prisma.ProductFileUncheckedCreateWithoutProductFilePreviewInput>
+  where?: Prisma.ProductFileWhereInput
+}
+
+export type ProductFileUpdateToOneWithWhereWithoutProductFilePreviewInput = {
+  where?: Prisma.ProductFileWhereInput
+  data: Prisma.XOR<Prisma.ProductFileUpdateWithoutProductFilePreviewInput, Prisma.ProductFileUncheckedUpdateWithoutProductFilePreviewInput>
+}
+
+export type ProductFileUpdateWithoutProductFilePreviewInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  tenantId?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceKind?: Prisma.EnumProductFileSourceFieldUpdateOperationsInput | $Enums.ProductFileSource
+  externalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  objectKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fileName?: Prisma.StringFieldUpdateOperationsInput | string
+  mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  scanStatus?: Prisma.NullableEnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus | null
+  isPreview?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  product?: Prisma.ProductUpdateOneRequiredWithoutFilesNestedInput
+  downloadTokens?: Prisma.DownloadTokenUpdateManyWithoutFileNestedInput
+  downloadEvents?: Prisma.DownloadEventUpdateManyWithoutFileNestedInput
+}
+
+export type ProductFileUncheckedUpdateWithoutProductFilePreviewInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  productId?: Prisma.StringFieldUpdateOperationsInput | string
+  tenantId?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceKind?: Prisma.EnumProductFileSourceFieldUpdateOperationsInput | $Enums.ProductFileSource
+  externalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  objectKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageBucket?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storageProvider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fileName?: Prisma.StringFieldUpdateOperationsInput | string
+  mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  scanStatus?: Prisma.NullableEnumProductFileScanStatusFieldUpdateOperationsInput | $Enums.ProductFileScanStatus | null
+  isPreview?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  downloadTokens?: Prisma.DownloadTokenUncheckedUpdateManyWithoutFileNestedInput
+  downloadEvents?: Prisma.DownloadEventUncheckedUpdateManyWithoutFileNestedInput
+}
+
 export type ProductFileCreateWithoutDownloadTokensInput = {
   id?: string
   tenantId: string
@@ -820,6 +943,7 @@ export type ProductFileCreateWithoutDownloadTokensInput = {
   createdAt?: Date | string
   product: Prisma.ProductCreateNestedOneWithoutFilesInput
   downloadEvents?: Prisma.DownloadEventCreateNestedManyWithoutFileInput
+  productFilePreview?: Prisma.ProductFilePreviewCreateNestedOneWithoutProductFileInput
 }
 
 export type ProductFileUncheckedCreateWithoutDownloadTokensInput = {
@@ -840,6 +964,7 @@ export type ProductFileUncheckedCreateWithoutDownloadTokensInput = {
   removedAt?: Date | string | null
   createdAt?: Date | string
   downloadEvents?: Prisma.DownloadEventUncheckedCreateNestedManyWithoutFileInput
+  productFilePreview?: Prisma.ProductFilePreviewUncheckedCreateNestedOneWithoutProductFileInput
 }
 
 export type ProductFileCreateOrConnectWithoutDownloadTokensInput = {
@@ -876,6 +1001,7 @@ export type ProductFileUpdateWithoutDownloadTokensInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   product?: Prisma.ProductUpdateOneRequiredWithoutFilesNestedInput
   downloadEvents?: Prisma.DownloadEventUpdateManyWithoutFileNestedInput
+  productFilePreview?: Prisma.ProductFilePreviewUpdateOneWithoutProductFileNestedInput
 }
 
 export type ProductFileUncheckedUpdateWithoutDownloadTokensInput = {
@@ -896,6 +1022,7 @@ export type ProductFileUncheckedUpdateWithoutDownloadTokensInput = {
   removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   downloadEvents?: Prisma.DownloadEventUncheckedUpdateManyWithoutFileNestedInput
+  productFilePreview?: Prisma.ProductFilePreviewUncheckedUpdateOneWithoutProductFileNestedInput
 }
 
 export type ProductFileCreateWithoutDownloadEventsInput = {
@@ -916,6 +1043,7 @@ export type ProductFileCreateWithoutDownloadEventsInput = {
   createdAt?: Date | string
   product: Prisma.ProductCreateNestedOneWithoutFilesInput
   downloadTokens?: Prisma.DownloadTokenCreateNestedManyWithoutFileInput
+  productFilePreview?: Prisma.ProductFilePreviewCreateNestedOneWithoutProductFileInput
 }
 
 export type ProductFileUncheckedCreateWithoutDownloadEventsInput = {
@@ -936,6 +1064,7 @@ export type ProductFileUncheckedCreateWithoutDownloadEventsInput = {
   removedAt?: Date | string | null
   createdAt?: Date | string
   downloadTokens?: Prisma.DownloadTokenUncheckedCreateNestedManyWithoutFileInput
+  productFilePreview?: Prisma.ProductFilePreviewUncheckedCreateNestedOneWithoutProductFileInput
 }
 
 export type ProductFileCreateOrConnectWithoutDownloadEventsInput = {
@@ -972,6 +1101,7 @@ export type ProductFileUpdateWithoutDownloadEventsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   product?: Prisma.ProductUpdateOneRequiredWithoutFilesNestedInput
   downloadTokens?: Prisma.DownloadTokenUpdateManyWithoutFileNestedInput
+  productFilePreview?: Prisma.ProductFilePreviewUpdateOneWithoutProductFileNestedInput
 }
 
 export type ProductFileUncheckedUpdateWithoutDownloadEventsInput = {
@@ -992,6 +1122,7 @@ export type ProductFileUncheckedUpdateWithoutDownloadEventsInput = {
   removedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   downloadTokens?: Prisma.DownloadTokenUncheckedUpdateManyWithoutFileNestedInput
+  productFilePreview?: Prisma.ProductFilePreviewUncheckedUpdateOneWithoutProductFileNestedInput
 }
 
 export type ProductFileCreateManyProductInput = {
@@ -1030,6 +1161,7 @@ export type ProductFileUpdateWithoutProductInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   downloadTokens?: Prisma.DownloadTokenUpdateManyWithoutFileNestedInput
   downloadEvents?: Prisma.DownloadEventUpdateManyWithoutFileNestedInput
+  productFilePreview?: Prisma.ProductFilePreviewUpdateOneWithoutProductFileNestedInput
 }
 
 export type ProductFileUncheckedUpdateWithoutProductInput = {
@@ -1050,6 +1182,7 @@ export type ProductFileUncheckedUpdateWithoutProductInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   downloadTokens?: Prisma.DownloadTokenUncheckedUpdateManyWithoutFileNestedInput
   downloadEvents?: Prisma.DownloadEventUncheckedUpdateManyWithoutFileNestedInput
+  productFilePreview?: Prisma.ProductFilePreviewUncheckedUpdateOneWithoutProductFileNestedInput
 }
 
 export type ProductFileUncheckedUpdateManyWithoutProductInput = {
@@ -1130,6 +1263,7 @@ export type ProductFileSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
   downloadTokens?: boolean | Prisma.ProductFile$downloadTokensArgs<ExtArgs>
   downloadEvents?: boolean | Prisma.ProductFile$downloadEventsArgs<ExtArgs>
+  productFilePreview?: boolean | Prisma.ProductFile$productFilePreviewArgs<ExtArgs>
   _count?: boolean | Prisma.ProductFileCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["productFile"]>
 
@@ -1197,6 +1331,7 @@ export type ProductFileInclude<ExtArgs extends runtime.Types.Extensions.Internal
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
   downloadTokens?: boolean | Prisma.ProductFile$downloadTokensArgs<ExtArgs>
   downloadEvents?: boolean | Prisma.ProductFile$downloadEventsArgs<ExtArgs>
+  productFilePreview?: boolean | Prisma.ProductFile$productFilePreviewArgs<ExtArgs>
   _count?: boolean | Prisma.ProductFileCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ProductFileIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1212,6 +1347,7 @@ export type $ProductFilePayload<ExtArgs extends runtime.Types.Extensions.Interna
     product: Prisma.$ProductPayload<ExtArgs>
     downloadTokens: Prisma.$DownloadTokenPayload<ExtArgs>[]
     downloadEvents: Prisma.$DownloadEventPayload<ExtArgs>[]
+    productFilePreview: Prisma.$ProductFilePreviewPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1627,6 +1763,7 @@ export interface Prisma__ProductFileClient<T, Null = never, ExtArgs extends runt
   product<T extends Prisma.ProductDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ProductDefaultArgs<ExtArgs>>): Prisma.Prisma__ProductClient<runtime.Types.Result.GetResult<Prisma.$ProductPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   downloadTokens<T extends Prisma.ProductFile$downloadTokensArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ProductFile$downloadTokensArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DownloadTokenPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   downloadEvents<T extends Prisma.ProductFile$downloadEventsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ProductFile$downloadEventsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DownloadEventPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  productFilePreview<T extends Prisma.ProductFile$productFilePreviewArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ProductFile$productFilePreviewArgs<ExtArgs>>): Prisma.Prisma__ProductFilePreviewClient<runtime.Types.Result.GetResult<Prisma.$ProductFilePreviewPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2118,6 +2255,25 @@ export type ProductFile$downloadEventsArgs<ExtArgs extends runtime.Types.Extensi
   take?: number
   skip?: number
   distinct?: Prisma.DownloadEventScalarFieldEnum | Prisma.DownloadEventScalarFieldEnum[]
+}
+
+/**
+ * ProductFile.productFilePreview
+ */
+export type ProductFile$productFilePreviewArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ProductFilePreview
+   */
+  select?: Prisma.ProductFilePreviewSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ProductFilePreview
+   */
+  omit?: Prisma.ProductFilePreviewOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ProductFilePreviewInclude<ExtArgs> | null
+  where?: Prisma.ProductFilePreviewWhereInput
 }
 
 /**

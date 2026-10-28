@@ -412,6 +412,7 @@ export const ModelName = {
   TenantSlugHistory: 'TenantSlugHistory',
   Product: 'Product',
   ProductFile: 'ProductFile',
+  ProductFilePreview: 'ProductFilePreview',
   SystemSettings: 'SystemSettings',
   SystemStorageConfig: 'SystemStorageConfig',
   SystemCloudinaryConfig: 'SystemCloudinaryConfig',
@@ -448,7 +449,8 @@ export const ModelName = {
   LegalDocumentVersion: 'LegalDocumentVersion',
   UserLegalAcceptance: 'UserLegalAcceptance',
   TenantEditorDraft: 'TenantEditorDraft',
-  SystemEditorDraft: 'SystemEditorDraft'
+  SystemEditorDraft: 'SystemEditorDraft',
+  RateLimitCounter: 'RateLimitCounter'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -464,7 +466,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userProfile" | "refreshToken" | "verificationToken" | "plan" | "role" | "permission" | "rolePermission" | "cmsPage" | "subscription" | "tenant" | "tenantMember" | "tenantSlugHistory" | "product" | "productFile" | "systemSettings" | "systemStorageConfig" | "systemCloudinaryConfig" | "systemSmtpConfig" | "emailSendLog" | "documentCategory" | "systemBranding" | "tenantPaymentConfig" | "platformPaymentConfig" | "subscriptionInvoice" | "subscriptionRefundRequest" | "platformPaymentTransaction" | "webhookEvent" | "bankBin" | "coupon" | "couponRedemption" | "order" | "orderNote" | "orderItem" | "tenantPaymentTransaction" | "tenantCustomer" | "entitlement" | "downloadToken" | "shareLink" | "downloadEvent" | "storefrontMessage" | "tenantMediaAsset" | "review" | "post" | "auditLog" | "tenantDailyStat" | "abuseReport" | "legalDocument" | "legalDocumentVersion" | "userLegalAcceptance" | "tenantEditorDraft" | "systemEditorDraft"
+    modelProps: "user" | "userProfile" | "refreshToken" | "verificationToken" | "plan" | "role" | "permission" | "rolePermission" | "cmsPage" | "subscription" | "tenant" | "tenantMember" | "tenantSlugHistory" | "product" | "productFile" | "productFilePreview" | "systemSettings" | "systemStorageConfig" | "systemCloudinaryConfig" | "systemSmtpConfig" | "emailSendLog" | "documentCategory" | "systemBranding" | "tenantPaymentConfig" | "platformPaymentConfig" | "subscriptionInvoice" | "subscriptionRefundRequest" | "platformPaymentTransaction" | "webhookEvent" | "bankBin" | "coupon" | "couponRedemption" | "order" | "orderNote" | "orderItem" | "tenantPaymentTransaction" | "tenantCustomer" | "entitlement" | "downloadToken" | "shareLink" | "downloadEvent" | "storefrontMessage" | "tenantMediaAsset" | "review" | "post" | "auditLog" | "tenantDailyStat" | "abuseReport" | "legalDocument" | "legalDocumentVersion" | "userLegalAcceptance" | "tenantEditorDraft" | "systemEditorDraft" | "rateLimitCounter"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1575,6 +1577,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.ProductFileCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.ProductFileCountAggregateOutputType> | number
+        }
+      }
+    }
+    ProductFilePreview: {
+      payload: Prisma.$ProductFilePreviewPayload<ExtArgs>
+      fields: Prisma.ProductFilePreviewFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ProductFilePreviewFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductFilePreviewPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ProductFilePreviewFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductFilePreviewPayload>
+        }
+        findFirst: {
+          args: Prisma.ProductFilePreviewFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductFilePreviewPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ProductFilePreviewFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductFilePreviewPayload>
+        }
+        findMany: {
+          args: Prisma.ProductFilePreviewFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductFilePreviewPayload>[]
+        }
+        create: {
+          args: Prisma.ProductFilePreviewCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductFilePreviewPayload>
+        }
+        createMany: {
+          args: Prisma.ProductFilePreviewCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ProductFilePreviewCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductFilePreviewPayload>[]
+        }
+        delete: {
+          args: Prisma.ProductFilePreviewDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductFilePreviewPayload>
+        }
+        update: {
+          args: Prisma.ProductFilePreviewUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductFilePreviewPayload>
+        }
+        deleteMany: {
+          args: Prisma.ProductFilePreviewDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ProductFilePreviewUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ProductFilePreviewUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductFilePreviewPayload>[]
+        }
+        upsert: {
+          args: Prisma.ProductFilePreviewUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductFilePreviewPayload>
+        }
+        aggregate: {
+          args: Prisma.ProductFilePreviewAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateProductFilePreview>
+        }
+        groupBy: {
+          args: Prisma.ProductFilePreviewGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ProductFilePreviewGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ProductFilePreviewCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ProductFilePreviewCountAggregateOutputType> | number
         }
       }
     }
@@ -4316,6 +4392,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    RateLimitCounter: {
+      payload: Prisma.$RateLimitCounterPayload<ExtArgs>
+      fields: Prisma.RateLimitCounterFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.RateLimitCounterFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RateLimitCounterPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.RateLimitCounterFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RateLimitCounterPayload>
+        }
+        findFirst: {
+          args: Prisma.RateLimitCounterFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RateLimitCounterPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.RateLimitCounterFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RateLimitCounterPayload>
+        }
+        findMany: {
+          args: Prisma.RateLimitCounterFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RateLimitCounterPayload>[]
+        }
+        create: {
+          args: Prisma.RateLimitCounterCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RateLimitCounterPayload>
+        }
+        createMany: {
+          args: Prisma.RateLimitCounterCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.RateLimitCounterCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RateLimitCounterPayload>[]
+        }
+        delete: {
+          args: Prisma.RateLimitCounterDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RateLimitCounterPayload>
+        }
+        update: {
+          args: Prisma.RateLimitCounterUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RateLimitCounterPayload>
+        }
+        deleteMany: {
+          args: Prisma.RateLimitCounterDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.RateLimitCounterUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.RateLimitCounterUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RateLimitCounterPayload>[]
+        }
+        upsert: {
+          args: Prisma.RateLimitCounterUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RateLimitCounterPayload>
+        }
+        aggregate: {
+          args: Prisma.RateLimitCounterAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateRateLimitCounter>
+        }
+        groupBy: {
+          args: Prisma.RateLimitCounterGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.RateLimitCounterGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.RateLimitCounterCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.RateLimitCounterCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -4367,6 +4517,7 @@ export const UserScalarFieldEnum = {
   lastLoginAt: 'lastLoginAt',
   failedLoginAttempts: 'failedLoginAttempts',
   passwordResetRequired: 'passwordResetRequired',
+  hasPassword: 'hasPassword',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -4400,6 +4551,7 @@ export const RefreshTokenScalarFieldEnum = {
   rememberMe: 'rememberMe',
   sessionStartedAt: 'sessionStartedAt',
   deviceLabel: 'deviceLabel',
+  guestCheckout: 'guestCheckout',
   createdAt: 'createdAt'
 } as const
 
@@ -4601,6 +4753,20 @@ export const ProductFileScalarFieldEnum = {
 export type ProductFileScalarFieldEnum = (typeof ProductFileScalarFieldEnum)[keyof typeof ProductFileScalarFieldEnum]
 
 
+export const ProductFilePreviewScalarFieldEnum = {
+  productFileId: 'productFileId',
+  tenantId: 'tenantId',
+  productId: 'productId',
+  kind: 'kind',
+  payload: 'payload',
+  ratio: 'ratio',
+  schemaVersion: 'schemaVersion',
+  generatedAt: 'generatedAt'
+} as const
+
+export type ProductFilePreviewScalarFieldEnum = (typeof ProductFilePreviewScalarFieldEnum)[keyof typeof ProductFilePreviewScalarFieldEnum]
+
+
 export const SystemSettingsScalarFieldEnum = {
   id: 'id',
   supportEmail: 'supportEmail',
@@ -4613,6 +4779,8 @@ export const SystemSettingsScalarFieldEnum = {
   presignUploadTtlSeconds: 'presignUploadTtlSeconds',
   presignDownloadTtlSeconds: 'presignDownloadTtlSeconds',
   orderPendingTtlMinutes: 'orderPendingTtlMinutes',
+  orderHoldManualHours: 'orderHoldManualHours',
+  orderHoldAutoHours: 'orderHoldAutoHours',
   invoicePendingTtlHours: 'invoicePendingTtlHours',
   defaultDownloadLimit: 'defaultDownloadLimit',
   sessionIdleMinutes: 'sessionIdleMinutes',
@@ -4873,6 +5041,12 @@ export const OrderScalarFieldEnum = {
   confirmNote: 'confirmNote',
   expiresAt: 'expiresAt',
   paidAt: 'paidAt',
+  customerDeclaredPaidAt: 'customerDeclaredPaidAt',
+  ownerManualNotifiedAt: 'ownerManualNotifiedAt',
+  ownerDeclaredPaidNotifiedAt: 'ownerDeclaredPaidNotifiedAt',
+  customerPaymentEmailedAt: 'customerPaymentEmailedAt',
+  customerPaymentEmailedProvider: 'customerPaymentEmailedProvider',
+  customerReminderSentAt: 'customerReminderSentAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -5203,6 +5377,18 @@ export const SystemEditorDraftScalarFieldEnum = {
 } as const
 
 export type SystemEditorDraftScalarFieldEnum = (typeof SystemEditorDraftScalarFieldEnum)[keyof typeof SystemEditorDraftScalarFieldEnum]
+
+
+export const RateLimitCounterScalarFieldEnum = {
+  id: 'id',
+  key: 'key',
+  count: 'count',
+  resetAt: 'resetAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type RateLimitCounterScalarFieldEnum = (typeof RateLimitCounterScalarFieldEnum)[keyof typeof RateLimitCounterScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -6005,6 +6191,7 @@ export type GlobalOmitConfig = {
   tenantSlugHistory?: Prisma.TenantSlugHistoryOmit
   product?: Prisma.ProductOmit
   productFile?: Prisma.ProductFileOmit
+  productFilePreview?: Prisma.ProductFilePreviewOmit
   systemSettings?: Prisma.SystemSettingsOmit
   systemStorageConfig?: Prisma.SystemStorageConfigOmit
   systemCloudinaryConfig?: Prisma.SystemCloudinaryConfigOmit
@@ -6042,6 +6229,7 @@ export type GlobalOmitConfig = {
   userLegalAcceptance?: Prisma.UserLegalAcceptanceOmit
   tenantEditorDraft?: Prisma.TenantEditorDraftOmit
   systemEditorDraft?: Prisma.SystemEditorDraftOmit
+  rateLimitCounter?: Prisma.RateLimitCounterOmit
 }
 
 /* Types for Logging */

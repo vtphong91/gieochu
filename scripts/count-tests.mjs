@@ -19,10 +19,12 @@
 // integration 63 -> 65 (tenant draft RLS isolation; revision conflict/overwrite + discard on save).
 // ADR-054 (owner-approved minimal raise, +1 integration): integration 65 -> 66 (signup records terms + privacy per
 // version; opening a store requires + records the seller-policy acceptance in the tenant transaction). Unit cap unchanged.
+// ADR-063 (owner-approved +2/+2): unit 100 -> 102 (preview extract docx + xlsx 20% boundaries); integration 66 -> 68
+// (preview route 200 PUBLISHED, 404 DRAFT/wrong tenant).
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([a-zA-Z]:)/, "$1");
+const ROOT = decodeURIComponent(new URL("..", import.meta.url).pathname).replace(/^\/([a-zA-Z]:)/, "$1");
 
 function walk(dir, predicate, results = []) {
   let entries;
@@ -61,10 +63,10 @@ const integrationFiles = walk(join(ROOT, "apps", "web", "tests", "integration"),
 const unitCount = countCases(unitFiles);
 const integrationCount = countCases(integrationFiles);
 
-console.log(`Jest unit test cases (packages/*):        ${unitCount} / 100`);
-console.log(`Vitest integration test cases (apps/web):  ${integrationCount} / 66`);
+console.log(`Jest unit test cases (packages/*):        ${unitCount} / 102`);
+console.log(`Vitest integration test cases (apps/web):  ${integrationCount} / 68`);
 
-if (unitCount > 100 || integrationCount > 66) {
+if (unitCount > 102 || integrationCount > 68) {
   console.error("\nTest count exceeds the target in docs/GIEOCHU_PROMPT_MVP_PHASE1.md §9 — check before adding more.");
   process.exitCode = 1;
 }

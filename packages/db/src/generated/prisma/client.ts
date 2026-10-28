@@ -178,6 +178,13 @@ export type Product = Prisma.ProductModel
  */
 export type ProductFile = Prisma.ProductFileModel
 /**
+ * Model ProductFilePreview
+ * ADR-063 — cache bản xem trước 20% nội dung thật (DOCX/XLSX/PDF/TEXT) cho trang chi tiết công khai.
+ * L2 denormalized (`tenantId`/`productId` giống `product_files`), nhưng chỉ server đọc qua route guard —
+ * không có policy RLS public (không bật). Cascade delete theo `product_files`.
+ */
+export type ProductFilePreview = Prisma.ProductFilePreviewModel
+/**
  * Model SystemSettings
  * §5.1 Layer System — system_settings. Single row (id fixed to "default").
  * ADR-032: cấu hình hệ thống do System Admin sửa ở /admin/settings/general
@@ -505,3 +512,10 @@ export type TenantEditorDraft = Prisma.TenantEditorDraftModel
  * `getPrismaClient()` sau `requireRole("SYSTEM_ADMIN")`. Cột như `TenantEditorDraft`.
  */
 export type SystemEditorDraft = Prisma.SystemEditorDraftModel
+/**
+ * Model RateLimitCounter
+ * ADR-061 Q1 — bộ đếm giới hạn tần suất dùng chung giữa các instance (Vercel/VPS), thay cho bộ đếm trong bộ nhớ ở các luồng
+ * cần chống lạm dụng thật (tạo tài khoản khách vãng lai, gửi email kích hoạt). L1, không RLS. `key` là chuỗi đã băm
+ * (vd `guest_signup:ip:<sha256>` / `guest_signup:email:<sha256>`) — không lưu IP/email thô. Cron hằng ngày xoá dòng đã hết hạn.
+ */
+export type RateLimitCounter = Prisma.RateLimitCounterModel

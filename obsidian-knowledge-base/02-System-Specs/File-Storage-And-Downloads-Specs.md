@@ -6,7 +6,7 @@ tags:
   - security
   - status/living
 date: 2026-09-26
-updated: 2026-10-23
+updated: 2026-10-27
 author: System Architect
 ---
 
@@ -459,7 +459,74 @@ Tại tab `/admin/settings/storage?tab=buckets`:
 
 ---
 
-## 11. Tài Liệu Tham Chiếu & Liên Kết
+## 11. Public Preview Cache — Bản Xem Trước 20% Nội Dung Thật (ADR-063) ✅
+
+Đối chiếu `apps/web/lib/product-file-preview.ts`, `packages/core/src/content/preview-extract.ts`,
+`apps/web/lib/file-scan.ts`, `apps/web/app/api/[tenantSlug]/[productSlug]/preview/[fileId]/route.ts`,
+`packages/db/prisma/schema.prisma` (model `ProductFilePreview`) và migration
+`20261027120000_adr063_product_file_previews` (2026-10-27, working tree — chưa commit; chưa áp DB ❓). Bản
+trích: [[01-Architecture-Decisions/ADR-047-Public-Product-File-Preview-20-Percent|ADR-047 (≙ ADR-063)]].
+
+### 11.1 Mục tiêu
+Trang chi tiết `/{tenantSlug}/{productSlug}` có section "📎 Tài liệu đính kèm" cho khách bấm vào từng file →
+xem **20% nội dung THẬT** đã trích ở server (không ẩn 80% còn lại bằng CSS). Chỉ bật với sản phẩm `PUBLISHED`
++ tenant `ACTIVE` + file `sourceKind = FILE`, `scanStatus = CLEAN`, `removedAt = null`, `isPreview = false`.
+
+### 11.2 Bảng cache `product_file_previews`
+| Cột | Kiểu | Ghi chú |
+| :-- | :-- | :-- |
+| `productFileId` | TEXT PK | FK `product_files.id` **`ON DELETE CASCADE`** |
+| `tenantId` | TEXT | Denormalized giống `product_files` |
+| `productId` | TEXT | Denormalized; 1 index |
+| `kind` | TEXT | `"docx"` · `"xlsx"` · `"pdf"` · `"text"` · `"unsupported"` |
+| `payload` | JSONB | Shape theo `kind` (§11.3); **≤ 256 KB sau serialize** |
+| `ratio` | INT DEFAULT 20 | Cố định 20 |
+| `schemaVersion` | INT DEFAULT 1 | Nâng khi đổi shape payload |
+| `generatedAt` | TIMESTAMP DEFAULT `now()` | — |
+
+**Không bật RLS** (không có policy public). Server đọc qua route guard. Cascade delete theo
+`product_files` ✅.
+
+### 11.3 Shape payload theo `kind`
+| `kind` | `payload` | Min / Max GĐ1 |
+| :-- | :-- | :-- |
+| `docx` | `{ html, paragraphsShown, totalParagraphs }` | 3 / 60 đoạn, `sanitizeRichTextHtml` lớp cuối, bỏ ảnh nhúng |
+| `xlsx` | `{ sheetName, rows, rowsShown, totalRows }` | 10 / 200 hàng; sheet đầu |
+| `pdf` | `{ text, charsShown, totalChars, pageCount }` | 1 / 20 trang; `pdf-parse@^1.1.1` |
+| `text` | `{ text, charsShown, totalChars }` | 20% ký tự UTF-8, cắt theo ranh giới dòng |
+| `unsupported` | `{}` | image/video/zip/ppt/other — UI hiện "Định dạng chưa hỗ trợ xem trước" |
+
+### 11.4 Thời điểm sinh
+- **Hook sau virus scan ✅:** `apps/web/lib/file-scan.ts` dynamic-import `generateAndStorePreview` ngay sau khi
+  `scanStatus` chuyển `CLEAN`, chạy **fire-and-forget**. Lỗi preview **không** làm fail job `file.scan` (chỉ
+  `logger.warn`). ADR-036 chạy `after()` nên preview vẫn drain trong lifecycle request.
+- **Lazy fallback ✅:** route handler gọi `getPreviewForPublicRoute` — không có cache → sinh ngay rồi đọc lại;
+  vẫn lỗi/không hỗ trợ → trả `{ kind: "unsupported", payload: {} }`.
+- Sản phẩm `DRAFT`/`ARCHIVED` **không** sinh, **không** trả (route 404). Chỉ `PUBLISHED` + tenant `ACTIVE`.
+
+### 11.5 Liệt kê file công khai
+Server component `page.tsx` gọi `listPublicPreviewFiles(productId)` — trả metadata `{ id, fileName, mimeType,
+sizeBytes, kind: PreviewKind | "pending", pageCount?, totalRows?, totalParagraphs?, totalChars? }` để render
+section (không lộ `objectKey`/`externalUrl`). Link ngoài (`sourceKind = EXTERNAL_URL`) **không** có preview ở
+GĐ1.
+
+### 11.6 Bảo mật & hiệu năng
+- `AppError` cho mọi lỗi nghiệp vụ; mọi lỗi guard **đều ẩn thành 404** (không rò DRAFT/private, không mã lỗi
+  riêng).
+- Không ghi `audit_logs` cho view preview (tránh phình) — chỉ `logger.info` khi cần phân tích.
+- Payload cố định 20%, không có cursor → không ghép nối được qua nhiều request.
+- Route handler `export const runtime = "nodejs"` (do `pdf-parse` cần Node).
+- **Rate limit 60/phút/IP qua `rate_limit_counters`** (bảng đã có từ ADR-061) — **TODO**: helper public chưa
+  viết, comment TODO đã có trong route handler.
+
+### 11.7 Liên kết
+* [[01-Architecture-Decisions/ADR-047-Public-Product-File-Preview-20-Percent|ADR-047 KB (≙ ADR-063)]]
+* [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §30 — endpoint preview
+* [[03-API-Contracts/Database-Schema-Reference|Database-Schema-Reference]] §3.1 — `product_file_previews`
+
+---
+
+## 12. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[Architecture-Overview]] — Tổng quan kiến trúc hệ thống ([Architecture-Overview.md](./Architecture-Overview.md))
 * [[Order-State-Machine]] — `Entitlement` được tạo khi đơn `FULFILLED` ([Order-State-Machine.md](./Order-State-Machine.md))

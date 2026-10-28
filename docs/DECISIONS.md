@@ -1543,3 +1543,56 @@
   7. Rate limit (bảng `rate_limit_counters`, khoá đã băm): tạo tài khoản guest 5/IP/giờ, 3/email/ngày; gửi lại email kích
      hoạt 3/email/giờ.
   8. Ô đồng ý duy nhất ghi nhận **Điều khoản + Chính sách bảo mật** bản hiệu lực (`UserLegalAcceptance`), câu chữ nêu cả hai.
+
+## ADR-063 — Xem trước 20% nội dung thật của file tài liệu trên trang chi tiết công khai
+
+- **Bối cảnh (2026-10-27):** trang chi tiết sản phẩm `/{tenantSlug}/{productSlug}` chỉ có mô tả + nút Mua.
+  Chủ dự án yêu cầu bổ sung section "Tài liệu đính kèm" dưới mô tả: khách bấm vào một file → xem được **20%
+  nội dung THẬT** của file (không ẩn bằng CSS — server chỉ trả 20% nội dung đã trích). Mục tiêu: tăng chuyển
+  đổi "xem → mua" mà không rò nội dung bán.
+- **Quyết định:**
+  1. **Nguồn preview:** mặc định server tự trích 20% đầu từ file bán (`sourceKind = FILE`, `scanStatus = CLEAN`,
+     `isPreview = false`). Nếu sản phẩm có bản `isPreview = true` (nhà bán tự upload bản ngắn ở Studio) thì
+     ưu tiên dùng nó và trả 100% nội dung bản đó (vì chính nhà bán đã kiểm soát). Cột `isPreview` đã có từ
+     ADR-026, không đổi.
+  2. **"20%" theo định dạng:**
+     - `.docx` → `mammoth.convertToHtml`, cắt 20% đầu đoạn `<p>`/`<h*>` (min 3, max 60), sanitize lại bằng
+       `sanitizeRichTextHtml`. Bỏ ảnh nhúng (không data URI vào payload).
+     - `.xlsx`/`.xls`/`.csv` → sheet đầu, 20% hàng đầu (min 10, max 200).
+     - `.pdf` → **thêm dependency `pdf-parse@^1.1.1`**, trích text của 20% số trang đầu (min 1, max 20).
+     - `.txt`/`.md`/`.json` → cắt 20% ký tự UTF-8 đầu tại ranh giới dòng.
+     - Khác (image/video/zip/ppt/other): không có bản xem trước — UI hiện "Định dạng chưa hỗ trợ xem trước".
+  3. **Bảng cache mới `product_file_previews`** (migration `20261027120000_adr063_product_file_previews`):
+     `productFileId` (@id, FK ProductFile cascade), `tenantId`, `productId` (denormalized giống `product_files`),
+     `kind` (enum chuỗi), `payload` (Jsonb), `ratio` Int, `generatedAt`, `schemaVersion` Int. Không có RLS public —
+     chỉ server đọc qua route guard. Cascade delete theo file.
+  4. **Thời điểm sinh:**
+     - Hook vào job `file.scan` ngay sau khi file chuyển `CLEAN` (background), lưu vào bảng cache.
+     - Lazy fallback: nếu route gọi mà chưa có → sinh ngay, lưu cache. Sản phẩm `DRAFT`/`ARCHIVED` không sinh,
+       không trả — chỉ `PUBLISHED` và tenant `ACTIVE` mới có preview công khai.
+  5. **API** `GET /api/{tenantSlug}/{productSlug}/preview/{fileId}` (Route Handler):
+     - Guard: tenant ACTIVE, product PUBLISHED, file khớp productId, `sourceKind = FILE`, `scanStatus = CLEAN`,
+       `removedAt = null`.
+     - Rate limit **60 req/phút/IP** dùng `checkRateLimit` in-memory sẵn có (`apps/web/lib/rate-limit.ts`,
+       khoá `preview:<sha256(ip)>`), chấp nhận giới hạn single-instance như các route khác; đổi sang
+       DB-backed `rate_limit_counters` khi project có helper chung (xem BACKLOG trong `rate-limit.ts`).
+     - Trả JSON `{ fileName, mimeType, sizeBytes, kind, payload, ratio, totalEstimate }`. Không bao giờ trả
+       presigned URL hoặc byte gốc của file bán.
+  6. **Liệt kê file công khai:** `page.tsx` server component gọi `listPublicPreviewFiles(productId)` — trả
+     metadata (`id`, `fileName`, `mimeType`, `sizeBytes`, `pageCount`/`totalRows` nếu đã có cache) để render
+     section. Không hiển thị `objectKey`, `externalUrl` (link ngoài không có preview trong GĐ1).
+  7. **UI** (Phong): section "📎 Tài liệu đính kèm" dưới `description`, trên `reviews` của
+     `ProductDetailView`. Mỗi file có nút "Xem trước" mở modal client; modal fetch endpoint, render payload
+     theo `kind`. Dải sticky dưới modal: "Bạn đang xem bản xem trước (20%). Mua tài liệu để xem đầy đủ."
+     + nút Mua (dùng `BuyButton`). Không ẩn 80% còn lại bằng CSS — server đơn giản không gửi.
+  8. **Bảo mật:** payload 20% cố định (không có cursor để ghép nối); XSS: `sanitizeRichTextHtml` lớp cuối;
+     scrape: rate limit; `AppError` cho mọi lỗi nghiệp vụ; không ghi `audit_logs` cho view preview (tránh phình),
+     chỉ `logger.info` khi cần phân tích.
+  9. **Hiệu năng:** payload Jsonb < 256 KB (giới hạn ở extractor); `pdf-parse` chạy trong Node runtime
+     (không Edge). Route handler `export const runtime = "nodejs"`.
+- **Test (trần cần nâng, +2 unit + 2 integration):** unit 100 → 102 (extract docx 20% paragraphs; extract
+  xlsx 20% rows); integration 66 → 68 (route 200 cho PUBLISHED + 404 cho DRAFT/private; rate limit 429 sau 60
+  req). Cập nhật `scripts/count-tests.mjs`.
+- **Phạm vi GĐ1:** chỉ 5 định dạng ở mục 2. Watermark PDF, video trailer, nhà bán cắt vùng tuỳ ý → BACKLOG.
+- **Không ảnh hưởng:** Studio UI (`isPreview` checkbox giữ nguyên nghĩa), download token/entitlement,
+  share link, luồng mua.

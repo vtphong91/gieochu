@@ -19,3 +19,8 @@ Thumbs.db
 # tiết, thông tin vận hành không dành cho public repo).
 docs/private/
 pnpm-lock.yaml
+
+# Cấu hình Claude Code riêng của từng máy — không đẩy lên repo.
+# Giữ nguyên .claude/agents, .claude/skills, .claude/settings.json (cấu hình dùng chung).
+.claude/settings.local.json
+.claude/*.local.*

@@ -84,4 +84,15 @@ export async function runFileScan(productFileId: string): Promise<void> {
   }
 
   await withSystemJob((tx) => tx.productFile.update({ where: { id: productFileId }, data: { scanStatus: "CLEAN", sha256 } }));
+
+  // ADR-063: ngay sau khi file chuyển CLEAN, sinh bản xem trước 20% + cache. Fire-and-forget — lỗi sinh
+  // preview KHÔNG làm fail job scan (bản xem trước là trải nghiệm, không ảnh hưởng giao hàng/thanh toán).
+  if (!file.isPreview) {
+    try {
+      const { generateAndStorePreview } = await import("./product-file-preview");
+      await generateAndStorePreview(productFileId);
+    } catch (err) {
+      logger.warn({ err, productFileId }, "ADR-063: sinh preview sau file.scan thất bại — bỏ qua");
+    }
+  }
 }

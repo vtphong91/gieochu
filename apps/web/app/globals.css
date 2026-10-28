@@ -575,3 +575,29 @@ dialog.range-picker-sheet[open] {
     animation: none;
   }
 }
+
+/* ADR-063 — Modal xem trước 20% nội dung (`product-preview-modal.tsx`): fade overlay 150ms,
+   scale panel 180ms. Khi user yêu cầu giảm chuyển động thì tắt hẳn. */
+.adr063-preview-overlay {
+  animation: adr063-preview-overlay-in 150ms ease-out;
+}
+.adr063-preview-panel {
+  animation: adr063-preview-panel-in 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+@keyframes adr063-preview-overlay-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes adr063-preview-panel-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .adr063-preview-overlay,
+  .adr063-preview-panel {
+    animation: none;
+  }
+}

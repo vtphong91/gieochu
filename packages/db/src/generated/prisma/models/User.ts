@@ -46,6 +46,7 @@ export type UserMinAggregateOutputType = {
   lastLoginAt: Date | null
   failedLoginAttempts: number | null
   passwordResetRequired: boolean | null
+  hasPassword: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -62,6 +63,7 @@ export type UserMaxAggregateOutputType = {
   lastLoginAt: Date | null
   failedLoginAttempts: number | null
   passwordResetRequired: boolean | null
+  hasPassword: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -78,6 +80,7 @@ export type UserCountAggregateOutputType = {
   lastLoginAt: number
   failedLoginAttempts: number
   passwordResetRequired: number
+  hasPassword: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -104,6 +107,7 @@ export type UserMinAggregateInputType = {
   lastLoginAt?: true
   failedLoginAttempts?: true
   passwordResetRequired?: true
+  hasPassword?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -120,6 +124,7 @@ export type UserMaxAggregateInputType = {
   lastLoginAt?: true
   failedLoginAttempts?: true
   passwordResetRequired?: true
+  hasPassword?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -136,6 +141,7 @@ export type UserCountAggregateInputType = {
   lastLoginAt?: true
   failedLoginAttempts?: true
   passwordResetRequired?: true
+  hasPassword?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -239,6 +245,7 @@ export type UserGroupByOutputType = {
   lastLoginAt: Date | null
   failedLoginAttempts: number
   passwordResetRequired: boolean
+  hasPassword: boolean
   createdAt: Date
   updatedAt: Date
   _count: UserCountAggregateOutputType | null
@@ -278,6 +285,7 @@ export type UserWhereInput = {
   lastLoginAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   failedLoginAttempts?: Prisma.IntFilter<"User"> | number
   passwordResetRequired?: Prisma.BoolFilter<"User"> | boolean
+  hasPassword?: Prisma.BoolFilter<"User"> | boolean
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
   profile?: Prisma.XOR<Prisma.UserProfileNullableScalarRelationFilter, Prisma.UserProfileWhereInput> | null
@@ -311,6 +319,7 @@ export type UserOrderByWithRelationInput = {
   lastLoginAt?: Prisma.SortOrderInput | Prisma.SortOrder
   failedLoginAttempts?: Prisma.SortOrder
   passwordResetRequired?: Prisma.SortOrder
+  hasPassword?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   profile?: Prisma.UserProfileOrderByWithRelationInput
@@ -347,6 +356,7 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   lastLoginAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   failedLoginAttempts?: Prisma.IntFilter<"User"> | number
   passwordResetRequired?: Prisma.BoolFilter<"User"> | boolean
+  hasPassword?: Prisma.BoolFilter<"User"> | boolean
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
   profile?: Prisma.XOR<Prisma.UserProfileNullableScalarRelationFilter, Prisma.UserProfileWhereInput> | null
@@ -380,6 +390,7 @@ export type UserOrderByWithAggregationInput = {
   lastLoginAt?: Prisma.SortOrderInput | Prisma.SortOrder
   failedLoginAttempts?: Prisma.SortOrder
   passwordResetRequired?: Prisma.SortOrder
+  hasPassword?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.UserCountOrderByAggregateInput
@@ -404,6 +415,7 @@ export type UserScalarWhereWithAggregatesInput = {
   lastLoginAt?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
   failedLoginAttempts?: Prisma.IntWithAggregatesFilter<"User"> | number
   passwordResetRequired?: Prisma.BoolWithAggregatesFilter<"User"> | boolean
+  hasPassword?: Prisma.BoolWithAggregatesFilter<"User"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
 }
@@ -420,6 +432,7 @@ export type UserCreateInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileCreateNestedOneWithoutUserInput
@@ -453,6 +466,7 @@ export type UserUncheckedCreateInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileUncheckedCreateNestedOneWithoutUserInput
@@ -486,6 +500,7 @@ export type UserUpdateInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUpdateOneWithoutUserNestedInput
@@ -519,6 +534,7 @@ export type UserUncheckedUpdateInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUncheckedUpdateOneWithoutUserNestedInput
@@ -552,6 +568,7 @@ export type UserCreateManyInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -568,6 +585,7 @@ export type UserUpdateManyMutationInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -584,6 +602,7 @@ export type UserUncheckedUpdateManyInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -600,6 +619,7 @@ export type UserCountOrderByAggregateInput = {
   lastLoginAt?: Prisma.SortOrder
   failedLoginAttempts?: Prisma.SortOrder
   passwordResetRequired?: Prisma.SortOrder
+  hasPassword?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -620,6 +640,7 @@ export type UserMaxOrderByAggregateInput = {
   lastLoginAt?: Prisma.SortOrder
   failedLoginAttempts?: Prisma.SortOrder
   passwordResetRequired?: Prisma.SortOrder
+  hasPassword?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -636,6 +657,7 @@ export type UserMinOrderByAggregateInput = {
   lastLoginAt?: Prisma.SortOrder
   failedLoginAttempts?: Prisma.SortOrder
   passwordResetRequired?: Prisma.SortOrder
+  hasPassword?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -944,6 +966,7 @@ export type UserCreateWithoutProfileInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   refreshTokens?: Prisma.RefreshTokenCreateNestedManyWithoutUserInput
@@ -976,6 +999,7 @@ export type UserUncheckedCreateWithoutProfileInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   refreshTokens?: Prisma.RefreshTokenUncheckedCreateNestedManyWithoutUserInput
@@ -1024,6 +1048,7 @@ export type UserUpdateWithoutProfileInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   refreshTokens?: Prisma.RefreshTokenUpdateManyWithoutUserNestedInput
@@ -1056,6 +1081,7 @@ export type UserUncheckedUpdateWithoutProfileInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   refreshTokens?: Prisma.RefreshTokenUncheckedUpdateManyWithoutUserNestedInput
@@ -1088,6 +1114,7 @@ export type UserCreateWithoutRefreshTokensInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileCreateNestedOneWithoutUserInput
@@ -1120,6 +1147,7 @@ export type UserUncheckedCreateWithoutRefreshTokensInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileUncheckedCreateNestedOneWithoutUserInput
@@ -1168,6 +1196,7 @@ export type UserUpdateWithoutRefreshTokensInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUpdateOneWithoutUserNestedInput
@@ -1200,6 +1229,7 @@ export type UserUncheckedUpdateWithoutRefreshTokensInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUncheckedUpdateOneWithoutUserNestedInput
@@ -1232,6 +1262,7 @@ export type UserCreateWithoutVerificationTokensInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileCreateNestedOneWithoutUserInput
@@ -1264,6 +1295,7 @@ export type UserUncheckedCreateWithoutVerificationTokensInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileUncheckedCreateNestedOneWithoutUserInput
@@ -1312,6 +1344,7 @@ export type UserUpdateWithoutVerificationTokensInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUpdateOneWithoutUserNestedInput
@@ -1344,6 +1377,7 @@ export type UserUncheckedUpdateWithoutVerificationTokensInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUncheckedUpdateOneWithoutUserNestedInput
@@ -1376,6 +1410,7 @@ export type UserCreateWithoutOwnedTenantInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileCreateNestedOneWithoutUserInput
@@ -1408,6 +1443,7 @@ export type UserUncheckedCreateWithoutOwnedTenantInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileUncheckedCreateNestedOneWithoutUserInput
@@ -1456,6 +1492,7 @@ export type UserUpdateWithoutOwnedTenantInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUpdateOneWithoutUserNestedInput
@@ -1488,6 +1525,7 @@ export type UserUncheckedUpdateWithoutOwnedTenantInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUncheckedUpdateOneWithoutUserNestedInput
@@ -1520,6 +1558,7 @@ export type UserCreateWithoutTenantMembershipsInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileCreateNestedOneWithoutUserInput
@@ -1552,6 +1591,7 @@ export type UserUncheckedCreateWithoutTenantMembershipsInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileUncheckedCreateNestedOneWithoutUserInput
@@ -1600,6 +1640,7 @@ export type UserUpdateWithoutTenantMembershipsInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUpdateOneWithoutUserNestedInput
@@ -1632,6 +1673,7 @@ export type UserUncheckedUpdateWithoutTenantMembershipsInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUncheckedUpdateOneWithoutUserNestedInput
@@ -1664,6 +1706,7 @@ export type UserCreateWithoutOrdersInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileCreateNestedOneWithoutUserInput
@@ -1696,6 +1739,7 @@ export type UserUncheckedCreateWithoutOrdersInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileUncheckedCreateNestedOneWithoutUserInput
@@ -1744,6 +1788,7 @@ export type UserUpdateWithoutOrdersInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUpdateOneWithoutUserNestedInput
@@ -1776,6 +1821,7 @@ export type UserUncheckedUpdateWithoutOrdersInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUncheckedUpdateOneWithoutUserNestedInput
@@ -1808,6 +1854,7 @@ export type UserCreateWithoutOrderNotesAuthoredInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileCreateNestedOneWithoutUserInput
@@ -1840,6 +1887,7 @@ export type UserUncheckedCreateWithoutOrderNotesAuthoredInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileUncheckedCreateNestedOneWithoutUserInput
@@ -1888,6 +1936,7 @@ export type UserUpdateWithoutOrderNotesAuthoredInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUpdateOneWithoutUserNestedInput
@@ -1920,6 +1969,7 @@ export type UserUncheckedUpdateWithoutOrderNotesAuthoredInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUncheckedUpdateOneWithoutUserNestedInput
@@ -1952,6 +2002,7 @@ export type UserCreateWithoutTenantCustomerOfInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileCreateNestedOneWithoutUserInput
@@ -1984,6 +2035,7 @@ export type UserUncheckedCreateWithoutTenantCustomerOfInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileUncheckedCreateNestedOneWithoutUserInput
@@ -2032,6 +2084,7 @@ export type UserUpdateWithoutTenantCustomerOfInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUpdateOneWithoutUserNestedInput
@@ -2064,6 +2117,7 @@ export type UserUncheckedUpdateWithoutTenantCustomerOfInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUncheckedUpdateOneWithoutUserNestedInput
@@ -2096,6 +2150,7 @@ export type UserCreateWithoutEntitlementsInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileCreateNestedOneWithoutUserInput
@@ -2128,6 +2183,7 @@ export type UserUncheckedCreateWithoutEntitlementsInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileUncheckedCreateNestedOneWithoutUserInput
@@ -2176,6 +2232,7 @@ export type UserUpdateWithoutEntitlementsInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUpdateOneWithoutUserNestedInput
@@ -2208,6 +2265,7 @@ export type UserUncheckedUpdateWithoutEntitlementsInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUncheckedUpdateOneWithoutUserNestedInput
@@ -2240,6 +2298,7 @@ export type UserCreateWithoutDownloadTokensInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileCreateNestedOneWithoutUserInput
@@ -2272,6 +2331,7 @@ export type UserUncheckedCreateWithoutDownloadTokensInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileUncheckedCreateNestedOneWithoutUserInput
@@ -2320,6 +2380,7 @@ export type UserUpdateWithoutDownloadTokensInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUpdateOneWithoutUserNestedInput
@@ -2352,6 +2413,7 @@ export type UserUncheckedUpdateWithoutDownloadTokensInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUncheckedUpdateOneWithoutUserNestedInput
@@ -2384,6 +2446,7 @@ export type UserCreateWithoutDownloadEventsInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileCreateNestedOneWithoutUserInput
@@ -2416,6 +2479,7 @@ export type UserUncheckedCreateWithoutDownloadEventsInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileUncheckedCreateNestedOneWithoutUserInput
@@ -2464,6 +2528,7 @@ export type UserUpdateWithoutDownloadEventsInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUpdateOneWithoutUserNestedInput
@@ -2496,6 +2561,7 @@ export type UserUncheckedUpdateWithoutDownloadEventsInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUncheckedUpdateOneWithoutUserNestedInput
@@ -2528,6 +2594,7 @@ export type UserCreateWithoutReviewsInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileCreateNestedOneWithoutUserInput
@@ -2560,6 +2627,7 @@ export type UserUncheckedCreateWithoutReviewsInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileUncheckedCreateNestedOneWithoutUserInput
@@ -2608,6 +2676,7 @@ export type UserUpdateWithoutReviewsInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUpdateOneWithoutUserNestedInput
@@ -2640,6 +2709,7 @@ export type UserUncheckedUpdateWithoutReviewsInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUncheckedUpdateOneWithoutUserNestedInput
@@ -2672,6 +2742,7 @@ export type UserCreateWithoutAbuseReportsFiledInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileCreateNestedOneWithoutUserInput
@@ -2704,6 +2775,7 @@ export type UserUncheckedCreateWithoutAbuseReportsFiledInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileUncheckedCreateNestedOneWithoutUserInput
@@ -2741,6 +2813,7 @@ export type UserCreateWithoutAbuseReportsResolvedInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileCreateNestedOneWithoutUserInput
@@ -2773,6 +2846,7 @@ export type UserUncheckedCreateWithoutAbuseReportsResolvedInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileUncheckedCreateNestedOneWithoutUserInput
@@ -2821,6 +2895,7 @@ export type UserUpdateWithoutAbuseReportsFiledInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUpdateOneWithoutUserNestedInput
@@ -2853,6 +2928,7 @@ export type UserUncheckedUpdateWithoutAbuseReportsFiledInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUncheckedUpdateOneWithoutUserNestedInput
@@ -2896,6 +2972,7 @@ export type UserUpdateWithoutAbuseReportsResolvedInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUpdateOneWithoutUserNestedInput
@@ -2928,6 +3005,7 @@ export type UserUncheckedUpdateWithoutAbuseReportsResolvedInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUncheckedUpdateOneWithoutUserNestedInput
@@ -2960,6 +3038,7 @@ export type UserCreateWithoutLegalAcceptancesInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileCreateNestedOneWithoutUserInput
@@ -2992,6 +3071,7 @@ export type UserUncheckedCreateWithoutLegalAcceptancesInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileUncheckedCreateNestedOneWithoutUserInput
@@ -3040,6 +3120,7 @@ export type UserUpdateWithoutLegalAcceptancesInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUpdateOneWithoutUserNestedInput
@@ -3072,6 +3153,7 @@ export type UserUncheckedUpdateWithoutLegalAcceptancesInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUncheckedUpdateOneWithoutUserNestedInput
@@ -3104,6 +3186,7 @@ export type UserCreateWithoutTenantEditorDraftsInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileCreateNestedOneWithoutUserInput
@@ -3136,6 +3219,7 @@ export type UserUncheckedCreateWithoutTenantEditorDraftsInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileUncheckedCreateNestedOneWithoutUserInput
@@ -3184,6 +3268,7 @@ export type UserUpdateWithoutTenantEditorDraftsInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUpdateOneWithoutUserNestedInput
@@ -3216,6 +3301,7 @@ export type UserUncheckedUpdateWithoutTenantEditorDraftsInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUncheckedUpdateOneWithoutUserNestedInput
@@ -3248,6 +3334,7 @@ export type UserCreateWithoutSystemEditorDraftsInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileCreateNestedOneWithoutUserInput
@@ -3280,6 +3367,7 @@ export type UserUncheckedCreateWithoutSystemEditorDraftsInput = {
   lastLoginAt?: Date | string | null
   failedLoginAttempts?: number
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   profile?: Prisma.UserProfileUncheckedCreateNestedOneWithoutUserInput
@@ -3328,6 +3416,7 @@ export type UserUpdateWithoutSystemEditorDraftsInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUpdateOneWithoutUserNestedInput
@@ -3360,6 +3449,7 @@ export type UserUncheckedUpdateWithoutSystemEditorDraftsInput = {
   lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   failedLoginAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   passwordResetRequired?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasPassword?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   profile?: Prisma.UserProfileUncheckedUpdateOneWithoutUserNestedInput
@@ -3549,6 +3639,7 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   lastLoginAt?: boolean
   failedLoginAttempts?: boolean
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   profile?: boolean | Prisma.User$profileArgs<ExtArgs>
@@ -3583,6 +3674,7 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   lastLoginAt?: boolean
   failedLoginAttempts?: boolean
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["user"]>
@@ -3599,6 +3691,7 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   lastLoginAt?: boolean
   failedLoginAttempts?: boolean
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["user"]>
@@ -3615,11 +3708,12 @@ export type UserSelectScalar = {
   lastLoginAt?: boolean
   failedLoginAttempts?: boolean
   passwordResetRequired?: boolean
+  hasPassword?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "passwordHash" | "systemRole" | "status" | "isSuperAdmin" | "emailVerifiedAt" | "profileCompletedAt" | "lastLoginAt" | "failedLoginAttempts" | "passwordResetRequired" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "passwordHash" | "systemRole" | "status" | "isSuperAdmin" | "emailVerifiedAt" | "profileCompletedAt" | "lastLoginAt" | "failedLoginAttempts" | "passwordResetRequired" | "hasPassword" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   profile?: boolean | Prisma.User$profileArgs<ExtArgs>
   refreshTokens?: boolean | Prisma.User$refreshTokensArgs<ExtArgs>
@@ -3690,6 +3784,12 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
      * quan `status` (đó là khoá admin/email-chưa-xác-minh, khác concern).
      */
     passwordResetRequired: boolean
+    /**
+     * ADR-061 Q1: false = tài khoản tạo từ "mua không cần đăng ký" (khách vãng lai), chưa tự đặt mật khẩu — `passwordHash` là
+     * hash của chuỗi ngẫu nhiên không ai biết (không NULL để code cũ không vỡ). Thành true khi khách đặt mật khẩu qua email
+     * "Kích hoạt tài khoản và đặt mật khẩu". Tài khoản có sẵn: true (DEFAULT).
+     */
+    hasPassword: boolean
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["user"]>
@@ -4143,6 +4243,7 @@ export interface UserFieldRefs {
   readonly lastLoginAt: Prisma.FieldRef<"User", 'DateTime'>
   readonly failedLoginAttempts: Prisma.FieldRef<"User", 'Int'>
   readonly passwordResetRequired: Prisma.FieldRef<"User", 'Boolean'>
+  readonly hasPassword: Prisma.FieldRef<"User", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"User", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"User", 'DateTime'>
 }

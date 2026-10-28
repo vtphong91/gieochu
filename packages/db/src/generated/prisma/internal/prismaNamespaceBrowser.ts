@@ -66,6 +66,7 @@ export const ModelName = {
   TenantSlugHistory: 'TenantSlugHistory',
   Product: 'Product',
   ProductFile: 'ProductFile',
+  ProductFilePreview: 'ProductFilePreview',
   SystemSettings: 'SystemSettings',
   SystemStorageConfig: 'SystemStorageConfig',
   SystemCloudinaryConfig: 'SystemCloudinaryConfig',
@@ -102,7 +103,8 @@ export const ModelName = {
   LegalDocumentVersion: 'LegalDocumentVersion',
   UserLegalAcceptance: 'UserLegalAcceptance',
   TenantEditorDraft: 'TenantEditorDraft',
-  SystemEditorDraft: 'SystemEditorDraft'
+  SystemEditorDraft: 'SystemEditorDraft',
+  RateLimitCounter: 'RateLimitCounter'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -133,6 +135,7 @@ export const UserScalarFieldEnum = {
   lastLoginAt: 'lastLoginAt',
   failedLoginAttempts: 'failedLoginAttempts',
   passwordResetRequired: 'passwordResetRequired',
+  hasPassword: 'hasPassword',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -166,6 +169,7 @@ export const RefreshTokenScalarFieldEnum = {
   rememberMe: 'rememberMe',
   sessionStartedAt: 'sessionStartedAt',
   deviceLabel: 'deviceLabel',
+  guestCheckout: 'guestCheckout',
   createdAt: 'createdAt'
 } as const
 
@@ -367,6 +371,20 @@ export const ProductFileScalarFieldEnum = {
 export type ProductFileScalarFieldEnum = (typeof ProductFileScalarFieldEnum)[keyof typeof ProductFileScalarFieldEnum]
 
 
+export const ProductFilePreviewScalarFieldEnum = {
+  productFileId: 'productFileId',
+  tenantId: 'tenantId',
+  productId: 'productId',
+  kind: 'kind',
+  payload: 'payload',
+  ratio: 'ratio',
+  schemaVersion: 'schemaVersion',
+  generatedAt: 'generatedAt'
+} as const
+
+export type ProductFilePreviewScalarFieldEnum = (typeof ProductFilePreviewScalarFieldEnum)[keyof typeof ProductFilePreviewScalarFieldEnum]
+
+
 export const SystemSettingsScalarFieldEnum = {
   id: 'id',
   supportEmail: 'supportEmail',
@@ -379,6 +397,8 @@ export const SystemSettingsScalarFieldEnum = {
   presignUploadTtlSeconds: 'presignUploadTtlSeconds',
   presignDownloadTtlSeconds: 'presignDownloadTtlSeconds',
   orderPendingTtlMinutes: 'orderPendingTtlMinutes',
+  orderHoldManualHours: 'orderHoldManualHours',
+  orderHoldAutoHours: 'orderHoldAutoHours',
   invoicePendingTtlHours: 'invoicePendingTtlHours',
   defaultDownloadLimit: 'defaultDownloadLimit',
   sessionIdleMinutes: 'sessionIdleMinutes',
@@ -639,6 +659,12 @@ export const OrderScalarFieldEnum = {
   confirmNote: 'confirmNote',
   expiresAt: 'expiresAt',
   paidAt: 'paidAt',
+  customerDeclaredPaidAt: 'customerDeclaredPaidAt',
+  ownerManualNotifiedAt: 'ownerManualNotifiedAt',
+  ownerDeclaredPaidNotifiedAt: 'ownerDeclaredPaidNotifiedAt',
+  customerPaymentEmailedAt: 'customerPaymentEmailedAt',
+  customerPaymentEmailedProvider: 'customerPaymentEmailedProvider',
+  customerReminderSentAt: 'customerReminderSentAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -969,6 +995,18 @@ export const SystemEditorDraftScalarFieldEnum = {
 } as const
 
 export type SystemEditorDraftScalarFieldEnum = (typeof SystemEditorDraftScalarFieldEnum)[keyof typeof SystemEditorDraftScalarFieldEnum]
+
+
+export const RateLimitCounterScalarFieldEnum = {
+  id: 'id',
+  key: 'key',
+  count: 'count',
+  resetAt: 'resetAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type RateLimitCounterScalarFieldEnum = (typeof RateLimitCounterScalarFieldEnum)[keyof typeof RateLimitCounterScalarFieldEnum]
 
 
 export const SortOrder = {

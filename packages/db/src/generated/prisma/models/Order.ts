@@ -57,6 +57,12 @@ export type OrderMinAggregateOutputType = {
   confirmNote: string | null
   expiresAt: Date | null
   paidAt: Date | null
+  customerDeclaredPaidAt: Date | null
+  ownerManualNotifiedAt: Date | null
+  ownerDeclaredPaidNotifiedAt: Date | null
+  customerPaymentEmailedAt: Date | null
+  customerPaymentEmailedProvider: $Enums.PaymentProviderId | null
+  customerReminderSentAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -76,6 +82,12 @@ export type OrderMaxAggregateOutputType = {
   confirmNote: string | null
   expiresAt: Date | null
   paidAt: Date | null
+  customerDeclaredPaidAt: Date | null
+  ownerManualNotifiedAt: Date | null
+  ownerDeclaredPaidNotifiedAt: Date | null
+  customerPaymentEmailedAt: Date | null
+  customerPaymentEmailedProvider: $Enums.PaymentProviderId | null
+  customerReminderSentAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -96,6 +108,12 @@ export type OrderCountAggregateOutputType = {
   confirmNote: number
   expiresAt: number
   paidAt: number
+  customerDeclaredPaidAt: number
+  ownerManualNotifiedAt: number
+  ownerDeclaredPaidNotifiedAt: number
+  customerPaymentEmailedAt: number
+  customerPaymentEmailedProvider: number
+  customerReminderSentAt: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -129,6 +147,12 @@ export type OrderMinAggregateInputType = {
   confirmNote?: true
   expiresAt?: true
   paidAt?: true
+  customerDeclaredPaidAt?: true
+  ownerManualNotifiedAt?: true
+  ownerDeclaredPaidNotifiedAt?: true
+  customerPaymentEmailedAt?: true
+  customerPaymentEmailedProvider?: true
+  customerReminderSentAt?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -148,6 +172,12 @@ export type OrderMaxAggregateInputType = {
   confirmNote?: true
   expiresAt?: true
   paidAt?: true
+  customerDeclaredPaidAt?: true
+  ownerManualNotifiedAt?: true
+  ownerDeclaredPaidNotifiedAt?: true
+  customerPaymentEmailedAt?: true
+  customerPaymentEmailedProvider?: true
+  customerReminderSentAt?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -168,6 +198,12 @@ export type OrderCountAggregateInputType = {
   confirmNote?: true
   expiresAt?: true
   paidAt?: true
+  customerDeclaredPaidAt?: true
+  ownerManualNotifiedAt?: true
+  ownerDeclaredPaidNotifiedAt?: true
+  customerPaymentEmailedAt?: true
+  customerPaymentEmailedProvider?: true
+  customerReminderSentAt?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -275,6 +311,12 @@ export type OrderGroupByOutputType = {
   confirmNote: string | null
   expiresAt: Date
   paidAt: Date | null
+  customerDeclaredPaidAt: Date | null
+  ownerManualNotifiedAt: Date | null
+  ownerDeclaredPaidNotifiedAt: Date | null
+  customerPaymentEmailedAt: Date | null
+  customerPaymentEmailedProvider: $Enums.PaymentProviderId | null
+  customerReminderSentAt: Date | null
   createdAt: Date
   updatedAt: Date
   _count: OrderCountAggregateOutputType | null
@@ -318,6 +360,12 @@ export type OrderWhereInput = {
   confirmNote?: Prisma.StringNullableFilter<"Order"> | string | null
   expiresAt?: Prisma.DateTimeFilter<"Order"> | Date | string
   paidAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
+  customerDeclaredPaidAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
+  ownerManualNotifiedAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
+  customerPaymentEmailedAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
+  customerPaymentEmailedProvider?: Prisma.EnumPaymentProviderIdNullableFilter<"Order"> | $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Order"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Order"> | Date | string
   tenant?: Prisma.XOR<Prisma.TenantScalarRelationFilter, Prisma.TenantWhereInput>
@@ -344,6 +392,12 @@ export type OrderOrderByWithRelationInput = {
   confirmNote?: Prisma.SortOrderInput | Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
   paidAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  customerDeclaredPaidAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  ownerManualNotifiedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  ownerDeclaredPaidNotifiedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  customerPaymentEmailedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  customerPaymentEmailedProvider?: Prisma.SortOrderInput | Prisma.SortOrder
+  customerReminderSentAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   tenant?: Prisma.TenantOrderByWithRelationInput
@@ -373,6 +427,12 @@ export type OrderWhereUniqueInput = Prisma.AtLeast<{
   confirmNote?: Prisma.StringNullableFilter<"Order"> | string | null
   expiresAt?: Prisma.DateTimeFilter<"Order"> | Date | string
   paidAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
+  customerDeclaredPaidAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
+  ownerManualNotifiedAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
+  customerPaymentEmailedAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
+  customerPaymentEmailedProvider?: Prisma.EnumPaymentProviderIdNullableFilter<"Order"> | $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Order"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Order"> | Date | string
   tenant?: Prisma.XOR<Prisma.TenantScalarRelationFilter, Prisma.TenantWhereInput>
@@ -399,6 +459,12 @@ export type OrderOrderByWithAggregationInput = {
   confirmNote?: Prisma.SortOrderInput | Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
   paidAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  customerDeclaredPaidAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  ownerManualNotifiedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  ownerDeclaredPaidNotifiedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  customerPaymentEmailedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  customerPaymentEmailedProvider?: Prisma.SortOrderInput | Prisma.SortOrder
+  customerReminderSentAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.OrderCountOrderByAggregateInput
@@ -427,6 +493,12 @@ export type OrderScalarWhereWithAggregatesInput = {
   confirmNote?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
   expiresAt?: Prisma.DateTimeWithAggregatesFilter<"Order"> | Date | string
   paidAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Order"> | Date | string | null
+  customerDeclaredPaidAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Order"> | Date | string | null
+  ownerManualNotifiedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Order"> | Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Order"> | Date | string | null
+  customerPaymentEmailedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Order"> | Date | string | null
+  customerPaymentEmailedProvider?: Prisma.EnumPaymentProviderIdNullableWithAggregatesFilter<"Order"> | $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Order"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Order"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Order"> | Date | string
 }
@@ -445,6 +517,12 @@ export type OrderCreateInput = {
   confirmNote?: string | null
   expiresAt: Date | string
   paidAt?: Date | string | null
+  customerDeclaredPaidAt?: Date | string | null
+  ownerManualNotifiedAt?: Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Date | string | null
+  customerPaymentEmailedAt?: Date | string | null
+  customerPaymentEmailedProvider?: $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   tenant: Prisma.TenantCreateNestedOneWithoutOrdersInput
@@ -471,6 +549,12 @@ export type OrderUncheckedCreateInput = {
   confirmNote?: string | null
   expiresAt: Date | string
   paidAt?: Date | string | null
+  customerDeclaredPaidAt?: Date | string | null
+  ownerManualNotifiedAt?: Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Date | string | null
+  customerPaymentEmailedAt?: Date | string | null
+  customerPaymentEmailedProvider?: $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.OrderItemUncheckedCreateNestedManyWithoutOrderInput
@@ -493,6 +577,12 @@ export type OrderUpdateInput = {
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerDeclaredPaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerManualNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedProvider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tenant?: Prisma.TenantUpdateOneRequiredWithoutOrdersNestedInput
@@ -519,6 +609,12 @@ export type OrderUncheckedUpdateInput = {
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerDeclaredPaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerManualNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedProvider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.OrderItemUncheckedUpdateManyWithoutOrderNestedInput
@@ -543,6 +639,12 @@ export type OrderCreateManyInput = {
   confirmNote?: string | null
   expiresAt: Date | string
   paidAt?: Date | string | null
+  customerDeclaredPaidAt?: Date | string | null
+  ownerManualNotifiedAt?: Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Date | string | null
+  customerPaymentEmailedAt?: Date | string | null
+  customerPaymentEmailedProvider?: $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -561,6 +663,12 @@ export type OrderUpdateManyMutationInput = {
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerDeclaredPaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerManualNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedProvider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -581,6 +689,12 @@ export type OrderUncheckedUpdateManyInput = {
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerDeclaredPaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerManualNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedProvider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -616,6 +730,12 @@ export type OrderCountOrderByAggregateInput = {
   confirmNote?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
   paidAt?: Prisma.SortOrder
+  customerDeclaredPaidAt?: Prisma.SortOrder
+  ownerManualNotifiedAt?: Prisma.SortOrder
+  ownerDeclaredPaidNotifiedAt?: Prisma.SortOrder
+  customerPaymentEmailedAt?: Prisma.SortOrder
+  customerPaymentEmailedProvider?: Prisma.SortOrder
+  customerReminderSentAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -641,6 +761,12 @@ export type OrderMaxOrderByAggregateInput = {
   confirmNote?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
   paidAt?: Prisma.SortOrder
+  customerDeclaredPaidAt?: Prisma.SortOrder
+  ownerManualNotifiedAt?: Prisma.SortOrder
+  ownerDeclaredPaidNotifiedAt?: Prisma.SortOrder
+  customerPaymentEmailedAt?: Prisma.SortOrder
+  customerPaymentEmailedProvider?: Prisma.SortOrder
+  customerReminderSentAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -660,6 +786,12 @@ export type OrderMinOrderByAggregateInput = {
   confirmNote?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
   paidAt?: Prisma.SortOrder
+  customerDeclaredPaidAt?: Prisma.SortOrder
+  ownerManualNotifiedAt?: Prisma.SortOrder
+  ownerDeclaredPaidNotifiedAt?: Prisma.SortOrder
+  customerPaymentEmailedAt?: Prisma.SortOrder
+  customerPaymentEmailedProvider?: Prisma.SortOrder
+  customerReminderSentAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -839,6 +971,12 @@ export type OrderCreateWithoutCustomerInput = {
   confirmNote?: string | null
   expiresAt: Date | string
   paidAt?: Date | string | null
+  customerDeclaredPaidAt?: Date | string | null
+  ownerManualNotifiedAt?: Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Date | string | null
+  customerPaymentEmailedAt?: Date | string | null
+  customerPaymentEmailedProvider?: $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   tenant: Prisma.TenantCreateNestedOneWithoutOrdersInput
@@ -863,6 +1001,12 @@ export type OrderUncheckedCreateWithoutCustomerInput = {
   confirmNote?: string | null
   expiresAt: Date | string
   paidAt?: Date | string | null
+  customerDeclaredPaidAt?: Date | string | null
+  ownerManualNotifiedAt?: Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Date | string | null
+  customerPaymentEmailedAt?: Date | string | null
+  customerPaymentEmailedProvider?: $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.OrderItemUncheckedCreateNestedManyWithoutOrderInput
@@ -916,6 +1060,12 @@ export type OrderScalarWhereInput = {
   confirmNote?: Prisma.StringNullableFilter<"Order"> | string | null
   expiresAt?: Prisma.DateTimeFilter<"Order"> | Date | string
   paidAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
+  customerDeclaredPaidAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
+  ownerManualNotifiedAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
+  customerPaymentEmailedAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
+  customerPaymentEmailedProvider?: Prisma.EnumPaymentProviderIdNullableFilter<"Order"> | $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Order"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Order"> | Date | string
 }
@@ -934,6 +1084,12 @@ export type OrderCreateWithoutTenantInput = {
   confirmNote?: string | null
   expiresAt: Date | string
   paidAt?: Date | string | null
+  customerDeclaredPaidAt?: Date | string | null
+  ownerManualNotifiedAt?: Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Date | string | null
+  customerPaymentEmailedAt?: Date | string | null
+  customerPaymentEmailedProvider?: $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   customer: Prisma.UserCreateNestedOneWithoutOrdersInput
@@ -958,6 +1114,12 @@ export type OrderUncheckedCreateWithoutTenantInput = {
   confirmNote?: string | null
   expiresAt: Date | string
   paidAt?: Date | string | null
+  customerDeclaredPaidAt?: Date | string | null
+  ownerManualNotifiedAt?: Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Date | string | null
+  customerPaymentEmailedAt?: Date | string | null
+  customerPaymentEmailedProvider?: $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.OrderItemUncheckedCreateNestedManyWithoutOrderInput
@@ -1006,6 +1168,12 @@ export type OrderCreateWithoutCouponRedemptionsInput = {
   confirmNote?: string | null
   expiresAt: Date | string
   paidAt?: Date | string | null
+  customerDeclaredPaidAt?: Date | string | null
+  ownerManualNotifiedAt?: Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Date | string | null
+  customerPaymentEmailedAt?: Date | string | null
+  customerPaymentEmailedProvider?: $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   tenant: Prisma.TenantCreateNestedOneWithoutOrdersInput
@@ -1031,6 +1199,12 @@ export type OrderUncheckedCreateWithoutCouponRedemptionsInput = {
   confirmNote?: string | null
   expiresAt: Date | string
   paidAt?: Date | string | null
+  customerDeclaredPaidAt?: Date | string | null
+  ownerManualNotifiedAt?: Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Date | string | null
+  customerPaymentEmailedAt?: Date | string | null
+  customerPaymentEmailedProvider?: $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.OrderItemUncheckedCreateNestedManyWithoutOrderInput
@@ -1068,6 +1242,12 @@ export type OrderUpdateWithoutCouponRedemptionsInput = {
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerDeclaredPaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerManualNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedProvider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tenant?: Prisma.TenantUpdateOneRequiredWithoutOrdersNestedInput
@@ -1093,6 +1273,12 @@ export type OrderUncheckedUpdateWithoutCouponRedemptionsInput = {
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerDeclaredPaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerManualNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedProvider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.OrderItemUncheckedUpdateManyWithoutOrderNestedInput
@@ -1114,6 +1300,12 @@ export type OrderCreateWithoutNotesInput = {
   confirmNote?: string | null
   expiresAt: Date | string
   paidAt?: Date | string | null
+  customerDeclaredPaidAt?: Date | string | null
+  ownerManualNotifiedAt?: Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Date | string | null
+  customerPaymentEmailedAt?: Date | string | null
+  customerPaymentEmailedProvider?: $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   tenant: Prisma.TenantCreateNestedOneWithoutOrdersInput
@@ -1139,6 +1331,12 @@ export type OrderUncheckedCreateWithoutNotesInput = {
   confirmNote?: string | null
   expiresAt: Date | string
   paidAt?: Date | string | null
+  customerDeclaredPaidAt?: Date | string | null
+  ownerManualNotifiedAt?: Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Date | string | null
+  customerPaymentEmailedAt?: Date | string | null
+  customerPaymentEmailedProvider?: $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.OrderItemUncheckedCreateNestedManyWithoutOrderInput
@@ -1176,6 +1374,12 @@ export type OrderUpdateWithoutNotesInput = {
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerDeclaredPaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerManualNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedProvider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tenant?: Prisma.TenantUpdateOneRequiredWithoutOrdersNestedInput
@@ -1201,6 +1405,12 @@ export type OrderUncheckedUpdateWithoutNotesInput = {
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerDeclaredPaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerManualNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedProvider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.OrderItemUncheckedUpdateManyWithoutOrderNestedInput
@@ -1222,6 +1432,12 @@ export type OrderCreateWithoutItemsInput = {
   confirmNote?: string | null
   expiresAt: Date | string
   paidAt?: Date | string | null
+  customerDeclaredPaidAt?: Date | string | null
+  ownerManualNotifiedAt?: Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Date | string | null
+  customerPaymentEmailedAt?: Date | string | null
+  customerPaymentEmailedProvider?: $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   tenant: Prisma.TenantCreateNestedOneWithoutOrdersInput
@@ -1247,6 +1463,12 @@ export type OrderUncheckedCreateWithoutItemsInput = {
   confirmNote?: string | null
   expiresAt: Date | string
   paidAt?: Date | string | null
+  customerDeclaredPaidAt?: Date | string | null
+  ownerManualNotifiedAt?: Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Date | string | null
+  customerPaymentEmailedAt?: Date | string | null
+  customerPaymentEmailedProvider?: $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   transactions?: Prisma.TenantPaymentTransactionUncheckedCreateNestedManyWithoutOrderInput
@@ -1284,6 +1506,12 @@ export type OrderUpdateWithoutItemsInput = {
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerDeclaredPaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerManualNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedProvider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tenant?: Prisma.TenantUpdateOneRequiredWithoutOrdersNestedInput
@@ -1309,6 +1537,12 @@ export type OrderUncheckedUpdateWithoutItemsInput = {
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerDeclaredPaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerManualNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedProvider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   transactions?: Prisma.TenantPaymentTransactionUncheckedUpdateManyWithoutOrderNestedInput
@@ -1330,6 +1564,12 @@ export type OrderCreateWithoutTransactionsInput = {
   confirmNote?: string | null
   expiresAt: Date | string
   paidAt?: Date | string | null
+  customerDeclaredPaidAt?: Date | string | null
+  ownerManualNotifiedAt?: Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Date | string | null
+  customerPaymentEmailedAt?: Date | string | null
+  customerPaymentEmailedProvider?: $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   tenant: Prisma.TenantCreateNestedOneWithoutOrdersInput
@@ -1355,6 +1595,12 @@ export type OrderUncheckedCreateWithoutTransactionsInput = {
   confirmNote?: string | null
   expiresAt: Date | string
   paidAt?: Date | string | null
+  customerDeclaredPaidAt?: Date | string | null
+  ownerManualNotifiedAt?: Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Date | string | null
+  customerPaymentEmailedAt?: Date | string | null
+  customerPaymentEmailedProvider?: $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.OrderItemUncheckedCreateNestedManyWithoutOrderInput
@@ -1392,6 +1638,12 @@ export type OrderUpdateWithoutTransactionsInput = {
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerDeclaredPaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerManualNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedProvider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tenant?: Prisma.TenantUpdateOneRequiredWithoutOrdersNestedInput
@@ -1417,6 +1669,12 @@ export type OrderUncheckedUpdateWithoutTransactionsInput = {
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerDeclaredPaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerManualNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedProvider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.OrderItemUncheckedUpdateManyWithoutOrderNestedInput
@@ -1439,6 +1697,12 @@ export type OrderCreateManyCustomerInput = {
   confirmNote?: string | null
   expiresAt: Date | string
   paidAt?: Date | string | null
+  customerDeclaredPaidAt?: Date | string | null
+  ownerManualNotifiedAt?: Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Date | string | null
+  customerPaymentEmailedAt?: Date | string | null
+  customerPaymentEmailedProvider?: $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -1457,6 +1721,12 @@ export type OrderUpdateWithoutCustomerInput = {
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerDeclaredPaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerManualNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedProvider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tenant?: Prisma.TenantUpdateOneRequiredWithoutOrdersNestedInput
@@ -1481,6 +1751,12 @@ export type OrderUncheckedUpdateWithoutCustomerInput = {
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerDeclaredPaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerManualNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedProvider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.OrderItemUncheckedUpdateManyWithoutOrderNestedInput
@@ -1504,6 +1780,12 @@ export type OrderUncheckedUpdateManyWithoutCustomerInput = {
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerDeclaredPaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerManualNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedProvider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1523,6 +1805,12 @@ export type OrderCreateManyTenantInput = {
   confirmNote?: string | null
   expiresAt: Date | string
   paidAt?: Date | string | null
+  customerDeclaredPaidAt?: Date | string | null
+  ownerManualNotifiedAt?: Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Date | string | null
+  customerPaymentEmailedAt?: Date | string | null
+  customerPaymentEmailedProvider?: $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -1541,6 +1829,12 @@ export type OrderUpdateWithoutTenantInput = {
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerDeclaredPaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerManualNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedProvider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   customer?: Prisma.UserUpdateOneRequiredWithoutOrdersNestedInput
@@ -1565,6 +1859,12 @@ export type OrderUncheckedUpdateWithoutTenantInput = {
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerDeclaredPaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerManualNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedProvider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.OrderItemUncheckedUpdateManyWithoutOrderNestedInput
@@ -1588,6 +1888,12 @@ export type OrderUncheckedUpdateManyWithoutTenantInput = {
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerDeclaredPaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerManualNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerDeclaredPaidNotifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customerPaymentEmailedProvider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
+  customerReminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1666,6 +1972,12 @@ export type OrderSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   confirmNote?: boolean
   expiresAt?: boolean
   paidAt?: boolean
+  customerDeclaredPaidAt?: boolean
+  ownerManualNotifiedAt?: boolean
+  ownerDeclaredPaidNotifiedAt?: boolean
+  customerPaymentEmailedAt?: boolean
+  customerPaymentEmailedProvider?: boolean
+  customerReminderSentAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
@@ -1693,6 +2005,12 @@ export type OrderSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   confirmNote?: boolean
   expiresAt?: boolean
   paidAt?: boolean
+  customerDeclaredPaidAt?: boolean
+  ownerManualNotifiedAt?: boolean
+  ownerDeclaredPaidNotifiedAt?: boolean
+  customerPaymentEmailedAt?: boolean
+  customerPaymentEmailedProvider?: boolean
+  customerReminderSentAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
@@ -1715,6 +2033,12 @@ export type OrderSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   confirmNote?: boolean
   expiresAt?: boolean
   paidAt?: boolean
+  customerDeclaredPaidAt?: boolean
+  ownerManualNotifiedAt?: boolean
+  ownerDeclaredPaidNotifiedAt?: boolean
+  customerPaymentEmailedAt?: boolean
+  customerPaymentEmailedProvider?: boolean
+  customerReminderSentAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
@@ -1737,11 +2061,17 @@ export type OrderSelectScalar = {
   confirmNote?: boolean
   expiresAt?: boolean
   paidAt?: boolean
+  customerDeclaredPaidAt?: boolean
+  ownerManualNotifiedAt?: boolean
+  ownerDeclaredPaidNotifiedAt?: boolean
+  customerPaymentEmailedAt?: boolean
+  customerPaymentEmailedProvider?: boolean
+  customerReminderSentAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type OrderOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tenantId" | "customerId" | "code" | "status" | "subtotalVnd" | "discountVnd" | "totalVnd" | "couponCode" | "provider" | "checkoutPayload" | "proofImageKey" | "confirmNote" | "expiresAt" | "paidAt" | "createdAt" | "updatedAt", ExtArgs["result"]["order"]>
+export type OrderOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tenantId" | "customerId" | "code" | "status" | "subtotalVnd" | "discountVnd" | "totalVnd" | "couponCode" | "provider" | "checkoutPayload" | "proofImageKey" | "confirmNote" | "expiresAt" | "paidAt" | "customerDeclaredPaidAt" | "ownerManualNotifiedAt" | "ownerDeclaredPaidNotifiedAt" | "customerPaymentEmailedAt" | "customerPaymentEmailedProvider" | "customerReminderSentAt" | "createdAt" | "updatedAt", ExtArgs["result"]["order"]>
 export type OrderInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
   customer?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -1796,6 +2126,28 @@ export type $OrderPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     confirmNote: string | null
     expiresAt: Date
     paidAt: Date | null
+    /**
+     * ADR-062 Q1: lúc khách bấm "Tôi đã chuyển khoản" (chỉ cổng xác nhận tay). Không đổi `status`. Hoàn tác → NULL.
+     */
+    customerDeclaredPaidAt: Date | null
+    /**
+     * ADR-061 Q9/Q10 — các mốc chống gửi sót/trùng email (nhận nguyên tử bằng `UPDATE … WHERE col IS NULL`):
+     * đã báo người bán "đơn chờ xác nhận tay" (một lần/đơn, kể cả khi khách đổi phương thức).
+     */
+    ownerManualNotifiedAt: Date | null
+    /**
+     * đã báo người bán "khách báo đã chuyển" (ADR-062 Q1 — một lần/đơn, kể cả khi khách hoàn tác rồi báo lại).
+     */
+    ownerDeclaredPaidNotifiedAt: Date | null
+    /**
+     * email cho khách lúc chọn phương thức (Q7): lần gửi gần nhất + phương thức đã gửi — đổi sang phương thức khác mới gửi lại.
+     */
+    customerPaymentEmailedAt: Date | null
+    customerPaymentEmailedProvider: $Enums.PaymentProviderId | null
+    /**
+     * email nhắc khách khi còn ≤ 24 giờ (Q7, cron hằng ngày) — một lần/đơn.
+     */
+    customerReminderSentAt: Date | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["order"]>
@@ -2242,6 +2594,12 @@ export interface OrderFieldRefs {
   readonly confirmNote: Prisma.FieldRef<"Order", 'String'>
   readonly expiresAt: Prisma.FieldRef<"Order", 'DateTime'>
   readonly paidAt: Prisma.FieldRef<"Order", 'DateTime'>
+  readonly customerDeclaredPaidAt: Prisma.FieldRef<"Order", 'DateTime'>
+  readonly ownerManualNotifiedAt: Prisma.FieldRef<"Order", 'DateTime'>
+  readonly ownerDeclaredPaidNotifiedAt: Prisma.FieldRef<"Order", 'DateTime'>
+  readonly customerPaymentEmailedAt: Prisma.FieldRef<"Order", 'DateTime'>
+  readonly customerPaymentEmailedProvider: Prisma.FieldRef<"Order", 'PaymentProviderId'>
+  readonly customerReminderSentAt: Prisma.FieldRef<"Order", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"Order", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Order", 'DateTime'>
 }

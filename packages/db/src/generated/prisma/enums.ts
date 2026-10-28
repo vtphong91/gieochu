@@ -29,7 +29,8 @@ export type UserStatus = (typeof UserStatus)[keyof typeof UserStatus]
 export const VerificationTokenType = {
   EMAIL_VERIFY: 'EMAIL_VERIFY',
   PASSWORD_RESET: 'PASSWORD_RESET',
-  EMAIL_CHANGE: 'EMAIL_CHANGE'
+  EMAIL_CHANGE: 'EMAIL_CHANGE',
+  GUEST_ACTIVATION: 'GUEST_ACTIVATION'
 } as const
 
 export type VerificationTokenType = (typeof VerificationTokenType)[keyof typeof VerificationTokenType]

@@ -527,10 +527,30 @@ model ProductFile {
 
   downloadTokens DownloadToken[]
   downloadEvents DownloadEvent[]
+  productFilePreview ProductFilePreview?
 
   @@index([productId])
   @@index([tenantId])
   @@map("product_files")
+}
+
+/// ADR-063 — cache bản xem trước 20% nội dung thật (DOCX/XLSX/PDF/TEXT) cho trang chi tiết công khai.
+/// L2 denormalized (`tenantId`/`productId` giống `product_files`), nhưng chỉ server đọc qua route guard —
+/// không có policy RLS public (không bật). Cascade delete theo `product_files`.
+model ProductFilePreview {
+  productFileId String      @id
+  productFile   ProductFile @relation(fields: [productFileId], references: [id], onDelete: Cascade)
+  tenantId      String
+  productId     String
+  kind          String
+  payload       Json
+  ratio         Int         @default(20)
+  schemaVersion Int         @default(1)
+  generatedAt   DateTime    @default(now())
+
+  @@index([productId])
+  @@index([tenantId])
+  @@map("product_file_previews")
 }
 
 /// §5.1 Layer System — system_settings. Single row (id fixed to "default").

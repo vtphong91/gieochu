@@ -6,6 +6,8 @@ import { productTypeLabel } from "@gieochu/core/product-type";
 import { sanitizeRichTextHtml } from "@gieochu/core/content/sanitize-html";
 import { ProductTypeIcon } from "./icons";
 import { ProductRatingInline } from "./product-reviews";
+import { ProductPreviewSection } from "./product-preview-section";
+import type { PublicProductPreviewFile } from "../../../lib/product-file-preview";
 
 /*
  * Thân trang chi tiết tài liệu — dùng CHUNG cho trang công khai `/[tenantSlug]/[productSlug]` và trang
@@ -70,6 +72,11 @@ export interface ProductDetailData {
   categoryName?: string | null;
   /** ADR-029: điểm TB + số đánh giá (cache `ratingSum/ratingCount`); undefined/0 = không hiện dòng sao dưới tiêu đề. */
   rating?: { average: number | null; count: number };
+  /** ADR-063: danh sách file xem trước 20% cho trang chi tiết công khai; undefined ở trang Xem trước Studio. */
+  previewFiles?: PublicProductPreviewFile[];
+  /** ADR-063: slug để dựng link mua trong modal; chỉ dùng khi previewFiles có dữ liệu. */
+  tenantSlug?: string;
+  productSlug?: string;
 }
 
 export function ProductDetailView({
@@ -239,7 +246,18 @@ export function ProductDetailView({
           </div>
         </section>
 
-        {reviews ? <div className="min-w-0 lg:col-span-7 lg:row-start-3">{reviews}</div> : null}
+        {product.previewFiles && product.previewFiles.length > 0 && product.tenantSlug && product.productSlug ? (
+          // ADR-063 §3: "Tài liệu đính kèm" nằm giữa mô tả và đánh giá; nhịp dọc theo gap-y-12 của grid.
+          <div className="min-w-0 lg:col-span-7 lg:row-start-3">
+            <ProductPreviewSection
+              files={product.previewFiles}
+              tenantSlug={product.tenantSlug}
+              productSlug={product.productSlug}
+            />
+          </div>
+        ) : null}
+
+        {reviews ? <div className={`min-w-0 lg:col-span-7 ${product.previewFiles && product.previewFiles.length > 0 ? "lg:row-start-4" : "lg:row-start-3"}`}>{reviews}</div> : null}
       </div>
     </div>
   );

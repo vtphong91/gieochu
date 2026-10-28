@@ -5,7 +5,7 @@ tags:
   - endpoint
   - status/living
 date: 2026-06-15
-updated: 2026-10-26
+updated: 2026-10-27
 author: System Architect
 ---
 
@@ -1479,7 +1479,34 @@ Không thêm `route.ts`. Webhook `/api/webhooks/platform/momo_manual` và `/api/
 
 ---
 
-## 29. Tài Liệu Tham Chiếu & Liên Kết
+## 29. Xem trước 20% nội dung thật file tài liệu (ADR-063) ✅
+
+Nguồn: `apps/web/app/api/[tenantSlug]/[productSlug]/preview/[fileId]/route.ts`,
+`apps/web/lib/product-file-preview.ts` (2026-10-27, working tree — chưa commit). Bản trích:
+[[01-Architecture-Decisions/ADR-047-Public-Product-File-Preview-20-Percent|ADR-047 (≙ ADR-063)]]. Thêm **1
+`route.ts` dưới `/api`** → đếm lại 2026-10-27: **24 dưới `/api`, 26 toàn app** ✅.
+
+| Trường | Giá trị |
+| :-- | :-- |
+| Method · Path | `GET /api/{tenantSlug}/{productSlug}/preview/{fileId}` |
+| Layer | Public (route handler tự guard; **không** phải L3 — không yêu cầu đăng nhập) |
+| Guard (ẩn mọi lỗi logic thành **404**) | `tenant.status = ACTIVE`; `product.status = PUBLISHED` + đúng `tenantId`/`slug`; `file.productId = product.id`; `sourceKind = FILE`; `scanStatus = CLEAN`; `removedAt = null`; `isPreview = false` |
+| Request | Path params: `tenantSlug`, `productSlug`, `fileId`. Không body, không query, không cookie bắt buộc |
+| Response 200 (JSON) | `{ fileName, mimeType, sizeBytes, kind, payload, ratio, totalEstimate }` |
+| `kind` | `"docx"` · `"xlsx"` · `"pdf"` · `"text"` · `"unsupported"` |
+| `payload` theo `kind` | `docx`: `{ html, paragraphsShown, totalParagraphs }` · `xlsx`: `{ sheetName, rows, rowsShown, totalRows }` · `pdf`: `{ text, charsShown, totalChars, pageCount }` · `text`: `{ text, charsShown, totalChars }` · `unsupported`: `{}` |
+| `totalEstimate` | Tập con số của `payload` (`pageCount` · `totalRows` · `totalParagraphs` · `totalChars`) |
+| `ratio` | Hằng `20` |
+| Response 404 | `{ error: { code, message, requestId } }` — ẩn mọi lỗi: product không public, file không tồn tại/không hợp lệ, tenant không ACTIVE |
+| Rate limit | **60 req/phút/IP** qua `rate_limit_counters` — **TODO** (helper public chưa viết; comment TODO trong route handler) |
+| Side effects | **Lazy sinh cache** `product_file_previews` nếu chưa có; không ghi `audit_logs` |
+| Runtime | `nodejs` + `dynamic = "force-dynamic"` (do `pdf-parse@^1.1.1`) |
+
+Payload sau serialize **≤ 256 KB** (giới hạn ở extractor, [[02-System-Specs/File-Storage-And-Downloads-Specs|File-Storage-And-Downloads-Specs]] §11).
+
+---
+
+## 30. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay|ADR-044 (≙ ADR-059)]] — chạy thử beta, giao dịch cổng (§28) ([ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md](../01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md))
@@ -1504,5 +1531,6 @@ Không thêm `route.ts`. Webhook `/api/webhooks/platform/momo_manual` và `/api/
 * [[02-System-Specs/Pricing-Page-Specs|Pricing-Page-Specs]] ([Pricing-Page-Specs.md](../02-System-Specs/Pricing-Page-Specs.md)) · [[02-System-Specs/Account-Profile-Specs|Account-Profile-Specs]] ([Account-Profile-Specs.md](../02-System-Specs/Account-Profile-Specs.md)) · [[01-Architecture-Decisions/ADR-027-Account-Upgrade-Pricing-Profile-Refund|ADR-027 (≙ ADR-041)]] ([ADR-027-Account-Upgrade-Pricing-Profile-Refund.md](../01-Architecture-Decisions/ADR-027-Account-Upgrade-Pricing-Profile-Refund.md))
 * [[02-System-Specs/Shop-Marketplace-Specs|Shop-Marketplace-Specs]] ([Shop-Marketplace-Specs.md](../02-System-Specs/Shop-Marketplace-Specs.md)) · [[01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First|ADR-021 (≙ ADR-035)]] ([ADR-021-Shop-Marketplace-Cms-First.md](../01-Architecture-Decisions/ADR-021-Shop-Marketplace-Cms-First.md))
 * [[01-Architecture-Decisions/ADR-030-Storage-Gateway-Encrypted-Ticket-Nginx|ADR-030 (≙ ADR-045)]] — Storage Gateway ([ADR-030-Storage-Gateway-Encrypted-Ticket-Nginx.md](../01-Architecture-Decisions/ADR-030-Storage-Gateway-Encrypted-Ticket-Nginx.md)) · [[04-Operations-Runbooks/Storage-Gateway-VPS-Runbook|Storage-Gateway-VPS-Runbook]] ([Storage-Gateway-VPS-Runbook.md](../04-Operations-Runbooks/Storage-Gateway-VPS-Runbook.md))
+* [[01-Architecture-Decisions/ADR-047-Public-Product-File-Preview-20-Percent|ADR-047 (≙ ADR-063)]] — endpoint xem trước 20% nội dung thật (§29) ([ADR-047-Public-Product-File-Preview-20-Percent.md](../01-Architecture-Decisions/ADR-047-Public-Product-File-Preview-20-Percent.md))
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

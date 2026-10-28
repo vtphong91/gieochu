@@ -4,6 +4,7 @@ import { brandColors } from "@gieochu/config/theme";
 import { getEnv } from "@gieochu/config";
 import { calculateOrderPricing, isReservedProductSlug, productPath as buildProductPath, productUrl, resolveStorefrontAccess } from "@gieochu/core";
 import { findTenantBySlugForStorefront, getPublishedProductBySlug } from "../../../lib/storefront";
+import { listPublicPreviewFiles } from "../../../lib/product-file-preview";
 import { getProductCoverUrl } from "../../../lib/product-cover";
 import { getProductRatingSummary, getProductReviews, getReviewEligibility, PRODUCT_REVIEWS_PAGE_SIZE, PRODUCT_REVIEWS_PAGE_SIZE_MAX } from "../../../lib/review";
 import { getCurrentUser } from "../../../lib/session";
@@ -107,12 +108,14 @@ export default async function ProductDetailPage({
 
   // ADR-027: ảnh bìa hiệu lực (Cloudinary, fallback R2).
   // ADR-029: tóm tắt điểm + trang đánh giá + quyền đánh giá của khách đang xem (chủ trang không viết đánh giá).
-  const [coverUrl, imageCloudName, ratingSummary, reviewPage, eligibility] = await Promise.all([
+  const [coverUrl, imageCloudName, ratingSummary, reviewPage, eligibility, previewFiles] = await Promise.all([
     getProductCoverUrl(product),
     getSystemCloudinaryCloudName(),
     getProductRatingSummary(product),
     getProductReviews(product.id, paging.after, paging.limit),
     currentUser && !isOwner ? getReviewEligibility(currentUser.userId, product.id) : Promise.resolve(null),
+    // ADR-063: danh sách file xem trước 20% cho section "Tài liệu đính kèm" dưới mô tả.
+    listPublicPreviewFiles(tenant.id, product.id, tenant.slug, product.slug),
   ]);
 
   const productPath = buildProductPath(tenant.slug, product.slug);
@@ -173,6 +176,9 @@ export default async function ProductDetailPage({
             coverUrl,
             imageCloudName,
             rating: { average: ratingSummary.average, count: ratingSummary.count },
+            previewFiles,
+            tenantSlug: tenant.slug,
+            productSlug: product.slug,
           }}
           purchase={purchase}
           report={
