@@ -14,7 +14,7 @@ author: Long
 > Mục đích: trước khi mở beta, thử **một giao dịch SePay thật, số tiền nhỏ** cho cả thu phí gói (platform) và bán tài liệu (gian hàng) — ADR-059
 > "Việc kéo theo". Quyết định: [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay|ADR-044 KB (≙ ADR-059)]].
 >
-> Mức xác minh: ✅ hành vi đã đối chiếu code working tree 2026-10-26 (chưa commit) · 🟡 checklist theo brief của Quốc · ❓ **chưa ai chạy runbook này
+> Mức xác minh: ✅ hành vi đã đối chiếu code 2026-10-26 (đã commit `fa29d99`) · 🟡 checklist theo brief của Quốc · ❓ **chưa ai chạy runbook này
 > trên môi trường thật** — mọi kết quả "kiểm" bên dưới là kết quả **mong đợi**, chưa phải kết quả đã quan sát.
 
 > [!WARNING] Một DB duy nhất (ADR-034)

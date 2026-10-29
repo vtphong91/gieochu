@@ -34,6 +34,10 @@ export const SYSTEM_SETTINGS_BOUNDS = {
   graceDays: { default: 7, min: 0, max: 30, label: "Số ngày ân hạn", unit: "ngày" },
   orderPendingTtlMinutes: { default: 60, min: 15, max: 1440, label: "Hạn đơn chờ thanh toán", unit: "phút" },
   invoicePendingTtlHours: { default: 24, min: 1, max: 168, label: "Hạn hoá đơn chờ thanh toán", unit: "giờ" },
+  /** ADR-061/062: hạn giữ đơn tính từ lúc đặt đơn — cổng xác nhận tay (ngân hàng, MoMo) và đơn chưa chọn phương thức. */
+  orderHoldManualHours: { default: 72, min: 1, max: 168, label: "Hạn giữ đơn — thủ công", unit: "giờ" },
+  /** ADR-061/062: hạn giữ đơn với cổng tự xác nhận (SePay; MoMo API nếu bật). */
+  orderHoldAutoHours: { default: 48, min: 1, max: 168, label: "Hạn giữ đơn — tự xác nhận", unit: "giờ" },
   /** 0 = không giới hạn (cùng quy ước `Product.downloadLimit`, ADR-014). */
   defaultDownloadLimit: { default: 5, min: 0, max: 1000, label: "Lượt tải mặc định", unit: "lượt" },
   /** ADR-053 chính sách phiên. Idle tối thiểu 10 phút: phải lớn hơn chu kỳ làm mới phía client (≤ idle/3). */
@@ -58,6 +62,7 @@ export const SYSTEM_SETTING_KEYS = Object.keys(SYSTEM_SETTINGS_BOUNDS) as System
 export const INACTIVE_SYSTEM_SETTINGS: Readonly<Partial<Record<SystemSettingKey, string>>> = Object.freeze({
   trialDays: "Chưa dùng — mô hình Free Forever, ADR-021.",
   refreshTokenTtlDays: "Không còn dùng — thay bằng chính sách phiên (thời hạn tối đa / \"Ghi nhớ đăng nhập\"), ADR-053.",
+  orderPendingTtlMinutes: "Không còn dùng — thay bằng hạn giữ đơn theo phương thức (ADR-061/062).",
 });
 
 /**

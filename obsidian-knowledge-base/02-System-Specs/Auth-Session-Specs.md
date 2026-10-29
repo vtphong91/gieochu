@@ -7,7 +7,7 @@ tags:
   - account
   - status/living
 date: 2026-10-24
-updated: 2026-10-24
+updated: 2026-10-27
 author: Long
 ---
 
@@ -102,6 +102,8 @@ Thứ tự xử lý (`app/api/auth/refresh/route.ts`; mã lỗi đầy đủ: [[
    - `replacedById` có, quá 30 giây → **`reused`** → thu hồi cả family, audit `AUTH_REFRESH_REUSE`, 401 `AUTH_REFRESH_REUSE`, xoá cookie (giữ hành vi M1).
    - Hết `expiresAt` → **`expired`** → 401 `UNAUTHORIZED`, xoá cookie (không thu hồi).
 3. **Kiểm `user.status`** (GĐ A): user không còn hoặc khác `ACTIVE` → thu hồi family, 401 `ACCOUNT_LOCKED` (nếu `LOCKED`) hoặc `UNAUTHORIZED`, xoá cookie.
+   **Ngoại lệ duy nhất (ADR-061 Q1, 2026-10-27, working tree):** user `PENDING` vẫn refresh được khi **đủ cả** `record.guestCheckout = true` **và**
+   `user.hasPassword = false` (phiên khách vãng lai) — dùng chính sách phiên guest (§9A).
 4. **Idle/absolute** (GĐ B): `lastActiveAt = record.createdAt`. Quá absolute → thu hồi family, 401 `SESSION_EXPIRED`; quá idle → thu hồi family, 401
    `SESSION_IDLE_TIMEOUT`; cả hai xoá cookie.
    - **Phiên trước ADR-053** (`sessionStartedAt` NULL): coi như bắt đầu tại lần rotate này (`sessionStartedAt = now`, không xét idle lần này) → không
@@ -204,6 +206,63 @@ Nhóm mới **"Chính sách phiên đăng nhập"** (6 khoá, `SYSTEM_SETTINGS_B
   sessionAbsoluteHours·60`; `adminIdleMinutes ≤ adminAbsoluteHours·60` — lỗi theo ô, từ chối cả form (`VALIDATION_ERROR`).
 - `refreshTokenTtlDays` ngừng dùng (ẩn khỏi form, lý do trong `INACTIVE_SYSTEM_SETTINGS`); cột giữ tới migration contract.
 - Phạm vi hiệu lực: áp cho **mọi phiên** từ lần refresh kế tiếp (§2), không chỉ phiên mới.
+
+---
+
+## 9A. Phiên khách vãng lai — mua không cần đăng ký (ADR-061 Q1 + Bổ sung ADR-062 mục 1–8) — working tree, chưa commit, chưa thử thủ công ✅ đọc code 2026-10-27
+
+Quyết định: [[01-Architecture-Decisions/ADR-046-Customer-Purchase-Flow-Pending-Orders-Notifications|ADR-046 KB (≙ ADR-061)]],
+[[01-Architecture-Decisions/ADR-048-Checkout-Layout-Declared-Paid-Guest-Session|ADR-048 KB (≙ ADR-062)]]. Luồng tạo tài khoản + đơn: [[02-System-Specs/Order-State-Machine|Order-State-Machine]]
+§3.13. Code chính: `apps/web/lib/guest-checkout.ts`, `lib/{page-guards,session,session-access,jwt-context,cookies,rate-limit-store}.ts`,
+`packages/auth/src/tokens/access-token.ts`, `app/api/auth/{refresh,login,resend-verification,forgot-password,reset-password}/route.ts`, `app/(auth)/verify-email/dat-mat-khau/`.
+
+- **Tài khoản guest:** user `PENDING`, **`users.hasPassword = false`**, `passwordHash` = hash một chuỗi ngẫu nhiên không ai biết (không bao giờ gửi mật khẩu).
+- **Phiên guest:** bản ghi `refresh_tokens.guestCheckout = true`; access token mang claim **`gco: true`** (`packages/auth` ký/đọc; `CurrentUser.guestCheckout`).
+  Chính sách `getGuestSessionPolicy()` (`lib/jwt-context.ts`) = chính sách USER thường (ADR-053) nhưng **không "Ghi nhớ"** (`rememberMe = false`) và **absolute kẹp
+  ≤ 24 giờ** (`GUEST_SESSION_MAX_HOURS`); `sessionStartedAt` cố định nên refresh không trượt quá mốc 24 giờ. Refresh và làm mới access (`session-access.ts`) chọn chính
+  sách guest khi bản ghi có `guestCheckout`. Cookie đặt trong Server Action bằng `applyAuthCookiesTo(cookies(), payload)` (`lib/cookies.ts`, mới).
+- **Refresh:** chỉ được với user `PENDING` khi có **đủ** `guestCheckout` **và** `hasPassword = false` (§4 bước 3).
+- **Guard** — chỉ 4 nhóm dùng được phiên guest; mọi nơi khác vẫn `requireVerified`/`requireVerifiedAccess` (guest không vào được):
+
+  | Guard | Loại | Nơi dùng |
+  | :-- | :-- | :-- |
+  | `requireCheckoutAccess(nextPath)` (`lib/page-guards.ts`) | Trang/Server Action (redirect) | Trang + action checkout `/{tenant}/checkout/{mã}`, `/account/orders`, `/account/library`; **và** `buyProductAction` ("Mua ngay" — khi đã có phiên) |
+  | `requireCheckoutUser()` (`lib/session.ts`) | Route Handler (ném `forbidden`) | `POST /api/downloads` |
+
+  Cho qua khi `emailVerified` **hoặc** `guestCheckout`. Chưa đăng nhập → `/login?next=`; đăng nhập nhưng chưa xác minh và không phải guest → `/verify-email?pending=1`.
+  **Guard áp cho 5 nơi** (Quốc quyết 2026-10-27): 4 nhóm theo Bổ sung ADR-062 mục 1 (checkout, `/account/orders`, `/account/library`, `POST /api/downloads`) **cộng
+  "Mua ngay"** (`buyProductAction`) — **có chủ đích**: phiên guest (của chính người đó, ≤ 24 giờ) được mua thêm tài liệu khác mà không qua lại form khách vãng lai.
+  `/account`, `/account/profile`, `/account/security` (`requireVerifiedAccess`) **không** mở cho guest ✅ grep.
+  **Quyền lợi khi tài liệu bị gỡ** (action "Tải lần cuối" / "Yêu cầu hoàn tiền", `app/account/library/actions.ts`, `requireVerified`): guest **không** được chọn — phải xác minh
+  email trước (Quốc quyết 2026-10-27). **Đã có code** ✅ (working tree, chưa commit): khi phiên guest chưa kích hoạt (`user.guestCheckout && !emailVerified`) và entitlement `PENDING_CHOICE`, thẻ Thư viện **thay hai nút** bằng hai câu "Tài liệu này đã bị gỡ do vi phạm chính sách." và "Kích hoạt tài khoản (qua email) để chọn tải lần cuối hoặc hoàn tiền." + link "Gửi lại email kích hoạt" → `/verify-email?pending=1` (`app/account/library/page.tsx`, `_ui/library-entitlement-card.tsx`); server giữ nguyên `requireVerified`. Khối này là **markup tối thiểu — chờ Phong hoàn thiện**.
+- **Token `GUEST_ACTIVATION`:** sống **7 ngày** (`GUEST_ACTIVATION_TTL_DAYS`), chỉ lưu hash SHA-256, phát mới thì **huỷ** mọi token `GUEST_ACTIVATION` chưa dùng của user.
+  Link `APP_URL/verify-email/dat-mat-khau?token=…`.
+- **Trang `/verify-email/dat-mat-khau`** ("Kích hoạt tài khoản và đặt mật khẩu", `noindex`, không cần đăng nhập): mở trang **không** tiêu token (trình quét link của hộp
+  thư không làm hỏng liên kết) — token **chỉ bị tiêu khi submit form** (`activateGuestAccountAction` → `activateGuestAccount`): kiểm mật khẩu (≥ 8 ký tự, có chữ và số;
+  nhập lại khớp), nhận token nguyên tử, huỷ token kích hoạt khác, đặt `passwordHash`, `hasPassword = true`, `ACTIVE`, `emailVerifiedAt`, xoá đếm sai; tài khoản `LOCKED`
+  không mở lại được. Lỗi: `INVALID_TOKEN`, `TOKEN_ALREADY_USED`, `TOKEN_EXPIRED`, `WEAK_PASSWORD`, `PASSWORD_MISMATCH`. Thành công → `/login?da-kich-hoat=1&next=/account/library`
+  (không tự đăng nhập; trang đăng nhập hiện `SuccessBanner` "Đã kích hoạt tài khoản"). Audit `AUTH_GUEST_ACTIVATED`.
+- **Đăng nhập:** user `PENDING` + `hasPassword = false` → **403 `GUEST_NOT_ACTIVATED`** (kiểm sau `LOCKED`, **trước** so mật khẩu → **không** tăng đếm sai mật khẩu;
+  audit `AUTH_LOGIN_FAILED` reason `GUEST_NOT_ACTIVATED`). Form đăng nhập hiện nút "Gửi lại email kích hoạt" như với `EMAIL_NOT_VERIFIED`.
+- **`POST /api/auth/reset-password`:** token `PASSWORD_RESET` cũ của user guest chưa kích hoạt → **400 `GUEST_NOT_ACTIVATED`** (không đặt mật khẩu ở đây).
+- **`POST /api/auth/forgot-password`:** guest chưa kích hoạt → **gửi email kích hoạt** (`resendGuestActivation`) thay vì `PASSWORD_RESET`; câu trả lời **giữ y như** mọi
+  trường hợp khác (chống dò email).
+- **`POST /api/auth/resend-verification`:** guest chưa kích hoạt → `resendGuestActivation` (email `guest_activation`, token mới); user PENDING thường → email xác minh như
+  cũ. Cùng một câu trả lời.
+- **Rate limit trên DB** (`rate_limit_counters`, khoá HMAC-SHA256 bằng `JWT_ACCESS_SECRET` của `scope:value` — không lưu IP/email thô; `consumeRateLimit` nguyên tử):
+
+  | Việc | Giới hạn | Khoá |
+  | :-- | :-- | :-- |
+  | Tạo tài khoản guest | **5 lần/IP/giờ** và **3 lần/email/ngày** | `guest_signup_ip`, `guest_signup_email` |
+  | Gửi lại email kích hoạt guest (resend + forgot-password) | **3 lần/email/giờ** | `guest_activation_resend` |
+
+  Lượt bị tính **trước** khi kiểm email đã tồn tại; khoá HMAC phụ thuộc `JWT_ACCESS_SECRET` (đổi secret → bộ đếm coi như mới) — Quốc chấp nhận cả hai (2026-10-27). Các
+  giới hạn cũ trong bộ nhớ tiến trình của resend/forgot vẫn còn, chạy trước.
+- **Email `guest_activation`** (`renderGuestActivationEmail`, `packages/email/src/templates/guest-activation.ts`): tiêu đề "Kích hoạt tài khoản {brand} và đặt mật khẩu",
+  có mã đơn khi gửi lúc mua, hạn 7 ngày, link một lần. **Có ghi `email_send_log`** (không thuộc `TENANT_CUSTOMER_FACING_TYPES`). Gửi sau response (`after()`).
+- **Audit:** `AUTH_GUEST_ACCOUNT_CREATED` (scope SYSTEM, metadata `{ tenantId, legalVersions }`, kèm IP/UA) và `AUTH_GUEST_ACTIVATED`.
+- **`/account/security`**: tài khoản chưa có mật khẩu hiện thẻ "Chưa đặt mật khẩu" thay form đổi mật khẩu (thực tế không tới được vì trang cần email đã xác minh).
+- Test: assert thêm trong `auth.test.ts` (case có sẵn); `pnpm test:count` = **100/100 unit, 66/66 integration** ✅ (Long chạy).
 
 ---
 

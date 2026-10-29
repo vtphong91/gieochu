@@ -181,7 +181,8 @@ export type { ReviewHiddenReasonValue, ReviewTextResult, TenantReviewHideReason 
 export { transitionOrderStatus } from "./order/state";
 export type { OrderEvent, OrderStatus } from "./order/state";
 export { generateOrderCode, isValidOrderCode, ORDER_CODE_SUFFIX_LENGTH } from "./order/code";
-export { canManuallyConfirmOrder, computeOrderExpiresAt, effectiveOrderStatus, manualConfirmDeadline } from "./order/expiry";
+export { canManuallyConfirmOrder, computeOrderExpiresAt, computeOrderHoldExpiresAt, effectiveOrderStatus, manualConfirmDeadline } from "./order/expiry";
+export type { ManualConfirmOptions } from "./order/expiry";
 export { matchPaymentAmount } from "./order/payment-match";
 export type { PaymentMatchStatus } from "./order/payment-match";
 export { calculateOrderPricing } from "./order/pricing";

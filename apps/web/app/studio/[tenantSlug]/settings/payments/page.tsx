@@ -60,7 +60,6 @@ export default async function StudioPaymentsSettingsPage({
           initial={{
             phone: String(momoManual?.publicConfig.phone ?? ""),
             accountName: String(momoManual?.publicConfig.accountName ?? ""),
-            vietQrAccountNo: String(momoManual?.publicConfig.vietQrAccountNo ?? ""),
             isEnabled: momoManual?.isEnabled ?? false,
           }}
         />

@@ -7,7 +7,9 @@ import { useForm } from "react-hook-form";
 import { toSafeRedirect } from "../../../lib/safe-redirect";
 import { AuthCard } from "../_ui/auth-card";
 import { INK_SOFT } from "../_ui/colors";
-import { ErrorBanner, InfoBanner, PasswordField, SubmitButton, TextField } from "../_ui/fields";
+import { ErrorBanner, InfoBanner, PasswordField, SubmitButton, SuccessBanner, TextField } from "../_ui/fields";
+
+const AUTH_FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-primary)]";
 
 interface LoginFormValues {
   email: string;
@@ -32,6 +34,7 @@ export function LoginForm({ brandName }: { brandName: string }) {
   const [needsPasswordReset, setNeedsPasswordReset] = useState(false);
   const searchParams = useSearchParams();
   const sessionTimedOut = searchParams.get("het-phien") === "1";
+  const justActivated = searchParams.get("da-kich-hoat") === "1";
 
   // ADR-053: access token hết hạn nhưng refresh "Ghi nhớ" còn → trang cần đăng nhập chuyển về đây; thử khôi phục phiên
   // một lần rồi quay lại trang đích. Vừa hết phiên do idle (`het-phien`) thì không thử.
@@ -66,7 +69,8 @@ export function LoginForm({ brandName }: { brandName: string }) {
     });
     const body = await response.json();
     if (!response.ok) {
-      if (body.error?.code === "EMAIL_NOT_VERIFIED") {
+      // ADR-061 Q1: tài khoản tạo lúc mua (chưa đặt mật khẩu) → cùng lối "Gửi lại email kích hoạt" (email kích hoạt + đặt mật khẩu).
+      if (body.error?.code === "EMAIL_NOT_VERIFIED" || body.error?.code === "GUEST_NOT_ACTIVATED") {
         setNeedsVerification(true);
       }
       if (body.error?.code === "PASSWORD_RESET_REQUIRED") {
@@ -96,12 +100,17 @@ export function LoginForm({ brandName }: { brandName: string }) {
       footer={
         <>
           Chưa có tài khoản?{" "}
-          <Link href="/register" className="font-medium" style={{ color: "#0F3B82" }}>
+          <Link href="/register" className={`rounded font-medium text-[color:var(--color-primary)] ${AUTH_FOCUS}`}>
             Đăng ký
           </Link>
         </>
       }
     >
+      {justActivated ? (
+        <div className="mb-4">
+          <SuccessBanner title="Đã kích hoạt tài khoản" message="Mật khẩu đã được đặt. Đăng nhập để tải tài liệu đã mua trên mọi thiết bị." />
+        </div>
+      ) : null}
       {sessionTimedOut ? (
         <div className="mb-4">
           <InfoBanner message="Phiên đăng nhập đã kết thúc để bảo vệ tài khoản. Vui lòng đăng nhập lại." />
@@ -141,17 +150,23 @@ export function LoginForm({ brandName }: { brandName: string }) {
             Không dùng trên máy dùng chung.
           </p>
         </div>
+        <ErrorBanner message={serverError} />
+        {/* EMAIL_NOT_VERIFIED / GUEST_NOT_ACTIVATED (ADR-061 Q1, Bổ sung ADR-062 mục 4): lối ra ngay dưới thông báo lỗi —
+            nút viền ≥44px (hành động phụ, nút chính vẫn là "Đăng nhập"). */}
         {needsVerification ? (
-          <Link href="/verify-email?pending=1" className="block text-sm font-medium" style={{ color: "#0F3B82" }}>
+          <Link
+            href="/verify-email?pending=1"
+            className={`flex min-h-11 items-center justify-center rounded-lg border bg-white px-3.5 text-sm font-semibold text-[color:var(--color-primary)] transition-colors hover:bg-gray-50 motion-reduce:transition-none ${AUTH_FOCUS}`}
+            style={{ borderColor: "var(--color-primary)" }}
+          >
             Gửi lại email kích hoạt
           </Link>
         ) : null}
-        <ErrorBanner message={serverError} />
         {needsPasswordReset ? (
           <Link
             href="/forgot-password"
-            className="block rounded-lg px-3.5 py-2.5 text-center text-sm font-semibold text-white transition hover:brightness-110"
-            style={{ background: "#0F3B82" }}
+            className={`flex min-h-11 items-center justify-center rounded-lg px-3.5 text-center text-sm font-semibold text-white transition hover:brightness-110 motion-reduce:transition-none ${AUTH_FOCUS}`}
+            style={{ background: "var(--color-primary)" }}
           >
             Đặt lại mật khẩu ngay
           </Link>
@@ -159,7 +174,7 @@ export function LoginForm({ brandName }: { brandName: string }) {
         <SubmitButton loading={isSubmitting}>{isSubmitting ? "Đang xử lý..." : "Đăng nhập"}</SubmitButton>
       </form>
       <div className="mt-4 text-right text-sm">
-        <Link href="/forgot-password" className="font-medium" style={{ color: "#0F3B82" }}>
+        <Link href="/forgot-password" className={`inline-flex min-h-11 items-center rounded font-medium text-[color:var(--color-primary)] ${AUTH_FOCUS}`}>
           Quên mật khẩu?
         </Link>
       </div>

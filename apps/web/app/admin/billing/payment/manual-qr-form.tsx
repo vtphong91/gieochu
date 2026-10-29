@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { saveManualQrAction, type PlatformPaymentActionState } from "./actions";
-import { FormBanner, PrimaryButton, SelectField, TextField, Toggle } from "../../_ui/kit";
+import { FormBanner, MaskedTextField, PrimaryButton, SelectField, TextField, Toggle } from "../../_ui/kit";
 import { IconBank } from "../../_ui/icons";
 import { CollapsibleSection, sectionStatus } from "../../_ui/collapsible-section";
 import { useFormDraft } from "../../_ui/use-form-draft";
@@ -57,7 +57,7 @@ export function ManualQrForm({
             </option>
           ))}
         </SelectField>
-        <TextField id="manual-accountNo" label="Số tài khoản" name="accountNo" defaultValue={initial.accountNo} required />
+        <MaskedTextField id="manual-accountNo" label="Số tài khoản" name="accountNo" defaultValue={initial.accountNo} required />
         <TextField id="manual-accountName" label="Tên chủ tài khoản" name="accountName" defaultValue={initial.accountName} required />
         <FormBanner ok={Boolean(state.success)} message={state.error ?? (state.success ? (state.message ?? "Đã lưu.") : undefined)} />
         <PrimaryButton loading={isPending}>{isPending ? "Đang lưu..." : "Lưu cấu hình"}</PrimaryButton>

@@ -8,7 +8,7 @@ import { formatVndFull } from "../../../../admin/_ui/stats-chart";
 import { formatAdminDateTime } from "../../../../admin/_ui/billing-labels";
 import { parsePagination } from "../../../../admin/_ui/pagination-utils";
 
-const PROVIDER_LABEL: Record<string, string> = { SEPAY: "SePay", MOMO: "MoMo", MANUAL_QR: "QR thủ công", MOMO_MANUAL: "MoMo (chuyển tay)" };
+const PROVIDER_LABEL: Record<string, string> = { SEPAY: "SePay", MOMO: "MoMo", MANUAL_QR: "QR thủ công", MOMO_MANUAL: "MoMo (thủ công)" };
 
 /**
  * ADR-059 bổ sung lần 2 (d) — "Giao dịch cần xử lý": giao dịch cổng của gian hàng không tự áp vào đơn (không tìm thấy đơn / sai
@@ -32,7 +32,7 @@ export default async function StudioTransactionsNeedingActionPage({
     <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader
         title="Giao dịch cần xử lý"
-        subtitle="Giao dịch SePay/MoMo không tự giao được tài liệu: không tìm thấy đơn theo nội dung chuyển khoản, hoặc sai số tiền. Đối chiếu sao kê rồi xác nhận tay ở trang đơn (nếu đơn còn trong thời hạn xác nhận) hoặc liên hệ khách."
+        subtitle="Giao dịch SePay/MoMo không tự giao được tài liệu: không tìm thấy đơn theo nội dung chuyển khoản, sai số tiền, hoặc tiền về sau hạn giữ đơn. Đối chiếu sao kê rồi xác nhận thủ công ở trang đơn (nếu đơn còn trong thời hạn xác nhận) hoặc liên hệ khách."
       />
       <p className="mb-4 text-sm">
         <Link href={ordersPath} className="font-medium text-[color:var(--color-primary)] hover:underline">
@@ -62,8 +62,8 @@ export default async function StudioTransactionsNeedingActionPage({
                     <Td className="whitespace-nowrap">{PROVIDER_LABEL[row.provider] ?? row.provider}</Td>
                     <Td className="text-right font-semibold whitespace-nowrap tabular-nums">{formatVndFull(row.amountVnd)}</Td>
                     <Td>
-                      <Badge tone={row.matchStatus === "MISMATCH_AMOUNT" ? "danger" : "warning"}>
-                        {row.matchStatus === "MISMATCH_AMOUNT" ? "Sai số tiền" : "Không tìm thấy đơn"}
+                      <Badge tone={row.matchStatus === "UNMATCHED" ? "warning" : "danger"}>
+                        {row.matchStatus === "MISMATCH_AMOUNT" ? "Sai số tiền" : row.matchStatus === "MATCHED" ? "Về sau hạn giữ đơn" : "Không tìm thấy đơn"}
                       </Badge>
                       {diff !== null && diff !== 0 ? (
                         <span className="mt-1 block text-xs text-gray-600">

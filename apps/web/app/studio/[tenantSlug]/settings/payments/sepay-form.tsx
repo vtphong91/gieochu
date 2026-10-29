@@ -2,8 +2,9 @@
 
 import { useActionState } from "react";
 import { saveSepayAction, type PaymentActionState } from "./actions";
-import { FormBanner, PrimaryButton, SelectField, TextField, Toggle } from "../../../../admin/_ui/kit";
+import { FormBanner, MaskedTextField, PrimaryButton, SelectField, TextField, Toggle } from "../../../../admin/_ui/kit";
 import { IconBolt } from "../../../../admin/_ui/icons";
+import { CopyValue } from "../../../../admin/_ui/copy-value";
 import { CollapsibleSection, sectionStatus } from "../../../../admin/_ui/collapsible-section";
 import { useFormDraft } from "../../../../admin/_ui/use-form-draft";
 import { useUnsavedChanges } from "../../../../admin/_ui/unsaved-changes";
@@ -80,7 +81,7 @@ export function SepayForm({
         <Toggle name="isEnabled" defaultChecked={initial.isEnabled} label="Bật phương thức này" />
         <div className="rounded-lg border bg-gray-50 px-3.5 py-2.5 text-xs" style={{ borderColor: "#E5E7EB" }}>
           <span className="font-medium">Webhook URL</span> — dán vào trang quản trị SePay:
-          <div className="mt-1 font-mono break-all text-[#0F3B82]">{webhookUrl}</div>
+          <CopyValue value={webhookUrl} label="Webhook URL" />
         </div>
         <SelectField id="sepay-bankBin" label="Ngân hàng" name="bankBin" defaultValue={initial.bankBin} required>
           <option value="">Chọn ngân hàng</option>
@@ -90,8 +91,8 @@ export function SepayForm({
             </option>
           ))}
         </SelectField>
-        <TextField id="sepay-accountNo" label="Số tài khoản" name="accountNo" defaultValue={initial.accountNo} required />
-        <TextField id="sepay-accountName" label="Tên chủ tài khoản" name="accountName" defaultValue={initial.accountName} required />
+        <MaskedTextField id="sepay-accountNo" label="Số tài khoản" name="accountNo" defaultValue={initial.accountNo} required />
+        <TextField id="sepay-accountName" label="Tên chủ tài khoản" name="accountName" defaultValue={initial.accountName} required autoComplete="off" />
         <TextField
           id="sepay-paymentPrefix"
           label="Tiền tố mã thanh toán"
@@ -110,6 +111,7 @@ export function SepayForm({
           label="Secret / API key"
           name="secret"
           type="password"
+          autoComplete="new-password"
           placeholder={initial.maskedSecret ? `Secret hiện tại: ${initial.maskedSecret} — để trống nếu giữ nguyên` : undefined}
         />
         <FormBanner ok={Boolean(state.success)} message={state.error ?? (state.success ? "Đã lưu." : undefined)} />

@@ -21,8 +21,8 @@ export interface CheckoutRedirectResult {
 }
 
 /**
- * ADR-059 bổ sung lần 3 — ví điện tử chuyển tay (MOMO_MANUAL): thông tin để khách tự chuyển trong app ví, kèm VietQR khi người
- * nhận có "số tài khoản nhận VietQR" (`qr`), không có thì `null` (chỉ hiện thông tin + nút sao chép). Không chứa secret.
+ * ADR-059 bổ sung lần 3/4 — ví điện tử chuyển tay (MOMO_MANUAL): thông tin để khách tự chuyển trong app ví + nút sao chép.
+ * Bổ sung lần 4: không còn QR — provider luôn trả `qr: null`; trường giữ trong kiểu cho payload cũ đã lưu. Không chứa secret.
  */
 export interface CheckoutWalletResult {
   kind: "WALLET";
@@ -96,8 +96,6 @@ export interface MomoManualConfig {
   phone: string;
   /** VIẾT HOA không dấu. */
   accountName: string;
-  /** Tuỳ chọn — số tài khoản nhận VietQR của ví (lấy từ QR "Nhận tiền" trong app MoMo). */
-  vietQrAccountNo?: string;
 }
 
 export interface MomoConfig {

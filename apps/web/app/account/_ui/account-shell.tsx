@@ -4,6 +4,7 @@ import { brandColors } from "@gieochu/config/theme";
 import type { AccountHeaderData } from "../../../lib/account-profile";
 import { AccountMenu } from "../../_ui/account-menu";
 import { BrandMark } from "../../_ui/brand-mark";
+import { IconClock } from "../../admin/_ui/icons";
 import { systemFontVars } from "../../_ui/system-fonts";
 import type { AccountNavGroup } from "./account-nav";
 import { AccountBackLink } from "./back-link";
@@ -28,6 +29,7 @@ export function AccountShell({
   signedIn,
   header,
   groups,
+  pendingOrderCount = 0,
   children,
 }: {
   brandName: string;
@@ -36,9 +38,12 @@ export function AccountShell({
   header: AccountHeaderData | null;
   /** `null` = chưa đăng nhập / chưa xác minh → không sidebar, không link "Tài khoản". */
   groups: AccountNavGroup[] | null;
+  /** Task 11 (ADR-061/062): số đơn PENDING còn hạn của chính user (> 0 mới hiện dòng nhắc dưới header). */
+  pendingOrderCount?: number;
   children: ReactNode;
 }) {
   const displayName = header?.fullName || header?.email || "Tài khoản";
+  const salutation = header?.fullName ? `Anh/Chị ${header.fullName}` : "Anh/Chị";
   return (
     <div className={`${systemFontVars} flex min-h-dvh flex-col font-[family-name:var(--font-body)]`} style={{ background: SHELL_BG, color: INK }}>
       <a
@@ -74,6 +79,24 @@ export function AccountShell({
           )}
         </div>
       </header>
+
+      {/* Dòng nhắc đơn chờ thanh toán — chỉ khu vực /account (task 11). Không dính (header 64px vẫn là phần dính duy nhất),
+          chữ ink trên accentSoft (§7.1), có icon + chữ, link ≥44px. */}
+      {signedIn && pendingOrderCount > 0 ? (
+        <div className="border-b" style={{ background: brandColors.accentSoft, borderColor: brandColors.accent }}>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm sm:px-5 lg:px-8" style={{ color: INK }}>
+            <IconClock className="h-5 w-5 shrink-0" />
+            <p className="min-w-0 flex-1 font-medium [overflow-wrap:anywhere]">{salutation} có đơn cần thanh toán để hoàn tất đơn hàng!</p>
+            <Link
+              href="/account/orders"
+              className="inline-flex min-h-11 shrink-0 items-center rounded-lg px-1 font-semibold underline underline-offset-2 outline-offset-2 focus-visible:outline-2"
+              style={{ color: BLUE, outlineColor: BLUE }}
+            >
+              {pendingOrderCount > 1 ? `Xem ${pendingOrderCount.toLocaleString("vi-VN")} đơn cần thanh toán` : "Xem đơn cần thanh toán"}
+            </Link>
+          </div>
+        </div>
+      ) : null}
 
       <div className="flex min-w-0 flex-1">
         {groups ? (

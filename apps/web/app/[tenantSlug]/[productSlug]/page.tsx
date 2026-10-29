@@ -146,7 +146,7 @@ export default async function ProductDetailPage({
     </p>
   ) : (
     // ADR-040: tới đây khách chỉ có thể đang xem gian hàng ACTIVE (không ACTIVE đã 404 ở trên).
-    <BuyButton tenantSlug={tenant.slug} productId={product.id} productSlug={product.slug} loggedIn={Boolean(currentUser)} />
+    <BuyButton tenantSlug={tenant.slug} productId={product.id} productSlug={product.slug} />
   );
 
   return (

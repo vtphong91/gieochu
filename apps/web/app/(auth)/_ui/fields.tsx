@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, useId, useState, type ComponentProps, type ReactNode } from "react";
-import { INK, INK_SOFT, LINE } from "./colors";
+import { GREEN, INK, INK_SOFT, LINE } from "./colors";
 
 const RED = "#DC2626";
 
@@ -145,6 +145,29 @@ export function ErrorBanner({ message }: { message?: string | null }) {
     <p role="alert" className="rounded-lg border px-3.5 py-2.5 text-sm" style={{ borderColor: "#FCA5A5", background: "#FEF2F2", color: "#B91C1C" }}>
       {message}
     </p>
+  );
+}
+
+/**
+ * Thông báo thành công (vd. "đã kích hoạt tài khoản"). Nền xanh nhạt pha từ token `secondary`, viền trái `secondary`, chữ `ink`
+ * (secondary không đạt 4.5:1 làm chữ) + icon check — không chỉ dựa vào màu. `role="status"` (không cướp focus).
+ */
+export function SuccessBanner({ title, message }: { title: string; message?: string | null }) {
+  return (
+    <div
+      role="status"
+      className="flex gap-2.5 rounded-lg border border-l-4 px-3.5 py-3 text-sm leading-relaxed"
+      style={{ borderColor: GREEN, background: `color-mix(in srgb, ${GREEN} 10%, white)`, color: INK }}
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0" fill="none" stroke={GREEN} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="9" />
+        <path d="m8.5 12.5 2.5 2.5 4.5-5" />
+      </svg>
+      <div className="min-w-0">
+        <p className="font-semibold">{title}</p>
+        {message ? <p className="mt-0.5">{message}</p> : null}
+      </div>
+    </div>
   );
 }
 

@@ -49,6 +49,7 @@ export function ShareLinkDownloadPanel({ token, files, requiresPassword }: { tok
           <input
             id="password"
             type="password"
+            autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="mt-1 w-full rounded border px-3 py-2 text-sm"

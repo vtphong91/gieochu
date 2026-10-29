@@ -2,18 +2,24 @@
 tags:
   - runbook
   - payment
-  - status/living
+  - status/archive
 date: 2026-10-26
+updated: 2026-10-27
 author: Long
 ---
 
 # 🧪 Runbook: Kiểm chứng MoMo cá nhân (`MOMO_MANUAL`) trước khi bật QR (ADR-059 bổ sung lần 3)
 
+> [!WARNING] Không còn áp dụng (Bổ sung ADR-059 lần 4)
+> Chủ dự án chốt 2026-10-27 **bỏ hẳn QR cho MoMo thủ công**: không còn ô "Số tài khoản VietQR của ví", không còn hằng `MOMO_VIETQR_BIN`, trang thanh toán chỉ hiện số điện
+> thoại, tên chủ ví, số tiền, nội dung + nút sao chép. Runbook này **không cần chạy nữa** — giữ nguyên nội dung dưới đây chỉ để tra cứu. Đặc tả hiện hành:
+> [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5J; quyết định: [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay|ADR-044 KB]] §3.7.
+
 > Mục đích: xác nhận ảnh QR mà hệ thống sinh cho ví MoMo **thật sự** chuyển tiền tới đúng ví, trước khi điền "Số tài khoản VietQR của ví". Quyết định:
 > [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay|ADR-044 KB (≙ ADR-059)]] §3.6; đặc tả:
 > [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5J.
 >
-> Mức xác minh: ✅ hành vi hệ thống đã đối chiếu code working tree 2026-10-26 (chưa commit, migration chưa áp) · 🟡 các bước theo brief của Quốc · ❓ **chưa ai chạy
+> Mức xác minh: ✅ hành vi hệ thống đã đối chiếu code 2026-10-26 (đã commit `fa29d99`, migration đã áp — Quốc kiểm 2026-10-27) · 🟡 các bước theo brief của Quốc · ❓ **chưa ai chạy
 > runbook này** — BIN `970454` và định dạng số tài khoản `99MM…` là **giả thuyết** trong comment code, chưa có nguồn chính thức.
 
 > [!WARNING] Chưa điền "Số tài khoản VietQR" khi chưa xong runbook
@@ -23,7 +29,7 @@ author: Long
 ---
 
 ## 0. Điều kiện trước
-- Migration `20261026150000_adr059_momo_manual` đã áp (Quốc duyệt, ADR-034). Chưa áp thì lưu cấu hình báo "Hệ thống chưa sẵn sàng cho MoMo cá nhân…" ✅ code.
+- Migration `20261026150000_adr059_momo_manual` — **đã áp** (Quốc kiểm `prisma migrate status` 2026-10-27). Trên DB khác chưa áp thì lưu cấu hình báo "Hệ thống chưa sẵn sàng cho MoMo cá nhân…" ✅ code.
 - Có một ví MoMo cá nhân thật, 2–3 app ngân hàng khác nhau, và app MoMo khác (hoặc của người khác) để chuyển thử.
 
 ## 1. Lấy payload QR "Nhận tiền" của ví
@@ -44,7 +50,7 @@ Payload là chuỗi TLV (2 số mã tag + 2 số độ dài + giá trị). Tìm:
 ## 3. So với payload hệ thống sinh
 1. Ở môi trường thử, điền cấu hình MoMo cá nhân (form "MoMo cá nhân") với **số tài khoản vừa đọc** ở ô "Số tài khoản VietQR của ví (tuỳ chọn)" — chỉ trên **gian hàng
    nội bộ** / cấu hình chưa bật cho khách thật.
-2. Tạo một đơn (hoặc hoá đơn gói) chọn "MoMo (chuyển tay)", giải mã ảnh QR trên trang thanh toán bằng zxing.
+2. Tạo một đơn (hoặc hoá đơn gói) chọn "Ví MoMo" (nhãn cho khách; ở Studio/System Center là "MoMo (thủ công)"), giải mã ảnh QR trên trang thanh toán bằng zxing.
 3. So: GUID, BIN, số tài khoản phải trùng QR "Nhận tiền". Hệ thống thêm số tiền và nội dung (= mã đơn/hoá đơn) ✅ code (`buildVietQrPayload`).
 4. QR gốc có **tag 80** mà payload hệ thống không có → ghi lại; cần quyết định có phải thêm (sửa code — việc của Hiếu, Quốc duyệt).
 

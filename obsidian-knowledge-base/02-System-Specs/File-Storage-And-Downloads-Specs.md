@@ -100,6 +100,10 @@ khi cả `after()` lẫn cron đều lỗi. Chi tiết: [[02-System-Specs/Backgr
 
 ## 4. Tải Xuống — `DownloadToken` (Presigned GET, TTL 60s)
 
+> **Cập nhật ADR-061 Q1 (2026-10-27, working tree, chưa commit) ✅ đọc code:** `POST /api/downloads` nay gọi **`assertSameOrigin(request)`** (§7.7 — route ghi dữ liệu kiểm
+> `Origin`) rồi **`requireCheckoutUser()`** thay `requireUser()` — cho qua user đã xác minh email **hoặc** phiên khách vãng lai (`gco`, ≤ 24 giờ —
+> [[02-System-Specs/Auth-Session-Specs|Auth-Session-Specs]] §9A). Bước 2 `GET /api/downloads/[token]` không đổi (token một lần là credential).
+
 ```mermaid
 sequenceDiagram
     actor C as Customer (đã mua)

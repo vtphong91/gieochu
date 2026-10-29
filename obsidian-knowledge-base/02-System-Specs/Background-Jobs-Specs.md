@@ -7,7 +7,7 @@ tags:
   - payment
   - status/living
 date: 2026-10-16
-updated: 2026-10-24
+updated: 2026-10-27
 author: Long
 ---
 
@@ -144,6 +144,12 @@ File: `apps/web/app/api/cron/daily/route.ts` ✅. Contract đầy đủ: [[03-AP
 - **Các bước** — chạy tuần tự, **mỗi bước cô lập** (bước lỗi không làm bỏ bước sau) ✅:
   1. `subscriptionSweep` — `runSubscriptionSweep()` trực tiếp;
   2. `orderSweep` — `runOrderSweep()` trực tiếp, kết quả `{ expired: <số đơn chuyển EXPIRED> }`;
+  2a. `orderReminders` *(thêm ở ADR-061 Q7, đợt 1 2026-10-27 — chưa commit — bước `order.payment_reminders`)* — `runOrderPaymentReminders()` (`lib/order-customer.ts`):
+     nhắc **1 lần** các đơn `PENDING`, đã chọn phương thức, `expiresAt` trong (now, now + 24 giờ], chưa có `customerReminderSentAt` (≤ 500 đơn/lần, `withSystemJob`;
+     nhận mốc nguyên tử trước khi gửi email `order_payment_reminder`); kết quả `{ sent }`. Chạy ngay sau `orderSweep`. Chi tiết:
+     [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5K;
+  2b. `rateLimitPurge` *(thêm ở ADR-061 Q1 — bước `rate_limit_counters.purge`)* — `purgeExpiredRateLimitCounters()` (`lib/rate-limit-store.ts`) xoá dòng
+     `rate_limit_counters` có `resetAt < now`; kết quả `{ deleted }`. Bảng L1, dùng cho rate limit khách vãng lai (task 12/13);
   3. `queueMaintenance` — `superviseQueues([payment.process, file.scan])`, kết quả `{ queues: 2 }`;
   4. `auditPurge` *(thêm ở M12a, ADR-037)* — `audit.purgeExpired()` xoá dòng `audit_logs` cũ hơn 12 tháng, kết quả
      `{ deleted, skipped }` (`skipped: true` khi bảng chưa tồn tại). Đặt **trước** bước drain vì drain dùng phần lớn ngân sách thời gian.

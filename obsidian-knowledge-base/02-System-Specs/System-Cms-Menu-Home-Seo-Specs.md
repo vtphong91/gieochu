@@ -270,7 +270,7 @@ cả khi chưa có dòng `home` (lần lưu đầu tạo dòng `DRAFT`, live = n
 
 ---
 
-## 4A. Trang tuỳ chỉnh `/p/[slug]` — khối `richText` hiển thị Markdown (ADR-060) ✅ đọc `git diff` 2026-10-26 (chưa commit)
+## 4A. Trang tuỳ chỉnh `/p/[slug]` — khối `richText` hiển thị Markdown (ADR-060) ✅ đọc code 2026-10-26 — đã commit `fa29d99`
 
 Quyết định: [[01-Architecture-Decisions/ADR-045-Custom-Page-Markdown-Brand-Token|ADR-045 KB (≙ ADR-060)]]. Không đổi schema (`CmsPage.blocks` vẫn JSON khối
 `hero`/`features`/`stats`/`testimonials`/`pricingTable`/`faq`/`richText`/`cta`), không migration, không thêm `route.ts`. Chỉ đổi cách **hiển thị** khối `richText`;

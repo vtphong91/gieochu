@@ -31,7 +31,7 @@ const PROVIDER_FALLBACK_LABELS: Record<PricingPaymentProviderId, string> = {
   MANUAL_QR: "Chuyển khoản ngân hàng qua mã QR",
   SEPAY: "Chuyển khoản ngân hàng (tự xác nhận)",
   MOMO: "Ví MoMo",
-  MOMO_MANUAL: "Ví MoMo (chuyển tay)",
+  MOMO_MANUAL: "Ví MoMo (thủ công)",
 };
 
 const PROVIDER_ICONS: Record<PricingPaymentProviderId, IconComponent> = {

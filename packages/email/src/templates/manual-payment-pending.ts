@@ -25,6 +25,11 @@ export interface OrderAwaitingManualConfirmTemplateData {
   confirmDeadlineDisplay: string;
   /** Link Studio tới chi tiết đơn. */
   orderUrl: string;
+  /**
+   * Cách khách thanh toán + việc người bán cần làm, vd "chuyển khoản ngân hàng, đối chiếu sao kê" (mặc định) /
+   * "chuyển tiền MoMo, đối chiếu lịch sử ví".
+   */
+  methodLabel?: string;
 }
 
 /**
@@ -33,25 +38,26 @@ export interface OrderAwaitingManualConfirmTemplateData {
  */
 export function renderOrderAwaitingManualConfirmEmail(data: OrderAwaitingManualConfirmTemplateData): RenderedEmail {
   const productTitle = singleLine(data.productTitle);
+  const method = singleLine(data.methodLabel ?? "chuyển khoản ngân hàng, đối chiếu sao kê");
   const subject = `Đơn ${data.orderCode} chờ bạn xác nhận chuyển khoản`;
   const text = [
     "Chào bạn,",
     "",
-    `Khách vừa chọn chuyển khoản cho đơn ${data.orderCode} — "${productTitle}" (${data.totalVndDisplay}).`,
-    `Nội dung chuyển khoản là mã đơn ${data.orderCode}. Khi tiền về tài khoản, hãy đối chiếu sao kê rồi bấm "Xác nhận đã nhận tiền" để khách nhận tài liệu.`,
+    `Khách vừa chọn thanh toán đơn ${data.orderCode} — "${productTitle}" (${data.totalVndDisplay}) bằng ${method}.`,
+    `Nội dung chuyển khoản là mã đơn ${data.orderCode}. Khi tiền về, hãy đối chiếu rồi bấm "Xác nhận đã nhận tiền" để khách nhận tài liệu.`,
     "",
     `Hạn thanh toán của đơn: ${data.expiresAtDisplay}.`,
-    `Bạn có thể xác nhận tay chậm nhất đến: ${data.confirmDeadlineDisplay}.`,
+    `Bạn có thể xác nhận thủ công chậm nhất đến: ${data.confirmDeadlineDisplay} (sau mốc này chỉ xác nhận được nếu khách đã bấm "Tôi đã chuyển khoản" trước hạn).`,
     "",
     `Xem và xác nhận đơn: ${data.orderUrl}`,
   ].join("\n");
   const html = `
     <p>Chào bạn,</p>
-    <p>Khách vừa chọn chuyển khoản cho đơn <strong>${escapeHtml(data.orderCode)}</strong> — <strong>${escapeHtml(productTitle)}</strong> (${escapeHtml(data.totalVndDisplay)}).</p>
-    <p>Nội dung chuyển khoản là mã đơn <strong>${escapeHtml(data.orderCode)}</strong>. Khi tiền về tài khoản, hãy đối chiếu sao kê rồi bấm “Xác nhận đã nhận tiền” để khách nhận tài liệu.</p>
+    <p>Khách vừa chọn thanh toán đơn <strong>${escapeHtml(data.orderCode)}</strong> — <strong>${escapeHtml(productTitle)}</strong> (${escapeHtml(data.totalVndDisplay)}) bằng ${escapeHtml(method)}.</p>
+    <p>Nội dung chuyển khoản là mã đơn <strong>${escapeHtml(data.orderCode)}</strong>. Khi tiền về, hãy đối chiếu rồi bấm “Xác nhận đã nhận tiền” để khách nhận tài liệu.</p>
     <ul>
       <li>Hạn thanh toán của đơn: ${escapeHtml(data.expiresAtDisplay)}</li>
-      <li>Xác nhận tay chậm nhất đến: <strong>${escapeHtml(data.confirmDeadlineDisplay)}</strong></li>
+      <li>Xác nhận thủ công chậm nhất đến: <strong>${escapeHtml(data.confirmDeadlineDisplay)}</strong> (sau mốc này chỉ xác nhận được nếu khách đã báo chuyển trước hạn)</li>
     </ul>
     <p><a href="${escapeHtml(data.orderUrl)}">Xem và xác nhận đơn</a></p>
   `.trim();
@@ -127,7 +133,7 @@ export function renderPaymentAmountMismatchEmail(data: PaymentAmountMismatchTemp
     "Chào bạn,",
     "",
     `${data.providerLabel} vừa báo một giao dịch cho đơn ${data.orderCode} nhưng số tiền không khớp: nhận ${data.receivedVndDisplay}, đơn cần ${data.expectedVndDisplay} (${data.differenceDisplay}).`,
-    "Đơn chưa được giao tự động. Hãy đối chiếu sao kê, liên hệ khách nếu cần, rồi xác nhận tay hoặc hoàn phần chênh lệch.",
+    "Đơn chưa được giao tự động. Hãy đối chiếu sao kê, liên hệ khách nếu cần, rồi xác nhận thủ công hoặc hoàn phần chênh lệch.",
     "",
     `Xem đơn: ${data.orderUrl}`,
     `Giao dịch cần xử lý: ${data.transactionsUrl}`,
@@ -139,7 +145,7 @@ export function renderPaymentAmountMismatchEmail(data: PaymentAmountMismatchTemp
       <li>Nhận: <strong>${escapeHtml(data.receivedVndDisplay)}</strong></li>
       <li>Đơn cần: ${escapeHtml(data.expectedVndDisplay)} (${escapeHtml(data.differenceDisplay)})</li>
     </ul>
-    <p>Đơn chưa được giao tự động. Hãy đối chiếu sao kê, liên hệ khách nếu cần, rồi xác nhận tay hoặc hoàn phần chênh lệch.</p>
+    <p>Đơn chưa được giao tự động. Hãy đối chiếu sao kê, liên hệ khách nếu cần, rồi xác nhận thủ công hoặc hoàn phần chênh lệch.</p>
     <p><a href="${escapeHtml(data.orderUrl)}">Xem đơn</a> · <a href="${escapeHtml(data.transactionsUrl)}">Giao dịch cần xử lý</a></p>
   `.trim();
   return { subject, html, text };

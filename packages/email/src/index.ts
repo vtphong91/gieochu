@@ -67,3 +67,11 @@ export type {
   OrderAwaitingManualConfirmTemplateData,
   PaymentAmountMismatchTemplateData,
 } from "./templates/manual-payment-pending";
+
+// ADR-061/062 — email luồng mua của khách
+export { renderCustomerDeclaredPaidEmail, renderOrderPaymentInstructionsEmail } from "./templates/order-payment";
+export type { CustomerDeclaredPaidTemplateData, OrderPaymentInstructionsTemplateData } from "./templates/order-payment";
+
+// ADR-061 Q1 — kích hoạt tài khoản khách vãng lai + đặt mật khẩu
+export { renderGuestActivationEmail } from "./templates/guest-activation";
+export type { GuestActivationTemplateData } from "./templates/guest-activation";

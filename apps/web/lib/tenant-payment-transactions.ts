@@ -14,7 +14,8 @@ export interface TenantTxnNeedingAction {
   provider: PaymentProviderId;
   providerTxnId: string;
   amountVnd: number;
-  matchStatus: "UNMATCHED" | "MISMATCH_AMOUNT";
+  /** MATCHED = khớp đúng tiền nhưng đơn chưa thanh toán (giao dịch về sau hạn giữ đơn — ADR-061). */
+  matchStatus: "UNMATCHED" | "MISMATCH_AMOUNT" | "MATCHED";
   createdAt: Date;
   /** Nội dung chuyển khoản (SePay `content`), cắt ngắn. */
   content: string | null;
@@ -26,9 +27,17 @@ export interface TenantTxnNeedingAction {
  * (`NOT path equals`) loại cả dòng thiếu khoá (NULL), nên dùng COALESCE. Chạy dưới `withTenant` → RLS vẫn áp.
  */
 function needingActionSql(tenantId: string): Prisma.Sql {
-  return Prisma.sql`"tenantId" = ${tenantId}
-    AND "matchStatus" IN ('UNMATCHED', 'MISMATCH_AMOUNT')
-    AND NOT ("provider" = 'SEPAY' AND COALESCE("rawPayload"->>'transferType', '') = 'out')`;
+  // ADR-061 (chốt tiếp): không còn cửa sổ xác nhận trễ → giao dịch KHỚP đúng đơn/đúng tiền nhưng về sau hạn (đơn chưa thanh toán)
+  // cũng cần người bán xử lý tay (hoàn tiền hoặc liên hệ khách).
+  return Prisma.sql`t."tenantId" = ${tenantId}
+    AND (
+      t."matchStatus" IN ('UNMATCHED', 'MISMATCH_AMOUNT')
+      OR (
+        t."matchStatus" = 'MATCHED'
+        AND EXISTS (SELECT 1 FROM "orders" o WHERE o."id" = t."orderId" AND o."status" NOT IN ('PAID', 'FULFILLED', 'REFUNDED'))
+      )
+    )
+    AND NOT (t."provider" = 'SEPAY' AND COALESCE(t."rawPayload"->>'transferType', '') = 'out')`;
 }
 
 function contentOf(raw: Prisma.JsonValue): string | null {
@@ -44,11 +53,11 @@ export async function listTenantTransactionsNeedingAction(tenantId: string, page
   const size = Math.min(100, Math.max(1, Math.trunc(pageSize) || TENANT_TXN_PAGE_SIZE));
   const [rows, total] = await withTenant(tenantId, async (tx) => {
     const ids = await tx.$queryRaw<{ id: string }[]>`
-      SELECT "id" FROM "tenant_payment_transactions" WHERE ${needingActionSql(tenantId)}
-      ORDER BY "createdAt" DESC, "id" DESC LIMIT ${size} OFFSET ${(safePage - 1) * size}
+      SELECT t."id" FROM "tenant_payment_transactions" t WHERE ${needingActionSql(tenantId)}
+      ORDER BY t."createdAt" DESC, t."id" DESC LIMIT ${size} OFFSET ${(safePage - 1) * size}
     `;
     const counted = await tx.$queryRaw<{ count: bigint }[]>`
-      SELECT COUNT(*)::bigint AS "count" FROM "tenant_payment_transactions" WHERE ${needingActionSql(tenantId)}
+      SELECT COUNT(*)::bigint AS "count" FROM "tenant_payment_transactions" t WHERE ${needingActionSql(tenantId)}
     `;
     const found = await tx.tenantPaymentTransaction.findMany({
       where: { tenantId, id: { in: ids.map((row) => row.id) } },
@@ -82,7 +91,7 @@ export async function listTenantTransactionsNeedingAction(tenantId: string, page
 /** Số giao dịch cần xử lý — cho liên kết ở trang Đơn hàng. */
 export async function countTenantTransactionsNeedingAction(tenantId: string): Promise<number> {
   const counted = await withTenant(tenantId, (tx) =>
-    tx.$queryRaw<{ count: bigint }[]>`SELECT COUNT(*)::bigint AS "count" FROM "tenant_payment_transactions" WHERE ${needingActionSql(tenantId)}`,
+    tx.$queryRaw<{ count: bigint }[]>`SELECT COUNT(*)::bigint AS "count" FROM "tenant_payment_transactions" t WHERE ${needingActionSql(tenantId)}`,
   );
   return Number(counted[0]?.count ?? 0);
 }

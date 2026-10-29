@@ -57,8 +57,8 @@ export function MomoForm({
           giá trị mới từ server → key theo dữ liệu đã lưu để dựng lại form, khớp đúng DB sau mỗi lần lưu. */}
       <form key={formKey} action={formAction} className="space-y-4" {...formProps}>
         <Toggle name="isEnabled" defaultChecked={initial.isEnabled} label="Bật phương thức này" />
-        <TextField id="momo-partnerCode" label="Partner Code" name="partnerCode" defaultValue={initial.partnerCode} required />
-        <TextField id="momo-accessKey" label="Access Key" name="accessKey" defaultValue={initial.accessKey} required />
+        <TextField id="momo-partnerCode" label="Partner Code" name="partnerCode" defaultValue={initial.partnerCode} required autoComplete="off" />
+        <TextField id="momo-accessKey" label="Access Key" name="accessKey" defaultValue={initial.accessKey} required autoComplete="off" />
         <SelectField id="momo-environment" label="Môi trường" name="environment" defaultValue={initial.environment || "sandbox"}>
           <option value="sandbox">Sandbox (thử nghiệm)</option>
           <option value="production">Production</option>
@@ -68,6 +68,7 @@ export function MomoForm({
           label="Secret Key"
           name="secretKey"
           type="password"
+          autoComplete="new-password"
           placeholder={initial.maskedSecret ? `Secret hiện tại: ${initial.maskedSecret} — để trống nếu giữ nguyên` : undefined}
         />
         <FormBanner ok={Boolean(state.success)} message={state.error ?? (state.success ? (state.message ?? "Đã lưu.") : undefined)} />

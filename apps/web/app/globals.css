@@ -455,6 +455,13 @@ body {
       scroll-padding-bottom: 6rem;
     }
   }
+  /* Trang thanh toán đơn tài liệu (ADR-062): dưới lg có thanh hành động dính đáy `.checkout-action-bar` (~76px + safe area)
+     → chừa scroll-padding-bottom để phần tử nhận focus bằng bàn phím không bị thanh che (WCAG 2.4.11). */
+  @media (width < 64rem) {
+    html:has(.checkout-action-bar) {
+      scroll-padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
+    }
+  }
   .studio-editor :is(a, button, summary):focus-visible {
     outline: 2px solid var(--brand-primary, #0f3b82);
     outline-offset: 2px;

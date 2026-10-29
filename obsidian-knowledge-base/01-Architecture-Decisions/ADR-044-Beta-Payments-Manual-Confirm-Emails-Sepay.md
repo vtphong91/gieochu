@@ -18,8 +18,8 @@ status: Accepted (Chốt — Áp dụng chính thức)
 "Bổ sung ADR-059" (xác nhận tay hoá đơn gói EXPIRED) và "Bổ sung ADR-059 lần 2" (SePay: thiếu/thừa tiền, hoá đơn hết hạn, tiền tố, Studio "Giao dịch cần
 xử lý"). Bản trích ghi theo duyệt của Quốc (brief 2026-10-26). Đề xuất gốc: `docs/de-xuat-chay-thu-thanh-toan-goi-tai-lieu-2026-10-25.md`.
 
-Tiến độ (đối chiếu 2026-10-26): **B1, B2, B2b xong code ở working tree, chưa commit** ✅ `git status`; **B3 MoMo cá nhân (`MOMO_MANUAL`, bổ sung lần 3) xong code,
-chưa commit, migration `20261026150000_adr059_momo_manual` chưa áp** ✅ `git status` (cập nhật 2026-10-26). B1/B2/B2b không migration ✅, **không thêm
+Tiến độ (đối chiếu 2026-10-26): **B1, B2, B2b, B3 MoMo cá nhân (`MOMO_MANUAL`, bổ sung lần 3) đã commit `fa29d99`** ✅ `git log` (cập nhật 2026-10-27, Quốc xác nhận);
+**migration `20261026150000_adr059_momo_manual` đã áp** (Quốc kiểm `prisma migrate status` — up to date, 2026-10-27). B1/B2/B2b không migration ✅, **không thêm
 `route.ts`** (23 dưới `/api`, 25 toàn app ✅ đếm). `pnpm test:count` = **100/100 unit, 66/66 integration** ✅ (Long chạy, chỉ đếm) — test mới là assert thêm
 trong case có sẵn (`sepay.test.ts`, `order.test.ts`, `subscription-billing.test.ts`). Kết quả lint/typecheck/test xanh 🟡 (Quốc báo, Long không chạy lại).
 
@@ -71,7 +71,7 @@ Admin xác nhận tay hoá đơn MANUAL_QR đã **EXPIRED** (`confirmExpiredManu
 - Thử một giao dịch SePay thật nhỏ trước khi mở — checklist ở [[04-Operations-Runbooks/SePay-Live-Test-Runbook|SePay-Live-Test-Runbook]] ❓ chưa chạy.
 - Nhập lại cấu hình SePay nền tảng — lần lưu đầu tự tắt (ADR-013), phải **lưu 2 lần** ❓.
 
-### 3.6. MoMo cá nhân `MOMO_MANUAL` (Bổ sung ADR-059 lần 3, B3) — chủ dự án chốt 2026-10-26 🟡 ADR · ✅ code (chưa commit)
+### 3.6. MoMo cá nhân `MOMO_MANUAL` (Bổ sung ADR-059 lần 3, B3) — chủ dự án chốt 2026-10-26 🟡 ADR · ✅ code (đã commit `fa29d99`; migration đã áp)
 1. Dùng cho **cả** thu phí gói (platform) lẫn bán tài liệu (gian hàng).
 2. **Phương án B:** provider mới `MOMO_MANUAL` (migration chỉ `ALTER TYPE "PaymentProviderId" ADD VALUE`), xác nhận tay như MANUAL_QR (`isManualConfirmProvider`),
    bật song song được với chuyển khoản ngân hàng.
@@ -81,7 +81,15 @@ Admin xác nhận tay hoá đơn MANUAL_QR đã **EXPIRED** (`confirmExpiredManu
 5. Thông tin MoMo của người bán **công khai ở trang thanh toán** → phải ghi rõ trong **Chính sách người bán** — **chưa làm** (việc cần làm ở `docs/PLAN.md`).
 6. Chủ dự án tự kiểm thử thật (giải mã QR "Nhận tiền", chuyển thử 1.000đ) — [[04-Operations-Runbooks/MoMo-Manual-Verification-Runbook|MoMo-Manual-Verification-Runbook]] ❓ chưa chạy.
 
-Chi tiết code: [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5J.
+Chi tiết code: [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5J. **Mục 4 (QR) và 6 (kiểm thử QR) đã thay bởi §3.7.**
+
+### 3.7. Bỏ QR MoMo thủ công (Bổ sung ADR-059 lần 4) — chủ dự án chốt 2026-10-27 🟡 ADR · ✅ code (working tree, chưa commit)
+1. **Bỏ hẳn** ô "Số tài khoản VietQR của ví" — **không sinh QR cho MoMo**; trang thanh toán chỉ hiện số điện thoại, tên chủ ví, số tiền, nội dung chuyển khoản (có nút sao
+   chép) — đúng nhánh **F1**. Thay mục (4) của §3.6.
+2. Dữ liệu `vietQrAccountNo` cũ (nếu có) bị **bỏ qua**, không cần migration (schema loại bỏ khoá lạ).
+3. Code: `MOMO_VIETQR_BIN` đã xoá; `createCheckout` luôn `qr: null` (trường `qr` giữ trong `CheckoutWalletResult` cho payload cũ); `readMomoManualForm` và 2 form
+   `momo-manual-form.tsx` chỉ còn số điện thoại + tên chủ ví; tự tắt theo ADR-013 (platform) **chỉ khi đổi số điện thoại**.
+4. Runbook kiểm chứng QR MoMo **không còn áp dụng** (giữ để tra cứu).
 
 ---
 

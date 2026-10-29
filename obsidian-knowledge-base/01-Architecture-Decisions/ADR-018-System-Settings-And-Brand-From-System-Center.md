@@ -8,7 +8,7 @@ tags:
   - database
   - status/accepted
 date: 2026-10-15
-updated: 2026-10-24
+updated: 2026-10-27
 decider: vtphong91
 status: Accepted (Chốt — Áp dụng chính thức)
 ---
@@ -66,7 +66,9 @@ hạn**, và refactor xong mới deploy 🟡.
    | `presignDownloadTtlSeconds` | 600 | 60–600 giây (§7.6 ≤ 10 phút) |
    | `trialDays` | 14 | 0–60 ngày — **chưa dùng** (xem §4) |
    | `graceDays` | 7 | 0–30 ngày |
-   | `orderPendingTtlMinutes` | 60 | 15–1440 phút |
+   | ~~`orderPendingTtlMinutes`~~ | 60 | 15–1440 phút — **không còn dùng** từ ADR-061/062 (`INACTIVE_SYSTEM_SETTINGS`, UI ẩn; cột giữ lại) |
+   | `orderHoldManualHours` (ADR-061/062) | 72 | 1–168 giờ — nhãn form **"Hạn giữ đơn — thủ công"** (chủ dự án chốt 2026-10-27): hạn giữ đơn chuyển khoản thủ công (ngân hàng, MoMo) hoặc chưa chọn phương thức, tính từ lúc đặt đơn |
+   | `orderHoldAutoHours` (ADR-061/062) | 48 | 1–168 giờ — nhãn "Hạn giữ đơn — tự xác nhận": cổng tự xác nhận (SePay), tính từ lúc đặt đơn |
    | `invoicePendingTtlHours` | 24 | 1–168 giờ |
    | `defaultDownloadLimit` | 5 | 0–1000 lượt (0 = không giới hạn) |
 
@@ -122,7 +124,8 @@ hạn**, và refactor xong mới deploy 🟡.
 | `passwordResetTtlMinutes` | `api/auth/forgot-password` — token (`/60` giờ) + email hiển thị `expiresInMinutes` |
 | `presignUploadTtlSeconds` | `lib/product-upload.ts` |
 | `presignDownloadTtlSeconds` | `lib/download.ts`, `lib/share-link.ts`; `packages/storage` kẹp thêm `clampDownloadTtlSeconds` ≤ `MAX_DOWNLOAD_PRESIGN_TTL_SECONDS` (600) lúc ký |
-| `orderPendingTtlMinutes` | `lib/order.ts` (`computeOrderExpiresAt`), script demo |
+| ~~`orderPendingTtlMinutes`~~ | **Không còn dùng trong nghiệp vụ** từ ADR-061/062 ✅ grep 2026-10-27 — chỉ còn script dev `apps/web/scripts/demo-reviews.ts` (`computeOrderExpiresAt`) |
+| `orderHoldManualHours`, `orderHoldAutoHours` (ADR-061/062) | `lib/order.ts` (`createOrder`, `initiateOrderCheckout` qua `orderHoldHoursFor` + `computeOrderHoldExpiresAt`), `lib/checkout-view.ts` (`available` của từng phương thức); form "Cấu hình chung" nhóm Nghiệp vụ |
 | `invoicePendingTtlHours` | `lib/subscription-billing.ts` |
 | `graceDays` | `lib/subscription-sweep.ts` |
 | `defaultDownloadLimit` | `lib/product.ts` (tạo sản phẩm không truyền `downloadLimit`), trang Studio `products/new` (giá trị gợi ý trên editor) |

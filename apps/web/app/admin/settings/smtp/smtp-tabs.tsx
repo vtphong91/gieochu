@@ -271,7 +271,7 @@ function ConfigTab({ initial }: { initial: SmtpInitial }) {
               </div>
             </div>
 
-            <TextField id="smtp-username" label="Username" name="username" defaultValue={initial.username} required />
+            <TextField id="smtp-username" label="Username" name="username" defaultValue={initial.username} required autoComplete="off" />
             <PasswordField
               id="smtp-password"
               label="Password"

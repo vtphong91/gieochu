@@ -5,12 +5,26 @@ import { getPrismaClient } from "@gieochu/db";
 import { getJwtContext, getAccessTokenTtlSeconds } from "../../lib/jwt-context";
 import { ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME } from "../../lib/cookies";
 import { resetRateLimits } from "../../lib/rate-limit";
+import { getAcceptanceLegalVersion } from "../../lib/legal";
+import { LEGAL_DOCUMENT_DEFS } from "@gieochu/core";
 
 import { POST as register } from "../../app/api/auth/register/route";
 import { POST as verifyEmail } from "../../app/api/auth/verify-email/route";
 import { POST as login } from "../../app/api/auth/login/route";
 import { POST as refresh } from "../../app/api/auth/refresh/route";
 import { POST as resetPassword } from "../../app/api/auth/reset-password/route";
+import { POST as forgotPassword } from "../../app/api/auth/forgot-password/route";
+import { rateLimitKey } from "../../lib/rate-limit-store";
+
+// ADR-061 Q1: email "Kích hoạt tài khoản và đặt mật khẩu" của khách vãng lai không gửi thật — chặn đúng loại này.
+const { sendEmailNowSpy } = vi.hoisted(() => ({ sendEmailNowSpy: vi.fn() }));
+vi.mock("../../lib/email-dispatch", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../lib/email-dispatch")>();
+  sendEmailNowSpy.mockImplementation(async (message: { type: string }) =>
+    message.type === "guest_activation" ? { ok: true } : actual.sendEmailNow(message as never),
+  );
+  return { ...actual, sendEmailNow: sendEmailNowSpy };
+});
 
 const prisma = getPrismaClient();
 const RUN_PREFIX = `m1test_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -27,6 +41,21 @@ function jsonRequest(url: string, body: unknown, cookie?: string): NextRequest {
   return new NextRequest(url, { method: "POST", headers, body: JSON.stringify(body) });
 }
 
+/**
+ * ADR-050/054: route đăng ký bắt buộc gửi id phiên bản Điều khoản + Chính sách bảo mật ĐANG HIỆU LỰC (nếu có — DB dùng chung có
+ * thể đã xuất bản thật). Chỉ ĐỌC qua lib, không ghi văn bản pháp lý. Chưa có bản hiệu lực → không gửi (nhánh `null` của route).
+ */
+async function legalVersionFields(): Promise<{ termsVersionId?: string; privacyVersionId?: string }> {
+  const [terms, privacy] = await Promise.all([
+    getAcceptanceLegalVersion(LEGAL_DOCUMENT_DEFS.terms.key),
+    getAcceptanceLegalVersion(LEGAL_DOCUMENT_DEFS.privacy.key),
+  ]);
+  return {
+    ...(terms ? { termsVersionId: terms.versionId } : {}),
+    ...(privacy ? { privacyVersionId: privacy.versionId } : {}),
+  };
+}
+
 async function registerUser(
   overrides: Partial<{ email: string; password: string; fullName: string; accountType: "TENANT" | "CUSTOMER" }> = {},
 ) {
@@ -35,7 +64,7 @@ async function registerUser(
   const fullName = overrides.fullName ?? "Người Test";
   const accountType = overrides.accountType ?? "CUSTOMER";
   const response = await register(
-    jsonRequest("http://localhost/api/auth/register", { email, password, fullName, consent: true, accountType }),
+    jsonRequest("http://localhost/api/auth/register", { email, password, fullName, consent: true, accountType, ...(await legalVersionFields()) }),
   );
   return { email, password, fullName, response };
 }
@@ -102,6 +131,14 @@ describe("M1 auth", () => {
     expect(response.status).toBe(403);
     const body = await response.json();
     expect(body.error.code).toBe("EMAIL_NOT_VERIFIED");
+
+    // ADR-061 Q1: tài khoản tạo lúc mua (chưa đặt mật khẩu) → báo rõ để gửi lại email kích hoạt, không tính sai mật khẩu.
+    const guestEmail = nextEmail();
+    await prisma.user.create({ data: { email: guestEmail, passwordHash: "unusable", hasPassword: false, status: "PENDING" } });
+    const guestLogin = await login(jsonRequest("http://localhost/api/auth/login", { email: guestEmail, password: "Bat-ky-123" }));
+    expect(guestLogin.status).toBe(403);
+    expect((await guestLogin.json()).error.code).toBe("GUEST_NOT_ACTIVATED");
+    expect((await prisma.user.findUniqueOrThrow({ where: { email: guestEmail } })).failedLoginAttempts).toBe(0);
   });
 
   it("a successful login sets both the access and refresh cookies correctly", async () => {
@@ -228,6 +265,28 @@ describe("M1 auth", () => {
 
     const activeAfter = await prisma.refreshToken.count({ where: { userId: user.id, revokedAt: null } });
     expect(activeAfter).toBe(0);
+
+    // ADR-061 Q1: "Quên mật khẩu" với tài khoản khách vãng lai chưa kích hoạt → không phát PASSWORD_RESET mà phát token
+    // GUEST_ACTIVATION mới + email kích hoạt; câu trả lời giống hệt email không tồn tại. Token PASSWORD_RESET cũ còn sót bị từ chối.
+    const guestEmail = nextEmail();
+    const guest = await prisma.user.create({ data: { email: guestEmail, passwordHash: "unusable", hasPassword: false, status: "PENDING" } });
+    sendEmailNowSpy.mockClear();
+    const forGuest = await forgotPassword(jsonRequest("http://localhost/api/auth/forgot-password", { email: guestEmail }));
+    const forUnknown = await forgotPassword(jsonRequest("http://localhost/api/auth/forgot-password", { email: `${RUN_PREFIX}_khong-co@example.com` }));
+    expect(forGuest.status).toBe(forUnknown.status);
+    expect(await forGuest.json()).toEqual(await forUnknown.json());
+    expect(await prisma.verificationToken.count({ where: { userId: guest.id, type: "PASSWORD_RESET" } })).toBe(0);
+    expect(await prisma.verificationToken.count({ where: { userId: guest.id, type: "GUEST_ACTIVATION", usedAt: null } })).toBe(1);
+    expect(sendEmailNowSpy.mock.calls.filter(([message]) => message.type === "guest_activation" && message.to === guestEmail)).toHaveLength(1);
+    const staleReset = createVerificationToken(0.5, new Date());
+    await prisma.verificationToken.create({ data: { userId: guest.id, type: "PASSWORD_RESET", tokenHash: staleReset.tokenHash, expiresAt: staleReset.expiresAt } });
+    const guestReset = await resetPassword(
+      jsonRequest("http://localhost/api/auth/reset-password", { token: staleReset.token, newPassword: "NewStr0ngPass!" }),
+    );
+    expect(guestReset.status).toBe(400);
+    expect((await guestReset.json()).error.code).toBe("GUEST_NOT_ACTIVATED");
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: guest.id } })).passwordHash).toBe("unusable");
+    await prisma.rateLimitCounter.deleteMany({ where: { key: rateLimitKey("guest_activation_resend", guestEmail) } });
   });
 
   describe("an incomplete profile no longer blocks /account/library", () => {

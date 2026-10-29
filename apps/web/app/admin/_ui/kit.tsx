@@ -6,7 +6,7 @@ import { brandColors } from "@gieochu/config/theme";
 // (kit.tsx này còn bị Server Component import thẳng, ví dụ admin/tenants/page.tsx —
 // đưa hook vào đây sẽ vỡ build: "importing a module that depends on useState into
 // a React Server Component module").
-export { PasswordField, Toggle } from "./kit-interactive";
+export { MaskedTextField, PasswordField, Toggle } from "./kit-interactive";
 
 const RED = "#DC2626";
 const RED_SOFT = "#FEF2F2";

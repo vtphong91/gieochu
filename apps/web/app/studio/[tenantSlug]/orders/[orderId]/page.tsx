@@ -11,6 +11,7 @@ import { AddOrderNoteForm, DeleteOrderNoteButton } from "./order-note-actions";
 import { Badge, MainAsideGrid } from "../../../../admin/_ui/kit";
 import { IconBank, IconChevronLeft, IconDoc, IconReceipt, IconBolt } from "../../../../admin/_ui/icons";
 import { OrderItemRemedy, RefundRequestBadge } from "../_ui/remedy-parts";
+import { DeclaredPaidBadge, DeclaredPaidNotice } from "../_ui/declared-paid";
 import { CustomerHistoryCard, DateTimeValue, DetailCard, InfoList, OrderItemsTable, OrderNotesCard, OrderTimeline } from "../_ui/order-detail-parts";
 import { formatOrderDateTime, formatOrderPrice, formatOrderVnd, orderListBackHref, orderStatusLabel, orderStatusTone, paymentChannelText } from "../_ui/order-format";
 
@@ -34,7 +35,7 @@ const MATCH_STATUS: Record<string, { label: string; tone: "success" | "warning" 
   UNMATCHED: { label: "Không khớp đơn", tone: "warning" },
   MISMATCH_AMOUNT: { label: "Sai số tiền", tone: "danger" },
 };
-const PROVIDER_SHORT: Record<string, string> = { MANUAL_QR: "QR thủ công", SEPAY: "SePay", MOMO: "MoMo", MOMO_MANUAL: "MoMo (chuyển tay)" };
+const PROVIDER_SHORT: Record<string, string> = { MANUAL_QR: "QR thủ công", SEPAY: "SePay", MOMO: "MoMo", MOMO_MANUAL: "MoMo (thủ công)" };
 
 export default async function StudioOrderDetailPage({
   params,
@@ -127,9 +128,13 @@ export default async function StudioOrderDetailPage({
                   <span className="flex flex-wrap gap-1.5">
                     <Badge tone={orderStatusTone(order.status)}>{orderStatusLabel(order.status)}</Badge>
                     {order.refundRequested ? <RefundRequestBadge overdue={order.refundOverdue} /> : null}
+                    <DeclaredPaidBadge order={order} />
                   </span>
                 ),
               },
+              ...(order.customerDeclaredPaidAt
+                ? [{ label: "Khách báo đã chuyển lúc", value: <DateTimeValue date={order.customerDeclaredPaidAt} /> }]
+                : []),
               ...(order.confirmNote ? [{ label: "Ghi chú xác nhận", value: <span className="font-normal">{order.confirmNote}</span> }] : []),
             ]}
           />
@@ -212,6 +217,7 @@ export default async function StudioOrderDetailPage({
                 <p className="mt-1 mb-3 text-xs leading-relaxed" style={{ color: INK_SOFT }}>
                   Dùng khi khách đã chuyển khoản nhưng hệ thống chưa tự ghi nhận. Đối chiếu sao kê trước khi xác nhận.
                 </p>
+                <DeclaredPaidNotice order={order} />
                 <ConfirmForm tenantSlug={tenantSlug} orderId={orderId} />
               </div>
             ) : null}

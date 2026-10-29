@@ -74,6 +74,14 @@ export const AUDIT_ACTIONS = [
   "LEGAL_VERSION_ARCHIVED",
   // ADR-054 (metadata chỉ khoá văn bản + cờ trường có giá trị, không nội dung)
   "LEGAL_DOCUMENT_META_UPDATED",
+  // ADR-061/062 — luồng mua của khách (metadata chỉ id/phương thức/cờ, không thông tin khách)
+  "ORDER_PAYMENT_EMAIL_SENT",
+  "ORDER_CUSTOMER_DECLARED_PAID",
+  "ORDER_CUSTOMER_DECLARED_PAID_UNDONE",
+  "ORDER_CANCELED_BY_CUSTOMER",
+  // ADR-061 Q1 — khách vãng lai (metadata không chứa email/họ tên)
+  "AUTH_GUEST_ACCOUNT_CREATED",
+  "AUTH_GUEST_ACTIVATED",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -141,6 +149,12 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   LEGAL_VERSION_PUBLISHED: "Xuất bản văn bản pháp lý",
   LEGAL_VERSION_ARCHIVED: "Lưu trữ văn bản pháp lý",
   LEGAL_DOCUMENT_META_UPDATED: "Cập nhật mô tả/SEO văn bản pháp lý",
+  ORDER_PAYMENT_EMAIL_SENT: "Gửi email hướng dẫn thanh toán cho khách",
+  ORDER_CUSTOMER_DECLARED_PAID: "Khách báo đã chuyển khoản",
+  ORDER_CUSTOMER_DECLARED_PAID_UNDONE: "Khách huỷ báo đã chuyển khoản",
+  ORDER_CANCELED_BY_CUSTOMER: "Khách huỷ đơn",
+  AUTH_GUEST_ACCOUNT_CREATED: "Tạo tài khoản khi mua (khách vãng lai)",
+  AUTH_GUEST_ACTIVATED: "Kích hoạt tài khoản và đặt mật khẩu",
 };
 
 export const AUDIT_SCOPE_LABELS: Record<AuditScopeValue, string> = {

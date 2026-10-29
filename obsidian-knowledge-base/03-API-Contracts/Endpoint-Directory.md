@@ -59,7 +59,7 @@ author: System Architect
 > 2026-10-24: **23 dưới `/api`, 25 toàn app** ✅. `POST /api/auth/register` thêm `privacyVersionId` + lỗi 409 `LEGAL_DOCUMENT_CHANGED` (§3.1); cron thêm bước
 > `download_events.purge` (§17); Server Action mới `saveLegalDocumentMetaAction` + `createTenantAction` đổi contract (§26.4, §26.5). Đợt ADR-053 bổ sung lần 3
 > (nháp tự động) **không thêm route** và **chưa có Server Action** — lib nền ở §26.6.
-> Đợt ADR-056 (2026-10-25) không thêm `route.ts` (§27). Đợt **ADR-059 B1/B2/B2b** (2026-10-26, chưa commit) **không thêm `route.ts`** — đếm lại 2026-10-26:
+> Đợt ADR-056 (2026-10-25) không thêm `route.ts` (§27). Đợt **ADR-059 B1/B2/B2b** (2026-10-26, đã commit `fa29d99`) **không thêm `route.ts`** — đếm lại 2026-10-26:
 > **23 dưới `/api`, 25 toàn app** ✅; hai route webhook đổi hành vi (400 `invalid_body`, mã ứng viên theo tiền tố, platform ghi giao dịch trước khi áp hoá đơn — §9);
 > trang Studio mới, tab admin mới, Server Action + hàm lib + mã lỗi mới ở §28; §28 cũ (Liên kết) nay là §29.
 
@@ -248,7 +248,7 @@ origin) thay vì presigned URL storage; client vẫn `PUT` thẳng vào URL đó
 
 | Method | Endpoint | Truy cập | Mô tả |
 | :-- | :-- | :-- | :-- |
-| `POST` | `/api/downloads` | `requireUser()` | Bước 1 của luồng tải file (M9): kiểm `Entitlement` còn hạn (`downloadsUsed < downloadLimit`, chưa `revokedAt`), phát `DownloadToken` một-lần, TTL 60s. Rate-limit 20 lần/10 phút theo `userId`. Trả `{ url: "/api/downloads/{token}", expiresAt }`, không trả URL bucket thật. ADR-026 ✅: `fileId` có thể là dòng **link ngoài** (`sourceKind = EXTERNAL_URL`) — cùng luồng entitlement/`downloadLimit`/token; dòng không giao được (file chưa `CLEAN`, link không còn qua allowlist, đã gỡ) → `404`. ADR-039 ✅: entitlement chưa thu hồi có `remedyStatus = PENDING_CHOICE` → `403 REMEDY_CHOICE_REQUIRED`; `REFUND_REQUESTED`/`REFUNDED` → `403 DOWNLOAD_BLOCKED_REFUND` (đã thu hồi vẫn báo `ENTITLEMENT_REVOKED`). |
+| `POST` | `/api/downloads` | `assertSameOrigin` + `requireCheckoutUser()` (từ ADR-061 Q1, 2026-10-27 — đã xác minh **hoặc** phiên khách vãng lai; trước: `requireUser()`) | Bước 1 của luồng tải file (M9): kiểm `Entitlement` còn hạn (`downloadsUsed < downloadLimit`, chưa `revokedAt`), phát `DownloadToken` một-lần, TTL 60s. Rate-limit 20 lần/10 phút theo `userId`. Trả `{ url: "/api/downloads/{token}", expiresAt }`, không trả URL bucket thật. ADR-026 ✅: `fileId` có thể là dòng **link ngoài** (`sourceKind = EXTERNAL_URL`) — cùng luồng entitlement/`downloadLimit`/token; dòng không giao được (file chưa `CLEAN`, link không còn qua allowlist, đã gỡ) → `404`. ADR-039 ✅: entitlement chưa thu hồi có `remedyStatus = PENDING_CHOICE` → `403 REMEDY_CHOICE_REQUIRED`; `REFUND_REQUESTED`/`REFUNDED` → `403 DOWNLOAD_BLOCKED_REFUND` (đã thu hồi vẫn báo `ENTITLEMENT_REVOKED`). |
 | `GET` | `/api/downloads/[token]` | Public (token = credential một-lần) | Bước 2: tiêu thụ `DownloadToken` (so khớp `tokenHash`; không có/hết hạn/đã dùng → `410 TOKEN_INVALID`), **kiểm lại nguồn giao hàng trước khi trừ lượt** — không còn giao được → `410 DOWNLOAD_SOURCE_UNAVAILABLE` (ADR-026; token lúc này đã bị đánh dấu dùng nhưng lượt tải **không** bị trừ ✅), tăng `Entitlement.downloadsUsed` (hết lượt/thu hồi → `403 DOWNLOAD_LIMIT_REACHED`; ADR-039: UPDATE chỉ khi `remedyStatus ∈ {NONE, FINAL_DOWNLOAD}` — không khớp do remedy → `403 REMEDY_CHOICE_REQUIRED` / `403 DOWNLOAD_BLOCKED_REFUND`), ghi `DownloadEvent`, rồi `302` sang: URL presigned GET (FILE — bucket private, `Content-Disposition: attachment`, sống ≤ 10 phút — CLAUDE.md §7.6) **hoặc** chính URL link ngoài đã chuẩn hoá lại qua allowlist (EXTERNAL_URL). |
 | `POST` | `/api/share-links/[token]/download` | Public (mật khẩu tuỳ chọn theo `ShareLink.passwordHash`) | Kiểm mật khẩu (nếu `ShareLink` có đặt), kiểm `fileId` thuộc `fileIds` cho phép, tăng `usedCount` một cách atomic (không vượt `maxUses`), ghi `DownloadEvent`, trả URL presigned GET. Rate-limit 20 lần/10 phút theo **token** (không theo IP — chống brute-force mật khẩu qua proxy). ADR-026 ✅: **không bao giờ giao link ngoài** — chỉ nhận dòng `sourceKind = FILE`, không preview, `CLEAN`, chưa gỡ (`apps/web/lib/share-link.ts`). ADR-040 ✅: tenant không `ACTIVE` (`READ_ONLY`/`LOCKED`) → `410 SHARE_LINK_TENANT_LOCKED` (kiểm sau hạn/lượt/thu hồi, trước mật khẩu). Trang `/s/[token]` (`resolveShareLink`) cùng điều kiện — hiển thị "Link không còn hiệu lực." (trang render thông báo, không đặt HTTP 410). |
 
@@ -689,7 +689,7 @@ riêng khác chữ ("Mẫu / Template", "Đề thi / Đề kiểm tra") — BACK
 | `401` | `{ error: { code: "UNAUTHORIZED", message, requestId } }` | Thiếu/sai header `Authorization` |
 | `503` | `{ error: { code: "CRON_NOT_CONFIGURED", message, requestId } }` | Env `CRON_SECRET` chưa đặt (biến tuỳ chọn) |
 
-`results` = `{ subscriptionSweep, orderSweep, queueMaintenance, queues, auditPurge, statsAggregate, reportIpPurge, sessionPurge, downloadPurge }`, mỗi phần tử dạng `{ ok: true, result }` hoặc
+`results` = `{ subscriptionSweep, orderSweep, orderReminders, rateLimitPurge, queueMaintenance, queues, auditPurge, statsAggregate, reportIpPurge, sessionPurge, downloadPurge }` (từ đợt 1 ADR-061, 2026-10-27: `orderReminders.result = { sent: number }` — bước `order.payment_reminders`; `rateLimitPurge.result = { deleted: number }` — bước `rate_limit_counters.purge`), mỗi phần tử dạng `{ ok: true, result }` hoặc
 `{ ok: false }`: `subscriptionSweep.result = {}`; `orderSweep.result = { expired: number }` (số đơn chuyển `EXPIRED`); `queueMaintenance.result =
 { queues: number }`; `queues.result = { processed, failed, budgetExhausted }`; `auditPurge.result = { deleted: number, skipped: boolean }`
 (số dòng `audit_logs` > 12 tháng đã xoá; `skipped: true` khi bảng chưa tồn tại — M12a, ADR-037); `statsAggregate.result =
@@ -1405,7 +1405,7 @@ Form lọc là `<form method="get">` (`FilterBar`) — gửi lại bỏ `page` (
 
 ## 28. Chạy thử beta — email báo xác nhận tay, xác nhận trễ hoá đơn gói, giao dịch cổng, tiền tố SePay (ADR-059 B1/B2/B2b) ✅
 
-Đối chiếu working tree 2026-10-26 (chưa commit ✅ `git status`). **Không thêm `route.ts`** (23 dưới `/api`, 25 toàn app ✅), **không migration**. Nghiệp vụ:
+Đối chiếu code 2026-10-26 — **đã commit `fa29d99`** ✅ `git log` 2026-10-27. **Không thêm `route.ts`** (23 dưới `/api`, 25 toàn app ✅), **không migration**. Nghiệp vụ:
 [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5F–§5I, [[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.10–§3.11; quyết định
 [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay|ADR-044 KB (≙ ADR-059)]]; runbook [[04-Operations-Runbooks/SePay-Live-Test-Runbook|SePay-Live-Test-Runbook]].
 
@@ -1461,16 +1461,16 @@ Form lọc là `<form method="get">` (`FilterBar`) — gửi lại bỏ `page` (
 
 Server Action chỉ trả `message` (không trả `code`).
 
-### 28.5. MoMo cá nhân `MOMO_MANUAL` (ADR-059 bổ sung lần 3) ✅ đọc code 2026-10-26 (chưa commit, migration chưa áp)
+### 28.5. MoMo cá nhân `MOMO_MANUAL` (ADR-059 bổ sung lần 3) ✅ đọc code 2026-10-26 (đã commit `fa29d99`, migration đã áp)
 
 Không thêm `route.ts`. Webhook `/api/webhooks/platform/momo_manual` và `/api/webhooks/tenants/{tenantId}/momo_manual` → **404 `unsupported_provider`**.
 
 | Thay đổi | Nơi | Ghi chú |
 | :-- | :-- | :-- |
-| `CheckoutResult` thêm `CheckoutWalletResult` `{ kind: "WALLET", wallet: "MOMO", phone, accountName, content, amountVnd, qr: { qrPayload, qrImageDataUrl, bin, accountNo } \| null }` | `packages/payments/src/types.ts` | Lưu ở `checkoutPayload` của đơn/hoá đơn |
-| `momoManualProvider`, `MOMO_VIETQR_BIN` (`"970454"`, chờ kiểm chứng), `normalizeVnMobilePhone`, `normalizeAccountHolderName`, `normalizeMomoManualConfig` | `packages/payments/src/providers/momo-manual.ts` | Không secret |
+| `CheckoutResult` thêm `CheckoutWalletResult` `{ kind: "WALLET", wallet: "MOMO", phone, accountName, content, amountVnd, qr: { qrPayload, qrImageDataUrl, bin, accountNo } \| null }` — từ Bổ sung ADR-059 lần 4 provider luôn trả `qr: null`; trường giữ cho payload cũ | `packages/payments/src/types.ts` | Lưu ở `checkoutPayload` của đơn/hoá đơn |
+| `momoManualProvider` (`createCheckout` luôn `qr: null` — Bổ sung ADR-059 lần 4), ~~`MOMO_VIETQR_BIN`~~ (đã bỏ ở lần 4), `normalizeVnMobilePhone`, `normalizeAccountHolderName`, `normalizeMomoManualConfig` | `packages/payments/src/providers/momo-manual.ts` | Không secret |
 | `MANUAL_CONFIRM_PROVIDERS = ["MANUAL_QR", "MOMO_MANUAL"]`, `isManualConfirmProvider` | `packages/payments/src/registry.ts` | |
-| `readMomoManualForm(formData) → { ok: true, config } \| { ok: false, error }` | `apps/web/lib/momo-manual-config.ts` | Dùng chung Studio + System Center |
+| `readMomoManualForm(formData) → { ok: true, config: { phone, accountName } } \| { ok: false, error }` (lần 4: bỏ `vietQrAccountNo`) | `apps/web/lib/momo-manual-config.ts` | Dùng chung Studio + System Center |
 | `isMissingEnumValueError`, `MOMO_MANUAL_NOT_READY_MESSAGE` | `apps/web/lib/db-errors.ts` | Bắt lỗi 22P02 khi DB chưa áp migration |
 | Server Action lưu MoMo cá nhân | `app/admin/billing/payment/actions.ts`, `app/studio/[tenantSlug]/settings/payments/actions.ts` | Lỗi DB chưa sẵn sàng → `{ error: MOMO_MANUAL_NOT_READY_MESSAGE }` |
 | `VALID_PROVIDERS` thêm `MOMO_MANUAL` | `selectProviderAction` (checkout), `renewSubscriptionAction` (Studio billing) | |
@@ -1479,7 +1479,89 @@ Không thêm `route.ts`. Webhook `/api/webhooks/platform/momo_manual` và `/api/
 
 ---
 
-## 29. Xem trước 20% nội dung thật file tài liệu (ADR-063) ✅
+## 29. Trang thanh toán đơn tài liệu — view model + Server Action (ADR-061 + ADR-062, đợt 1 khách đã đăng nhập) ✅ đọc code 2026-10-27
+
+Working tree, **chưa commit**. **Không thêm `route.ts`** (đếm lại: 23 dưới `/api`, 25 toàn app ✅). Migration `20261026180000_adr061_purchase_flow` đã áp 🟡. Nghiệp vụ:
+[[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.4, §3.12; email [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5K; giao diện
+[[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §8.4. **Chưa có** phần khách vãng lai (task 12/13).
+
+### 29.1. `getCheckoutView(user, orderCode) → CheckoutView | null` (`apps/web/lib/checkout-view.ts`, mới)
+
+Người gọi đã `requireVerifiedAccess` (task 13 đổi sang `requireCheckoutAccess` — chưa có). Không tìm thấy đơn của chính khách → `null` (trang `notFound()`). Đơn + dòng đơn
+đọc dưới `withCustomer`; sản phẩm dưới `withPublic` (chỉ thấy khi còn PUBLISHED); `tenants`/`users`/`bank_bins` L1; không secret.
+
+| Trường | Kiểu / ý nghĩa |
+| :-- | :-- |
+| `viewer` | `{ kind: "user", name, email, justCreated: false }` (`guest` để task 12/13) |
+| `order` | `{ id, code, displayStatus, subtotalVnd, discountVnd, totalVnd, couponCode, provider, confirmMode: "MANUAL" \| "AUTO" \| null, checkout: CheckoutResult \| null, createdAt, expiresAt, paidAt, customerDeclaredPaidAt, can }` |
+| `order.displayStatus` | `AWAITING_PAYMENT` · `AWAITING_SELLER_CONFIRM` · `PAID` · `EXPIRED` · `CANCELED` · `REFUNDED` (bảng ở Order-State-Machine §3.12) |
+| `order.can` | `{ changeProvider, applyCoupon, declarePaid, undoDeclarePaid, cancel }` — UI chỉ ẩn/hiện, action kiểm lại |
+| `item` | `{ productId, title, unitPriceVnd, finalPriceVnd, productPath \| null, typeLabel \| null, coverUrl \| null, stillPurchasable }` (đơn 1 tài liệu) |
+| `tenant` | `{ name, slug }` |
+| `bank` | `{ shortName, name } \| null` (checkout QR ngân hàng) |
+| `enabledProviders` | `{ id, confirmMode, label, available }[]` — `label` theo `CUSTOMER_PROVIDER_LABELS` (SePay = "Chuyển khoản (xác nhận tự động)"); `available = false` khi hạn của phương thức đó (tính từ `createdAt`) đã qua |
+| `links` | `{ library: "/account/library?tai-lieu={productId}", orders: "/account/orders", terms, sellerPolicy, login: "/login?next=…" }` — `terms`/`sellerPolicy` từ `legalDocumentPath` |
+
+### 29.2. Server Action (`app/[tenantSlug]/checkout/[orderCode]/actions.ts`)
+
+`CheckoutActionState = { error?: string; code?: string; ok?: boolean; provider?: PaymentProviderId }` (thêm `code`, `ok`, `provider`). Mọi action `requireVerifiedAccess`, tìm
+đơn bằng `getOrderForCustomer`, bắt `AppError` → `{ error, code }` (riêng `applyCouponAction`/`removeCouponAction` vẫn chỉ `{ error }`).
+
+| Action | Chữ ký | Gọi | Thành công |
+| :-- | :-- | :-- | :-- |
+| `selectProviderAction` | `(tenantSlug, orderCode, prevState, formData{provider}) → CheckoutActionState` | `initiateOrderCheckout` — chọn **hoặc đổi** phương thức; `after()` cho email người bán + khách | `{ ok: true, provider }` |
+| `declarePaidAction` (mới) | `(tenantSlug, orderCode, prevState, formData) → CheckoutActionState` | `declareOrderPaid` ("Tôi đã chuyển khoản") | `{ ok: true }` |
+| `undoDeclarePaidAction` (mới) | như trên | `undoDeclareOrderPaid` ("Tôi chưa chuyển khoản") | `{ ok: true }` |
+| `cancelOrderByCustomerAction` (mới) | như trên | `cancelOrderByCustomer`; revalidate checkout + `/account/orders` | `{ ok: true }` |
+| `applyCouponAction`, `removeCouponAction` | không đổi | thêm chặn `ORDER_DECLARED_PAID` | `{}` |
+
+`VALID_PROVIDERS = ["MANUAL_QR", "SEPAY", "MOMO", "MOMO_MANUAL"]`; khác → `{ error: "Phương thức thanh toán không hợp lệ." }`.
+
+### 29.3. Mã lỗi (`AppError`)
+
+| Mã | HTTP | Khi nào |
+| :-- | :-: | :-- |
+| `PROVIDER_HOLD_EXPIRED` | 409 | Đổi sang phương thức có hạn (tính từ `createdAt`) đã qua |
+| `ORDER_DECLARED_PAID` | 409 | Đổi phương thức / áp-gỡ mã / tự huỷ khi khách đã báo chuyển |
+| `NOT_MANUAL_PROVIDER` | 400 | "Tôi đã chuyển khoản" với cổng tự xác nhận hoặc chưa chọn cổng |
+| `ORDER_NOT_PENDING` | 409 | Đơn không còn chờ (hiệu lực) — như cũ, áp thêm cho 3 action mới |
+| `ORDER_CHANGED` | 409 | Ghi có điều kiện thất bại (đơn vừa đổi) — như ADR-056 |
+| `ORDER_NOT_CONFIRMABLE` | 409 | Người bán xác nhận đơn hết hạn mà không thuộc ngoại lệ "báo chuyển trước hạn" (luật mới, mã cũ) |
+
+### 29.4. Export lib khác
+
+| Export | Nơi |
+| :-- | :-- |
+| `orderHoldHoursFor(provider, settings) → number` | `lib/order.ts` |
+| `declareOrderPaid`, `undoDeclareOrderPaid`, `cancelOrderByCustomer`, `notifyCustomerOfPaymentInstructions`, `notifyOwnerOfDeclaredPaid`, `runOrderPaymentReminders`, `CUSTOMER_PROVIDER_LABELS`, `MAX_PAYMENT_EMAILS_PER_ORDER` (3), `PAYMENT_REMINDER_WINDOW_HOURS` (24) | `lib/order-customer.ts` (mới) |
+| `purgeExpiredRateLimitCounters(now?) → { deleted }` | `lib/rate-limit-store.ts` (mới) |
+| `computeOrderHoldExpiresAt(createdAt, holdHours)`, `canManuallyConfirmOrder(status, expiresAt, now, { declaredPaidAt? })`, `manualConfirmDeadline(expiresAt)` (bỏ tham số cửa sổ) | `@gieochu/core` |
+| `renderOrderPaymentInstructionsEmail`, `renderCustomerDeclaredPaidEmail`; `renderOrderAwaitingManualConfirmEmail` nhận `methodLabel?` | `@gieochu/email` |
+| `OrderListItem.customerDeclaredPaidAt`, `OrderDetailView.customerDeclaredPaidAt`; `orderAllowedActions(order{…, provider?, customerDeclaredPaidAt?}, now)` | `lib/order.ts` |
+| `/account/library?tai-lieu={productId}` — Thư viện làm nổi + focus thẻ tài liệu đó (chỉ khớp entitlement của chính user) | `app/account/library/page.tsx` |
+
+### 29.5. Khách vãng lai + vá luồng mật khẩu (ADR-061 Q1, ADR-062 Q2/Q11, Bổ sung ADR-062) — working tree, chưa commit, chưa thử thủ công ✅ đọc code 2026-10-27
+
+Không thêm `route.ts` (23 / 25 ✅ đếm). Nghiệp vụ: [[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.13, [[02-System-Specs/Auth-Session-Specs|Auth-Session-Specs]] §9A.
+
+| Mục | Contract |
+| :-- | :-- |
+| Trang `/{tenantSlug}/checkout?tai-lieu={productSlug}` | Route group `(chua-co-don)`; không cần đăng nhập; đã đăng nhập → redirect trang tài liệu; 404 khi thiếu/không bán |
+| `getGuestCheckoutView(tenantSlug, productSlug) → GuestCheckoutView \| null` (`lib/checkout-view.ts`) | `{ viewer: { kind: "guest" }, order: null, tenant, item: { productId, productSlug, title, priceVnd, typeLabel, coverUrl, productPath }, enabledProviders: { id, confirmMode, label }[], links: { terms, privacy, login } }` |
+| `CheckoutView.viewer` | thêm `justCreated: boolean`, `guestSession: boolean` (§29.1) |
+| `startGuestCheckoutAction(tenantSlug, productSlug, prevState, formData{fullName,email,acceptTerms,provider})` (`app/[tenantSlug]/checkout/actions.ts`) | `GuestCheckoutActionState = { error?, code?, fieldErrors?, values? }`; thành công → đặt cookie + `redirect("/{tenant}/checkout/{mã}?vua-tao=1")`. `code`: `VALIDATION`, `PRODUCT_UNAVAILABLE`, `RATE_LIMITED`, `EMAIL_EXISTS`, `EMAIL_EXISTS_GUEST`, `ALREADY_SIGNED_IN` |
+| `buyProductAction` | Chưa đăng nhập → `redirect("/{tenant}/checkout?tai-lieu={slug}")`; có phiên → `requireCheckoutAccess` |
+| Trang `/verify-email/dat-mat-khau?token=` + `activateGuestAccountAction(token, prevState, formData{password,confirmPassword})` | `{ error?, code? }` — `INVALID_TOKEN`, `TOKEN_ALREADY_USED`, `TOKEN_EXPIRED`, `WEAK_PASSWORD`, `PASSWORD_MISMATCH`; thành công → `/login?da-kich-hoat=1&next=/account/library` |
+| `POST /api/auth/login` | Thêm **403 `GUEST_NOT_ACTIVATED`** (user PENDING chưa có mật khẩu; không tăng đếm sai) |
+| `POST /api/auth/reset-password` | Thêm **400 `GUEST_NOT_ACTIVATED`** |
+| `POST /api/auth/forgot-password`, `POST /api/auth/resend-verification` | Guest chưa kích hoạt → gửi email `guest_activation` (rate limit DB 3/email/giờ); response **không đổi** |
+| `POST /api/auth/refresh` | User PENDING refresh được khi bản ghi `guestCheckout` + `hasPassword = false` (chính sách guest) |
+| `POST /api/downloads` | `assertSameOrigin` + `requireCheckoutUser` (§7) |
+| Lib | `startGuestCheckout`, `resendGuestActivation`, `activateGuestAccount`, `guestActivationUrl`, `GUEST_ACTIVATION_TTL_DAYS` (7), `EMAIL_EXISTS_GUEST_MESSAGE` (`lib/guest-checkout.ts`); `requireCheckoutAccess` (`lib/page-guards.ts`), `requireCheckoutUser` (`lib/session.ts`), `getGuestSessionPolicy`, `GUEST_SESSION_MAX_HOURS` (24) (`lib/jwt-context.ts`), `applyAuthCookiesTo` (`lib/cookies.ts`), `consumeRateLimit`, `rateLimitKey` (`lib/rate-limit-store.ts`); claim `gco` (`packages/auth` `AccessTokenClaims`); `renderGuestActivationEmail` (`@gieochu/email`) |
+
+---
+
+## 30. Xem trước 20% nội dung thật file tài liệu (ADR-063) ✅
 
 Nguồn: `apps/web/app/api/[tenantSlug]/[productSlug]/preview/[fileId]/route.ts`,
 `apps/web/lib/product-file-preview.ts` (2026-10-27, working tree — chưa commit). Bản trích:
@@ -1504,9 +1586,11 @@ Nguồn: `apps/web/app/api/[tenantSlug]/[productSlug]/preview/[fileId]/route.ts`
 
 Payload sau serialize **≤ 256 KB** (giới hạn ở extractor, [[02-System-Specs/File-Storage-And-Downloads-Specs|File-Storage-And-Downloads-Specs]] §11).
 
+> Đánh số: mục này là §29 ở nhánh của vuong (commit `970f713`); khi gộp 2026-10-30 đổi thành **§30** vì §29 đã là trang thanh toán (ADR-061/062). Các trang của vuong vốn trỏ "Endpoint-Directory §30" — nay khớp. KB-Audit §49.
+
 ---
 
-## 30. Tài Liệu Tham Chiếu & Liên Kết
+## 31. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay|ADR-044 (≙ ADR-059)]] — chạy thử beta, giao dịch cổng (§28) ([ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md](../01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md))

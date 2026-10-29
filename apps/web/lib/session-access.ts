@@ -1,7 +1,7 @@
 import { signAccessToken, type SessionPolicy, type SystemRole } from "@gieochu/auth";
 import { getPrismaClient } from "@gieochu/db";
 import { setAccessCookie, type CookieSetter } from "./cookies";
-import { getJwtContext, getSessionPolicy } from "./jwt-context";
+import { getGuestSessionPolicy, getJwtContext, getSessionPolicy } from "./jwt-context";
 
 /**
  * ADR-053 — nguồn DUY NHẤT để ký access token cho một phiên (login, refresh, ký lại khi đổi hồ sơ): claim `rm`, TTL
@@ -14,6 +14,8 @@ export interface SessionAccessClaims {
   role: SystemRole;
   emailVerified: boolean;
   profileCompleted: boolean;
+  /** ADR-061 Q1: phiên khách vãng lai (claim `gco`). */
+  guestCheckout?: boolean;
 }
 
 export async function signSessionAccessToken(
@@ -29,6 +31,7 @@ export async function signSessionAccessToken(
       ver: claims.emailVerified,
       pc: claims.profileCompleted,
       rm: policy.rememberMe,
+      gco: claims.guestCheckout === true,
     },
     getJwtContext(),
     accessTtlSeconds,
@@ -49,12 +52,12 @@ export async function issueAccessCookieForSession(
   const record = await prisma.refreshToken.findFirst({
     where: { familyId: claims.familyId, userId: claims.userId, revokedAt: null },
     orderBy: { createdAt: "desc" },
-    select: { rememberMe: true },
+    select: { rememberMe: true, guestCheckout: true },
   });
   if (!record) return false;
 
-  const policy = await getSessionPolicy(claims.role, record.rememberMe);
-  const { accessToken, accessTtlSeconds } = await signSessionAccessToken(claims, policy);
+  const policy = record.guestCheckout ? await getGuestSessionPolicy() : await getSessionPolicy(claims.role, record.rememberMe);
+  const { accessToken, accessTtlSeconds } = await signSessionAccessToken({ ...claims, guestCheckout: record.guestCheckout }, policy);
   setAccessCookie(target, accessToken, accessTtlSeconds, policy.rememberMe);
   return true;
 }

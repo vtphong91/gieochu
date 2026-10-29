@@ -5,7 +5,7 @@ tags:
   - billing
   - status/living
 date: 2026-09-26
-updated: 2026-10-26
+updated: 2026-10-27
 author: System Architect
 ---
 
@@ -36,7 +36,7 @@ tham số đầu — không có "chế độ mặc định" ngầm định nào 
 enum PaymentProviderId { MANUAL_QR  SEPAY  MOMO  MOMO_MANUAL }
 ```
 
-`MOMO_MANUAL` thêm ở ADR-059 bổ sung lần 3 (migration `20261026150000_adr059_momo_manual` — **chưa áp DB**), §5J.
+`MOMO_MANUAL` thêm ở ADR-059 bổ sung lần 3 (migration `20261026150000_adr059_momo_manual` — **đã áp**, Quốc kiểm `prisma migrate status` 2026-10-27), §5J.
 
 - **`MANUAL_QR`**: tự dựng payload VietQR (EMVCo TLV + CRC-16/CCITT-FALSE, `packages/payments/src/vietqr.ts`)
   từ số tài khoản/BIN ngân hàng đã cấu hình — không gọi API bên thứ 3, owner tự đối soát bằng mắt hoặc xác
@@ -44,7 +44,7 @@ enum PaymentProviderId { MANUAL_QR  SEPAY  MOMO  MOMO_MANUAL }
 - **`SEPAY`**: `authType` là `API_KEY` hoặc `HMAC_SHA256`, có `paymentPrefix` (khớp `Tenant.orderCodePrefix`
   hoặc `"SUB"` cho platform) để đối soát nội dung chuyển khoản. Từ ADR-059 bổ sung lần 2 tiền tố **không khoá**: platform sinh mã hoá
   đơn SePay theo `paymentPrefix`, gian hàng thử cả `paymentPrefix` lẫn `orderCodePrefix` khi đọc webhook — §5H ✅.
-- **`MOMO_MANUAL`** (ADR-059 bổ sung lần 3, chưa commit) ✅ code: ví MoMo cá nhân, khách chuyển tay, người nhận xác nhận tay; không webhook. Dùng cho **cả**
+- **`MOMO_MANUAL`** (ADR-059 bổ sung lần 3, đã commit `fa29d99`, migration đã áp) ✅ code: ví MoMo cá nhân, khách chuyển tay, người nhận xác nhận tay; không webhook. Dùng cho **cả**
   PLATFORM lẫn TENANT, bật song song được với chuyển khoản ngân hàng. Chi tiết §5J. **`MOMO`** (MoMo API) giữ nguyên cấu hình và code.
 - **Loại xác nhận tay** (`MANUAL_CONFIRM_PROVIDERS` / `isManualConfirmProvider`, `packages/payments/src/registry.ts`) ✅: **`MANUAL_QR`, `MOMO_MANUAL`** — dùng chung
   email báo, nút và luật xác nhận tay / xác nhận trễ.
@@ -87,7 +87,7 @@ sequenceDiagram
         Note over R,J: ADR-036 — after() chạy drainQueues ngay sau response (fetch → complete/fail); cron hằng ngày dọn job sót
         J->>O: job "payment.process" — so khớp orderId theo mã tham chiếu
         O->>DB: withTenant(tenantId) — ghi TenantPaymentTransaction (MATCHED/UNMATCHED/MISMATCH_AMOUNT)
-        O->>O: markOrderPaid() nếu khớp và đơn còn hợp lệ (PENDING hoặc EXPIRED trong 24h)
+        O->>O: markOrderPaid() nếu khớp và đơn còn hiệu lực PENDING (từ ADR-061 không còn cửa sổ trễ 24h)
     end
 ```
 
@@ -102,8 +102,9 @@ sequenceDiagram
   dấu `complete`/`fail`. Lỗi → job còn trong hàng đợi, thử lại sau (`retryDelay` 60 giây + backoff); cron `GET /api/cron/daily` dọn
   phần sót. `scheduleQueueDrain` không bao giờ ném lỗi nên không biến 2xx thành 500. Chi tiết:
   [[02-System-Specs/Background-Jobs-Specs|Background-Jobs-Specs]].
-- **Webhook trễ hơn 24h sau `expiresAt` (chủ dự án chốt 2026-10-16) ✅:** giao dịch vẫn ghi `MATCHED` nhưng **không** tự fulfil —
-  tenant đối soát/xử lý tay ([[Order-State-Machine]] §3.1).
+- **Webhook về sau hạn giữ đơn** — từ đợt 1 ADR-061 (2026-10-27, working tree) ✅ code: **không còn cửa sổ trễ 24h**; tiền về khi đơn đã hết hạn → giao dịch ghi
+  `MATCHED` nhưng **không** tự fulfil, hiện ở Studio "Giao dịch cần xử lý" với nhãn "Về sau hạn giữ đơn" ([[Order-State-Machine]] §3.1, §3.11). (Trước ADR-061: chỉ
+  không fulfil khi trễ hơn 24h — chủ dự án chốt 2026-10-16.)
 - **Khoảng lệch đã biết giữa 2 module (ADR-019):** route webhook **Tenant** (M8) làm đúng đặc tả — chỉ xác
   thực + ghi `webhook_events` + đẩy job `payment.process`. Route webhook **Platform** (M3,
   `POST /api/webhooks/platform/[provider]`) xử lý đồng bộ trong request (gọi `markInvoicePaid()` trực tiếp) —
@@ -277,7 +278,7 @@ Hành vi:
   (thay `findUnique` trực tiếp); tách ra để integration test mock (xem
   [[04-Operations-Runbooks/Publish-And-Rollback-Runbook|Publish-And-Rollback-Runbook]] §2.2.1).
 
-### 5F. Hoá đơn gói chờ đối soát: email báo admin + xác nhận trễ hoá đơn EXPIRED (ADR-059 B1 + bổ sung) — working tree, chưa commit ✅ `git diff`
+### 5F. Hoá đơn gói chờ đối soát: email báo admin + xác nhận trễ hoá đơn EXPIRED (ADR-059 B1 + bổ sung) — đã commit `fa29d99` ✅ đọc code
 
 Quyết định: [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay|ADR-044 KB (≙ ADR-059)]]. Không migration.
 
@@ -364,17 +365,49 @@ Quyết định: [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confir
 
 | `type` | Người nhận | Khi nào | Nơi gửi | Ghi `email_send_log` |
 | :-- | :-- | :-- | :-- | :-- |
-| `order_pending_manual` | Chủ gian hàng | Đơn gắn cổng xác nhận tay lần đầu | `notifyOwnerOfPendingManualOrder` (`lib/order.ts`), `after()` | Không |
-| `invoice_pending_manual` | "Email hỗ trợ" | Hoá đơn gói xác nhận tay (QR thủ công / MoMo chuyển tay) vừa tạo — nội dung có `methodLabel` | `notifyAdminOfPendingManualInvoice` (`lib/subscription-billing.ts`), `after()` | Có |
+| `order_pending_manual` | Chủ gian hàng | Đơn chọn cổng xác nhận tay — **một lần/đơn** (mốc `ownerManualNotifiedAt`, từ đợt 1 ADR-061); có `methodLabel` | `notifyOwnerOfPendingManualOrder` (`lib/order.ts`), `after()` | Không |
+| `invoice_pending_manual` | "Email hỗ trợ" | Hoá đơn gói xác nhận thủ công (QR thủ công / MoMo thủ công) vừa tạo — nội dung có `methodLabel` | `notifyAdminOfPendingManualInvoice` (`lib/subscription-billing.ts`), `after()` | Có |
 | `payment_mismatch` | Chủ gian hàng | Giao dịch cổng tiền vào khớp mã đơn, sai số tiền | `notifyOwnerOfPaymentMismatch` (`lib/payment-process.ts`), sau commit trong job | Không |
 
 Chi tiết phía đơn hàng: [[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.10–§3.11. **Chưa có** email cho giao dịch `UNMATCHED` và cho giao dịch khớp tiền nhưng
-đến quá 24 giờ sau hạn đơn 🟡 (brief). Gửi tới hộp thư thật ❓.
+về sau hạn giữ đơn ✅ code. Gửi tới hộp thư thật ❓. Email luồng mua của khách (ADR-061/062): §5K.
 
-### 5J. MoMo cá nhân xác nhận tay — `MOMO_MANUAL` (ADR-059 bổ sung lần 3, B3) — working tree, chưa commit; **migration chưa áp** ✅ `git diff`
+### 5K. Email luồng mua của khách + mốc chống gửi trùng (ADR-061 Q7/Q9/Q10/Q12, ADR-062 Q1 + bổ sung mục 6) — working tree, chưa commit ✅ đọc code 2026-10-27
 
-Quyết định: [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay|ADR-044 KB (≙ ADR-059)]] §3.6. Kiểm chứng trước khi bật QR:
-[[04-Operations-Runbooks/MoMo-Manual-Verification-Runbook|MoMo-Manual-Verification-Runbook]].
+Quyết định: [[01-Architecture-Decisions/ADR-046-Customer-Purchase-Flow-Pending-Orders-Notifications|ADR-046 KB (≙ ADR-061)]],
+[[01-Architecture-Decisions/ADR-048-Checkout-Layout-Declared-Paid-Guest-Session|ADR-048 KB (≙ ADR-062)]]. Nghiệp vụ đơn: [[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.12.
+Ba loại mới đều thuộc `TENANT_CUSTOMER_FACING_TYPES` (`lib/email-dispatch.ts`) → **không** ghi `email_send_log`; tiêu đề chỉ có mã đơn.
+
+| `type` | Người nhận | Khi nào | Nơi gửi | Chống trùng |
+| :-- | :-- | :-- | :-- | :-- |
+| `order_payment_customer` | Khách | Chọn hoặc **đổi** phương thức (`initiateOrderCheckout` lên lịch, `after()`) — chỉ khi phương thức hiện tại **khác** lần đã gửi | `notifyCustomerOfPaymentInstructions` (`lib/order-customer.ts`) | Nhận mốc `customerPaymentEmailedProvider`/`customerPaymentEmailedAt`; **tối đa 3 email/đơn** (`MAX_PAYMENT_EMAILS_PER_ORDER`) đếm bằng số dòng audit `ORDER_PAYMENT_EMAIL_SENT` của đơn |
+| `order_payment_reminder` | Khách | **1 lần** khi đơn còn chờ, **đã chọn** phương thức, còn ≤ 24 giờ (`PAYMENT_REMINDER_WINDOW_HOURS`) — bước cron `order.payment_reminders` | `runOrderPaymentReminders` (`lib/order-customer.ts`) | Nhận mốc `customerReminderSentAt`; tối đa 500 đơn/lần chạy |
+| `guest_activation` | Khách vãng lai (tài khoản tạo lúc mua) | Tạo tài khoản ở trang thanh toán; gửi lại qua resend / quên mật khẩu — "Kích hoạt tài khoản {brand} và đặt mật khẩu", link 7 ngày, một lần | `lib/guest-checkout.ts` (`after()` khi mua; đồng bộ khi gửi lại) | **Có ghi `email_send_log`** (email tài khoản, không thuộc `TENANT_CUSTOMER_FACING_TYPES`); gửi lại 3/email/giờ (rate limit DB) — [[02-System-Specs/Auth-Session-Specs|Auth-Session-Specs]] §9A |
+| `order_customer_declared_paid` | Chủ gian hàng | Khách bấm "Tôi đã chuyển khoản" — tiêu đề "Khách báo đã chuyển đơn {mã}", có `methodLabel` + lúc báo + link Studio | `notifyOwnerOfDeclaredPaid` (`lib/order-customer.ts`), `after()` | Nhận mốc `ownerDeclaredPaidNotifiedAt` — một lần/đơn (hoàn tác rồi báo lại không gửi nữa) |
+
+- **Nội dung email khách** (`renderOrderPaymentInstructionsEmail`, `packages/email/src/templates/order-payment.ts`): mã đơn, tên tài liệu, tổng tiền, hạn giữ đơn, phương
+  thức (nhãn cho khách — `CUSTOMER_PROVIDER_LABELS`: "Chuyển khoản ngân hàng", "Chuyển khoản (xác nhận tự động)" cho SePay, **"Ví MoMo"** cho `MOMO_MANUAL`; `MOMO` (API) là **"Ví MoMo (tự động)"** (Quốc quyết 2026-10-27, đã có code ✅ working tree)), các
+  dòng chuyển tiền dạng chữ lấy từ `checkoutPayload` hiện tại (ngân hàng/số TK/chủ TK/số tiền/nội dung; ví MoMo: ví, số điện thoại, tên chủ, số tiền, nội dung),
+  nút về trang thanh toán. **Không nhúng ảnh QR**. Cổng xác nhận tay có câu nhắc bấm "Tôi đã chuyển khoản". Email nhắc đổi tiêu đề "Nhắc thanh toán đơn {mã} — hết hạn …".
+- **`order_pending_manual`** nay có `methodLabel` (§5I) và gửi một lần/đơn kể cả khi khách đổi phương thức (`ownerManualNotifiedAt`).
+- **`order_paid`** (khách, M8): nút **"Tải tài liệu"** (thay liên kết chữ) trỏ **Thư viện** `APP_URL/account/library?tai-lieu={productId}` (tài liệu đầu tiên của đơn) —
+  bắt đăng nhập, không bao giờ link tải trực tiếp/presigned (ADR-061 Q12, ADR-062 Q7). Dưới nút có dòng dán liên kết dự phòng.
+- **Email người bán khi thanh toán thành công:** `new_sale` có sẵn (M8), gửi cho mọi cổng kể cả SePay — khớp ADR-061 Q9 ✅ code.
+- **6 cột mốc trên `orders`** (migration `20261026180000_adr061_purchase_flow`): `customerDeclaredPaidAt`, `customerPaymentEmailedAt`, `customerPaymentEmailedProvider`,
+  `customerReminderSentAt`, `ownerDeclaredPaidNotifiedAt`, `ownerManualNotifiedAt`. Mọi mốc email được **nhận nguyên tử** bằng `updateMany … WHERE <mốc> IS NULL` (hoặc
+  khác phương thức) trước khi gửi → không gửi trùng khi `after()`/cron chạy lại. Chi tiết cột: [[03-API-Contracts/Database-Schema-Reference|Database-Schema-Reference]].
+- Lưu ý ✅ code: mốc và dòng audit `ORDER_PAYMENT_EMAIL_SENT` được ghi **trước** khi gửi — email gửi lỗi vẫn bị tính vào giới hạn 3 lần và không gửi lại (**Quốc chấp nhận
+  2026-10-27** — mục đích của giới hạn là chống spam). Email nhắc
+  (`order_payment_reminder`) **không** tính vào giới hạn 3 và không ghi audit.
+- Gửi tới hộp thư thật ❓.
+
+### 5J. MoMo cá nhân xác nhận tay — `MOMO_MANUAL` (ADR-059 bổ sung lần 3, B3) — đã commit `fa29d99`; **migration đã áp** (Quốc kiểm `prisma migrate status` — up to date, 2026-10-27) ✅ đọc code
+
+Quyết định: [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay|ADR-044 KB (≙ ADR-059)]] §3.6, §3.7.
+
+> **Bổ sung ADR-059 lần 4 (2026-10-27, chủ dự án chốt; code working tree chưa commit ✅ `git diff`): MoMo thủ công KHÔNG có QR.** Bỏ hẳn ô "Số tài khoản VietQR của ví" và
+> hằng `MOMO_VIETQR_BIN`; cấu hình chỉ còn **số điện thoại + tên chủ ví**; checkout luôn `qr: null` (nhánh F1). Runbook kiểm chứng QR
+> ([[04-Operations-Runbooks/MoMo-Manual-Verification-Runbook|MoMo-Manual-Verification-Runbook]]) **không còn áp dụng**. Không migration. Các dòng dưới đã sửa theo lần 4.
 
 - **Phạm vi:** provider mới cho **cả PLATFORM** (`/admin/billing/payment`, hoá đơn gói) **lẫn TENANT** (`/studio/{slug}/settings/payments`, đơn tài liệu). Form
   `momo-manual-form.tsx` ở hai nơi, đọc chung `readMomoManualForm` (`apps/web/lib/momo-manual-config.ts`).
@@ -383,25 +416,27 @@ Quyết định: [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confir
   | :-- | :-- | :-- |
   | `phone` | Số điện thoại MoMo | Chuẩn hoá `0xxxxxxxxx` (nhận `+84`/`84`, bỏ dấu cách/chấm/gạch), đầu số `03/05/07/08/09` |
   | `accountName` | Tên chủ ví | Bỏ dấu, `đ` → `D`, VIẾT HOA, 2–70 ký tự `A–Z0–9` và khoảng trắng |
-  | `vietQrAccountNo` | Số tài khoản VietQR của ví (tuỳ chọn) | Viết hoa, bỏ khoảng trắng, chữ/số 6–30 ký tự; trống → bỏ |
+  | ~~`vietQrAccountNo`~~ | ~~Số tài khoản VietQR của ví (tuỳ chọn)~~ | **Đã bỏ ở lần 4** — form không còn ô này; schema `z.object` mặc định **loại bỏ khoá lạ** nên cấu hình cũ còn `vietQrAccountNo` vẫn hợp lệ, trường đó bị bỏ qua (không cần migration) |
 - **Checkout kiểu `WALLET`** (`CheckoutWalletResult`, `packages/payments/src/types.ts`): `{ kind: "WALLET", wallet: "MOMO", phone, accountName, content, amountVnd, qr }`.
-  `content` = mã đơn / mã hoá đơn (cùng luật tiền tố như MANUAL_QR). Có `vietQrAccountNo` → `qr` = VietQR dựng bằng `buildVietQrPayload` với BIN hằng
-  **`MOMO_VIETQR_BIN = "970454"`** (⚠️ **chờ kiểm chứng thật**, comment code) + số tài khoản ví; không có → `qr = null` = **phương án F1** (chỉ thông tin + nút
-  sao chép). `CheckoutResult` nay là `CheckoutQrResult | CheckoutRedirectResult | CheckoutWalletResult`.
+  `content` = mã đơn / mã hoá đơn (cùng luật tiền tố như MANUAL_QR). **Từ lần 4: `createCheckout` luôn trả `qr: null`** = phương án F1 (chỉ thông tin + nút sao chép);
+  trường `qr` **giữ trong kiểu** `CheckoutWalletResult` để payload cũ đã lưu trên đơn/hoá đơn vẫn đúng kiểu (giao diện vẫn vẽ QR nếu một payload cũ có `qr` ✅ code —
+  KB-Audit §47). Lần 3 từng sinh VietQR với BIN `970454` khi có `vietQrAccountNo` — đã bỏ. `CheckoutResult` nay là `CheckoutQrResult | CheckoutRedirectResult | CheckoutWalletResult`.
 - **Giao diện:** `WalletTransferPanel` (`apps/web/app/_ui/wallet-transfer-panel.tsx`) dùng ở checkout đơn tài liệu và trang gói Studio: các ô chỉ đọc có nút sao chép
-  (Ví MoMo, Số điện thoại MoMo, Tên chủ tài khoản, Nội dung chuyển khoản, Số tiền), ảnh QR nếu có, "Chuyển khoản sau" (link), "Tôi đã chuyển khoản" chỉ hiện lời
-  nhắn tại chỗ — **không** đổi trạng thái đơn. Markup tối thiểu, Phong hoàn thiện sau 🟡 (comment code). Nhãn cổng: "MoMo (chuyển tay)" (checkout, Studio, admin),
-  "Ví MoMo (chuyển tay)" (Bảng giá).
+  (Số điện thoại MoMo, Tên chủ ví, Số tiền, Nội dung chuyển khoản), **không có ảnh QR** (lần 4), "Chuyển khoản sau" (link), "Tôi đã chuyển khoản" chỉ hiện lời
+  nhắn tại chỗ — **không** đổi trạng thái đơn. Markup tối thiểu, Phong hoàn thiện sau 🟡 (comment code). Nhãn cổng (chủ dự án chốt 2026-10-27, working tree ✅ grep):
+  **"MoMo (thủ công)"** ở Studio, System Center và email `payment_mismatch`/admin (email người bán `order_pending_manual` + "khách báo đã chuyển" giữ `methodLabel` dạng câu
+  mô tả — Quốc chấp nhận 2026-10-27); **"Ví MoMo"** cho khách (checkout, email khách) — MoMo API cho khách là **"Ví MoMo (tự động)"** (đã có code ✅, `CUSTOMER_PROVIDER_LABELS.MOMO`); **"Ví MoMo (thủ công)"** ở Bảng giá; tiêu đề form
+  cấu hình "MoMo cá nhân (xác nhận thủ công)". (Trước đó: "MoMo (chuyển tay)" / "Ví MoMo (chuyển tay)".)
 - **Xác nhận:** cùng luật MANUAL_QR — đơn tài liệu: chủ gian hàng xác nhận tay (`canManuallyConfirmOrder`); hoá đơn gói: `confirmManualInvoicePayment` (PENDING) và
   **xác nhận trễ** `confirmExpiredManualInvoice` (EXPIRED — chặn `NEWER_INVOICE_EXISTS`, tính lại kỳ), tab "Chờ đối soát" lọc mọi cổng xác nhận tay
   (`notIn` các cổng tự đối soát) ✅ code.
 - **Không webhook:** `verifyWebhook` luôn `false`, `parseWebhook` ném lỗi. Route `/api/webhooks/platform/momo_manual` và `/api/webhooks/tenants/{id}/momo_manual`
   → **404 `unsupported_provider`** (không nằm trong `VALID_PROVIDERS`) ✅ code.
-- **Email:** `invoice_pending_manual` (báo admin) truyền `methodLabel` — "chuyển tiền MoMo (xác nhận tay)" hoặc "chuyển khoản QR thủ công" ✅. `order_pending_manual`
+- **Email:** `invoice_pending_manual` (báo admin) truyền `methodLabel` — "chuyển tiền MoMo (xác nhận thủ công)" (trước: "…(xác nhận tay)") hoặc "chuyển khoản QR thủ công" ✅. `order_pending_manual`
   (báo người bán) cũng gửi cho MOMO_MANUAL nhưng **template không có `methodLabel`** — câu chữ vẫn "Khách vừa chọn chuyển khoản…" ✅ code — KB-Audit §43.
-- **Tự tắt khi đổi định danh (ADR-013) — chỉ cấu hình platform:** `accountIdentity` (`lib/platform-payment.ts`) với MOMO_MANUAL = `{ phone, vietQrAccountNo }` →
-  đổi số điện thoại hoặc số TK VietQR làm cổng **tự tắt**, phải lưu lại lần nữa. Cấu hình tenant không có cơ chế tự tắt (như các cổng tenant khác) ✅ code.
-- **Trước khi áp migration:** DB chưa có giá trị enum → Postgres 22P02; `isMissingEnumValueError` (`lib/db-errors.ts`) bắt ở 2 action lưu cấu hình → báo
+- **Tự tắt khi đổi định danh (ADR-013) — chỉ cấu hình platform:** `accountIdentity` (`lib/platform-payment.ts`) với MOMO_MANUAL = `{ phone }` (lần 4; lần 3 gồm cả số TK
+  VietQR) → **chỉ đổi số điện thoại** làm cổng **tự tắt**, phải lưu lại lần nữa; đổi tên chủ ví không tự tắt. Cấu hình tenant không có cơ chế tự tắt (như các cổng tenant khác) ✅ code.
+- **Trước khi áp migration** (nay đã áp — giữ để hiểu hành vi trên DB khác): DB chưa có giá trị enum → Postgres 22P02; `isMissingEnumValueError` (`lib/db-errors.ts`) bắt ở 2 action lưu cấu hình → báo
   `MOMO_MANUAL_NOT_READY_MESSAGE` ("Hệ thống chưa sẵn sàng cho MoMo cá nhân…"), danh sách hoá đơn lọc `MOMO_MANUAL` coi như rỗng — không 500 ✅ code.
 - **MoMo API (`MOMO`)** giữ nguyên cấu hình và code, để trạng thái tắt — không xoá, không tự sửa dữ liệu (thay quyết định "tạm ẩn" ở ADR-059 mục 2) 🟡 ADR.
 - **Việc cần làm — Chính sách người bán** 🟡 (ADR-059 lần 3 mục 5): số điện thoại và tên chủ ví MoMo của người bán **công khai ở trang thanh toán** → phải ghi rõ trong

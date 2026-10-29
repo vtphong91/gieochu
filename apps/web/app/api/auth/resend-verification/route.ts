@@ -10,6 +10,7 @@ import { checkRateLimit } from "../../../../lib/rate-limit";
 import { sendEmailNow } from "../../../../lib/email-dispatch";
 import { getEffectiveBrand } from "../../../../lib/branding";
 import { getSystemSettings } from "../../../../lib/system-settings";
+import { resendGuestActivation } from "../../../../lib/guest-checkout";
 
 const resendSchema = z.object({ email: z.string().email("Email không hợp lệ.") });
 const RESEND_LIMIT = 3;
@@ -27,7 +28,11 @@ export async function POST(request: Request) {
 
     const prisma = getPrismaClient();
     const user = await prisma.user.findUnique({ where: { email } });
-    if (user && user.status === "PENDING") {
+    if (user && user.status === "PENDING" && !user.hasPassword) {
+      // ADR-061 Q1 / Bổ sung ADR-062 mục 5, 7: tài khoản khách vãng lai → email "Kích hoạt tài khoản và đặt mật khẩu" (huỷ token
+      // cũ, token mới 7 ngày), giới hạn 3 lần/email/giờ trên DB. Cùng câu trả lời bên dưới (không lộ email có tồn tại hay không).
+      await resendGuestActivation(user.id, email);
+    } else if (user && user.status === "PENDING") {
       const env = getEnv();
       const now = new Date();
       const [settings, brand] = await Promise.all([getSystemSettings(), getEffectiveBrand()]);

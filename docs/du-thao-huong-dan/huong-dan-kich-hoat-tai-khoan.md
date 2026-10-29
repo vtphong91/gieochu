@@ -10,11 +10,12 @@
 
 ## Vì sao phải kích hoạt?
 
-Sau khi đăng ký, {brand} gửi một email để chắc chắn email đó là của bạn. Khi **chưa kích hoạt**, bạn **không đăng nhập được**,
-nên cũng chưa mua hay tải được tài liệu.
+Sau khi đăng ký, {brand} gửi một email để chắc chắn email đó là của bạn. Khi **chưa kích hoạt**, bạn **không đăng nhập được**.
 
-Nếu bạn **mua tài liệu khi chưa có tài khoản**, {brand} tự tạo tài khoản và gửi email **"Kích hoạt tài khoản và đặt mật khẩu"**. Bấm
-liên kết trong email đó để vừa kích hoạt vừa đặt mật khẩu. [CHƯA CÓ — ADR-061]
+Nếu bạn **mua tài liệu khi chưa có tài khoản**, {brand} tự tạo tài khoản và gửi email **"Kích hoạt tài khoản {brand} và đặt mật khẩu"**. Bấm
+liên kết trong email đó, nhập **Mật khẩu mới** (ít nhất 8 ký tự, có cả chữ và số) và **Nhập lại mật khẩu**, rồi bấm **"Kích hoạt và đặt mật khẩu"**. Liên kết này dùng được
+**7 ngày** và chỉ một lần. Xong bước này, bạn đăng nhập bằng email và mật khẩu vừa đặt. Muốn nhận lại email này: dùng **"Gửi lại email kích hoạt"** hoặc **"Quên
+mật khẩu?"** ở trang đăng nhập.
 
 ## Các bước kích hoạt
 
@@ -74,6 +75,10 @@ Mỗi email chỉ gửi lại được **3 lần trong 1 giờ**. Quá số lầ
 ---
 
 ## Ghi chú nội bộ (không chép vào CMS)
+
+0. Đoạn "mua tài liệu khi chưa có tài khoản" đối chiếu code working tree 2026-10-27 (task 12/13, chưa commit, chưa thử thủ công): trang
+   `/verify-email/dat-mat-khau`, token `GUEST_ACTIVATION` 7 ngày (chỉ tiêu khi gửi form), resend + quên mật khẩu gửi lại email này (3 lần/email/giờ). Đã gỡ dấu
+   [CHƯA CÓ — ADR-061]. Đăng nhập khi chưa kích hoạt loại tài khoản này báo `GUEST_NOT_ACTIVATED`. ✅ code
 
 Mức xác minh: ✅ Long đọc code working tree 2026-10-26 · ❓ chưa thử với hộp thư thật (Gmail/Outlook).
 

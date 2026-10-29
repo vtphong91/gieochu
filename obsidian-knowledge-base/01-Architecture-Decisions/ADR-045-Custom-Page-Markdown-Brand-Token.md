@@ -15,7 +15,7 @@ status: Accepted (Chốt — Áp dụng chính thức)
 **ĐÃ PHÊ DUYỆT (Accepted)** — tương ứng **ADR-060** trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md) (chủ dự án chốt 2026-10-26, phương án (a)). Bản trích
 ghi theo duyệt của Quốc (brief 2026-10-26).
 
-Tiến độ (2026-10-26): code ở working tree, **chưa commit** ✅ `git status` (`apps/web/lib/cms-markdown.ts` mới; sửa `app/p/[slug]/page.tsx`,
+Tiến độ (cập nhật 2026-10-27): code **đã commit `fa29d99`** ✅ `git log` (Quốc xác nhận) (`apps/web/lib/cms-markdown.ts` mới; sửa `app/p/[slug]/page.tsx`,
 `packages/core/src/content/sanitize-html.ts`). Không đổi schema, không migration, không thêm `route.ts`. `pnpm test:count` = **100/100 unit, 66/66
 integration** ✅ (Long chạy, chỉ đếm).
 

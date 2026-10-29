@@ -8,19 +8,21 @@ tags:
   - status/accepted
 date: 2026-10-26
 decider: vtphong91
-status: Accepted — đã chốt, CHƯA triển khai
+status: Accepted — đã code đủ, chưa commit, chưa thử thủ công
 ---
 
 # 🏛️ ADR-046: Luồng mua của khách — mua không cần đăng ký trước, hạn giữ đơn theo phương thức, thông báo, email (chốt một phần)
 
 ## 1. Trạng Thái (Status)
-**ĐÃ CHỐT, CHƯA TRIỂN KHAI** — tương ứng **ADR-061** trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md) (chủ dự án chốt 2026-10-26, gồm "Chốt tiếp"). Phân
+**ĐÃ CHỐT — ĐÃ CODE ĐỦ, CHƯA COMMIT, CHƯA THỬ THỦ CÔNG** (cập nhật 2026-10-27, gồm khách vãng lai task 12/13) — tương ứng **ADR-061** trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md) (chủ dự án chốt 2026-10-26, gồm "Chốt tiếp"). Phân
 tích gốc: `docs/phan-tich-gio-hang-don-cho-48h-2026-10-26.md` (Hiếu). Bản trích ghi theo duyệt của Quốc (brief 2026-10-26).
 
-> [!WARNING] Chưa có code
-> Toàn bộ trang này là **quyết định**, không phải hành vi đang chạy. Spec [[02-System-Specs/Order-State-Machine|Order-State-Machine]] và
-> [[02-System-Specs/Auth-Session-Specs|Auth-Session-Specs]] **chưa** sửa theo ADR này — vẫn mô tả code hiện tại (hạn đơn 60 phút cấu hình được, cửa sổ xác nhận
-> trễ 24 giờ, tài khoản chưa xác minh không đăng nhập được). Sửa spec khi có code. Mọi mục dưới: 🟡 theo `docs/DECISIONS.md`.
+> [!WARNING] Đã code đủ — chưa commit, chưa thử thủ công
+> **Đợt 1 (khách đã đăng nhập) và khách vãng lai (task 12/13) xong code ở working tree, chưa commit** ✅ `git status` 2026-10-27; migration `20261026180000_adr061_purchase_flow` đã áp 🟡 (brief). Phần đã
+> code đã ghi vào spec: [[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.1, §3.4, §3.10–§3.12, [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5K,
+> [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]] §2.5, [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §29. Khách vãng lai (Q1 — task 12/13): [[02-System-Specs/Auth-Session-Specs|Auth-Session-Specs]] §9A,
+> [[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.13, Endpoint-Directory §29.5. Chưa ai thử luồng trên trình duyệt/hộp thư thật ❓. Mục §2 dưới: 🟡 theo
+> `docs/DECISIONS.md`; tiến độ từng mục ở §3. Chi tiết layout và "Tôi đã chuyển khoản": [[01-Architecture-Decisions/ADR-048-Checkout-Layout-Declared-Paid-Guest-Session|ADR-048 KB (≙ ADR-062)]].
 
 ---
 
@@ -54,22 +56,24 @@ tích gốc: `docs/phan-tich-gio-hang-don-cho-48h-2026-10-26.md` (Hiếu). Bản
 
 ---
 
-## 3. Đối chiếu với code hiện tại (để biết phải đổi gì) ✅ code 2026-10-26
-| Quyết định | Code hiện tại |
+## 3. Tiến độ so với code ✅ đối chiếu working tree 2026-10-27 (bảng 2026-10-26 trước đợt 1 đã thay)
+| Quyết định | Code đợt 1 |
 | :-- | :-- |
-| Mua không cần đăng ký | `buyProductAction` + checkout gọi `requireVerifiedAccess`; tài khoản chưa kích hoạt không đăng nhập được (`EMAIL_NOT_VERIFIED`) |
-| Hạn 72 giờ / 48 giờ | Một hạn chung `orderPendingTtlMinutes` (mặc định 60, tối đa 1440 phút) |
-| Không cửa sổ trễ | `canManuallyConfirmOrder` cho xác nhận tới `expiresAt + 24h`; email `order_pending_manual` (ADR-059) ghi "hạn chót xác nhận" = hạn + 24h |
-| Đổi phương thức thanh toán | Chọn lại cổng đã được (`initiateOrderCheckout`), nhưng email người bán chỉ gửi khi provider đang `null` (KB-Audit §41 mục 5) |
-| MoMo thủ công | Có từ ADR-059 bổ sung lần 3 (`MOMO_MANUAL`, chưa commit, migration chưa áp); hạn đơn vẫn dùng hạn chung — 72 giờ chưa có |
-| Thông báo header, email cho khách lúc chọn cổng, email nhắc | Chưa có |
-| Email "thanh toán thành công" | Có (`order_paid`): đã có **liên kết chữ** "Tải tài liệu: …" trỏ `APP_URL/account/library` (`sendOrderPaidEmails`) — Q12 cần đổi thành **nút**, nội dung không đổi đích |
-| Email người bán khi thanh toán thành công | Có `new_sale` ("Đơn hàng mới: {tài liệu}") gửi chủ gian hàng sau khi đơn được giao — mọi cổng, kể cả SePay; khớp Q9 về nội dung gửi ✅ code |
+| Q2 — chỉ "Mua ngay"; Q3 — không Giỏ hàng; Q4 — 1 đơn 1 tài liệu | ✅ (vốn có) |
+| Q1 — mua không cần đăng ký | ✅ task 12/13 (working tree): `startGuestCheckoutAction` (Họ tên + Email + 1 ô đồng ý → user PENDING `hasPassword=false`, phiên `guestCheckout` ≤ 24 giờ, đơn), email "Kích hoạt tài khoản và đặt mật khẩu" (`GUEST_ACTIVATION` 7 ngày), email đã có tài khoản → yêu cầu đăng nhập, rate limit DB; guard `requireCheckoutAccess`/`requireCheckoutUser` |
+| Q13 + Q5 sửa — 72 giờ (thủ công, chưa chọn) / 48 giờ (SePay), không cửa sổ trễ | ✅ `orderHoldManualHours`/`orderHoldAutoHours`, `computeOrderHoldExpiresAt`, `canManuallyConfirmOrder` bỏ 24 giờ (ngoại lệ "báo chuyển trước hạn" của ADR-062); SePay về sau hạn → "Giao dịch cần xử lý" |
+| Q6 — mã giảm giá "mỗi khách" tính cả đơn chờ | ✅ `applyCouponToOrder` |
+| Q7 — email khách lúc chọn cổng + 1 lần nhắc | ✅ `order_payment_customer` (tối đa 3/đơn), `order_payment_reminder` (cron `order.payment_reminders`) |
+| Q8 — thông báo header khu vực Tài khoản + danh sách đơn chờ | ✅ dòng nhắc trong `AccountShell` (link `/account/orders`) |
+| Q9 — email người bán: đơn thủ công chờ xác nhận + thanh toán thành công | ✅ `order_pending_manual` một lần/đơn (`ownerManualNotifiedAt`), `new_sale` (có sẵn); thêm `order_customer_declared_paid` (ADR-062 Q1) |
+| Q10 — đổi phương thức thanh toán | ✅ `selectProviderAction` đổi được khi còn chờ, chưa báo chuyển, hạn phương thức mới chưa qua (`PROVIDER_HOLD_EXPIRED`) |
+| Q12 — nút "Tải tài liệu" về Thư viện | ✅ `order_paid` có nút, trỏ `/account/library?tai-lieu={productId}` |
+| MoMo thủ công | ✅ `MOMO_MANUAL` (ADR-059 lần 3) dùng hạn 72 giờ; **chờ kiểm thử thật** ❓ |
 
 ---
 
 ## 4. Hệ Quả (Consequences) 🟡
-- Cần migration nhỏ (cột đánh dấu trên `orders`) — theo expand → contract (ADR-034), Quốc duyệt trước khi chạy.
+- Migration `20261026180000_adr061_purchase_flow` (6 cột trên `orders` + cột/bảng cho khách vãng lai) — expand-only, **đã áp** 🟡 (brief 2026-10-27).
 - Đổi quy tắc phiên ADR-053 cho khách mua lần đầu — ảnh hưởng bảo mật (phiên của tài khoản chưa xác minh) → cần thiết kế + review riêng.
 - Dự thảo [`docs/du-thao-huong-dan/huong-dan-mua-va-tai-tai-lieu.md`](../../docs/du-thao-huong-dan/huong-dan-mua-va-tai-tai-lieu.md) viết theo ADR này, đánh dấu
   `[CHƯA CÓ — ADR-061]`.

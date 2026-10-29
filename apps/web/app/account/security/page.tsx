@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { brandColors } from "@gieochu/config/theme";
 import { getPrismaClient } from "@gieochu/db";
 import { requireVerifiedAccess } from "../../../lib/page-guards";
@@ -23,7 +24,7 @@ const LINE = "#E5E7EB";
 export default async function SecurityPage() {
   const user = await requireVerifiedAccess("/account/security");
   const [dbUser, pendingEmail, sessions] = await Promise.all([
-    getPrismaClient().user.findUniqueOrThrow({ where: { id: user.userId }, select: { email: true } }),
+    getPrismaClient().user.findUniqueOrThrow({ where: { id: user.userId }, select: { email: true, hasPassword: true } }),
     findPendingEmailChange(user.userId),
     listAccountSessions(user),
   ]);
@@ -35,9 +36,43 @@ export default async function SecurityPage() {
       {/* Từ xl: Đổi mật khẩu | Email đăng nhập (2 cột, cùng chiều cao); Phiên đăng nhập (khối nguy hiểm) trải hết hàng
           dưới — tách khỏi form thường (`destructive-emphasis`). Thứ tự DOM = thứ tự đọc. */}
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
-        <SecurityCard id="mat-khau" icon={<IconLock className="h-5 w-5" />} title="Đổi mật khẩu" description="Sau khi đổi, các thiết bị khác sẽ bị đăng xuất; thiết bị này vẫn đăng nhập.">
-          <ChangePasswordForm />
-        </SecurityCard>
+        {/* ADR-061 Q1: tài khoản tạo lúc mua chưa đặt mật khẩu → không có "mật khẩu hiện tại" để đổi; đặt qua email kích hoạt. */}
+        {dbUser.hasPassword ? (
+          <SecurityCard id="mat-khau" icon={<IconLock className="h-5 w-5" />} title="Đổi mật khẩu" description="Sau khi đổi, các thiết bị khác sẽ bị đăng xuất; thiết bị này vẫn đăng nhập.">
+            <ChangePasswordForm />
+          </SecurityCard>
+        ) : (
+          <SecurityCard
+            id="mat-khau"
+            icon={<IconLock className="h-5 w-5" />}
+            title="Mật khẩu"
+            description="Tài khoản được tạo khi bạn mua tài liệu và chưa có mật khẩu."
+          >
+            {/* Trạng thái "chưa đặt" bằng chữ + icon (không chỉ màu); nền `surface` = thông tin, không phải lỗi. */}
+            <div className="flex gap-3 rounded-xl border border-l-4 p-4 text-sm leading-relaxed" style={{ background: brandColors.surface, borderColor: brandColors.primary, color: INK }}>
+              <span aria-hidden="true" className="mt-0.5 shrink-0" style={{ color: brandColors.primary }}>
+                <IconMail className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="font-semibold">Chưa đặt mật khẩu</p>
+                <p className="mt-1">
+                  Mở email <strong className="font-semibold">“Kích hoạt tài khoản và đặt mật khẩu”</strong> gửi tới{" "}
+                  <strong className="font-semibold [overflow-wrap:anywhere]">{dbUser.email}</strong> để đặt mật khẩu. Có mật khẩu rồi, bạn đăng nhập và tải lại
+                  tài liệu được trên mọi thiết bị.
+                </p>
+              </div>
+            </div>
+            <p className="mt-4">
+              <Link
+                href="/verify-email?pending=1"
+                className="inline-flex min-h-11 items-center justify-center rounded-full border bg-white px-5 text-sm font-semibold text-[color:var(--color-primary)] transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-primary)] motion-reduce:transition-none"
+                style={{ borderColor: brandColors.primary }}
+              >
+                Gửi lại email kích hoạt
+              </Link>
+            </p>
+          </SecurityCard>
+        )}
 
         <SecurityCard id="email" icon={<IconMail className="h-5 w-5" />} title="Email đăng nhập" description="Đổi email cần xác minh qua link gửi tới email mới.">
           <EmailChangeSection currentEmail={dbUser.email} pendingEmail={pendingEmail} />

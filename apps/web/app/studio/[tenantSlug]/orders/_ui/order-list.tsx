@@ -18,6 +18,7 @@ import { IconAlertTriangle, IconArrowDown, IconArrowUp, IconReceipt } from "../.
 import { LinkPagination } from "../../../../admin/_ui/link-pagination";
 import { DashboardDateRangePicker } from "../../../../admin/_ui/date-range-picker";
 import { RefundRequestBadge } from "./remedy-parts";
+import { DeclaredPaidBadge } from "./declared-paid";
 import { OrderRowActions } from "./order-row-actions";
 import { OrderFilterForm } from "./order-filter-form";
 import {
@@ -294,6 +295,8 @@ function StatusCell({ row }: { row: OrderListItem }) {
     <div className="flex flex-wrap items-center gap-1.5">
       <Badge tone={orderStatusTone(row.status)}>{orderStatusLabel(row.status)}</Badge>
       {row.refundRequested ? <RefundRequestBadge overdue={row.refundOverdue} /> : null}
+      {/* ADR-062 Q1 — đơn có cờ này luôn xếp đầu danh sách. */}
+      <DeclaredPaidBadge order={row} />
     </div>
   );
 }

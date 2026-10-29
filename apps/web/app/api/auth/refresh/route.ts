@@ -12,7 +12,7 @@ import {
 import { AppError, unauthorized } from "@gieochu/core";
 import { getPrismaClient } from "@gieochu/db";
 import { applyAuthCookies, clearAuthCookies, REFRESH_COOKIE_NAME } from "../../../../lib/cookies";
-import { getSessionPolicy } from "../../../../lib/jwt-context";
+import { getGuestSessionPolicy, getSessionPolicy } from "../../../../lib/jwt-context";
 import { signSessionAccessToken } from "../../../../lib/session-access";
 import { getRequestId, handleApiError } from "../../../../lib/api-response";
 import { audit, auditMetaFromRequest } from "../../../../lib/audit";
@@ -103,7 +103,10 @@ export async function POST(request: NextRequest) {
     ]);
 
     // ADR-053: phòng thủ nhiều lớp — khoá user đã thu hồi token, nhưng phiên của user không còn ACTIVE thì không bao giờ được làm mới.
-    if (!user || user.status !== "ACTIVE") {
+    // ADR-061 Q1 (ngoại lệ DUY NHẤT): phiên khách vãng lai (`guestCheckout`) của user PENDING chưa đặt mật khẩu vẫn làm mới được —
+    // với chính sách phiên guest (absolute ≤ 24 giờ, không "Ghi nhớ").
+    const guestSessionOk = Boolean(user && record.guestCheckout && user.status === "PENDING" && !user.hasPassword);
+    if (!user || (user.status !== "ACTIVE" && !guestSessionOk)) {
       await prisma.refreshToken.updateMany({ where: { familyId: record.familyId, revokedAt: null }, data: { revokedAt: now } });
       const response = handleApiError(
         user?.status === "LOCKED"
@@ -116,7 +119,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ADR-053: idle/absolute đo ở server. Phiên tạo trước ADR-053 (sessionStartedAt NULL) tính từ lần rotate này.
-    const policy = await getSessionPolicy(user.systemRole, record.rememberMe);
+    const policy = record.guestCheckout ? await getGuestSessionPolicy() : await getSessionPolicy(user.systemRole, record.rememberMe);
     const isLegacySession = record.sessionStartedAt === null;
     const sessionStartedAt = record.sessionStartedAt ?? now;
     const timeout = evaluateSessionTimeouts(
@@ -151,6 +154,7 @@ export async function POST(request: NextRequest) {
             rememberMe: policy.rememberMe,
             sessionStartedAt,
             deviceLabel: record.deviceLabel ?? describeUserAgent(record.userAgent),
+            guestCheckout: record.guestCheckout,
           },
         });
         // Rotation nguyên tử (ADR-053): chỉ thay khi token cũ CHƯA bị request khác thay/thu hồi.
@@ -172,6 +176,7 @@ export async function POST(request: NextRequest) {
         role: user.systemRole,
         emailVerified: Boolean(user.emailVerifiedAt),
         profileCompleted: isProfileComplete(profile),
+        guestCheckout: record.guestCheckout,
       },
       policy,
     );

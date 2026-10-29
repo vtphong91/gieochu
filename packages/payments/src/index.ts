@@ -28,7 +28,6 @@ export { momoProvider, buildMomoCreateSignature, buildMomoIpnSignature } from ".
 export { getProvider, buildWebhookNotifyUrl, isManualConfirmProvider, MANUAL_CONFIRM_PROVIDERS } from "./registry";
 export {
   momoManualProvider,
-  MOMO_VIETQR_BIN,
   normalizeAccountHolderName,
   normalizeMomoManualConfig,
   normalizeVnMobilePhone,

@@ -26,7 +26,7 @@ export const INVOICE_STATUS_TONE: Record<AdminInvoiceStatus, Tone> = {
 
 export const INVOICE_PROVIDER_LABEL: Record<AdminInvoiceProvider, string> = {
   MANUAL_QR: "QR thủ công",
-  MOMO_MANUAL: "MoMo (chuyển tay)",
+  MOMO_MANUAL: "MoMo (thủ công)",
   SEPAY: "SePay",
   MOMO: "MoMo",
 };

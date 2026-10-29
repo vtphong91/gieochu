@@ -238,7 +238,10 @@ export default async function StudioBillingPage({
                 );
               }
               return (
-                <a href={checkout.url} className="inline-block text-sm font-semibold" style={{ color: "#0F3B82" }}>
+                <a
+                  href={checkout.url}
+                  className="inline-flex min-h-11 items-center rounded text-sm font-semibold text-[color:var(--color-primary)] underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-primary)]"
+                >
                   Mở trang thanh toán
                 </a>
               );

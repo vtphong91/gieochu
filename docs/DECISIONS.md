@@ -1470,6 +1470,9 @@
   nút sao chép) — chi tiết ảnh QR ở nhánh dự phòng chốt sau kiểm thử. (5) Thông tin MoMo của người bán **công khai ở trang
   thanh toán** và phải được ghi rõ trong trang chính sách (người bán). (6) **Chủ dự án tự kiểm thử thật** (lưu QR "Nhận tiền",
   giải mã, chuyển thử 1.000đ) trước khi Hiếu code.
+- **Bổ sung ADR-059 lần 4 (2026-10-27, chủ dự án chốt):** **bỏ hẳn** ô "Số tài khoản VietQR của ví" của MoMo thủ công —
+  không sinh QR cho MoMo; trang thanh toán chỉ hiện số điện thoại, tên chủ ví, số tiền, nội dung chuyển khoản (có nút sao
+  chép) — đúng nhánh F1. Thay mục (4) của bổ sung lần 3. Dữ liệu `vietQrAccountNo` cũ (nếu có) bị bỏ qua, không cần migration.
 
 ## ADR-060 — Trang tuỳ chỉnh (`/p/[slug]`) hiển thị Markdown + thay biến `{brand}`
 
@@ -1596,3 +1599,32 @@
 - **Phạm vi GĐ1:** chỉ 5 định dạng ở mục 2. Watermark PDF, video trailer, nhà bán cắt vùng tuỳ ý → BACKLOG.
 - **Không ảnh hưởng:** Studio UI (`isPreview` checkbox giữ nguyên nghĩa), download token/entitlement,
   share link, luồng mua.
+
+## ADR-064 — Nâng cấp frontend công khai + blog (hệ thống, gian hàng), địa chỉ bài viết `.html`
+
+- **Bối cảnh (2026-10-27):** phân tích `docs/phan-tich-layout-frontend-cong-khai-2026-10-27.md` (Phong), kế hoạch
+  `docs/ke-hoach-nang-cap-frontend-cong-khai-2026-10-27.md` (Long; GĐ0a → 5c, GĐ6 không làm). Thay câu "feed xuyên tenant ngoài
+  phạm vi" của ADR-029 cho riêng blog hệ thống.
+- **Chủ dự án chốt:**
+  - **Q-A:** trang hệ thống nền kem; trang gian hàng giữ nền trắng. **Q12:** editor bài Studio 16px. **Q-B:** chữ thân bài 18px
+    trên máy tính (16px điện thoại). **Q11:** hiện "N phút đọc" (tự tính).
+  - **Q-C:** chia sẻ chỉ **Facebook, Pinterest, LinkedIn, X** bằng link thường — không tải mã bên thứ ba, không nút khác.
+  - **Q14:** blog gian hàng = trang lưu trữ mọi bài của **chính gian hàng đó**; trang bán hàng của gian hàng thêm section
+    "Bài viết nổi bật" (4 thẻ: bài ghim trước, còn lại mới nhất) + nút "Xem tất cả bài viết".
+  - **Q4/Q5/Q7:** một bộ danh mục bài viết chung do System Admin quản lý; gian hàng không bắt buộc chọn; thêm ô ảnh bìa tuỳ chọn
+    (không chọn → ảnh đầu bài).
+  - **Q1:** blog hệ thống tự lấy mọi bài đã đăng của gian hàng **ACTIVE** có **tiêu đề và ảnh** (lọc ở code, không chỉ dựa RLS).
+  - **Q-D:** tác giả bài hệ thống = tên hiển thị tuỳ chỉnh trong CMS, logo = logo thương hiệu. **Q-E:** ô "Bài nổi bật" chọn tay
+    ở đầu, còn lại mới nhất trước, trộn bài hệ thống + gian hàng.
+  - **Địa chỉ (Q3/Q10/Q13):**
+    | Trang | Địa chỉ |
+    |---|---|
+    | Blog hệ thống | `/blog` |
+    | Lưu trữ danh mục | `/blog/danh-muc/{danh-muc}` |
+    | Bài hệ thống | `/blog/{ten-bai}.html` |
+    | Blog gian hàng | `/blog/{gian-hang}` |
+    | Bài gian hàng | `/{gian-hang}/{ten-bai}.html` |
+    Đuôi `.html` phân biệt bài với trang gian hàng / trang tài liệu (slug gian hàng và tài liệu chỉ gồm `a-z0-9-`, không có
+    dấu chấm). `blog`, `danh-muc` vào slug dành riêng (quét DB trước). Slug bài duy nhất trong phạm vi (hệ thống / từng gian
+    hàng). Địa chỉ cũ `/{gian-hang}/posts` và `/{gian-hang}/posts/{id}` chuyển hướng 301 sang địa chỉ mới.
+  - **GĐ6** (tìm kiếm, đăng ký nhận tin, bình luận): không làm.

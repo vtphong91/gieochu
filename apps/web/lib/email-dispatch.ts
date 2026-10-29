@@ -27,6 +27,10 @@ const TENANT_CUSTOMER_FACING_TYPES = new Set([
   "remedy_refund_requested",
   "order_pending_manual",
   "payment_mismatch",
+  // ADR-061/062: email cho khách (hướng dẫn thanh toán, nhắc) và email người bán "khách báo đã chuyển" — đều có mã đơn.
+  "order_payment_customer",
+  "order_payment_reminder",
+  "order_customer_declared_paid",
 ]);
 
 export const EMAIL_NOT_CONFIGURED = "EMAIL_NOT_CONFIGURED";

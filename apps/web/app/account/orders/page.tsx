@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { brandColors } from "@gieochu/config/theme";
-import { requireVerifiedAccess } from "../../../lib/page-guards";
+import { requireCheckoutAccess } from "../../../lib/page-guards";
 import { listCustomerOrders } from "../../../lib/library";
 import { AdminPageHeader, Badge, DataTable, EmptyState, Td, Tr } from "../../admin/_ui/kit";
 import { IconReceipt } from "../../admin/_ui/icons";
@@ -28,7 +28,7 @@ const STATUS: Record<string, { label: string; tone: "success" | "warning" | "neu
  * (`studio/[tenantSlug]/orders`): từ `xl` là bảng (`DataTable`), dưới `xl` là thẻ (2 cột từ `md`, đọc tốt cả 360px).
  */
 export default async function AccountOrdersPage() {
-  const user = await requireVerifiedAccess("/account/orders");
+  const user = await requireCheckoutAccess("/account/orders");
   const orders = await listCustomerOrders(user.userId);
   const caption = `Lịch sử đơn hàng, ${orders.length.toLocaleString("vi-VN")} đơn`;
 

@@ -5,16 +5,16 @@ tags:
   - adr
   - history
 date: 2026-09-26
-updated: 2026-10-26
+updated: 2026-10-30
 ---
 
 # Architecture Decisions Timeline — Gieo Chữ
 
-Mục lục theo trình tự đánh số của **63 ADR thật đã ghi nhận** (ADR-001…ADR-063; ADR-046…ADR-048 đổi số 2026-10-23 — trước đó là 044…046, trùng với ADR-044/045 của vuong; ADR-053, ADR-054, ADR-055 đổi số hai lần 2026-10-24 và 2026-10-25 do trùng với ADR-051, ADR-052 của vuong — phiên đăng nhập 051 → 052 → 053, pháp lý đợt 2 052 → 053 → 054, MinIO HTTPS 054 → 055), nguồn duy nhất: [`docs/DECISIONS.md`](../../docs/DECISIONS.md).
+Mục lục theo trình tự đánh số của **64 ADR thật đã ghi nhận** (ADR-001…ADR-064; ADR-064 (frontend + blog) đánh số ADR-063 trước 2026-10-30, đổi do trùng với ADR-063 của vuong; ADR-046…ADR-048 đổi số 2026-10-23 — trước đó là 044…046, trùng với ADR-044/045 của vuong; ADR-053, ADR-054, ADR-055 đổi số hai lần 2026-10-24 và 2026-10-25 do trùng với ADR-051, ADR-052 của vuong — phiên đăng nhập 051 → 052 → 053, pháp lý đợt 2 052 → 053 → 054, MinIO HTTPS 054 → 055), nguồn duy nhất: [`docs/DECISIONS.md`](../../docs/DECISIONS.md).
 Đây chỉ là "mục lục theo thời gian" (một dòng mỗi ADR) — không lặp lại toàn văn Bối cảnh/Quyết định/Lý do.
 
 Xem [[01-Architecture-Decisions/README|01-Architecture-Decisions]] để có nội dung đầy đủ của các ADR quan
-trọng nhất; trang này chỉ là mốc thời gian của 61 quyết định đã ghi nhận.
+trọng nhất; trang này chỉ là mốc thời gian của 64 quyết định đã ghi nhận.
 
 | # | Tiêu đề | Tóm tắt một câu |
 |---|---|---|
@@ -81,5 +81,6 @@ trọng nhất; trang này chỉ là mốc thời gian của 61 quyết định 
 | ADR-061 | Luồng mua của khách: đơn chờ thanh toán, thông báo, email (chốt một phần) | Chủ dự án chốt 2026-10-26 theo phân tích của Hiếu: chỉ "Mua ngay", không Giỏ hàng, mỗi đơn 1 tài liệu; mua không cần đăng ký trước (tự tạo tài khoản, email kích hoạt và đặt mật khẩu); hạn giữ đơn thủ công 72 giờ, SePay 48 giờ, không cửa sổ xác nhận trễ; thông báo header khu vực Tài khoản; email khách lúc chọn cổng + 1 lần nhắc; đổi được phương thức thanh toán; email thanh toán thành công có nút về Thư viện; email người bán chỉ khi đơn thủ công chờ xác nhận và khi thanh toán thành công. |
 | ADR-062 | Layout trang thanh toán đơn tài liệu (`/{tenantSlug}/checkout/...`) | Chủ dự án chốt 2026-10-26 theo đề xuất của Phong (đồng ý Q1–Q12 trừ Q6 — hoãn): nút "Tôi đã chuyển khoản" cho cổng tay (cột mới, không đổi `OrderStatus`), đơn khách vãng lai tạo khi "Tiếp tục thanh toán", hạn đơn = lúc đặt + hạn phương thức, 2 cột desktop (cột phải 22rem dính) ngoại lệ `container-narrow`, SePay hiển thị "Chuyển khoản (xác nhận tự động)", 1 ô xác nhận thông tin + Điều khoản. Bổ sung đợt 1 (migration `20261026180000_adr061_purchase_flow`): phiên khách vãng lai 24 giờ, ngoại lệ "không xác nhận trễ" cho tiền đã bấm "Tôi đã chuyển khoản", token `GUEST_ACTIVATION` 7 ngày, rate limit, ô đồng ý ghi nhận Điều khoản + Chính sách bảo mật. |
 | ADR-063 | Xem trước 20% nội dung thật của file tài liệu trên trang chi tiết công khai | Chủ dự án chốt 2026-10-27: section "Tài liệu đính kèm" dưới mô tả, bấm vào file xem 20% nội dung THẬT (không ẩn CSS). Server tự trích 20% từ file bán CLEAN (ưu tiên bản `isPreview = true` nếu có); 5 định dạng docx/xlsx/pdf/text + unsupported. Cache ở bảng mới `product_file_previews` (L2 denormalized, không RLS public, cascade file). Sinh cache sau virus scan + lazy fallback. API mới `GET /api/{tenantSlug}/{productSlug}/preview/{fileId}` rate limit 60 req/phút/IP (TODO). Dependency mới `pdf-parse`. Trần test 100→102 unit, 66→68 integration. Bản trích KB [[01-Architecture-Decisions/ADR-047-Public-Product-File-Preview-20-Percent|ADR-047]]. |
+| ADR-064 | Nâng cấp frontend công khai + blog (hệ thống, gian hàng), địa chỉ bài viết `.html` | Chủ dự án chốt 2026-10-27 theo kế hoạch của Long (dựa trên phân tích của Phong): trang hệ thống nền kem, gian hàng giữ nền trắng; editor bài 16px, chữ thân bài 18px trên máy tính; "N phút đọc"; chia sẻ chỉ Facebook, Pinterest, LinkedIn, X; blog gian hàng + section "Bài viết nổi bật" (4 thẻ); một bộ danh mục bài viết chung, không bắt buộc chọn; ảnh bìa tuỳ chọn; blog hệ thống tự lấy bài của gian hàng ACTIVE có tiêu đề và ảnh; tác giả bài hệ thống là tên tuỳ chỉnh; địa chỉ `/blog`, `/blog/danh-muc/{dm}`, `/blog/{ten-bai}.html`, `/blog/{gian-hang}`, `/{gian-hang}/{ten-bai}.html`, chuyển hướng 301 từ `/posts`; GĐ6 (tìm kiếm, nhận tin, bình luận) không làm. Ban đầu đánh số ADR-063, đổi thành ADR-064 ngày 2026-10-30 vì trùng ADR-063 của vuong. |
 
 *Quay lại: [[05-Historical-Archive/README|05-Historical-Archive]] · [[MOC-Home]] (../00-Index/MOC-Home.md)*

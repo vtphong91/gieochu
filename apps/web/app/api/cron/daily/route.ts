@@ -6,6 +6,8 @@ import { QUEUE_NAMES } from "@gieochu/jobs";
 import { getRequestId, handleApiError } from "../../../../lib/api-response";
 import { runSubscriptionSweep } from "../../../../lib/subscription-sweep";
 import { runOrderSweep } from "../../../../lib/order";
+import { runOrderPaymentReminders } from "../../../../lib/order-customer";
+import { purgeExpiredRateLimitCounters } from "../../../../lib/rate-limit-store";
 import { drainQueues, superviseQueues, type DrainQueuesResult } from "../../../../lib/job-runner";
 import { audit } from "../../../../lib/audit";
 import { runStatsAggregation } from "../../../../lib/tenant-stats";
@@ -65,6 +67,10 @@ export async function GET(request: Request) {
       return {};
     });
     const orderSweep = await runStep("order.sweep", async () => ({ expired: await runOrderSweep() }));
+    // ADR-061 Q7: nhắc khách 1 lần khi đơn còn ≤ 24 giờ (mốc `customerReminderSentAt`, chạy lại không nhắc trùng).
+    const orderReminders = await runStep("order.payment_reminders", async () => ({ sent: await runOrderPaymentReminders() }));
+    // ADR-061 Q1: dọn bộ đếm rate limit đã hết hạn.
+    const rateLimitPurge = await runStep("rate_limit_counters.purge", () => purgeExpiredRateLimitCounters());
     const queueMaintenance = await runStep("queue.supervise", () => superviseQueues(DRAINED_QUEUES));
     // ADR-037 mục 3: giữ audit log 12 tháng. Bảng chưa có (trước migration M12a) → { skipped: true }, không lỗi.
     // Chạy trước queue.drain (bước đó dùng phần lớn ngân sách thời gian của route).
@@ -82,10 +88,24 @@ export async function GET(request: Request) {
       drainQueues({ names: DRAINED_QUEUES, budgetMs: QUEUE_DRAIN_BUDGET_MS }),
     );
 
-    const results = { subscriptionSweep, orderSweep, queueMaintenance, queues, auditPurge, statsAggregate, reportIpPurge, sessionPurge, downloadPurge };
+    const results = {
+      subscriptionSweep,
+      orderSweep,
+      orderReminders,
+      rateLimitPurge,
+      queueMaintenance,
+      queues,
+      auditPurge,
+      statsAggregate,
+      reportIpPurge,
+      sessionPurge,
+      downloadPurge,
+    };
     const allOk =
       subscriptionSweep.ok &&
       orderSweep.ok &&
+      orderReminders.ok &&
+      rateLimitPurge.ok &&
       queueMaintenance.ok &&
       queues.ok &&
       auditPurge.ok &&

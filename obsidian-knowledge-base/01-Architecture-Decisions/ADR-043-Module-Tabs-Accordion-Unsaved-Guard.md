@@ -18,9 +18,9 @@ status: Accepted (Chốt — Áp dụng chính thức)
 `docs/ke-hoach-toi-uu-layout-tab-accordion-2026-10-25.md`.
 
 Tiến độ (2026-10-25):
-- **GĐ 0 — xong 0.1–0.3** (code working tree, chưa commit ✅ `git status`): `CollapsibleSection`, `ModuleTabs`, cảnh báo rời trang, trường `match`.
+- **GĐ 0 — xong 0.1–0.3** (code **đã commit** (`c8e1b2f`; phần hoàn thiện trong `fa29d99`) ✅ `git log` 2026-10-27): `CollapsibleSection`, `ModuleTabs`, cảnh báo rời trang, trường `match`.
   Task 0.4 = ghi KB (trang này + [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §25).
-- **GĐ 1 — System Center: xong, trừ 1.10** (Quốc báo code xong + verify 2026-10-25; code working tree chưa commit ✅ `git status`; **chưa thử trình duyệt** ❓):
+- **GĐ 1 — System Center: xong, trừ 1.10** (Quốc báo code xong + verify 2026-10-25; code **đã commit** (`c8e1b2f`; phần hoàn thiện trong `fa29d99`) ✅ `git log` 2026-10-27; **chưa thử trình duyệt** ❓):
   1.1, 1.2, 1.2b, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.8b, 1.9, 1.11, 1.12a, 1.12b, 1.13, 1.14, 1.15. **1.10 (Lưu trữ file) tạm hoãn — chờ Vương xong ADR-055** — task
   duy nhất còn lại của toàn kế hoạch.
   - Điều hướng: Trang CMS 2 tab (Trang chủ · Header & Footer); mục "Trang tuỳ chỉnh" (lọc `slug notIn SYSTEM_CMS_SLUGS` cho cả `findMany` + `count`);
@@ -33,7 +33,7 @@ Tiến độ (2026-10-25):
   - 1.14: `metadata.title` riêng cho 5 trang tab; `admin/error.tsx` bỏ `<main>` lồng; câu mô tả SEO trang chủ + Bảng giá ("Lưu nháp và Xuất bản đều ghi SEO, áp dụng
     ngay"); badge "Có thay đổi chưa lưu" thống nhất sắc `warning` ✅ grep. 1.15: 8 trang bỏ `SettingsGrid`, xếp 1 cột full width ✅ grep.
   - Chi tiết từng trang: [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §12.5, §12.6, §25.3–§25.8.
-- **GĐ 2 — Studio: xong hết, không task nào hoãn** (Quốc báo xong 2026-10-25; ✅ đọc code working tree, chưa commit; chưa thử trình duyệt ❓):
+- **GĐ 2 — Studio: xong hết, không task nào hoãn** (Quốc báo xong 2026-10-25; ✅ đọc code; **đã commit `fa29d99`** (Quốc xác nhận 2026-10-27); chưa thử trình duyệt ❓):
   - **2.1** `ModuleTabs` "Cài đặt" (Thông tin & thương hiệu · Thanh toán), sidebar không cần `match`; `useFormDraft` + `useUnsavedChanges` cho branding/slug/onboarding —
     `branding-form` dùng `keepOnSuccess`; onboarding (ngoài layout Studio) tự bọc `UnsavedChangesProvider` trong page. Quốc thêm `revalidatePath` layout
     `/studio/{slug}` và `/{slug}` trong `updateBrandingAction` ✅ đọc code.

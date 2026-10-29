@@ -38,6 +38,17 @@ export async function POST(request: Request) {
       throw new AppError({ code: "TOKEN_EXPIRED", message: "Liên kết đã hết hạn.", httpStatus: 400 });
     }
 
+    // ADR-061 Q1: tài khoản khách vãng lai chưa kích hoạt (token PASSWORD_RESET cũ còn sót) → không đặt mật khẩu ở đây (sẽ vẫn
+    // PENDING); hướng dẫn dùng email "Kích hoạt tài khoản và đặt mật khẩu".
+    const owner = await prisma.user.findUnique({ where: { id: record.userId }, select: { status: true, hasPassword: true } });
+    if (owner && owner.status === "PENDING" && !owner.hasPassword) {
+      throw new AppError({
+        code: "GUEST_NOT_ACTIVATED",
+        message: "Tài khoản này chưa được kích hoạt. Hãy dùng email \"Kích hoạt tài khoản và đặt mật khẩu\" (hoặc gửi lại email kích hoạt ở trang đăng nhập).",
+        httpStatus: 400,
+      });
+    }
+
     const passwordHash = await hashPassword(body.newPassword);
     await prisma.$transaction([
       prisma.verificationToken.update({ where: { id: record.id }, data: { usedAt: now } }),

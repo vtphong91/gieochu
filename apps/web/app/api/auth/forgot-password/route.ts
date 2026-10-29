@@ -10,6 +10,7 @@ import { checkRateLimit } from "../../../../lib/rate-limit";
 import { sendEmailNow } from "../../../../lib/email-dispatch";
 import { getEffectiveBrand } from "../../../../lib/branding";
 import { getSystemSettings } from "../../../../lib/system-settings";
+import { resendGuestActivation } from "../../../../lib/guest-checkout";
 
 const forgotPasswordSchema = z.object({ email: z.string().email("Email không hợp lệ.") });
 const GENERIC_MESSAGE = "Nếu email tồn tại, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu.";
@@ -25,7 +26,12 @@ export async function POST(request: Request) {
     if (checkRateLimit(`forgot-password:${email}`, 5, 60 * 60 * 1000)) {
       const prisma = getPrismaClient();
       const user = await prisma.user.findUnique({ where: { email } });
-      if (user && user.status === "ACTIVE") {
+      if (user && user.status === "PENDING" && !user.hasPassword) {
+        // ADR-061 Q1: tài khoản tạo lúc mua chưa kích hoạt → KHÔNG phát PASSWORD_RESET (đặt mật khẩu xong vẫn PENDING, không đăng
+        // nhập được). Thay bằng email "Kích hoạt tài khoản và đặt mật khẩu" (token mới, huỷ token cũ, chung rate limit DB của
+        // resend). Câu trả lời bên dưới giữ nguyên — không lộ email nào tồn tại.
+        await resendGuestActivation(user.id, email);
+      } else if (user && user.status === "ACTIVE") {
         const env = getEnv();
         const now = new Date();
         const [settings, brand] = await Promise.all([getSystemSettings(), getEffectiveBrand()]);

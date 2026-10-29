@@ -5,7 +5,7 @@ tags:
   - design-system
   - status/living
 date: 2026-05-24
-updated: 2026-10-26
+updated: 2026-10-27
 author: System Architect
 ---
 
@@ -153,7 +153,7 @@ sai lúc tải trang, không cần JS runtime nào khác.
 - Component trong `kit.tsx` áp heading font qua class Tailwind arbitrary value:
   `font-[family-name:var(--font-heading)]` (xem `AdminPageHeader`, `ConfigCard`, `TableCard`, `EmptyState`).
 
-### 3.1. Nội dung rich text `.gieochu-rich-content` — bảng (ADR-060) ✅ đọc `git diff apps/web/app/globals.css` 2026-10-26 (chưa commit)
+### 3.1. Nội dung rich text `.gieochu-rich-content` — bảng (ADR-060) ✅ đọc `apps/web/app/globals.css` 2026-10-26 — đã commit `fa29d99`
 
 Quyết định thiết kế của Phong (brief Quốc 2026-10-26). Bảng chỉ xuất hiện ở trang tuỳ chỉnh `/p/[slug]` (Markdown → `table/thead/tbody/tr/th/td` trần,
 không thuộc tính — [[02-System-Specs/System-Cms-Menu-Home-Seo-Specs|System-Cms-Menu-Home-Seo-Specs]] §4A); trang dùng `gieochu-rich-content
@@ -225,6 +225,11 @@ sidebar. Nguồn: ADR-024. **Từ 2026-10-25** (chủ dự án chốt): nội du
 Center đặt padding này ở **từng trang** (`<main>` của layout không padding), còn `/account` đặt ngay trên `<main>` của
 `AccountShell` nên trang con không tự đặt. `/account` đồng bộ 2026-10-23 và có mẫu "form trong trang fluid" bằng container
 query — xem §18.5.
+
+### 4.4a. Ngoại lệ — trang thanh toán đơn tài liệu dùng `container-page` (ADR-062 Q5) ✅ đọc code 2026-10-27 (chưa commit)
+
+`/{tenantSlug}/checkout/{orderCode}` trước đây là form đơn lẻ `container-narrow`; từ ADR-062 nội dung nằm trong **`container-page`** (đặt ở `<main>` của
+`checkout/[orderCode]/layout.tsx`) và trang tự chia **2 cột từ `lg`** (§8.4). Đây là ngoại lệ có chủ đích của bảng §4.1 — trang thanh toán khác (Studio billing) không đổi.
 
 ### 4.5. Độ rộng thực tế của `container-page` theo viewport
 
@@ -309,7 +314,7 @@ module that depends on useState into a Server Component module".
   rà của Phong, Long chỉ kiểm các file trên).
 * Không mâu thuẫn ADR-024 (§4.4 — app shell fluid theo sidebar); quy tắc này siết thêm: bỏ cả giới hạn bề ngang ở cấp form/editor.
 
-**Component dùng chung ngoài `kit.tsx`** (ADR-058 GĐ 0–2, client component, file riêng trong `apps/web/app/admin/_ui/`) ✅ đọc code 2026-10-25 (chưa commit) — chi tiết §25:
+**Component dùng chung ngoài `kit.tsx`** (ADR-058 GĐ 0–2, client component, file riêng trong `apps/web/app/admin/_ui/`) ✅ đọc code 2026-10-25 — đã commit (GĐ 0–1 `c8e1b2f`, GĐ 2 `fa29d99`) — chi tiết §25:
 
 | Component (file) | Vai trò |
 | :--- | :--- |
@@ -388,6 +393,8 @@ toán / hết hạn; ✅ đọc `[tenantSlug]/checkout/[orderCode]/page.tsx` 202
 | :-- | :-- | :-- | :-- |
 | Thành công (đã thanh toán) | `color-mix(in srgb, <secondary> 10%, white)` | `secondary` | `ink` |
 | Cảnh báo (hết hạn) | `accentSoft` | `accent` | `ink` |
+| Thông tin (chờ người bán xác nhận) — ADR-062 | `surface` | `primary` | `ink` |
+| Trung tính (đã huỷ / đã hoàn tiền) — ADR-062 | `NEUTRAL_SOFT` (hằng trong `checkout-parts.tsx`) | `inkSoft` | `ink` |
 
 - Class khung: `rounded-xl border border-l-4 p-4 text-sm` — viền 1px quanh khối, **viền trái 4px** mang sắc trạng thái
   (`borderColor` áp cả 4 cạnh, cạnh trái dày hơn).
@@ -397,6 +404,9 @@ toán / hết hạn; ✅ đọc `[tenantSlug]/checkout/[orderCode]/page.tsx` 202
   truyền đạt chỉ bằng màu.
 - Màu lấy từ `brandColors` (`@gieochu/config/theme`), không dùng palette Tailwind `green-*`/`amber-*` rời.
   Storefront (`.sf-root`) có banner riêng `StorefrontNotice` (§8.0) — chưa theo pattern này.
+- **Từ ADR-062 (trang thanh toán, 2026-10-27 ✅ đọc code, chưa commit):** khối là `StateNotice({ tone, title, children, icon? })` (`checkout/[orderCode]/_ui/checkout-parts.tsx`)
+  với 4 tone `success` · `warning` · **`info`** · **`neutral`**; mỗi tone có icon mặc định (check / tam giác / đồng hồ / X) + tiêu đề `h2` nhận focus
+  (`STATE_HEADING_ID`, `tabIndex=-1`); khung `rounded-2xl border border-l-4 p-5`. Kit admin `Badge` vốn đã có tone `info`/`neutral`.
 
 ---
 
@@ -496,7 +506,31 @@ Heading Montserrat + body Inter qua `[tenantSlug]/_ui/fonts.ts`, biến font g�
   (`LOCKED` → 404 với cả chủ); người xem là chủ tenant → "Đây là sản phẩm của bạn."; còn lại → `BuyButton`. Dòng "Trang tạm ngưng
   bán — chưa thể mua lúc này." **đã bỏ** (khách không còn tới được trang này khi tenant `READ_ONLY`). Phía server `createOrder` vẫn
   chặn bằng `assertTenantCanWrite`. Trang này **không** hiện banner `StorefrontNotice`.
-- **Checkout** (`[tenantSlug]/checkout/[orderCode]/page.tsx`): `main.container-narrow`; breadcrumb
+- **Checkout — bố cục mới (ADR-062, đợt 1 2026-10-27, chưa commit) ✅ đọc code; xem trình duyệt ❓.** Thay đoạn "Checkout" cũ ngay dưới:
+  - **Layout chung khu thanh toán** `app/[tenantSlug]/checkout/layout.tsx` (từ task 12/13 chuyển lên từ `[orderCode]/layout.tsx`): skip-link → `SiteHeader` →
+    `<main id="noi-dung" class="container-page">` → `SiteFooter`, `systemFontVars`, màu `brandColors` (ngoại lệ ADR-024 §4.4a). Bọc **cả hai** route: trang trước khi có
+    đơn `/{tenant}/checkout?tai-lieu=` (route group **`(chua-co-don)`** — chỉ để có `loading.tsx`/`error.tsx` riêng, URL không đổi) và trang đơn `/{tenant}/checkout/{mã}`.
+    Đặt ở layout để `loading.tsx`/`error.tsx` của từng route vẫn có header/footer. Dưới `lg` khung có `padding-bottom`
+    `calc(5.5rem + safe-area)` để footer không bị thanh dính che.
+  - **2 cột từ `lg`**: `grid lg:grid-cols-[minmax(0,1fr)_22rem]`; cột phải `<aside aria-label="Đơn hàng và tiến độ">` **dính** `lg:sticky lg:top-[112px]` (tóm tắt đơn +
+    timeline 4 bước Đặt đơn · Thanh toán · Xác nhận · Tải tài liệu + nút chính). Dưới `lg` một cột: dải tóm tắt (`SummaryStrip`), khối thanh toán **QR trước** các dòng
+    sao chép (`TransferDetails order="qr-first"`, QR 224px + "Số tiền cần chuyển" lớn + "Tải ảnh QR").
+  - **Thanh `.checkout-action-bar`** (`MobileActionBar`, dưới `lg`): `fixed` đáy, trái "Tổng" + số tiền, phải **đúng một** hành động chính; padding đáy theo
+    `env(safe-area-inset-bottom)`. `globals.css`: `html:has(.checkout-action-bar) { scroll-padding-bottom: calc(6.5rem + safe-area) }` dưới 64rem để phần tử nhận focus
+    không nằm dưới thanh (WCAG 2.4.11).
+  - **6 trạng thái** theo `displayStatus` (server tính — §29.1 Endpoint-Directory): Chờ thanh toán · Chờ người bán xác nhận (`StateNotice` info) · Đã thanh toán (success,
+    nút "Tải tài liệu" → Thư viện `?tai-lieu=`) · Đã hết hạn (warning, "Đặt lại đơn" khi tài liệu còn bán) · Đã huỷ (neutral) · Đã hoàn tiền (neutral). Badge trạng thái
+    `CheckoutStatusBadge`; câu đọc cho trình đọc màn hình khi trạng thái đổi (`statusMessage`).
+  - **Hành động khách** (`_ui/order-actions.tsx`): "Tôi đã chuyển khoản" (`DeclarePaidAction`, chỉ cổng xác nhận tay), "Tôi chưa chuyển khoản" (`UndoDeclarePaidAction`),
+    "Huỷ đơn" (`CancelOrderAction`); **chỉ "Huỷ đơn"** qua hộp xác nhận `ConfirmDialog` dùng chung phía khách (`app/account/library/_ui/confirm-dialog.tsx` — trả focus về nút mở,
+    lỗi server `role="alert"` trong hộp). Chọn/đổi phương thức: `_ui/payment-method-panel.tsx` (thay `provider-panel.tsx` đã xoá), phương thức hết hạn giữ đơn hiện
+    không chọn được. Nhãn SePay cho khách: "Chuyển khoản (xác nhận tự động)" (ADR-062 Q8); không logo NAPAS/ngân hàng (Q9); số tiền màu `ink` (không đỏ).
+  - Dưới thông tin MoMo có link **"Chính sách người bán"** (Q12) — trỏ trang **Chính sách người bán của nền tảng** (`legalDocumentPath("seller")`). Quốc quyết 2026-10-27 dùng
+    tạm trang này; **Phong đã đổi nhãn** cho khớp đích (trước: "Chính sách thanh toán của {gian hàng}") ✅ code.
+  - **`loading.tsx`**: khung xương đúng bố cục (ô QR 224×224, các dòng, cột phải từ `lg`), `aria-busy`, chữ "Đang tải trang thanh toán…" cho trình đọc màn hình, tôn trọng
+    giảm chuyển động. **`error.tsx`**: không lộ chi tiết kỹ thuật, `role="alert"`, nút "Thử lại" (`retry()` của Next 16) + link "Đơn hàng của tôi".
+  - Chỗ dành cho khối "Thông tin người mua" của khách vãng lai (task 12/13) — **chưa dựng**.
+- **Checkout (mô tả trước ADR-062, giữ để tra lịch sử)** (`[tenantSlug]/checkout/[orderCode]/page.tsx`): `main.container-narrow`; breadcrumb
   `<nav aria-label="Đường dẫn">` **"← {order.tenant.name}"** về `/{order.tenant.slug}` (dữ liệu có sẵn từ
   `getOrderForCustomer`, không thêm truy vấn); toàn bộ màu theo `brandColors` (ink/inkSoft/line/primary/accent/
   accentSoft/secondary) ✅ (đọc code 2026-09-26, Phong sửa). Khối trạng thái đơn theo pattern §7.1. Hiển thị thật cần
@@ -822,7 +856,7 @@ Từ ADR-042 sidebar Studio dùng `SidebarNav` chung (§5.1) với `storageKey="
 
 Trước ADR-042: danh sách phẳng 11 mục (12 với OWNER), số đếm nằm trong nhãn "(N)" — đã thay. Mục BACKLOG "nhóm mục khi sidebar dài" đã xong.
 
-**Theo ADR-058 — đã áp task 2.1** ✅ đọc code 2026-10-25 (working tree, chưa commit; chưa thử trình duyệt ❓):
+**Theo ADR-058 — đã áp task 2.1** ✅ đọc code 2026-10-25 (đã commit `fa29d99`; chưa thử trình duyệt ❓):
 * `ModuleTabs` **"Cài đặt"** gồm 2 tab **Thông tin & thương hiệu** (`/studio/{slug}/settings`) · **Thanh toán** (`/studio/{slug}/settings/payments`). Một nguồn:
   `studio/[tenantSlug]/settings/_ui/settings-tabs.ts` (`studioSettingsTabs(tenantSlug)`, `STUDIO_SETTINGS_TABS_LABEL` = "Các trang trong Cài đặt"). Cả 2 trang
   h1 **"Cài đặt"**, subtitle bắt đầu bằng tên tab. Đã bỏ link chữ "Thanh toán" ở cuối trang Cài đặt; 2 trang bọc `<div>` (bỏ `<main>` lồng).
@@ -978,7 +1012,7 @@ Từ ADR-042 (2026-10-17 ✅): `AdminSidebarNav` là lớp cấu hình trên `Si
 ở đáy `AppSidebarPanel`, drawer dưới `lg`. Cấu trúc 1 mục đứng riêng + 6 nhóm giữ nguyên; sơ đồ đầy đủ:
 [[02-System-Specs/User-Management-System-Center-Specs|User-Management-System-Center-Specs]] §2.
 
-**Nhóm Nội dung — đã áp dụng task 1.1 (ADR-058 + "Bổ sung ADR-058" (a), Quốc duyệt 2026-10-25; code working tree chưa commit ✅ đọc code):**
+**Nhóm Nội dung — đã áp dụng task 1.1 (ADR-058 + "Bổ sung ADR-058" (a), Quốc duyệt 2026-10-25; code đã commit `c8e1b2f` ✅ đọc code, `git log`):**
 
 | Thứ tự | Mục | href / `match` | Ghi chú |
 | :-: | :-- | :-- | :-- |
@@ -998,7 +1032,7 @@ Từ ADR-042 (2026-10-17 ✅): `AdminSidebarNav` là lớp cấu hình trên `Si
 * Danh sách "Trang tuỳ chỉnh" **ẩn slug hệ thống** (`SYSTEM_CMS_SLUGS` = home/shop/pricing/menu): `admin/cms/page.tsx` dùng chung `where: { slug: { notIn:
   SYSTEM_CMS_SLUGS } }` cho cả `findMany` lẫn `count` → tổng số + phân trang khớp danh sách ✅ đọc code (Hiếu báo xong 2026-10-25). Không lọc ở JSX.
 
-**Nhóm Cấu hình hệ thống — đã áp dụng task 1.7 (ADR-058 mục 3; code working tree chưa commit ✅ đọc `sidebar-nav.tsx`, `settings/_ui/settings-tabs.ts`):**
+**Nhóm Cấu hình hệ thống — đã áp dụng task 1.7 (ADR-058 mục 3; code đã commit `c8e1b2f` ✅ đọc `sidebar-nav.tsx`, `settings/_ui/settings-tabs.ts`):**
 
 | Thứ tự | Mục | href / `match` | Ghi chú |
 | :-: | :-- | :-- | :-- |
@@ -2122,6 +2156,13 @@ thiết bị thật ❓.
 
 ### 24.3. Khối chuyển khoản `BankTransferPanel` (`app/_ui/bank-transfer-panel.tsx`) + ô mã giảm giá checkout
 
+> **Từ ADR-062 (2026-10-27, chưa commit) ✅ đọc code:** phần QR + dòng sao chép tách thành component dùng chung **`TransferDetails`** (`app/_ui/transfer-details.tsx`, client)
+> + module thuần **`transfer-rows.ts`** (kiểu `TransferRow { key, label, srName, display, detail?, copyValue, mono?, note? }`, `bankTransferRows`, `walletTransferRows`,
+> `defaultContentNote`) — dùng được ở cả Server Component (trang checkout) lẫn Client Component (`BankTransferPanel`, `WalletTransferPanel`). Prop **`order`**:
+> `"info-first"` (mặc định — Studio billing giữ thứ tự cũ bên dưới) hoặc `"qr-first"` (trang checkout của khách, ADR-062 Q10: QR 224px luôn trước + "Số tiền cần chuyển" lớn
+> + "Tải ảnh QR"). **MoMo ở Studio billing** (`WalletTransferPanel`): bỏ dòng "Ví", thêm nút **"Tải ảnh QR"** (dùng `TransferDetails`) — **từ Bổ sung ADR-059 lần 4 (2026-10-27) MoMo không còn QR** nên ảnh QR và nút này không hiện (`qr: null`); câu dẫn của panel vẫn nhắc QR (KB-Audit §47); dòng còn lại: Số điện thoại MoMo, Tên
+> chủ ví, Số tiền, Nội dung chuyển khoản. Mô tả dưới đây là hành vi `info-first`.
+
 * **Thứ tự:** dưới `sm` khối thông tin + nút sao chép đứng **trước** ảnh QR (trên điện thoại không quét được QR của chính máy mình), câu dẫn riêng cho mobile;
   từ `sm` ảnh QR lên trước. Container query: khung ≥ 32rem (`@lg`) thì QR (12rem) và thông tin đặt cạnh nhau.
 * Ảnh QR 192px, `alt` "Mã QR chuyển khoản cho {đơn hàng|hoá đơn} {mã}". Nút **"Tải ảnh QR"** là `<a download>` (không `fetch` — CSP), viền/chữ màu primary,
@@ -2138,13 +2179,13 @@ thiết bị thật ❓.
 
 ---
 
-## 25. Điều Hướng Nhóm Trang (`ModuleTabs`), Tab Nội Bộ (`InPageTabs`), Accordion (`CollapsibleSection`), Giữ Dữ Liệu Khi Lưu Lỗi, Cảnh Báo Rời Trang (ADR-058 GĐ 0 + GĐ 1 + GĐ 2) ✅ đọc code 2026-10-25 (chưa commit)
+## 25. Điều Hướng Nhóm Trang (`ModuleTabs`), Tab Nội Bộ (`InPageTabs`), Accordion (`CollapsibleSection`), Giữ Dữ Liệu Khi Lưu Lỗi, Cảnh Báo Rời Trang (ADR-058 GĐ 0 + GĐ 1 + GĐ 2) ✅ đọc code 2026-10-25 — đã commit (GĐ 0–1 `c8e1b2f`, GĐ 2 `fa29d99`)
 
 Quyết định: [[01-Architecture-Decisions/ADR-043-Module-Tabs-Accordion-Unsaved-Guard|ADR-043 KB (≙ ADR-058, gồm "Bổ sung ADR-058")]]. Kế hoạch
 (Phong, có đánh dấu trạng thái từng task): `docs/ke-hoach-toi-uu-layout-tab-accordion-2026-10-25.md`. Tiến độ:
 * **GĐ 0 xong** task **0.1–0.4** (component + guard + trường `match` + KB).
 * **GĐ 1 (System Center) xong, trừ 1.10** — 1.1, 1.2, 1.2b, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.8b, 1.9, 1.11, 1.12a, 1.12b, 1.13, **1.14** (metadata/câu SEO/sắc badge),
-  **1.15** (8 trang bỏ `SettingsGrid`) (Quốc báo code xong + verify 2026-10-25; code working tree chưa commit ✅ `git status`). **1.10 (Lưu trữ file) tạm hoãn —
+  **1.15** (8 trang bỏ `SettingsGrid`) (Quốc báo code xong + verify 2026-10-25; code đã commit `c8e1b2f`/`fa29d99` ✅ `git log`). **1.10 (Lưu trữ file) tạm hoãn —
   chờ Vương xong ADR-055** — là task **duy nhất** còn lại của toàn kế hoạch.
 * **GĐ 2 (Studio) xong hết, không task nào hoãn** — 2.1, 2.2, 2.3a, 2.3b, 2.4, 2.5 (kết luận không accordion), 2.6 (Quốc báo xong 2026-10-25; ✅ đọc code working tree).
 * Quy tắc **full width** cho System Center + Studio (chủ dự án chốt 2026-10-25) — §5.
@@ -2232,7 +2273,7 @@ nháp nếu có, không thì bản live; mốc cập nhật sau Lưu nháp/Xuấ
 khối có `status={sectionStatus({ errorCount, dirty })}` và `errorCount` riêng (khối có lỗi tự mở); id khối trong `MENU_BLOCK_IDS`. Khung tóm tắt lỗi gọi
 `revealSection(MENU_BLOCK_IDS[khối chứa ô lỗi])` trước khi focus ô. Cờ chưa lưu qua `useUnsavedChanges` — **bỏ `beforeunload` riêng**.
 
-**Bảng áp dụng GĐ 1 — khối và quy tắc mở mặc định theo từng trang** (✅ đọc code working tree 2026-10-25, chưa commit; chưa thử trình duyệt ❓):
+**Bảng áp dụng GĐ 1 — khối và quy tắc mở mặc định theo từng trang** (✅ đọc code 2026-10-25, đã commit `c8e1b2f`; chưa thử trình duyệt ❓):
 
 | Trang (file) | Task | Khối (id) — mặc định | Badge |
 | :-- | :-: | :-- | :-- |
@@ -2256,7 +2297,7 @@ này trong `admin/**`, `studio/**` đều `tone="warning"` (badge `neutral` "Ch�
 "SEO không có bản nháp: bấm Lưu nháp hoặc Xuất bản đều ghi SEO và áp dụng ngay cho trang…" ✅ đọc JSX — hành vi lưu của action 🟡 (Quốc/Phong báo khớp; Long không
 lần lại action).
 
-**Bảng áp dụng GĐ 2 — Studio** (✅ đọc code working tree 2026-10-25, chưa commit; chưa thử trình duyệt ❓):
+**Bảng áp dụng GĐ 2 — Studio** (✅ đọc code 2026-10-25, đã commit `fa29d99`; chưa thử trình duyệt ❓):
 
 | Trang (file) | Task | Khối — mặc định | Badge / ghi chú |
 | :-- | :-: | :-- | :-- |
@@ -2388,7 +2429,83 @@ const { dirty, dirtyOf, values, formProps } = useFormDraft({ names, secretNames,
 
 ---
 
-## 26. Tài Liệu Tham Chiếu & Liên Kết
+## 26. Luồng Mua Đợt 1 — Khu Tài Khoản, Thư Viện, Studio (ADR-061 + ADR-062) ✅ đọc code 2026-10-27 (chưa commit)
+
+Quyết định thiết kế của Phong (brief Quốc 2026-10-27). Trang thanh toán: §8.4; khối chuyển khoản: §24.3; khối trạng thái: §7.1. Xem trình duyệt ❓.
+
+### 26.1. Dòng nhắc đơn chờ trong `AccountShell` (`app/account/_ui/account-shell.tsx`)
+* `AccountShell` nhận thêm `pendingOrderCount?: number` (layout `/account` lấy từ overview). Khi đã đăng nhập và `> 0`: dải ngay **dưới header** (không dính — header 64px
+  vẫn là phần dính duy nhất), nền `accentSoft`, viền `accent`, chữ `ink`, `IconClock` + câu "Anh/Chị {họ tên} có đơn cần thanh toán để hoàn tất đơn hàng!" (ADR-061 Q8;
+  không có họ tên → "Anh/Chị") + link ≥ 44px "Xem đơn cần thanh toán" / "Xem N đơn cần thanh toán" → `/account/orders`. **Chỉ khu vực `/account`**.
+
+### 26.2. Thư viện `?tai-lieu={productId}` (`app/account/library/page.tsx`)
+* Link "Tải tài liệu" ở trang thanh toán / email `order_paid` mở Thư viện kèm `?tai-lieu=`. Server chỉ khớp với entitlement **của chính user**; khớp → thẻ mang id
+  `LIBRARY_HIGHLIGHT_ID` ("tai-lieu-vua-mua") được làm nổi, `LibraryHighlightFocus` (client) cuộn tới giữa màn hình + đưa focus vào thẻ (cuộn mượt chỉ khi không bật giảm
+  chuyển động). Tham số lạ → không làm nổi gì. Có tham số mà chưa có entitlement (giao tài liệu đang chạy nền) → khối `role="status"` báo rõ thay vì im lặng.
+
+### 26.3. Studio — `DeclaredPaidBadge` (`studio/[tenantSlug]/orders/_ui/declared-paid.tsx`)
+* `Badge tone="info"`: "Khách báo đã chuyển" (PENDING) / "Khách báo đã chuyển · trước hạn" (EXPIRED còn xác nhận được). Hiện ở dòng danh sách đơn (luôn xếp đầu —
+  [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]] §2.5) và đầu trang chi tiết; `DeclaredPaidNotice` đặt ngay trên form xác nhận thanh toán. Badge có chữ, không
+  chỉ màu.
+* "Giao dịch cần xử lý": badge "Về sau hạn giữ đơn" (tone `danger`, cùng nhóm "Sai số tiền").
+
+### 26.4. `ConfirmDialog` phía khách
+* `app/account/library/_ui/confirm-dialog.tsx` (có từ ADR-039) nay dùng chung cho trang thanh toán — **chỉ "Huỷ đơn"** (câu cảnh báo "Nếu bạn đã chuyển tiền, đừng huỷ"); "Tôi đã chuyển khoản" và "Tôi chưa chuyển khoản" bấm thẳng, không hộp xác nhận (hoàn tác được ngay): nội dung đoạn đầu làm mô tả
+  hộp thoại, lỗi server hiện **trong** hộp (`role="alert"`), đóng thì trả focus về nút đã mở.
+
+---
+
+### 26.5. Trang trước khi có đơn (khách vãng lai) — `(chua-co-don)/page.tsx` + `checkout/_ui/guest-checkout-form.tsx` (ADR-062 Q2/Q11, task 12/13) ✅ đọc code 2026-10-27 (chưa commit, chưa thử thủ công ❓)
+* Bố cục giống trang đơn: breadcrumb "← {gian hàng}", h1 "Thanh toán", dòng "Bước 1/4 · Thông tin và cách thanh toán"; dưới `lg` 1 cột (dải tóm tắt → form) + thanh dính đáy
+  "Tổng · Tiếp tục thanh toán"; từ `lg` 2 cột `minmax(0,1fr) 22rem`, cột phải dính (tóm tắt, nút chính, tiến độ).
+* **`PreOrderSummary({ item, totalVnd, variant: "strip" | "card" })`** (`[orderCode]/_ui/checkout-parts.tsx`) — cùng hình thức `SummaryStrip`/`SummaryCard` nhưng chỉ "Tổng cộng"
+  (giá server tính sẵn, gồm khuyến mãi đang áp).
+* **`PreOrderProgress({ hasAutoOnly? })`** — cùng 4 bước như trang đơn, bước 1 đang làm.
+* **`ProviderOptionCard`** (`[orderCode]/_ui/payment-method-panel.tsx`) — một thẻ radio phương thức (cả thẻ là `label`, ≥ 56px, viền `primary` khi chọn, focus ring trên cả thẻ,
+  icon ví cho MoMo / ngân hàng cho cổng khác). **Dùng chung** cho `PaymentMethodPanel` (trang đơn) và form khách vãng lai.
+* Form: Họ và tên, Email (có gợi ý `aria-describedby`), **1 ô** "xác nhận thông tin chính xác và đồng ý Điều khoản, Chính sách bảo mật" (link 2 văn bản, không tick sẵn), chọn
+  phương thức; nút "Tiếp tục thanh toán" (đang gửi "Đang tạo đơn…"; tài liệu 0đ: "Nhận tài liệu"). Không có ô mật khẩu.
+* **Mã giảm giá** ở trang này chỉ là **câu dẫn** dưới khối phương thức: "Có mã giảm giá? Bạn nhập được ở bước tiếp theo, ngay khi đơn được tạo — trước khi chuyển tiền."
+  (mã chỉ áp được khi đã có đơn).
+* **Pattern lỗi form** (mẫu cho form khách): sau mỗi lần gửi lỗi — **từ 2 ô lỗi trở lên** → hộp **tóm tắt lỗi** đầu form (`role="alert"`, `tabIndex=-1`, nhận focus, mỗi lỗi là link
+  tới ô); **chỉ 1 ô lỗi** → đưa **focus thẳng vào ô** đó; lỗi chung không gắn ô (vd `RATE_LIMITED`) → hộp lỗi đầu form nhận focus. Lỗi từng ô đặt dưới ô
+  (`aria-describedby`). Giá trị đã nhập được giữ lại.
+
+### 26.6. `GuestActivationNotice` (`[orderCode]/_ui/checkout-parts.tsx`)
+* Trên trang đơn khi `viewer.guestSession`: nền `surface`, viền `primary` (thông tin, không phải cảnh báo), chữ `ink`, icon chỉ trang trí. `prominent` (vừa tạo — `?vua-tao=1`):
+  viền đủ 4 cạnh dày hơn + tiêu đề lớn "Đã tạo tài khoản cho bạn"; còn lại bản gọn "Tài khoản chưa kích hoạt". Nội dung: email đã gửi tới {email}, kích hoạt để đăng nhập lại
+  và tải trên thiết bị khác; link "Chưa nhận được email? Gửi lại email kích hoạt" → `/verify-email?pending=1`.
+
+### 26.7. Kit auth — `SuccessBanner` + trang kích hoạt
+* `SuccessBanner({ title, message? })` (`app/(auth)/_ui/fields.tsx`, mới): nền pha 10% từ `secondary`, viền trái `secondary`, chữ `ink` + icon check, `role="status"` (không cướp
+  focus). Dùng ở `/login?da-kich-hoat=1` ("Đã kích hoạt tài khoản").
+* Trang `/verify-email/dat-mat-khau` dùng `AuthCard` + kit `(auth)/_ui/fields` (form mật khẩu + nhập lại); thiếu token → `ErrorBanner` + nút "Gửi lại email kích hoạt". Form đăng
+  nhập: lỗi `EMAIL_NOT_VERIFIED`/`GUEST_NOT_ACTIVATED` hiện nút viền ≥ 44px "Gửi lại email kích hoạt" ngay dưới thông báo lỗi.
+
+### 26.8. Ô định danh tài chính bị che, chống trình duyệt tự điền, `CopyValue` (2026-10-27, yêu cầu của chủ dự án) ✅ đọc code (working tree, chưa commit; chưa thử trình duyệt ❓)
+
+**`MaskedTextField`** (`app/admin/_ui/kit-interactive.tsx`, export qua kit) — API như `TextField`:
+* **Dùng cho** ô định danh tài chính trong form cấu hình thanh toán: **số tài khoản** của QR thủ công và SePay, **số điện thoại** MoMo thủ công — ở **cả** System Center
+  (`admin/billing/payment/{manual-qr,sepay,momo-manual}-form.tsx`) và Studio (`studio/[tenantSlug]/settings/payments/{manual-qr,sepay,momo-manual}-form.tsx`).
+* Có giá trị → mặc định hiện khung chỉ đọc **`*****` + 4 ký tự cuối** (vd `*****9123`); giá trị **≤ 4 ký tự** → chỉ `*****`. Ô trống → hiện input luôn.
+* **Nút mắt** hiện/ẩn (`aria-pressed`); bấm hiện → input thật + focus. Ô có **lỗi** → tự mở ra để sửa.
+* `<input name>` thật luôn nằm trong form (chỉ `hidden` khi đang che) → submit đúng, `useFormDraft` đọc/ghi được (nghe sự kiện `reset` của form để đọc lại giá trị).
+* **Chỉ che trên giao diện** — giá trị đầy đủ vẫn nằm trong HTML gửi về trình duyệt người quản trị. **Không dùng cho secret** (secret/API key vẫn `PasswordField`, không bao giờ
+  trả giá trị về client — CLAUDE.md §7.3).
+* **Không** che tên chủ tài khoản. Trang thanh toán của khách vẫn hiện **đầy đủ** số tài khoản / số điện thoại (khách cần để chuyển tiền).
+
+**Quy tắc chống trình duyệt tự điền** (lý do: Chrome từng tự điền **mật khẩu đăng nhập** vào ô Secret SePay và **email** vào ô "Tên chủ tài khoản"):
+* Mọi ô secret/API key dùng **`autoComplete="new-password"`** — `PasswordField` của kit **đặt sẵn** giá trị này (form đăng nhập truyền `autoComplete` riêng).
+* Ô text **đứng ngay trước** ô secret dùng **`autoComplete="off"`** (vd Username SMTP, API key Cloudinary).
+* Form **đăng nhập, đăng ký, đổi mật khẩu** giữ autocomplete đúng chuẩn (`current-password` / `new-password` / `email`…).
+* File đã sửa: `sepay-form`, `momo-form` (admin + Studio), `storage-form` (R2/MinIO), `cloudinary-form`, `smtp-tabs`, `s/[token]/download-panel`.
+
+**`CopyValue({ value, label })`** (`app/admin/_ui/copy-value.tsx`) — giá trị chỉ đọc (`code`, font mono, xuống dòng mọi chỗ) + nút **"Sao chép"** ≥ 44px có focus ring (`aria-label`
+"Sao chép {label}"), đổi thành **"Đã chép"** 2,5 giây; một vùng `sr-only aria-live="polite"` đọc phản hồi. Hiện dùng cho **Webhook URL SePay** ở System Center và Studio.
+
+---
+
+## 27. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * `apps/web/app/admin/_ui/kit.tsx`, `apps/web/app/admin/_ui/kit-interactive.tsx`, `apps/web/app/admin/_ui/icons.tsx`

@@ -62,6 +62,7 @@ export function CloudinaryForm({ initial }: { initial: CloudinaryFormInitial }) 
           id="cloudinary-uploadFolder"
           label="Thư mục upload"
           name="uploadFolder"
+          autoComplete="off"
           defaultValue={initial.uploadFolder || "gieochu"}
           hint="Ảnh CMS sẽ được lưu trong thư mục này trên Cloudinary."
           required

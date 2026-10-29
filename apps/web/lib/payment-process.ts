@@ -83,7 +83,7 @@ function formatVnd(amountVnd: number): string {
   return `${amountVnd.toLocaleString("vi-VN")}đ`;
 }
 
-const PROVIDER_LABEL: Record<string, string> = { SEPAY: "SePay", MOMO: "MoMo", MANUAL_QR: "Chuyển khoản QR", MOMO_MANUAL: "MoMo (chuyển tay)" };
+const PROVIDER_LABEL: Record<string, string> = { SEPAY: "SePay", MOMO: "MoMo", MANUAL_QR: "Chuyển khoản QR", MOMO_MANUAL: "MoMo (thủ công)" };
 
 /** ADR-059 bổ sung lần 2 (d) — email báo chủ gian hàng giao dịch sai tiền (L2, không ghi EmailSendLog). Lỗi chỉ log, không ném. */
 async function notifyOwnerOfPaymentMismatch(

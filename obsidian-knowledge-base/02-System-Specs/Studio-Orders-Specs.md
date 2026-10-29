@@ -7,13 +7,13 @@ tags:
   - ui-ux
   - status/living
 date: 2026-10-18
-updated: 2026-10-26
+updated: 2026-10-27
 author: Long
 ---
 
 # 📐 Đặc Tả: Trang Đơn Hàng Studio — danh sách + chi tiết (`/studio/{slug}/orders` — ADR-046, ADR-047, ADR-048)
 
-> **Cập nhật ADR-059 bổ sung lần 2 (2026-10-26, Long đối chiếu `git diff`, chưa commit):** trang danh sách gọi thêm `countTenantTransactionsNeedingAction(tenant.id)`
+> **Cập nhật ADR-059 bổ sung lần 2 (2026-10-26, Long đối chiếu code; đã commit `fa29d99`):** trang danh sách gọi thêm `countTenantTransactionsNeedingAction(tenant.id)`
 > và hiện dòng cảnh báo + link tới trang mới **`/studio/{slug}/orders/giao-dich` "Giao dịch cần xử lý"** (giao dịch `UNMATCHED` / `MISMATCH_AMOUNT`, L2 qua
 > `withTenant`, cùng guard OWNER) ✅. Đặc tả: [[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.11; contract:
 > [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §28. Các action tiền không đổi luật.
@@ -96,11 +96,23 @@ Thứ tự cố định `view`, `confirm`, `cancel`, `refund` — dùng chung ch
 | Thao tác | Điều kiện | Action gọi (không đổi) |
 | :-- | :-- | :-- |
 | `view` | Luôn có | — |
-| `confirm` | `canManuallyConfirmOrder`: hiệu lực PENDING, hoặc EXPIRED trong **24 giờ** sau `expiresAt` (ADR-036) | Form xác nhận (cần ghi chú) ở trang chi tiết — menu dòng chỉ là link tới `#order-actions` |
+| `confirm` | `canManuallyConfirmOrder`: hiệu lực PENDING; hoặc (từ đợt 1 ADR-061/062, 2026-10-27) EXPIRED **chỉ khi** cổng xác nhận tay và khách đã bấm "Tôi đã chuyển khoản" trước hạn (`customerDeclaredPaidAt < expiresAt`). Cửa sổ 24 giờ của ADR-036 **đã bỏ** | Form xác nhận (cần ghi chú) ở trang chi tiết — menu dòng chỉ là link tới `#order-actions` |
 | `cancel` | Trạng thái hiệu lực **PENDING** | `cancelOrderAction` |
 | `refund` | Trạng thái hiệu lực **FULFILLED** | `markOrderRefundedAction` |
 
 Luật trạng thái gốc: [[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.
+
+### 2.5. "Khách báo đã chuyển" và "Giao dịch cần xử lý" (ADR-062 Q1, đợt 1 ADR-061) — working tree, chưa commit ✅ đọc code 2026-10-27
+
+- **Xếp đầu danh sách:** mọi cách sắp xếp đều có tiền tố SQL `(o."customerDeclaredPaidAt" IS NOT NULL AND o."status" IN ('PENDING','EXPIRED')) DESC` (`DECLARED_PAID_FIRST_SQL`,
+  `lib/order.ts`) → đơn khách đã báo chuyển mà chưa thanh toán **luôn lên đầu**, sau đó mới theo `?sap-xep=`. Điều kiện xét **trạng thái lưu trong DB** (không phải trạng
+  thái hiệu lực).
+- **Badge** `DeclaredPaidBadge` (`orders/_ui/declared-paid.tsx`, tone `info`): "Khách báo đã chuyển" (PENDING) hoặc "Khách báo đã chuyển · trước hạn" (EXPIRED). Hiện ở
+  dòng danh sách và đầu trang chi tiết. `OrderListItem.customerDeclaredPaidAt`, `OrderDetailView.customerDeclaredPaidAt` mới.
+- **Chi tiết đơn:** dòng "Khách báo đã chuyển lúc …" trong thông tin chung; khối nhắc `DeclaredPaidNotice` ngay trên form xác nhận thanh toán; dòng thời gian thêm 3 audit
+  `ORDER_CUSTOMER_DECLARED_PAID`, `ORDER_CUSTOMER_DECLARED_PAID_UNDONE`, `ORDER_CANCELED_BY_CUSTOMER` (`ORDER_TIMELINE_AUDIT_ACTIONS`).
+- **"Giao dịch cần xử lý"** (`/studio/{slug}/orders/giao-dich`): thêm loại **"Về sau hạn giữ đơn"** — giao dịch `MATCHED` mà đơn chưa `PAID`/`FULFILLED`/`REFUNDED`
+  ([[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.11). Nhãn này cũng gán cho giao dịch khớp đơn đã **huỷ** (điều kiện chỉ là "chưa thanh toán") ✅ code.
 
 ---
 

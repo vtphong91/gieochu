@@ -289,6 +289,7 @@ export function StorageForm({ initial }: { initial: StorageFormInitial }) {
                 id="r2-publicBaseUrl"
                 label="Public Base URL của Bucket Public"
                 name="r2PublicBaseUrl"
+                autoComplete="off"
                 defaultValue={r2PublicBaseUrl}
                 placeholder="https://pub-xxxx.r2.dev"
                 hint="URL công khai truy cập ảnh bìa hoặc domain tùy chỉnh gắn với bucket public."
@@ -299,6 +300,7 @@ export function StorageForm({ initial }: { initial: StorageFormInitial }) {
               label="Access Key ID"
               name="r2AccessKeyId"
               type="password"
+              autoComplete="new-password"
               placeholder={r2MaskedAccessKey ? `Hiện tại: ${r2MaskedAccessKey} (để trống nếu giữ nguyên)` : "Nhập Access Key ID"}
             />
             <TextField
@@ -306,6 +308,7 @@ export function StorageForm({ initial }: { initial: StorageFormInitial }) {
               label="Secret Access Key"
               name="r2SecretAccessKey"
               type="password"
+              autoComplete="new-password"
               placeholder={r2MaskedSecretKey ? `Hiện tại: ${r2MaskedSecretKey} (để trống nếu giữ nguyên)` : "Nhập Secret Access Key"}
             />
           </div>
@@ -415,6 +418,7 @@ export function StorageForm({ initial }: { initial: StorageFormInitial }) {
               id="minio-publicBaseUrl"
               label="URL Công khai / CDN (Tùy chọn)"
               name="minioPublicBaseUrl"
+              autoComplete="off"
               defaultValue={minioPublicBaseUrl}
               placeholder="https://cdn.yourdomain.com hoặc để trống"
               hint="URL để khách tải file hoặc xem ảnh công khai."
@@ -424,6 +428,7 @@ export function StorageForm({ initial }: { initial: StorageFormInitial }) {
               label="Root User / Access Key ID"
               name="minioAccessKeyId"
               type="password"
+              autoComplete="new-password"
               placeholder={minioMaskedAccessKey ? `Hiện tại: ${minioMaskedAccessKey} (để trống nếu giữ nguyên)` : "minioadmin"}
             />
             <TextField
@@ -431,6 +436,7 @@ export function StorageForm({ initial }: { initial: StorageFormInitial }) {
               label="Root Password / Secret Key"
               name="minioSecretAccessKey"
               type="password"
+              autoComplete="new-password"
               placeholder={minioMaskedSecretKey ? `Hiện tại: ${minioMaskedSecretKey} (để trống nếu giữ nguyên)` : "Mật khẩu MinIO"}
             />
           </div>

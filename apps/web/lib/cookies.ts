@@ -40,10 +40,15 @@ export function setAccessCookie(target: CookieSetter, accessToken: string, acces
 }
 
 export function applyAuthCookies(response: NextResponse, payload: AuthCookiePayload): void {
+  applyAuthCookiesTo(response.cookies, payload);
+}
+
+/** Như `applyAuthCookies` nhưng cho mọi `CookieSetter` — Server Action dùng `cookies()` store (ADR-061 Q1: phiên khách vãng lai). */
+export function applyAuthCookiesTo(target: CookieSetter, payload: AuthCookiePayload): void {
   const secure = process.env.NODE_ENV === "production";
   const refreshMaxAge = payload.refreshMaxAgeSeconds;
-  setAccessCookie(response.cookies, payload.accessToken, payload.accessTtlSeconds, refreshMaxAge !== null);
-  response.cookies.set(REFRESH_COOKIE_NAME, payload.refreshToken, {
+  setAccessCookie(target, payload.accessToken, payload.accessTtlSeconds, refreshMaxAge !== null);
+  target.set(REFRESH_COOKIE_NAME, payload.refreshToken, {
     httpOnly: true,
     secure,
     sameSite: "lax",

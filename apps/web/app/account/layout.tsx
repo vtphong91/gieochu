@@ -20,15 +20,17 @@ export default async function AccountLayout({ children }: { children: React.Reac
 
   let groups: AccountNavGroup[] | null = null;
   let header: Awaited<ReturnType<typeof getAccountHeaderData>> = null;
+  let pendingOrderCount = 0;
   if (user) {
     header = await getAccountHeaderData(user.userId);
     if (user.emailVerified) {
       try {
         const overview = await getCachedAccountOverview();
         const tenant = overview?.ownedTenant;
+        pendingOrderCount = overview?.pendingOrderCount ?? 0;
         groups = buildAccountNav({
           tenant: tenant ? { slug: tenant.slug, planName: tenant.plan.name, needsRenewal: tenantNeedsRenewal(tenant) } : null,
-          pendingOrderCount: overview?.pendingOrderCount ?? 0,
+          pendingOrderCount,
         });
       } catch (error) {
         logger.warn({ err: error }, "account layout: không đọc được dữ liệu sidebar");
@@ -38,7 +40,7 @@ export default async function AccountLayout({ children }: { children: React.Reac
   }
 
   return (
-    <AccountShell brandName={brand.name} logoUrl={logos.logoLightUrl} signedIn={Boolean(user)} header={header} groups={groups}>
+    <AccountShell brandName={brand.name} logoUrl={logos.logoLightUrl} signedIn={Boolean(user)} header={header} groups={groups} pendingOrderCount={pendingOrderCount}>
       {children}
     </AccountShell>
   );

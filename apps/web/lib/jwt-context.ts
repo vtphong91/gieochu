@@ -27,3 +27,15 @@ export async function getAccessTokenTtlSeconds(): Promise<number> {
 export async function getSessionPolicy(role: SystemRole, rememberMe: boolean): Promise<SessionPolicy> {
   return resolveSessionPolicy(role, rememberMe, await getSystemSettings());
 }
+
+/** Bổ sung ADR-062 mục 1: phiên khách vãng lai sống tối đa 24 giờ kể từ lúc tạo, kể cả khi refresh. */
+export const GUEST_SESSION_MAX_HOURS = 24;
+
+/**
+ * Chính sách phiên khách vãng lai: idle/absolute như phiên USER thường (ADR-053), không "Ghi nhớ", absolute bị kẹp ≤ 24 giờ.
+ * Refresh dùng `sessionStartedAt` cố định nên hạn không bao giờ trượt quá mốc 24 giờ.
+ */
+export async function getGuestSessionPolicy(): Promise<SessionPolicy> {
+  const base = resolveSessionPolicy("USER", false, await getSystemSettings());
+  return { ...base, rememberMe: false, absoluteMs: Math.min(base.absoluteMs, GUEST_SESSION_MAX_HOURS * 60 * 60 * 1000) };
+}

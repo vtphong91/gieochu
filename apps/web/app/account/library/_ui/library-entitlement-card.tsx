@@ -8,6 +8,7 @@ import { PRODUCT_REVIEWS_ANCHOR } from "../../../[tenantSlug]/_ui/product-review
 import { DownloadButton } from "../download-button";
 import { LIBRARY_FOCUS } from "./confirm-dialog";
 import { RemedyNotice } from "./remedy-notice";
+import { LIBRARY_HIGHLIGHT_ID } from "./highlight";
 
 /*
  * Một mục trong Thư viện (Server Component, không hook). ADR-039: tài liệu bị gỡ do vi phạm hiện khối `RemedyNotice`
@@ -67,7 +68,21 @@ function statusPill(entitlement: LibraryEntitlement, remaining: number | null): 
   return remaining > 0 ? { label: `Còn ${remaining} lượt tải`, tone: "info" } : { label: "Hết lượt tải", tone: "neutral" };
 }
 
-export function LibraryEntitlementCard({ entitlement, tenantName, tenantSlug }: { entitlement: LibraryEntitlement; tenantName: string; tenantSlug: string }) {
+export function LibraryEntitlementCard({
+  entitlement,
+  tenantName,
+  tenantSlug,
+  highlighted = false,
+  guestSession = false,
+}: {
+  entitlement: LibraryEntitlement;
+  tenantName: string;
+  tenantSlug: string;
+  /** Tài liệu vừa mua (trỏ từ trang thanh toán/email): viền primary dày + nhãn chữ "Vừa mua" (không chỉ dựa vào màu). */
+  highlighted?: boolean;
+  /** Phiên khách vãng lai chưa kích hoạt: không chọn được lựa chọn khi tài liệu bị gỡ (server vẫn chặn — `requireVerified`). */
+  guestSession?: boolean;
+}) {
   const unlimited = entitlement.downloadLimit === 0;
   const remaining = unlimited ? null : Math.max(0, entitlement.downloadLimit - entitlement.downloadsUsed);
   const remedyBlocked = remedyDownloadBlock(entitlement.remedyStatus) !== null;
@@ -79,7 +94,17 @@ export function LibraryEntitlementCard({ entitlement, tenantName, tenantSlug }: 
   const multiFile = entitlement.files.length > 1;
 
   return (
-    <li className="rounded-2xl border bg-white p-4 sm:p-5" style={{ borderColor: "#E5E7EB" }}>
+    <li
+      id={highlighted ? LIBRARY_HIGHLIGHT_ID : undefined}
+      tabIndex={highlighted ? -1 : undefined}
+      className={`rounded-2xl border bg-white p-4 sm:p-5 ${highlighted ? "scroll-mt-24 border-2 outline-none" : ""}`}
+      style={highlighted ? { borderColor: brandColors.primary, boxShadow: `0 0 0 4px ${brandColors.accentSoft}` } : { borderColor: "#E5E7EB" }}
+    >
+      {highlighted ? (
+        <span className="mb-2 inline-flex w-fit items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold" style={{ background: brandColors.surface, color: brandColors.primary, borderColor: brandColors.primary }}>
+          Vừa mua
+        </span>
+      ) : null}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <h3 className="min-w-0 font-semibold [overflow-wrap:anywhere]">
           <Link href={href} className={`rounded hover:underline ${LIBRARY_FOCUS}`}>
@@ -94,7 +119,16 @@ export function LibraryEntitlementCard({ entitlement, tenantName, tenantSlug }: 
         </span>
       </div>
 
-      {showRemedy ? (
+      {showRemedy && guestSession && entitlement.remedyStatus === "PENDING_CHOICE" ? (
+        // KB-Audit §45: markup tối thiểu (Hiếu) — Phong hoàn thiện. Hai nút lựa chọn cần tài khoản đã kích hoạt.
+        <div className="mt-3 rounded-xl border border-l-4 p-4 text-sm leading-relaxed" style={{ borderColor: brandColors.accent, background: brandColors.accentSoft, color: brandColors.ink }}>
+          <p className="font-semibold">Tài liệu này đã bị gỡ do vi phạm chính sách.</p>
+          <p className="mt-1">Kích hoạt tài khoản (qua email) để chọn tải lần cuối hoặc hoàn tiền.</p>
+          <Link href="/verify-email?pending=1" className={`mt-1 inline-flex min-h-11 items-center rounded font-semibold text-[var(--color-primary)] underline ${LIBRARY_FOCUS}`}>
+            Gửi lại email kích hoạt
+          </Link>
+        </div>
+      ) : showRemedy ? (
         <div className="mt-3">
           <RemedyNotice
             entitlementId={entitlement.entitlementId}

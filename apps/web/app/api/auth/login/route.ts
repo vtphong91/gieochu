@@ -77,6 +77,17 @@ export async function POST(request: Request) {
       throw new AppError({ code: "ACCOUNT_LOCKED", message: "Tài khoản đã bị khoá.", httpStatus: 403 });
     }
 
+    // ADR-061 Q1: tài khoản tạo lúc mua không cần đăng ký — chưa có mật khẩu (hash ngẫu nhiên) → báo rõ để khách gửi lại email
+    // "Kích hoạt tài khoản và đặt mật khẩu" (Bổ sung ADR-062 mục 4). Không so mật khẩu, không tăng đếm sai mật khẩu.
+    if (!user.hasPassword && user.status === "PENDING") {
+      await auditLoginFailed("GUEST_NOT_ACTIVATED");
+      throw new AppError({
+        code: "GUEST_NOT_ACTIVATED",
+        message: "Tài khoản này được tạo khi mua tài liệu và chưa đặt mật khẩu. Kiểm tra email \"Kích hoạt tài khoản và đặt mật khẩu\" hoặc gửi lại email kích hoạt.",
+        httpStatus: 403,
+      });
+    }
+
     if (user.passwordResetRequired) {
       await auditLoginFailed("PASSWORD_RESET_REQUIRED");
       throw PASSWORD_RESET_REQUIRED;

@@ -2,14 +2,14 @@
 
 import { useActionState } from "react";
 import { saveMomoManualAction, type PaymentActionState } from "./actions";
-import { FormBanner, PrimaryButton, TextField, Toggle } from "../../../../admin/_ui/kit";
+import { FormBanner, MaskedTextField, PrimaryButton, TextField, Toggle } from "../../../../admin/_ui/kit";
 import { IconWallet } from "../../../../admin/_ui/icons";
 import { CollapsibleSection, sectionStatus } from "../../../../admin/_ui/collapsible-section";
 import { useFormDraft } from "../../../../admin/_ui/use-form-draft";
 import { useUnsavedChanges } from "../../../../admin/_ui/unsaved-changes";
 
 const initialState: PaymentActionState = {};
-const FIELDS = ["isEnabled", "phone", "accountName", "vietQrAccountNo"] as const;
+const FIELDS = ["isEnabled", "phone", "accountName"] as const;
 
 /**
  * ADR-059 bổ sung lần 3 — khối thu gọn "MoMo cá nhân (xác nhận tay)" của gian hàng. Cùng khung với các cổng khác (ADR-058):
@@ -20,7 +20,7 @@ export function MomoManualForm({
   initial,
 }: {
   tenantSlug: string;
-  initial: { phone: string; accountName: string; vietQrAccountNo: string; isEnabled: boolean };
+  initial: { phone: string; accountName: string; isEnabled: boolean };
 }) {
   const action = saveMomoManualAction.bind(null, tenantSlug);
   const [state, formAction, isPending] = useActionState(action, initialState);
@@ -35,14 +35,14 @@ export function MomoManualForm({
       id="cong-momo-ca-nhan"
       defaultOpen={initial.isEnabled}
       icon={<IconWallet className="h-5 w-5" />}
-      title="MoMo cá nhân (xác nhận tay)"
+      title="MoMo cá nhân (xác nhận thủ công)"
       description="Khách chuyển tiền vào ví MoMo của bạn với nội dung là mã đơn — bạn đối chiếu lịch sử ví rồi xác nhận đơn."
       status={sectionStatus({ errorCount, dirty, empty: !initial.isEnabled, emptyLabel: configured ? "Đang tắt" : "Chưa cấu hình", okLabel: "Đang bật" })}
       errorCount={errorCount}
     >
       <form key={formKey} action={formAction} className="space-y-4" {...formProps}>
         <Toggle name="isEnabled" defaultChecked={initial.isEnabled} label="Bật phương thức này" />
-        <TextField id="momo-manual-phone" label="Số điện thoại MoMo" name="phone" defaultValue={initial.phone} required inputMode="tel" autoComplete="off" />
+        <MaskedTextField id="momo-manual-phone" label="Số điện thoại MoMo" name="phone" defaultValue={initial.phone} required inputMode="tel" />
         <TextField
           id="momo-manual-accountName"
           label="Tên chủ ví"
@@ -50,14 +50,6 @@ export function MomoManualForm({
           defaultValue={initial.accountName}
           hint="Viết như trên ví (hệ thống tự đổi thành chữ HOA không dấu)."
           required
-        />
-        <TextField
-          id="momo-manual-vietQrAccountNo"
-          label="Số tài khoản VietQR của ví (tuỳ chọn)"
-          name="vietQrAccountNo"
-          defaultValue={initial.vietQrAccountNo}
-          hint="Số tài khoản VietQR lấy từ mã QR Nhận tiền trong app MoMo (tuỳ chọn). Có số này, trang thanh toán hiện mã QR kèm số tiền và nội dung."
-          autoComplete="off"
         />
         <p className="text-xs text-gray-600">
           Số điện thoại và tên chủ ví sẽ hiện công khai cho khách ở trang thanh toán.

@@ -23,6 +23,21 @@ export async function requireVerifiedAccess(nextPath: string): Promise<CurrentUs
 }
 
 /**
+ * ADR-061 Q1 — bản trang (Server Component) của `requireCheckoutUser`: chưa đăng nhập → /login; đăng nhập nhưng chưa xác
+ * minh VÀ không phải phiên khách vãng lai → /verify-email. CHỈ dùng cho checkout, /account/orders, /account/library.
+ */
+export async function requireCheckoutAccess(nextPath: string): Promise<CurrentUser> {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect(`/login?next=${encodeURIComponent(nextPath)}`);
+  }
+  if (!user.emailVerified && !user.guestCheckout) {
+    redirect("/verify-email?pending=1");
+  }
+  return user;
+}
+
+/**
  * §"M2" admin pages guard: not logged in -> /login, logged in but not
  * SYSTEM_ADMIN -> 404 (matches the LOCKED-tenant storefront's "don't reveal
  * what's here" behavior). `requireRole()` from session.ts throws AppError

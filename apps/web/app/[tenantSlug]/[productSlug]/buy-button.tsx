@@ -9,12 +9,10 @@ export function BuyButton({
   tenantSlug,
   productId,
   productSlug,
-  loggedIn,
 }: {
   tenantSlug: string;
   productId: string;
   productSlug: string;
-  loggedIn: boolean;
 }) {
   const action = buyProductAction.bind(null, tenantSlug, productId, productSlug);
   const [state, formAction, isPending] = useActionState(action, initialState);
@@ -27,7 +25,7 @@ export function BuyButton({
         disabled={isPending}
         className="inline-flex min-h-12 w-full cursor-pointer items-center justify-center rounded-full bg-[color:var(--color-primary)] px-8 text-[15px] font-bold text-white shadow-[0_12px_26px_-12px_var(--color-primary)] transition-[filter] duration-200 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-primary)] motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:brightness-100"
       >
-        {isPending ? "Đang xử lý..." : loggedIn ? "Mua ngay" : "Đăng nhập để mua"}
+        {isPending ? "Đang xử lý..." : "Mua ngay"}
       </button>
     </form>
   );

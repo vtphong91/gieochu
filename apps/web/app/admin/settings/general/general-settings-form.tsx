@@ -44,7 +44,7 @@ const GROUPS: { id: string; title: string; description: string; icon: ReactNode;
     title: "Nghiệp vụ",
     description: "Ân hạn gói, thời gian giữ đơn/hoá đơn chờ thanh toán và lượt tải mặc định cho tài liệu mới.",
     icon: <IconPackage className="h-5 w-5" />,
-    keys: ["graceDays", "orderPendingTtlMinutes", "invoicePendingTtlHours", "defaultDownloadLimit", "trialDays"],
+    keys: ["graceDays", "orderHoldManualHours", "orderHoldAutoHours", "invoicePendingTtlHours", "defaultDownloadLimit", "trialDays"],
   },
 ];
 
@@ -62,7 +62,8 @@ const DESCRIPTIONS: Partial<Record<SystemSettingKey, string>> = {
   presignUploadTtlSeconds: "URL tải tệp lên kho lưu trữ.",
   presignDownloadTtlSeconds: "URL tải tài liệu của khách — tối đa 10 phút.",
   graceDays: "Gói hết hạn vẫn dùng được trong số ngày này.",
-  orderPendingTtlMinutes: "Đơn chưa thanh toán tự huỷ sau khoảng này.",
+  orderHoldManualHours: "Đơn chuyển khoản ngân hàng / MoMo (xác nhận thủ công) hoặc chưa chọn phương thức: hết hạn sau khoảng này kể từ lúc đặt đơn.",
+  orderHoldAutoHours: "Đơn chọn chuyển khoản xác nhận tự động (SePay): hết hạn sau khoảng này kể từ lúc đặt đơn.",
   invoicePendingTtlHours: "Hoá đơn gói chưa thanh toán tự huỷ sau khoảng này.",
   defaultDownloadLimit: "Điền sẵn khi người bán tạo tài liệu mới. 0 = không giới hạn.",
 };

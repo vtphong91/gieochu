@@ -227,7 +227,7 @@ export async function notifyAdminOfPendingManualInvoice(invoiceId: string): Prom
       tenantSlug: invoice.tenant.slug,
       planName: invoice.plan.name,
       amountVndDisplay: formatVnd(invoice.amountVnd),
-      methodLabel: invoice.provider === "MOMO_MANUAL" ? "chuyển tiền MoMo (xác nhận tay)" : "chuyển khoản QR thủ công",
+      methodLabel: invoice.provider === "MOMO_MANUAL" ? "chuyển tiền MoMo (xác nhận thủ công)" : "chuyển khoản QR thủ công",
       dueAtDisplay: invoice.dueAt.toLocaleString("vi-VN", { timeZone: DISPLAY_TIME_ZONE }),
       invoicesUrl: `${getEnv().APP_URL.replace(/\/+$/, "")}/admin/billing/invoices`,
     });
@@ -362,7 +362,7 @@ export async function confirmManualInvoicePayment(invoiceId: string, actorId: st
   const prisma = getPrismaClient();
   const invoice = await prisma.subscriptionInvoice.findUniqueOrThrow({ where: { id: invoiceId } });
   if (!isManualConfirmProvider(invoice.provider)) {
-    throw new AppError({ code: "NOT_MANUAL_INVOICE", message: "Chỉ xác nhận thủ công cho hoá đơn chuyển tay (QR thủ công / MoMo).", httpStatus: 400 });
+    throw new AppError({ code: "NOT_MANUAL_INVOICE", message: "Chỉ xác nhận thủ công cho hoá đơn chuyển khoản thủ công (QR ngân hàng / MoMo).", httpStatus: 400 });
   }
   if (invoice.status === "EXPIRED") {
     await confirmExpiredManualInvoice(invoiceId, actorId);

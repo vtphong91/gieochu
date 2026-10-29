@@ -22,6 +22,13 @@ import { addOrderNote, deleteOrderNote } from "../../lib/order-note";
 import { listCustomersPage, updateCustomerNote } from "../../lib/customer-list";
 import { processPaymentEvent } from "../../lib/payment-process";
 import { listTenantTransactionsNeedingAction } from "../../lib/tenant-payment-transactions";
+import { cancelOrderByCustomer, declareOrderPaid, runOrderPaymentReminders, undoDeclareOrderPaid } from "../../lib/order-customer";
+import { getCheckoutView } from "../../lib/checkout-view";
+import { activateGuestAccount, startGuestCheckout } from "../../lib/guest-checkout";
+import { rateLimitKey } from "../../lib/rate-limit-store";
+import { REFRESH_COOKIE_NAME } from "../../lib/cookies";
+import { NextRequest } from "next/server";
+import { POST as refreshRoute } from "../../app/api/auth/refresh/route";
 import { POST as tenantWebhook } from "../../app/api/webhooks/tenants/[tenantId]/[provider]/route";
 import type { CurrentUser } from "../../lib/session";
 
@@ -30,7 +37,17 @@ const { sendEmailNowSpy } = vi.hoisted(() => ({ sendEmailNowSpy: vi.fn() }));
 vi.mock("../../lib/email-dispatch", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../lib/email-dispatch")>();
   sendEmailNowSpy.mockImplementation(async (message: { type: string }) =>
-    message.type === "order_pending_manual" || message.type === "payment_mismatch" ? { ok: true } : actual.sendEmailNow(message as never),
+    // ADR-061/062: email người bán/khách của luồng mua cũng chặn (không gửi thật).
+    [
+      "order_pending_manual",
+      "payment_mismatch",
+      "order_payment_customer",
+      "order_payment_reminder",
+      "order_customer_declared_paid",
+      "guest_activation",
+    ].includes(message.type)
+      ? { ok: true }
+      : actual.sendEmailNow(message as never),
   );
   return { ...actual, sendEmailNow: sendEmailNowSpy };
 });
@@ -133,17 +150,27 @@ describe("M8 checkout and orders", () => {
     expect(checkout.kind).toBe("QR");
     expect(checkout.content).toBe(order.code);
 
-    // ADR-059: lần đầu đơn có QR thủ công → đúng 1 email báo chủ gian hàng (mã đơn, số tiền, link Studio); chọn lại cổng không báo nữa.
-    expect(scheduled).toHaveLength(1);
+    // ADR-062 Q3: hạn giữ đơn = lúc đặt đơn + 72 giờ (thủ công, mặc định).
+    expect(updated.expiresAt.getTime() - updated.createdAt.getTime()).toBe(72 * 60 * 60 * 1000);
+
+    // ADR-059 + ADR-061 Q10/Q7: chọn (lại) phương thức luôn lên lịch email, nhưng mốc trên đơn bảo đảm người bán chỉ nhận 1 email
+    // "chờ xác nhận" và khách chỉ nhận 1 email hướng dẫn cho cùng một phương thức.
     await initiateOrderCheckout(tenant.id, order.id, buyer.id, "MANUAL_QR", { scheduleNotification });
-    expect(scheduled).toHaveLength(1);
+    expect(scheduled).toHaveLength(4);
     sendEmailNowSpy.mockClear();
-    await scheduled[0]!();
-    const notices = sendEmailNowSpy.mock.calls.map(([message]) => message).filter((message) => message.type === "order_pending_manual");
+    for (const task of scheduled) await task();
+    const sentOf = (type: string) => sendEmailNowSpy.mock.calls.map(([message]) => message).filter((message) => message.type === type);
+    const notices = sentOf("order_pending_manual");
     expect(notices).toHaveLength(1);
     expect(notices[0]).toMatchObject({ to: owner.email, subject: expect.stringContaining(order.code) });
     expect(notices[0].text).toContain("100.000đ");
     expect(notices[0].text).toContain(`/studio/${tenant.slug}/orders/${order.id}`);
+    expect(notices[0].text).toContain("đối chiếu sao kê");
+    const instructions = sentOf("order_payment_customer");
+    expect(instructions).toHaveLength(1);
+    expect(instructions[0]).toMatchObject({ to: buyer.email, subject: expect.stringContaining(order.code) });
+    expect(instructions[0].text).toContain("0011012345678");
+    expect(instructions[0].text).toContain(`/${tenant.slug}/checkout/${order.code}`);
 
     // ADR-056 bổ sung: áp/gỡ mã SAU khi đã có QR → server tạo lại QR theo totalVnd mới (VietQR tag 54 = số tiền), nội dung CK giữ mã đơn.
     await createCoupon(tenant.id, { code: "QR10", type: "PERCENT", value: 10, isEnabled: true });
@@ -160,7 +187,113 @@ describe("M8 checkout and orders", () => {
     expect(restored.totalVnd).toBe(100_000);
     expect(restoredQr.qrPayload).toContain("5406100000");
     expect(restoredQr.content).toBe(order.code);
-  });
+
+    // ADR-062 §6 — view model trang thanh toán (khách đã đăng nhập).
+    const view = await getCheckoutView(toCurrentUser(buyer.id), order.code);
+    expect(view?.order).toMatchObject({ code: order.code, displayStatus: "AWAITING_PAYMENT", provider: "MANUAL_QR", confirmMode: "MANUAL" });
+    expect(view?.order.can).toEqual({ changeProvider: true, applyCoupon: true, declarePaid: true, undoDeclarePaid: false, cancel: true });
+    expect(view?.enabledProviders).toEqual([{ id: "MANUAL_QR", confirmMode: "MANUAL", label: "Chuyển khoản ngân hàng", available: true }]);
+    expect(view?.item).toMatchObject({ productId: product.id, productPath: `/${tenant.slug}/de-thi`, stillPurchasable: true });
+    expect(await getCheckoutView(toCurrentUser(owner.id), order.code)).toBeNull();
+
+    // ADR-062 Q1: "Tôi đã chuyển khoản" — ghi mốc (không đổi status), khoá đổi phương thức/mã/huỷ, người bán nhận 1 email
+    // (báo lại sau khi hoàn tác không gửi thêm). Khách khác không thao tác được trên đơn này.
+    const declaredTasks: Array<() => Promise<void>> = [];
+    const scheduleDeclared = (task: () => Promise<void>) => void declaredTasks.push(task);
+    await expect(declareOrderPaid(owner.id, order.id)).rejects.toMatchObject({ httpStatus: 404 });
+    const { declaredAt } = await declareOrderPaid(buyer.id, order.id, { scheduleNotification: scheduleDeclared });
+    expect((await getOrderForCustomer(buyer.id, order.code)).status).toBe("PENDING");
+    await expect(initiateOrderCheckout(tenant.id, order.id, buyer.id, "MANUAL_QR")).rejects.toMatchObject({ code: "ORDER_DECLARED_PAID" });
+    await expect(applyCouponToOrder(tenant.id, order.id, buyer.id, "QR10")).rejects.toMatchObject({ code: "ORDER_DECLARED_PAID" });
+    await expect(cancelOrderByCustomer(buyer.id, order.id)).rejects.toMatchObject({ code: "ORDER_DECLARED_PAID" });
+    expect((await getCheckoutView(toCurrentUser(buyer.id), order.code))?.order.displayStatus).toBe("AWAITING_SELLER_CONFIRM");
+    const detail = await getOrderDetailView(tenant.id, order.id);
+    expect(detail.customerDeclaredPaidAt?.getTime()).toBe(declaredAt.getTime());
+    await undoDeclareOrderPaid(buyer.id, order.id);
+    await declareOrderPaid(buyer.id, order.id, { scheduleNotification: scheduleDeclared });
+    sendEmailNowSpy.mockClear();
+    for (const task of declaredTasks) await task();
+    expect(sentOf("order_customer_declared_paid")).toHaveLength(1);
+    expect(sentOf("order_customer_declared_paid")[0]).toMatchObject({ to: owner.email, subject: expect.stringContaining(order.code) });
+    const declaredAudits = await prisma.auditLog.count({ where: { targetId: order.id, action: { in: ["ORDER_CUSTOMER_DECLARED_PAID", "ORDER_CUSTOMER_DECLARED_PAID_UNDONE"] } } });
+    expect(declaredAudits).toBe(3);
+
+    // ADR-061 Q7: nhắc 1 lần khi còn ≤ 24 giờ — `now` đặt ở năm 2099 để bước cron chỉ chạm đơn của test (không đụng đơn thật).
+    const farNow = new Date("2099-01-01T00:00:00.000Z");
+    await withTenant(tenant.id, (tx) => tx.order.update({ where: { id: order.id }, data: { expiresAt: new Date("2099-01-01T12:00:00.000Z") } }));
+    sendEmailNowSpy.mockClear();
+    expect(await runOrderPaymentReminders(farNow)).toBe(1);
+    expect(await runOrderPaymentReminders(farNow)).toBe(0);
+    expect(sentOf("order_payment_reminder")).toHaveLength(1);
+    expect(sentOf("order_payment_reminder")[0]).toMatchObject({ to: buyer.email, subject: expect.stringContaining(order.code) });
+
+    // ADR-061 Q1 / Bổ sung ADR-062 — khách vãng lai: tạo user PENDING chưa mật khẩu + đồng ý + token GUEST_ACTIVATION 7 ngày (chỉ
+    // hash) + phiên guest ≤ 24 giờ + đơn; email đã có → không gắn đơn; phiên guest refresh được, xem đơn của mình (RLS), không xem
+    // đơn người khác; kích hoạt bằng token một lần.
+    const guestEmail = nextEmail();
+    const guestIp = `198.51.100.${Math.floor(Math.random() * 250) + 1}-${RUN_PREFIX}`;
+    const guestTasks: Array<() => Promise<void>> = [];
+    const guestInput = {
+      tenantSlug: tenant.slug,
+      productSlug: "de-thi",
+      fullName: "Khách Vãng Lai",
+      email: guestEmail,
+      acceptTerms: "on",
+      provider: "MANUAL_QR",
+      ip: guestIp,
+      userAgent: "vitest",
+      scheduleNotification: (task: () => Promise<void>) => void guestTasks.push(task),
+    };
+    expect(await startGuestCheckout({ ...guestInput, acceptTerms: undefined })).toMatchObject({ ok: false, fieldErrors: { acceptTerms: expect.any(String) } });
+    const guest = await startGuestCheckout(guestInput);
+    if (!guest.ok) throw new Error(`guest checkout failed: ${guest.error}`);
+    const guestUser = await prisma.user.findUniqueOrThrow({ where: { id: guest.userId } });
+    expect(guestUser).toMatchObject({ status: "PENDING", hasPassword: false, emailVerifiedAt: null });
+    const guestSessionRow = await prisma.refreshToken.findFirstOrThrow({ where: { userId: guest.userId } });
+    expect(guestSessionRow.guestCheckout).toBe(true);
+    expect(guestSessionRow.rememberMe).toBe(false);
+    expect(guestSessionRow.expiresAt.getTime() - guestSessionRow.sessionStartedAt!.getTime()).toBeLessThanOrEqual(24 * 60 * 60 * 1000);
+    const activationRow = await prisma.verificationToken.findFirstOrThrow({ where: { userId: guest.userId, type: "GUEST_ACTIVATION" } });
+    expect(activationRow.expiresAt.getTime() - activationRow.createdAt.getTime()).toBeGreaterThan(6.9 * 24 * 60 * 60 * 1000);
+    const guestOrder = await getOrderForCustomer(guest.userId, guest.orderCode);
+    expect(guestOrder).toMatchObject({ customerId: guest.userId, provider: "MANUAL_QR", status: "PENDING" });
+    const guestViewer = { userId: guest.userId, familyId: guestSessionRow.familyId, role: "USER" as const, emailVerified: false, profileCompleted: false, guestCheckout: true };
+    expect((await getCheckoutView(guestViewer, guest.orderCode))?.viewer).toMatchObject({ guestSession: true, email: guestEmail });
+    expect(await getCheckoutView(guestViewer, order.code)).toBeNull();
+    expect(await startGuestCheckout({ ...guestInput, ip: `${guestIp}-2` })).toMatchObject({ ok: false, code: "EMAIL_EXISTS_GUEST" });
+    expect(await startGuestCheckout({ ...guestInput, ip: `${guestIp}-3`, email: buyer.email })).toMatchObject({ ok: false, code: "EMAIL_EXISTS" });
+
+    const refreshed = await refreshRoute(
+      new NextRequest("http://localhost/api/auth/refresh", { method: "POST", headers: { cookie: `${REFRESH_COOKIE_NAME}=${guest.cookies.refreshToken}` } }),
+    );
+    expect(refreshed.status).toBe(200);
+    const rotated = await prisma.refreshToken.findFirstOrThrow({ where: { userId: guest.userId, replacedById: null, revokedAt: null } });
+    expect(rotated.guestCheckout).toBe(true);
+    expect(rotated.expiresAt.getTime()).toBe(guestSessionRow.expiresAt.getTime());
+
+    sendEmailNowSpy.mockClear();
+    for (const task of guestTasks) await task();
+    const activationMail = sentOf("guest_activation");
+    expect(activationMail).toHaveLength(1);
+    expect(activationMail[0]).toMatchObject({ to: guestEmail });
+    const rawToken = new URL(String(activationMail[0].text.match(/https?:\/\/\S+dat-mat-khau\S+/)?.[0])).searchParams.get("token")!;
+    expect(rawToken).not.toBe(activationRow.tokenHash);
+    expect(await activateGuestAccount(rawToken, "Str0ngPass1", "khac")).toMatchObject({ ok: false, code: "PASSWORD_MISMATCH" });
+    expect(await activateGuestAccount(rawToken, "Str0ngPass1", "Str0ngPass1")).toMatchObject({ ok: true, email: guestEmail });
+    expect(await prisma.user.findUniqueOrThrow({ where: { id: guest.userId } })).toMatchObject({ status: "ACTIVE", hasPassword: true });
+    expect(await activateGuestAccount(rawToken, "Str0ngPass1", "Str0ngPass1")).toMatchObject({ ok: false, code: "TOKEN_ALREADY_USED" });
+    await prisma.rateLimitCounter.deleteMany({
+      where: {
+        key: {
+          in: [
+            rateLimitKey("guest_signup_email", guestEmail),
+            rateLimitKey("guest_signup_email", buyer.email),
+            ...[guestIp, `${guestIp}-2`, `${guestIp}-3`].map((ip) => rateLimitKey("guest_signup_ip", ip)),
+          ],
+        },
+      },
+    });
+  }, 90_000); // DB dùng chung qua mạng (Neon) — case nhiều truy vấn tuần tự vượt 20s mặc định.
 
   it("owner's manual confirm requires a note, then fulfills the order and grants an entitlement", async () => {
     const { tenant } = await createOwnerAndTenant("Manual Confirm Test", "manualconfirm");
@@ -359,12 +492,39 @@ describe("M8 checkout and orders", () => {
 
     const expired = await getOrderDetailView(tenant.id, order.id);
     expect(expired.status).toBe("EXPIRED");
-    // Vừa quá hạn (< 24 giờ) → vẫn xác nhận tay được, không huỷ được.
-    expect(expired.allowedActions).toEqual(["view", "confirm"]);
+    // ADR-061: không còn cửa sổ trễ 24 giờ → hết hạn là không xác nhận tay được, không huỷ được.
+    expect(expired.allowedActions).toEqual(["view"]);
+    await expect(confirmOrderManually(tenant.id, order.id, "muộn")).rejects.toMatchObject({ code: "ORDER_NOT_CONFIRMABLE" });
+    await expect(cancelOrderByCustomer(buyer.id, order.id)).rejects.toMatchObject({ code: "ORDER_NOT_PENDING" });
 
     const coupon = await withTenant(tenant.id, (tx) => tx.coupon.findFirstOrThrow({ where: { tenantId: tenant.id, code: "SWEEP10" } }));
     expect(coupon.usedCount).toBe(0);
-  });
+
+    // ADR-062 bổ sung mục 3: cổng xác nhận tay + khách đã báo chuyển TRƯỚC hạn → người bán vẫn xác nhận được sau hạn (audit ghi rõ).
+    const expiredAt = (await withTenant(tenant.id, (tx) => tx.order.findUniqueOrThrow({ where: { id: order.id } }))).expiresAt;
+    await withTenant(tenant.id, (tx) =>
+      tx.order.update({ where: { id: order.id }, data: { provider: "MANUAL_QR", customerDeclaredPaidAt: new Date(expiredAt.getTime() - 5_000) } }),
+    );
+    expect((await getOrderDetailView(tenant.id, order.id)).allowedActions).toEqual(["view", "confirm"]);
+    await confirmOrderManually(tenant.id, order.id, "Khách báo đã chuyển trước hạn, đã thấy tiền");
+    expect((await getOrderDetailView(tenant.id, order.id)).status).toBe("FULFILLED");
+    const lateAudit = await prisma.auditLog.findFirstOrThrow({ where: { targetId: order.id, action: "ORDER_MANUALLY_CONFIRMED" } });
+    expect(lateAudit.metadata).toMatchObject({ previousStatus: "EXPIRED", lateDeclaredPaid: true, customerDeclaredPaid: true });
+
+    // ADR-062 Q4 + ADR-061 Q6: khách tự huỷ đơn chờ (khách khác không huỷ được — đọc dưới withCustomer); mã giảm giá "mỗi
+    // khách" tính cả đơn chờ còn hiệu lực.
+    const couponBuyer = await createActiveUser(nextEmail());
+    await createCoupon(tenant.id, { code: "ONCE", type: "PERCENT", value: 10, isEnabled: true, perCustomerLimit: 1 });
+    const first = await createOrder(couponBuyer.id, tenant.slug, product.id);
+    await applyCouponToOrder(tenant.id, first.id, couponBuyer.id, "ONCE");
+    const second = await createOrder(couponBuyer.id, tenant.slug, product.id);
+    await expect(applyCouponToOrder(tenant.id, second.id, couponBuyer.id, "ONCE")).rejects.toMatchObject({ code: "COUPON_LIMIT_REACHED" });
+    const stranger = await createActiveUser(nextEmail());
+    await expect(cancelOrderByCustomer(stranger.id, first.id)).rejects.toMatchObject({ httpStatus: 404 });
+    await cancelOrderByCustomer(couponBuyer.id, first.id);
+    expect((await getOrderDetailView(tenant.id, first.id)).status).toBe("CANCELED");
+    await expect(applyCouponToOrder(tenant.id, second.id, couponBuyer.id, "ONCE")).resolves.toMatchObject({ couponCode: "ONCE" });
+  }, 90_000); // DB dùng chung qua mạng (Neon) — case nhiều truy vấn tuần tự vượt 20s mặc định.
 
   it("tenant A cannot read tenant B's orders, and a customer cannot read another customer's order", async () => {
     const { owner: ownerA, tenant: tenantA } = await createOwnerAndTenant("Isolation A", "isoa");
@@ -445,7 +605,7 @@ describe("M8 checkout and orders", () => {
     await expect(getOrderForCustomer(buyer2.id, order.code)).rejects.toMatchObject({ httpStatus: 404 });
     const ownOrder = await getOrderForCustomer(buyer1.id, order.code);
     expect(ownOrder.id).toBe(order.id);
-  });
+  }, 90_000); // DB dùng chung qua mạng (Neon) — case nhiều truy vấn tuần tự vượt 20s mặc định.
 
   it("a coupon is only consumed once an order is PAID, and concurrent orders never push usedCount past usageLimit", async () => {
     const { tenant } = await createOwnerAndTenant("Coupon Race Test", "couponrace");

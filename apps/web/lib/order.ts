@@ -6,7 +6,7 @@ import {
   calculateOrderPricing,
   canManuallyConfirmOrder,
   canPurchaseProduct,
-  computeOrderExpiresAt,
+  computeOrderHoldExpiresAt,
   DISPLAY_TIME_ZONE,
   effectiveOrderStatus,
   generateOrderCode,
@@ -42,6 +42,7 @@ import { recomputeProductSoldCounts } from "./product-sold-count";
 import { audit, isAuditTableMissing } from "./audit";
 import { escapeLikePattern } from "./shop";
 import { listOrderNotes, type OrderNoteView } from "./order-note";
+import { notifyCustomerOfPaymentInstructions } from "./order-customer";
 
 const ORDER_CODE_RETRIES = 10;
 
@@ -233,13 +234,15 @@ async function sendOrderPaidEmailsInner(orderId: string): Promise<void> {
         totalVnd: true,
         customer: { select: { email: true } },
         tenant: { select: { slug: true, owner: { select: { email: true } } } },
-        items: { select: { titleSnapshot: true } },
+        items: { select: { titleSnapshot: true, productId: true } },
       },
     }),
   );
   if (!order) return;
 
-  const downloadsUrl = `${env.APP_URL}/account/library`;
+  // ADR-062 Q7: trỏ thẳng mục tài liệu vừa mua trong Thư viện (`?tai-lieu=` — Thư viện cuộn/nhấn mạnh mục đó; vẫn bắt đăng nhập).
+  const firstProductId = order.items[0]?.productId;
+  const downloadsUrl = `${env.APP_URL}/account/library${firstProductId ? `?tai-lieu=${encodeURIComponent(firstProductId)}` : ""}`;
   const buyerEmail = renderOrderPaidEmail({
     appName: brand.name,
     orderCode: order.code,
@@ -317,7 +320,8 @@ export async function createOrder(customerId: string, tenantSlug: string, produc
 
   const settings = await getSystemSettings();
   const code = await resolveUniqueOrderCode(tenant.orderCodePrefix);
-  const expiresAt = computeOrderExpiresAt(now, settings.orderPendingTtlMinutes);
+  // ADR-062 Q3: chưa chọn phương thức → hạn thủ công (72 giờ mặc định); chọn phương thức sẽ tính lại từ `createdAt`.
+  const expiresAt = computeOrderHoldExpiresAt(now, settings.orderHoldManualHours);
 
   const order = await withTenant(tenant.id, (tx) =>
     tx.order.create({
@@ -394,6 +398,7 @@ export async function applyCouponToOrder(tenantId: string, orderId: string, cust
   if (!isEffectivelyPending(order)) {
     throw new AppError({ code: "ORDER_NOT_PENDING", message: "Đơn hàng không còn ở trạng thái chờ thanh toán.", httpStatus: 409 });
   }
+  if (order.customerDeclaredPaidAt) throw declaredPaidLockedError();
   await assertOrderProductsPurchasable(tenantId, orderId);
 
   const items = await withTenant(tenantId, (tx) => tx.orderItem.findMany({ where: { orderId } }));
@@ -407,9 +412,17 @@ export async function applyCouponToOrder(tenantId: string, orderId: string, cust
 
   let customerUsageCount = 0;
   if (couponRow.perCustomerLimit != null) {
-    customerUsageCount = await withTenant(tenantId, (tx) =>
-      tx.couponRedemption.count({ where: { couponId: couponRow.id, userId: customerId } }),
+    // ADR-061 Q6: "mỗi khách" tính cả lượt đã dùng (đơn đã trả) LẪN đơn chờ còn hiệu lực khác của chính khách có cùng mã.
+    const nowForLimit = new Date();
+    const [redeemed, pendingWithCode] = await withTenant(tenantId, (tx) =>
+      Promise.all([
+        tx.couponRedemption.count({ where: { couponId: couponRow.id, userId: customerId } }),
+        tx.order.count({
+          where: { tenantId, customerId, couponCode: code, status: "PENDING", expiresAt: { gt: nowForLimit }, id: { not: orderId } },
+        }),
+      ]),
     );
+    customerUsageCount = redeemed + pendingWithCode;
   }
 
   const now = new Date();
@@ -441,7 +454,7 @@ export async function applyCouponToOrder(tenantId: string, orderId: string, cust
   const updated = await withTenant(tenantId, async (tx) => {
     const { count } = await tx.order.updateMany({
       // Chưa ai đổi tổng tiền/cổng kể từ lúc đọc (chọn cổng hoặc áp mã song song) — tránh ghi đè payload lệch số tiền.
-      where: { id: orderId, status: "PENDING", totalVnd: order.totalVnd, provider: order.provider },
+      where: { id: orderId, status: "PENDING", totalVnd: order.totalVnd, provider: order.provider, customerDeclaredPaidAt: null },
       data: {
         subtotalVnd: pricing.subtotalVnd,
         discountVnd: pricing.discountVnd,
@@ -476,6 +489,7 @@ export async function removeCouponFromOrder(tenantId: string, orderId: string, c
   if (!isEffectivelyPending(order)) {
     throw new AppError({ code: "ORDER_NOT_PENDING", message: "Đơn hàng không còn ở trạng thái chờ thanh toán.", httpStatus: 409 });
   }
+  if (order.customerDeclaredPaidAt) throw declaredPaidLockedError();
 
   // ADR-056 bổ sung: đơn đã có QR/link thanh toán → tạo lại payload theo tổng không giảm giá trước khi ghi.
   const checkoutPayload =
@@ -485,7 +499,7 @@ export async function removeCouponFromOrder(tenantId: string, orderId: string, c
 
   return withTenant(tenantId, async (tx) => {
     const { count } = await tx.order.updateMany({
-      where: { id: orderId, status: "PENDING", totalVnd: order.totalVnd, provider: order.provider },
+      where: { id: orderId, status: "PENDING", totalVnd: order.totalVnd, provider: order.provider, customerDeclaredPaidAt: null },
       data: {
         subtotalVnd: order.subtotalVnd,
         discountVnd: 0,
@@ -546,17 +560,27 @@ const orderChangedError = () =>
 
 export interface InitiateOrderCheckoutOptions {
   /**
-   * ADR-059: lên lịch email báo chủ gian hàng có đơn chờ xác nhận tay (Server Action truyền `after` của next/server).
-   * Bỏ trống → không gửi (test, script).
+   * Lên lịch email sau response (Server Action truyền `after` của next/server): ADR-059 báo chủ gian hàng (đơn chờ xác nhận tay)
+   * + ADR-061 Q7 email hướng dẫn thanh toán cho khách. Bỏ trống → không gửi (test, script).
    */
   scheduleNotification?: ScheduleAfterResponse;
 }
 
+/** ADR-061/062: số giờ giữ đơn theo phương thức — xác nhận tay (ngân hàng, MoMo) hoặc chưa chọn → thủ công; còn lại → tự xác nhận. */
+export function orderHoldHoursFor(
+  provider: PaymentProviderId | null,
+  settings: { orderHoldManualHours: number; orderHoldAutoHours: number },
+): number {
+  return provider === null || isManualConfirmProvider(provider) ? settings.orderHoldManualHours : settings.orderHoldAutoHours;
+}
+
 /**
- * Stores the checkout payload for the checkout page to read back.
- * ADR-059: lần ĐẦU đơn được gắn cổng (provider đang null) và cổng là loại xác nhận tay (MANUAL_QR) → lên lịch email báo
- * chủ gian hàng. Mỗi đơn chỉ báo một lần: chọn lại cổng / áp-gỡ mã giảm giá (tạo lại QR) không báo nữa; dòng đơn bị khoá
- * `FOR UPDATE` nên hai lần chọn cổng song song chỉ một lần thấy provider = null.
+ * Stores the checkout payload for the checkout page to read back. Gọi được cả khi đơn ĐÃ có phương thức (ADR-061 Q10 — khách
+ * đổi phương thức).
+ * - ADR-062 Q3: hạn giữ đơn = `createdAt` + hạn của phương thức mới (đổi phương thức không gia hạn); hạn mới đã qua → chặn.
+ * - ADR-062 Q1: khách đã báo "Tôi đã chuyển khoản" → không đổi được (phải hoàn tác trước).
+ * - Email: luôn LÊN LỊCH; mỗi hàm gửi tự "nhận" mốc trên `orders` nguyên tử (`UPDATE … WHERE … IS NULL`) nên không gửi trùng:
+ *   người bán 1 lần/đơn (`ownerManualNotifiedAt`), khách khi phương thức khác lần đã gửi, tối đa 3 lần/đơn (ADR-062 bổ sung 6).
  */
 export async function initiateOrderCheckout(
   tenantId: string,
@@ -570,44 +594,64 @@ export async function initiateOrderCheckout(
   if (!isEffectivelyPending(order)) {
     throw new AppError({ code: "ORDER_NOT_PENDING", message: "Đơn hàng không còn ở trạng thái chờ thanh toán.", httpStatus: 409 });
   }
+  if (order.customerDeclaredPaidAt) throw declaredPaidLockedError();
   await assertOrderProductsPurchasable(tenantId, orderId);
+
+  const settings = await getSystemSettings();
+  const now = new Date();
+  const expiresAt = computeOrderHoldExpiresAt(order.createdAt, orderHoldHoursFor(provider, settings));
+  if (expiresAt.getTime() <= now.getTime()) {
+    throw new AppError({
+      code: "PROVIDER_HOLD_EXPIRED",
+      message: "Đơn đã quá thời gian giữ của phương thức này — vui lòng chọn phương thức khác.",
+      httpStatus: 409,
+    });
+  }
 
   const checkoutPayload = await buildTenantCheckoutPayload(tenantId, order, provider);
 
   // ADR-056 bổ sung: chỉ ghi nếu tổng tiền không đổi kể từ lúc đọc (áp/gỡ mã chạy song song) — QR không bao giờ lệch totalVnd.
-  const { updated, firstProviderSelection } = await withTenant(tenantId, async (tx) => {
-    const locked = await tx.$queryRaw<{ provider: string | null }[]>`
-      SELECT "provider"::text AS "provider" FROM "orders" WHERE "id" = ${orderId} FOR UPDATE
-    `;
+  const updated = await withTenant(tenantId, async (tx) => {
     const { count } = await tx.order.updateMany({
-      where: { id: orderId, status: "PENDING", totalVnd: order.totalVnd },
-      data: { provider, checkoutPayload },
+      where: { id: orderId, status: "PENDING", totalVnd: order.totalVnd, customerDeclaredPaidAt: null, expiresAt: { gt: now } },
+      data: { provider, checkoutPayload, expiresAt },
     });
     if (count === 0) throw orderChangedError();
-    return {
-      updated: await tx.order.findUniqueOrThrow({ where: { id: orderId } }),
-      firstProviderSelection: locked.length > 0 && locked[0]!.provider === null,
-    };
+    return tx.order.findUniqueOrThrow({ where: { id: orderId } });
   });
 
-  if (firstProviderSelection && isManualConfirmProvider(provider) && options.scheduleNotification) {
-    options.scheduleNotification(() => notifyOwnerOfPendingManualOrder(tenantId, orderId));
+  if (options.scheduleNotification) {
+    if (isManualConfirmProvider(provider)) options.scheduleNotification(() => notifyOwnerOfPendingManualOrder(tenantId, orderId));
+    options.scheduleNotification(() => notifyCustomerOfPaymentInstructions(tenantId, orderId));
   }
   return updated;
 }
 
+const declaredPaidLockedError = () =>
+  new AppError({
+    code: "ORDER_DECLARED_PAID",
+    message: "Bạn đã báo đã chuyển khoản cho đơn này — chọn \"Tôi chưa chuyển khoản\" trước khi thay đổi.",
+    httpStatus: 409,
+  });
+
 function formatDisplayDateTime(date: Date): string {
   return date.toLocaleString("vi-VN", { timeZone: DISPLAY_TIME_ZONE });
+}
+
+/** Cách khách thanh toán, hiển thị cho NGƯỜI BÁN — kèm việc cần làm để đối chiếu. */
+function ownerMethodLabel(provider: PaymentProviderId): string {
+  return provider === "MOMO_MANUAL" ? "chuyển tiền MoMo, đối chiếu lịch sử ví" : "chuyển khoản ngân hàng, đối chiếu sao kê";
 }
 
 /**
  * ADR-059 mục 3 — email báo chủ gian hàng (L2, không qua admin — §7.9; loại `order_pending_manual` không ghi
  * EmailSendLog) có đơn chuyển khoản chờ xác nhận tay. Gọi sau response; lỗi chỉ log, không ném. Đơn đã không còn chờ
  * (vd đã xác nhận/huỷ trước khi email chạy) → bỏ qua.
+ * ADR-061 Q10: một lần/đơn kể cả khi khách đổi phương thức — nhận mốc `ownerManualNotifiedAt` nguyên tử trước khi gửi.
  */
 export async function notifyOwnerOfPendingManualOrder(tenantId: string, orderId: string): Promise<void> {
   try {
-    // tenants/users là L1; orders/order_items là L2 → đọc dưới withTenant.
+    // tenants/users là L1; orders/order_items là L2 → đọc/ghi dưới withTenant.
     const tenant = await getPrismaClient().tenant.findUnique({
       where: { id: tenantId },
       select: { slug: true, owner: { select: { email: true } } },
@@ -619,6 +663,10 @@ export async function notifyOwnerOfPendingManualOrder(tenantId: string, orderId:
       }),
     );
     if (!tenant || !order || !order.provider || !isManualConfirmProvider(order.provider) || !isEffectivelyPending(order)) return;
+    const claimed = await withTenant(tenantId, (tx) =>
+      tx.order.updateMany({ where: { id: orderId, tenantId, ownerManualNotifiedAt: null }, data: { ownerManualNotifiedAt: new Date() } }),
+    );
+    if (claimed.count === 0) return;
 
     const rendered = renderOrderAwaitingManualConfirmEmail({
       orderCode: order.code,
@@ -627,6 +675,7 @@ export async function notifyOwnerOfPendingManualOrder(tenantId: string, orderId:
       expiresAtDisplay: formatDisplayDateTime(order.expiresAt),
       confirmDeadlineDisplay: formatDisplayDateTime(manualConfirmDeadline(order.expiresAt)),
       orderUrl: `${getEnv().APP_URL.replace(/\/+$/, "")}/studio/${tenant.slug}/orders/${order.id}`,
+      methodLabel: ownerMethodLabel(order.provider),
     });
     const result = await sendEmailNow({ type: "order_pending_manual", to: tenant.owner.email, ...rendered });
     if (!result.ok) logger.warn({ tenantId, orderId, error: result.error }, "order.pending_manual: gửi email báo chủ gian hàng thất bại");
@@ -643,7 +692,11 @@ export async function getOrderForCustomer(customerId: string, orderCode: string)
   return withEffectiveStatus(order);
 }
 
-/** §"M8": "Xác nhận thanh toán thủ công (chỉ đơn PENDING hoặc EXPIRED trong vòng 24 giờ; bắt buộc nhập ghi chú)". */
+/**
+ * §"M8" xác nhận thanh toán thủ công (bắt buộc ghi chú). ADR-061: chỉ đơn còn PENDING — không còn cửa sổ trễ 24 giờ.
+ * Ngoại lệ ADR-062 bổ sung mục 3: đơn cổng xác nhận tay đã EXPIRED mà khách đã báo "Tôi đã chuyển khoản" trước hạn — audit ghi
+ * `lateDeclaredPaid: true`.
+ */
 export async function confirmOrderManually(tenantId: string, orderId: string, note: string, actorId: string | null = null): Promise<void> {
   if (!note.trim()) {
     throw new AppError({ code: "NOTE_REQUIRED", message: "Vui lòng nhập ghi chú xác nhận.", httpStatus: 400 });
@@ -651,7 +704,9 @@ export async function confirmOrderManually(tenantId: string, orderId: string, no
   const order = await withTenant(tenantId, (tx) => tx.order.findUnique({ where: { id: orderId } }));
   if (!order) throw notFound("Không tìm thấy đơn hàng.");
 
-  if (!canManuallyConfirmOrder(order.status as OrderStatus, order.expiresAt, new Date())) {
+  const confirmNow = new Date();
+  const declaredPaidAt = order.provider && isManualConfirmProvider(order.provider) ? order.customerDeclaredPaidAt : null;
+  if (!canManuallyConfirmOrder(order.status as OrderStatus, order.expiresAt, confirmNow, { declaredPaidAt })) {
     throw new AppError({ code: "ORDER_NOT_CONFIRMABLE", message: "Đơn hàng không ở trạng thái có thể xác nhận thủ công.", httpStatus: 409 });
   }
 
@@ -667,7 +722,12 @@ export async function confirmOrderManually(tenantId: string, orderId: string, no
     action: "ORDER_MANUALLY_CONFIRMED",
     targetType: "Order",
     targetId: orderId,
-    metadata: { previousStatus: effectiveOrderStatus(order.status, order.expiresAt, new Date()), fulfilled: paid.fulfilled },
+    metadata: {
+      previousStatus: effectiveOrderStatus(order.status, order.expiresAt, confirmNow),
+      fulfilled: paid.fulfilled,
+      lateDeclaredPaid: effectiveOrderStatus(order.status, order.expiresAt, confirmNow) === "EXPIRED",
+      customerDeclaredPaid: declaredPaidAt !== null,
+    },
   });
   await auditMarkOrderPaid(tenantId, orderId, paid, "MANUAL_CONFIRM");
   await recomputeProductSoldCounts(paid.productIds);
@@ -799,6 +859,8 @@ export interface OrderListItem {
   refundOverdue: boolean;
   /** Luôn có "view". Thứ tự cố định: view, confirm, cancel, refund. */
   allowedActions: OrderRowAction[];
+  /** ADR-062 Q1: khách đã báo "Tôi đã chuyển khoản" (null = chưa) — badge + ưu tiên đối soát. */
+  customerDeclaredPaidAt: Date | null;
 }
 
 export type OrderStatusCounts = Record<OrderStatus | "ALL", number>;
@@ -935,7 +997,17 @@ export function buildOrderListSearch(
 }
 
 /** Thứ tự sắp xếp danh sách đơn (SQL, alias `o` = "orders"); luôn kết thúc bằng `id` để phân trang ổn định. */
+/**
+ * ADR-062 Q1: đơn khách đã báo "Tôi đã chuyển khoản" mà chưa thanh toán (còn chờ, hoặc đã hết hạn nhưng vẫn xác nhận được —
+ * ADR-062 bổ sung mục 3) luôn lên đầu danh sách để người bán đối soát trước; sau đó mới theo cách sắp xếp đã chọn.
+ */
+const DECLARED_PAID_FIRST_SQL = Prisma.sql`(o."customerDeclaredPaidAt" IS NOT NULL AND o."status" IN ('PENDING', 'EXPIRED')) DESC`;
+
 function orderListOrderBySql(sort: OrderListSort): Prisma.Sql {
+  return Prisma.sql`${DECLARED_PAID_FIRST_SQL}, ${orderListBaseOrderBySql(sort)}`;
+}
+
+function orderListBaseOrderBySql(sort: OrderListSort): Prisma.Sql {
   switch (sort) {
     case "cu-nhat":
       return Prisma.sql`o."createdAt" ASC, o."id" ASC`;
@@ -971,13 +1043,17 @@ export function unaccentLikeSql(column: Prisma.Sql, escapedQuery: string): Prism
 
 /**
  * ADR-046 — luật thao tác của MỘT đơn, đúng như trang chi tiết và các action hiện có (không đặt luật mới):
- * confirm = `canManuallyConfirmOrder` (PENDING, hoặc EXPIRED ≤ 24 giờ); cancel = trạng thái hiệu lực PENDING
+ * confirm = `canManuallyConfirmOrder` (PENDING, hoặc EXPIRED khi khách đã báo chuyển trước hạn); cancel = trạng thái hiệu lực PENDING
  * (`cancelOrder` → `transitionOrderStatus(..., "CANCEL")`); refund = FULFILLED (`markOrderRefunded`).
  */
-export function orderAllowedActions(order: { status: OrderStatus; expiresAt: Date }, now = new Date()): OrderRowAction[] {
+export function orderAllowedActions(
+  order: { status: OrderStatus; expiresAt: Date; provider?: PaymentProviderId | null; customerDeclaredPaidAt?: Date | null },
+  now = new Date(),
+): OrderRowAction[] {
   const effective = effectiveOrderStatus(order.status, order.expiresAt, now);
   const actions: OrderRowAction[] = ["view"];
-  if (canManuallyConfirmOrder(order.status, order.expiresAt, now)) actions.push("confirm");
+  const declaredPaidAt = order.provider && isManualConfirmProvider(order.provider) ? (order.customerDeclaredPaidAt ?? null) : null;
+  if (canManuallyConfirmOrder(order.status, order.expiresAt, now, { declaredPaidAt })) actions.push("confirm");
   if (effective === "PENDING") actions.push("cancel");
   if (effective === "FULFILLED") actions.push("refund");
   return actions;
@@ -1099,6 +1175,8 @@ export async function listOrdersPage(tenantId: string, sp: OrderListSearchParams
               status: true,
               expiresAt: true,
               totalVnd: true,
+              provider: true,
+              customerDeclaredPaidAt: true,
               customer: { select: { email: true, profile: { select: { fullName: true } } } },
               items: {
                 orderBy: { createdAt: "asc" },
@@ -1130,6 +1208,7 @@ export async function listOrdersPage(tenantId: string, sp: OrderListSearchParams
         refundRequestedAt,
         refundOverdue: refundRequestedAt !== null && refundRequestedAt.getTime() < overdueBefore.getTime(),
         allowedActions: orderAllowedActions(order, now),
+        customerDeclaredPaidAt: order.customerDeclaredPaidAt,
       };
     });
 
@@ -1221,6 +1300,8 @@ export interface OrderDetailView {
   couponCode: string | null;
   /** Ghi chú xác nhận thủ công của chủ gian hàng (có thể null). */
   confirmNote: string | null;
+  /** ADR-062 Q1: lúc khách bấm "Tôi đã chuyển khoản" (null = chưa báo). Studio ưu tiên đối soát. */
+  customerDeclaredPaidAt: Date | null;
   paymentChannel: OrderPaymentChannel;
   /** ADR-041/044: chỉ họ tên + email. */
   customer: { fullName: string | null; email: string };
@@ -1247,7 +1328,7 @@ export interface OrderDetailView {
   notesAvailable: boolean;
 }
 
-const PROVIDER_LABELS: Record<PaymentProviderId, string> = { MANUAL_QR: "Chuyển khoản QR", SEPAY: "SePay", MOMO: "MoMo", MOMO_MANUAL: "MoMo (chuyển tay)" };
+const PROVIDER_LABELS: Record<PaymentProviderId, string> = { MANUAL_QR: "Chuyển khoản QR", SEPAY: "SePay", MOMO: "MoMo", MOMO_MANUAL: "MoMo (thủ công)" };
 const MATCH_STATUS_LABELS: Record<string, string> = { MATCHED: "khớp đơn", UNMATCHED: "không khớp đơn", MISMATCH_AMOUNT: "sai số tiền" };
 const ORDER_TIMELINE_AUDIT_ACTIONS = [
   "ORDER_MANUALLY_CONFIRMED",
@@ -1257,6 +1338,9 @@ const ORDER_TIMELINE_AUDIT_ACTIONS = [
   "ENTITLEMENT_REVOKED",
   "REMEDY_FINAL_DOWNLOAD_CHOSEN",
   "REMEDY_REFUND_REQUESTED",
+  "ORDER_CUSTOMER_DECLARED_PAID",
+  "ORDER_CUSTOMER_DECLARED_PAID_UNDONE",
+  "ORDER_CANCELED_BY_CUSTOMER",
 ];
 /** Email gửi qua `sendEmailNow` có mã đơn trong tiêu đề — lọc được đúng đơn (mã đơn unique toàn hệ thống). */
 const ORDER_EMAIL_TYPES: Record<string, string> = {
@@ -1298,6 +1382,7 @@ export async function getOrderDetailView(tenantId: string, orderId: string, view
         couponCode: true,
         provider: true,
         confirmNote: true,
+        customerDeclaredPaidAt: true,
         customerId: true,
         customer: { select: { email: true, profile: { select: { fullName: true } } } },
         items: {
@@ -1483,6 +1568,7 @@ export async function getOrderDetailView(tenantId: string, orderId: string, view
     totalVnd: order.totalVnd,
     couponCode: order.couponCode,
     confirmNote: order.confirmNote,
+    customerDeclaredPaidAt: order.customerDeclaredPaidAt,
     paymentChannel,
     customer: { fullName: order.customer.profile?.fullName ?? null, email: order.customer.email },
     lines: order.items.map((item) => {
