@@ -120,6 +120,8 @@ const BENEFIT_TONES = [
 ];
 
 type HeroData = Extract<HomeSection, { type: "hero" }>["data"];
+type PainPointData = Extract<HomeSection, { type: "painPoint" }>["data"];
+type AboutData = Extract<HomeSection, { type: "about" }>["data"];
 type SearchData = Extract<HomeSection, { type: "search" }>["data"];
 type BenefitsData = Extract<HomeSection, { type: "benefits" }>["data"];
 type CoachesData = Extract<HomeSection, { type: "coaches" }>["data"];
@@ -285,6 +287,237 @@ export function StatsSection({ items }: { items: HomeStatItem[] }) {
           );
         })}
       </dl>
+    </section>
+  );
+}
+
+function parseYouTubeEmbedUrl(url: string): string | null {
+  if (!url) return null;
+  const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+  return ytMatch ? `https://www.youtube-nocookie.com/embed/${ytMatch[1]}` : null;
+}
+
+/**
+ * Pain Point Section — Làm rõ vấn đề của người bán và người mua.
+ * Bố cục 2 cột trên desktop, xếp dọc trên mobile; hỗ trợ bật/tắt từng cột.
+ */
+export function PainPointSection({ data }: { data: PainPointData }) {
+  const titleId = useId();
+  const showCreator = data.creatorColumn.enabled;
+  const showBuyer = data.buyerColumn.enabled;
+
+  if (!showCreator && !showBuyer) return null;
+
+  return (
+    <section aria-labelledby={titleId} className="py-14 sm:py-20 lg:py-24" style={{ background: PAPER_ALT }}>
+      <div className="container-page">
+        <div className="mx-auto max-w-[760px] text-center">
+          {data.eyebrow ? (
+            <p className="mb-2 text-[13px] font-bold tracking-wide sm:text-[13.5px]" style={{ color: AMBER_TEXT }}>
+              {data.eyebrow}
+            </p>
+          ) : null}
+          <h2 id={titleId} className="font-[family-name:var(--font-heading)] text-2xl font-semibold text-balance sm:text-[32px] lg:text-[36px]" style={{ color: INK }}>
+            {data.title}
+          </h2>
+          {data.description ? (
+            <p className="mt-3 text-[15px] leading-[1.7] text-balance sm:text-base" style={{ color: INK_SOFT }}>
+              {data.description}
+            </p>
+          ) : null}
+        </div>
+
+        <div className={`mt-10 grid gap-6 sm:mt-12 lg:gap-8 ${showCreator && showBuyer ? "grid-cols-1 lg:grid-cols-2" : "mx-auto max-w-[720px] grid-cols-1"}`}>
+          {showCreator ? (
+            <div className="flex flex-col rounded-3xl border bg-white p-6 shadow-sm transition sm:p-8" style={{ borderColor: LINE }}>
+              <div className="mb-4 flex items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold" style={{ background: tint(BLUE, 12), color: BLUE }}>
+                  <IconUsers className="h-5 w-5" />
+                </span>
+                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: BLUE }}>
+                  {data.creatorColumn.title}
+                </span>
+              </div>
+              <h3 className="font-[family-name:var(--font-heading)] text-lg font-semibold leading-snug sm:text-xl" style={{ color: INK }}>
+                {data.creatorColumn.heading}
+              </h3>
+              <ul className="mt-5 space-y-3 flex-1">
+                {data.creatorColumn.painPoints.map((point, idx) => (
+                  <li key={idx} className="flex items-start gap-2.5 text-sm leading-relaxed" style={{ color: INK_SOFT }}>
+                    <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-red-600" style={{ background: "rgba(239, 68, 68, 0.12)" }}>
+                      ✕
+                    </span>
+                    <span>{point}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-6 rounded-2xl border p-4.5" style={{ background: tint(BLUE, 4), borderColor: tint(BLUE, 15) }}>
+                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider" style={{ color: BLUE }}>
+                  <IconCheck className="h-4 w-4" /> Giải pháp từ Gieo Chữ
+                </p>
+                <p className="mt-1.5 text-sm font-medium leading-relaxed" style={{ color: INK }}>
+                  {data.creatorColumn.solution}
+                </p>
+              </div>
+              {data.creatorColumn.cta ? (
+                <div className="mt-6">
+                  <Link href={data.creatorColumn.cta.href} className={`w-full ${CTA_PRIMARY} ${FOCUS_ON_LIGHT} text-white`} style={{ background: BLUE }}>
+                    {data.creatorColumn.cta.label}
+                  </Link>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {showBuyer ? (
+            <div className="flex flex-col rounded-3xl border bg-white p-6 shadow-sm transition sm:p-8" style={{ borderColor: LINE }}>
+              <div className="mb-4 flex items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold" style={{ background: tint(GREEN, 14), color: GREEN }}>
+                  <IconDocs className="h-5 w-5" />
+                </span>
+                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: GREEN }}>
+                  {data.buyerColumn.title}
+                </span>
+              </div>
+              <h3 className="font-[family-name:var(--font-heading)] text-lg font-semibold leading-snug sm:text-xl" style={{ color: INK }}>
+                {data.buyerColumn.heading}
+              </h3>
+              <ul className="mt-5 space-y-3 flex-1">
+                {data.buyerColumn.painPoints.map((point, idx) => (
+                  <li key={idx} className="flex items-start gap-2.5 text-sm leading-relaxed" style={{ color: INK_SOFT }}>
+                    <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-amber-600" style={{ background: "rgba(217, 119, 6, 0.12)" }}>
+                      ✕
+                    </span>
+                    <span>{point}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-6 rounded-2xl border p-4.5" style={{ background: tint(GREEN, 6), borderColor: tint(GREEN, 20) }}>
+                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider" style={{ color: GREEN }}>
+                  <IconCheck className="h-4 w-4" /> Giải pháp từ Gieo Chữ
+                </p>
+                <p className="mt-1.5 text-sm font-medium leading-relaxed" style={{ color: INK }}>
+                  {data.buyerColumn.solution}
+                </p>
+              </div>
+              {data.buyerColumn.cta ? (
+                <div className="mt-6">
+                  <Link href={data.buyerColumn.cta.href} className={`w-full ${CTA_PRIMARY} ${FOCUS_ON_LIGHT} text-white`} style={{ background: GREEN }}>
+                    {data.buyerColumn.cta.label}
+                  </Link>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * About Section — Giới thiệu nền tảng theo phương án Layout C (Media toàn chiều rộng).
+ * Hỗ trợ chọn Image / Video upload / YouTube / Video URL, fallback poster, responsive.
+ */
+export function AboutSection({ data }: { data: AboutData }) {
+  const titleId = useId();
+  const ytEmbedUrl = data.mediaType === "video" && data.videoSourceType === "youtube" && data.videoUrl ? parseYouTubeEmbedUrl(data.videoUrl) : null;
+
+  return (
+    <section aria-labelledby={titleId} className="py-14 sm:py-20 lg:py-24" style={{ background: "#FFFFFF" }}>
+      <div className="container-page">
+        <div className="mx-auto max-w-[800px] text-center">
+          {data.eyebrow ? (
+            <p className="mb-2 text-[13px] font-bold tracking-wide sm:text-[13.5px]" style={{ color: AMBER_TEXT }}>
+              {data.eyebrow}
+            </p>
+          ) : null}
+          <h2 id={titleId} className="font-[family-name:var(--font-heading)] text-2xl font-semibold text-balance sm:text-[32px] lg:text-[36px]" style={{ color: INK }}>
+            {data.title}
+          </h2>
+          <p className="mt-4 text-[15px] leading-[1.75] text-balance sm:text-[16.5px]" style={{ color: INK_SOFT }}>
+            {data.description}
+          </p>
+          {data.closingMessage ? (
+            <p className="mt-3 flex items-center justify-center gap-2 text-sm font-bold" style={{ color: BLUE }}>
+              <IconSprout className="h-4 w-4 shrink-0" />
+              {data.closingMessage}
+            </p>
+          ) : null}
+        </div>
+
+        {/* Layout C: Media toàn chiều rộng nổi bật */}
+        <div className="mt-10 sm:mt-12">
+          <div className="relative mx-auto w-full overflow-hidden rounded-[24px] border bg-gray-950 shadow-xl sm:rounded-[32px]" style={{ borderColor: LINE }}>
+            {data.mediaType === "video" ? (
+              ytEmbedUrl ? (
+                <div className="aspect-video w-full">
+                  <iframe
+                    src={ytEmbedUrl}
+                    title={data.title}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    loading="lazy"
+                    className="h-full w-full border-0"
+                  />
+                </div>
+              ) : data.videoUrl ? (
+                <div className="aspect-video w-full bg-black">
+                  <video
+                    controls
+                    preload="metadata"
+                    playsInline
+                    poster={data.videoPosterUrl ? cloudinaryDeliveryUrl(data.videoPosterUrl, { width: 1600 }) : undefined}
+                    className="h-full w-full object-cover"
+                  >
+                    <source src={data.videoUrl} />
+                    Trình duyệt của bạn không hỗ trợ thẻ video.
+                  </video>
+                </div>
+              ) : (
+                <div className="flex aspect-video w-full flex-col items-center justify-center p-6 text-center text-white" style={{ background: `linear-gradient(135deg, ${BLUE_DEEP} 0%, ${BLUE} 100%)` }}>
+                  <IconDocs className="mb-3 h-14 w-14 opacity-50 sm:h-16 sm:w-16" />
+                  <p className="font-[family-name:var(--font-heading)] text-xl font-bold sm:text-2xl">{data.title}</p>
+                  <p className="mt-1 text-sm text-white/70">Video giới thiệu nền tảng Gieo Chữ</p>
+                </div>
+              )
+            ) : data.imageUrl ? (
+              <div className="relative aspect-[16/9] max-h-[560px] w-full">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={cloudinaryDeliveryUrl(data.imageUrl, { width: 1600 })}
+                  alt={data.imageAlt ?? data.title}
+                  loading="lazy"
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="relative flex aspect-[21/9] min-h-[260px] w-full flex-col items-center justify-center p-8 text-center text-white sm:min-h-[360px]" style={{ background: `linear-gradient(135deg, ${BLUE_DEEP} 0%, #163660 60%, ${BLUE} 100%)` }}>
+                <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08)_0,transparent_70%)]" />
+                <span className="relative rounded-full border px-4 py-1.5 text-xs font-semibold sm:text-sm" style={{ background: "rgba(255,255,255,0.1)", borderColor: "rgba(255,255,255,0.2)", color: AMBER_SOFT }}>
+                  Tri thức hôm nay • Giá trị ngày mai
+                </span>
+                <p className="relative mt-4 max-w-[600px] font-[family-name:var(--font-heading)] text-2xl font-bold sm:text-3xl lg:text-4xl text-balance">
+                  {data.title}
+                </p>
+                <p className="relative mt-2 text-sm text-white/75 sm:text-base">Nền tảng kết nối người chia sẻ và người tìm kiếm học liệu số</p>
+              </div>
+            )}
+          </div>
+
+          {data.caption ? (
+            <p className="mt-2.5 text-center text-xs text-gray-500 sm:text-sm">{data.caption}</p>
+          ) : null}
+
+          {data.cta ? (
+            <div className="mt-8 flex justify-center">
+              <Link href={data.cta.href} className={`${CTA_PRIMARY} ${FOCUS_ON_LIGHT} text-white`} style={{ background: BLUE }}>
+                {data.cta.label}
+              </Link>
+            </div>
+          ) : null}
+        </div>
+      </div>
     </section>
   );
 }

@@ -46,9 +46,13 @@ export const NAV_LINK_KIND_LABELS: Record<NavLinkKind, string> = {
  */
 export const NAV_PAGE_PATHS = {
   home: "/",
+  about: "/gioi-thieu",
   shop: "/cua-hang",
   documents: "/cua-hang/tai-lieu",
+  seller: "/danh-cho-nguoi-ban",
   pricing: "/pricing",
+  guide: "/huong-dan-su-dung",
+  payment_refund_policy: "/chinh-sach-thanh-toan-hoan-tien",
   register: "/register",
   login: "/login",
 } as const;
@@ -56,9 +60,13 @@ export type NavPageKey = keyof typeof NAV_PAGE_PATHS;
 
 export const NAV_PAGE_LABELS: Record<NavPageKey, string> = {
   home: "Trang chủ",
+  about: "Giới thiệu Gieo Chữ",
   shop: "Cửa hàng",
   documents: "Tất cả tài liệu",
+  seller: "Dành cho người bán",
   pricing: "Bảng giá",
+  guide: "Hướng dẫn sử dụng",
+  payment_refund_policy: "Chính sách thanh toán & hoàn tiền",
   register: "Đăng ký",
   login: "Đăng nhập",
 };

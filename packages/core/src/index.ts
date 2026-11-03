@@ -220,6 +220,8 @@ export {
   isValidHomeSections,
   parseHomeSections,
   defaultHomeStatsData,
+  defaultPainPointData,
+  defaultAboutData,
   HOME_SECTION_LABELS,
   HOME_STAT_KEYS,
   HOME_STAT_DEFAULT_LABELS,
@@ -251,6 +253,7 @@ export {
   floorStatValue,
 } from "./admin/home-sections";
 export type {
+  AboutData,
   HomeCommunityMode,
   HomeCommunityView,
   HomeCta,
@@ -260,6 +263,7 @@ export type {
   HomeSectionData,
   HomeSectionType,
   HomeStatKey,
+  PainPointData,
 } from "./admin/home-sections";
 export {
   HOME_CMS_SLUG,

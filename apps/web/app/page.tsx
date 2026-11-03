@@ -21,6 +21,7 @@ import { SiteFooter } from "./_ui/site-footer";
 import { SiteHeader } from "./_ui/site-header";
 import { systemFontVars } from "./_ui/system-fonts";
 import {
+  AboutSection,
   BecomeSellerSection,
   BenefitsSection,
   CoachesSection,
@@ -29,6 +30,7 @@ import {
   FaqSection,
   FinalCtaSection,
   HeroSection,
+  PainPointSection,
   SearchSection,
   StatsSection,
   StepsSection,
@@ -113,6 +115,10 @@ function renderSection(loaded: LoadedHomeSection, slogan: string, isMainHero: bo
 
   const section = loaded.section;
   switch (section.type) {
+    case "painPoint":
+      return <PainPointSection data={section.data} />;
+    case "about":
+      return <AboutSection data={section.data} />;
     case "benefits":
       return <BenefitsSection data={section.data} />;
     case "becomeSeller":

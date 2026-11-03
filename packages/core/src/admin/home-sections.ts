@@ -328,11 +328,55 @@ const finalCtaDataSchema = z.object({
   showSlogan: z.boolean().default(true),
 });
 
+export const HOME_PAIN_POINTS_MIN = 1;
+export const HOME_PAIN_POINTS_MAX = 8;
+export const HOME_MEDIA_URL_MAX = 500;
+
+export const painPointColumnSchema = z.object({
+  title: requiredText(HOME_TITLE_MAX),
+  heading: requiredText(HOME_TITLE_MAX),
+  painPoints: z
+    .array(requiredText(HOME_TEXT_MAX))
+    .min(HOME_PAIN_POINTS_MIN, `Cần ít nhất ${HOME_PAIN_POINTS_MIN} vấn đề.`)
+    .max(HOME_PAIN_POINTS_MAX, `Tối đa ${HOME_PAIN_POINTS_MAX} vấn đề.`),
+  solution: requiredText(HOME_TEXT_MAX),
+  cta: optionalCtaSchema,
+  enabled: z.boolean().default(true),
+});
+export type HomePainPointColumn = z.infer<typeof painPointColumnSchema>;
+
+export const painPointDataSchema = z.object({
+  eyebrow: optionalText(HOME_EYEBROW_MAX),
+  title: requiredText(HOME_TITLE_MAX),
+  description: optionalText(HOME_TEXT_MAX),
+  creatorColumn: painPointColumnSchema,
+  buyerColumn: painPointColumnSchema,
+});
+export type PainPointData = z.infer<typeof painPointDataSchema>;
+
+export const aboutDataSchema = z.object({
+  eyebrow: optionalText(HOME_EYEBROW_MAX),
+  title: requiredText(HOME_TITLE_MAX),
+  description: requiredText(HOME_TEXT_MAX),
+  closingMessage: optionalText(HOME_BRAND_MESSAGE_MAX),
+  mediaType: z.enum(["image", "video"]).default("image"),
+  imageUrl: z.string().trim().max(HOME_MEDIA_URL_MAX).optional(),
+  imageAlt: optionalText(HOME_IMAGE_ALT_MAX),
+  videoSourceType: z.enum(["upload", "youtube", "url"]).default("upload"),
+  videoUrl: z.string().trim().max(HOME_MEDIA_URL_MAX).optional(),
+  videoPosterUrl: z.string().trim().max(HOME_MEDIA_URL_MAX).optional(),
+  caption: optionalText(HOME_TEXT_MAX),
+  cta: optionalCtaSchema,
+});
+export type AboutData = z.infer<typeof aboutDataSchema>;
+
 const sectionBaseFields = { id: z.string().min(1), visible: z.boolean() };
 
 export const homeSectionSchema = z.discriminatedUnion("type", [
   z.object({ ...sectionBaseFields, type: z.literal("hero"), data: heroDataSchema }),
   z.object({ ...sectionBaseFields, type: z.literal("stats"), data: statsDataSchema }),
+  z.object({ ...sectionBaseFields, type: z.literal("painPoint"), data: painPointDataSchema }),
+  z.object({ ...sectionBaseFields, type: z.literal("about"), data: aboutDataSchema }),
   z.object({ ...sectionBaseFields, type: z.literal("search"), data: searchDataSchema }),
   z.object({ ...sectionBaseFields, type: z.literal("benefits"), data: benefitsDataSchema }),
   z.object({ ...sectionBaseFields, type: z.literal("coaches"), data: coachesDataSchema }),
@@ -356,6 +400,8 @@ export type HomeSectionData<T extends HomeSectionType> = Extract<HomeSection, { 
 export const HOME_SECTION_TYPES: readonly HomeSectionType[] = [
   "hero",
   "stats",
+  "painPoint",
+  "about",
   "search",
   "benefits",
   "coaches",
@@ -370,6 +416,8 @@ export const HOME_SECTION_TYPES: readonly HomeSectionType[] = [
 export const HOME_SECTION_LABELS: Record<HomeSectionType, string> = {
   hero: "Hero — Banner chính",
   stats: "Số liệu nổi bật",
+  painPoint: "Những vấn đề Gieo Chữ giải quyết (Pain Point)",
+  about: "Giới thiệu Gieo Chữ (About)",
   search: "Tìm tài liệu",
   benefits: "Vì sao chọn chúng tôi",
   coaches: "Giáo viên & Coach nổi bật",
@@ -419,6 +467,55 @@ export function defaultHomeStatsData(): StatsData {
   };
 }
 
+export function defaultPainPointData(): PainPointData {
+  return {
+    eyebrow: "Khởi đầu từ vấn đề thực tế",
+    title: "Bạn có tri thức giá trị, nhưng hành trình chia sẻ và tìm kiếm học liệu vẫn còn nhiều trở ngại?",
+    description:
+      "Người sáng tạo cần một nơi phù hợp để giới thiệu và kinh doanh tài liệu. Người học cần một nơi thuận tiện để khám phá và quản lý học liệu. {brand} được xây dựng để kết nối hai nhu cầu đó.",
+    creatorColumn: {
+      title: "Người sáng tạo / Người bán tài liệu",
+      heading: "Bạn có kiến thức và tài liệu giá trị, nhưng chưa biết cách đưa chúng đến đúng người cần?",
+      painPoints: [
+        "Có giáo án, đề thi, slide hoặc tài liệu chuyên môn nhưng chưa có kênh giới thiệu và phân phối phù hợp.",
+        "Muốn có gian hàng mang thương hiệu riêng nhưng không muốn tự xây dựng và vận hành website phức tạp.",
+        "Khó tiếp cận người mua ngoài mạng lưới cá nhân hoặc các kênh mạng xã hội phân tán.",
+        "Việc đăng tài liệu, nhận đơn, theo dõi khách hàng và thanh toán còn rời rạc.",
+      ],
+      solution: "Gieo Chữ giúp bạn xây dựng gian hàng riêng, giới thiệu tài liệu và quản lý hoạt động bán hàng qua Studio.",
+      cta: { label: "Bắt đầu xây dựng gian hàng", href: REGISTER_PATH },
+      enabled: true,
+    },
+    buyerColumn: {
+      title: "Người tìm kiếm / Người mua tài liệu",
+      heading: "Bạn mất thời gian tìm kiếm học liệu nhưng chưa dễ dàng tìm được tài liệu phù hợp?",
+      painPoints: [
+        "Tài liệu nằm rải rác ở nhiều website, hội nhóm và nguồn chia sẻ chưa được chuẩn hóa.",
+        "Khó tìm kiếm chính xác theo nhu cầu, môn học, cấp độ hoặc người biên soạn.",
+        "Cần thêm thông tin chi tiết về tài liệu và người bán trước khi quyết định mua.",
+        "Khó quản lý và tìm lại tài liệu đã mua nếu lưu trữ ở nhiều nơi khác nhau.",
+      ],
+      solution: "Gieo Chữ giúp bạn khám phá tài liệu từ nhiều gian hàng, xem thông tin trước khi mua và quản lý tài liệu đã sở hữu trong thư viện cá nhân.",
+      cta: { label: "Khám phá tài liệu", href: DOCUMENTS_PATH },
+      enabled: true,
+    },
+  };
+}
+
+export function defaultAboutData(): AboutData {
+  return {
+    eyebrow: "Về Gieo Chữ",
+    title: "{brand} – Nơi tri thức được chia sẻ, kết nối và tạo ra giá trị",
+    description:
+      "{brand} là nền tảng kết nối những người có kiến thức với những người đang tìm kiếm tri thức. Chúng tôi giúp giáo viên, gia sư, coach và chuyên gia giới thiệu tài liệu số trong gian hàng mang dấu ấn riêng; đồng thời giúp người học khám phá, lựa chọn và quản lý học liệu trên cùng một nền tảng.",
+    closingMessage: "Gieo kiến thức. Tạo giá trị.",
+    mediaType: "image",
+    imageAlt: "Gieo Chữ - Nền tảng chia sẻ và kết nối tri thức",
+    videoSourceType: "upload",
+    cta: { label: "Tìm hiểu về {brand}", href: "/gioi-thieu" },
+  };
+}
+
 // ───────────── Nội dung mặc định theo brief trang chủ (ADR-050) ─────────────
 
 /** SEO mặc định (brief §4.1–4.2) khi ô SEO trống / chưa xuất bản. `{brand}` thay lúc render. */
@@ -463,6 +560,8 @@ export function defaultHomeSections(): HomeSection[] {
       },
     },
     { id: "stats", type: "stats", visible: false, data: defaultHomeStatsData() },
+    { id: "painPoint", type: "painPoint", visible: true, data: defaultPainPointData() },
+    { id: "about", type: "about", visible: true, data: defaultAboutData() },
     {
       id: "search",
       type: "search",
@@ -725,6 +824,13 @@ function sectionHrefs(section: HomeSection): { field: string; href: string }[] {
     case "hero":
       add("primaryCta.href", section.data.primaryCta);
       add("secondaryCta.href", section.data.secondaryCta);
+      break;
+    case "painPoint":
+      add("creatorColumn.cta.href", section.data.creatorColumn.cta);
+      add("buyerColumn.cta.href", section.data.buyerColumn.cta);
+      break;
+    case "about":
+      add("cta.href", section.data.cta);
       break;
     case "coaches":
     case "documents":

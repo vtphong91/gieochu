@@ -28,6 +28,11 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "tim-kiem",
   "giao-vien",
   "kham-pha",
+  // Các trang nội dung cấp gốc (giới thiệu, người bán, hướng dẫn, thanh toán hoàn tiền)
+  "gioi-thieu",
+  "danh-cho-nguoi-ban",
+  "huong-dan-su-dung",
+  "chinh-sach-thanh-toan-hoan-tien",
   // ADR-050 mục 3: tiền tố cũ `/phap-ly/{slug}` (ADR-054: nay chỉ redirect 308) — giữ dành riêng.
   "phap-ly",
   // ADR-054 mục 1: 7 văn bản pháp lý ở URL cấp gốc (`dieu-khoan-su-dung`, `chinh-sach-bao-mat`, `chinh-sach-noi-dung`,

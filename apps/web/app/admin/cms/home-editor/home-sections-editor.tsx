@@ -54,10 +54,25 @@ import { PinPicker, type PinOption } from "./pin-picker";
 import { toProductPinOption, toTenantPinOption } from "./pin-options";
 
 const INK = brandColors.ink;
+const BLUE = brandColors.primary;
+const GREEN = brandColors.secondary;
 const LINE = "#E5E7EB";
 const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-primary)]";
 /** Nút icon trong danh sách section (cùng chuẩn editor Cửa hàng): 44×44 dưới lg (target chạm), 36×36 từ lg. */
 const ICON_BTN = `inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent motion-reduce:transition-none lg:h-9 lg:w-9 ${FOCUS}`;
+
+function IconGripVertical({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" fill="currentColor">
+      <circle cx="9" cy="6" r="1.5" />
+      <circle cx="15" cy="6" r="1.5" />
+      <circle cx="9" cy="12" r="1.5" />
+      <circle cx="15" cy="12" r="1.5" />
+      <circle cx="9" cy="18" r="1.5" />
+      <circle cx="15" cy="18" r="1.5" />
+    </svg>
+  );
+}
 const TEXTAREA_CLASS =
   "mt-1.5 w-full rounded-lg border bg-white px-3.5 py-2.5 text-[15px] outline-none focus:border-[#0F3B82] focus:ring-2 focus:ring-[#0F3B82]/15";
 
@@ -479,6 +494,242 @@ function SectionFields({
         </div>
       );
     }
+    case "painPoint": {
+      const d = section.data;
+      return (
+        <div className="space-y-6">
+          <TextField
+            id="painpoint-eyebrow"
+            label="Eyebrow (dòng nhỏ trên tiêu đề)"
+            maxLength={60}
+            value={d.eyebrow ?? ""}
+            onChange={(e) => onChange({ ...d, eyebrow: optional(e.target.value) })}
+          />
+          <TextField
+            id="painpoint-title"
+            label="Tiêu đề section"
+            maxLength={160}
+            value={d.title}
+            onChange={(e) => onChange({ ...d, title: e.target.value })}
+          />
+          <TextAreaField
+            id="painpoint-desc"
+            label="Mô tả chung"
+            maxLength={600}
+            value={d.description ?? ""}
+            onChange={(description) => onChange({ ...d, description: optional(description) })}
+          />
+
+          {/* Cột 1: Người sáng tạo / Người bán */}
+          <div className="rounded-xl border p-4 sm:p-5" style={{ borderColor: LINE, background: d.creatorColumn.enabled ? "white" : "#F9FAFB" }}>
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-sm font-bold" style={{ color: BLUE }}>
+                CỘT 1 — DÀNH CHO NGƯỜI SÁNG TẠO / NGƯỜI BÁN
+              </p>
+              <Toggle
+                checked={d.creatorColumn.enabled}
+                aria-label="Bật cột người bán"
+                onChange={(e) => onChange({ ...d, creatorColumn: { ...d.creatorColumn, enabled: e.target.checked } })}
+              />
+            </div>
+            <div className="space-y-4">
+              <TextField
+                id="pp-creator-title"
+                label="Tên nhóm đối tượng"
+                value={d.creatorColumn.title}
+                onChange={(e) => onChange({ ...d, creatorColumn: { ...d.creatorColumn, title: e.target.value } })}
+              />
+              <TextField
+                id="pp-creator-heading"
+                label="Câu khơi gợi vấn đề"
+                value={d.creatorColumn.heading}
+                onChange={(e) => onChange({ ...d, creatorColumn: { ...d.creatorColumn, heading: e.target.value } })}
+              />
+              <LinesField
+                id="pp-creator-points"
+                label="Danh sách vấn đề (mỗi dòng một ý, tối đa 8 ý)"
+                value={d.creatorColumn.painPoints}
+                onChange={(painPoints) => onChange({ ...d, creatorColumn: { ...d.creatorColumn, painPoints } })}
+              />
+              <TextAreaField
+                id="pp-creator-solution"
+                label="Giải pháp từ Gieo Chữ"
+                value={d.creatorColumn.solution}
+                onChange={(solution) => onChange({ ...d, creatorColumn: { ...d.creatorColumn, solution } })}
+              />
+              <OptionalCtaEditor
+                id="pp-creator-cta"
+                label="Nút kêu gọi hành động (CTA)"
+                value={d.creatorColumn.cta}
+                onChange={(cta) => onChange({ ...d, creatorColumn: { ...d.creatorColumn, cta } })}
+              />
+            </div>
+          </div>
+
+          {/* Cột 2: Người tìm kiếm / Người mua */}
+          <div className="rounded-xl border p-4 sm:p-5" style={{ borderColor: LINE, background: d.buyerColumn.enabled ? "white" : "#F9FAFB" }}>
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-sm font-bold" style={{ color: GREEN }}>
+                CỘT 2 — DÀNH CHO NGƯỜI TÌM KIẾM / NGƯỜI MUA
+              </p>
+              <Toggle
+                checked={d.buyerColumn.enabled}
+                aria-label="Bật cột người mua"
+                onChange={(e) => onChange({ ...d, buyerColumn: { ...d.buyerColumn, enabled: e.target.checked } })}
+              />
+            </div>
+            <div className="space-y-4">
+              <TextField
+                id="pp-buyer-title"
+                label="Tên nhóm đối tượng"
+                value={d.buyerColumn.title}
+                onChange={(e) => onChange({ ...d, buyerColumn: { ...d.buyerColumn, title: e.target.value } })}
+              />
+              <TextField
+                id="pp-buyer-heading"
+                label="Câu khơi gợi vấn đề"
+                value={d.buyerColumn.heading}
+                onChange={(e) => onChange({ ...d, buyerColumn: { ...d.buyerColumn, heading: e.target.value } })}
+              />
+              <LinesField
+                id="pp-buyer-points"
+                label="Danh sách vấn đề (mỗi dòng một ý, tối đa 8 ý)"
+                value={d.buyerColumn.painPoints}
+                onChange={(painPoints) => onChange({ ...d, buyerColumn: { ...d.buyerColumn, painPoints } })}
+              />
+              <TextAreaField
+                id="pp-buyer-solution"
+                label="Giải pháp từ Gieo Chữ"
+                value={d.buyerColumn.solution}
+                onChange={(solution) => onChange({ ...d, buyerColumn: { ...d.buyerColumn, solution } })}
+              />
+              <OptionalCtaEditor
+                id="pp-buyer-cta"
+                label="Nút kêu gọi hành động (CTA)"
+                value={d.buyerColumn.cta}
+                onChange={(cta) => onChange({ ...d, buyerColumn: { ...d.buyerColumn, cta } })}
+              />
+            </div>
+          </div>
+        </div>
+      );
+    }
+    case "about": {
+      const d = section.data;
+      return (
+        <div className="space-y-4">
+          <TextField
+            id="about-eyebrow"
+            label="Eyebrow (dòng nhỏ trên tiêu đề)"
+            maxLength={60}
+            value={d.eyebrow ?? ""}
+            onChange={(e) => onChange({ ...d, eyebrow: optional(e.target.value) })}
+          />
+          <TextField
+            id="about-title"
+            label="Tiêu đề section"
+            maxLength={160}
+            value={d.title}
+            onChange={(e) => onChange({ ...d, title: e.target.value })}
+          />
+          <TextAreaField
+            id="about-desc"
+            label="Nội dung giới thiệu"
+            maxLength={600}
+            rows={4}
+            value={d.description}
+            onChange={(description) => onChange({ ...d, description })}
+          />
+          <TextField
+            id="about-closing"
+            label="Thông điệp kết (slogan)"
+            maxLength={80}
+            value={d.closingMessage ?? ""}
+            onChange={(e) => onChange({ ...d, closingMessage: optional(e.target.value) })}
+          />
+
+          {/* Cấu hình Media toàn chiều rộng (Layout C) */}
+          <div className="rounded-xl border p-4 sm:p-5" style={{ borderColor: LINE }}>
+            <p className="mb-3 text-sm font-bold" style={{ color: INK }}>
+              VÙNG MEDIA TOÀN CHIỀU RỘNG (LAYOUT C)
+            </p>
+            <div className="mb-4">
+              <SelectField
+                id="about-media-type"
+                label="Loại media hiển thị"
+                value={d.mediaType}
+                onChange={(e) => onChange({ ...d, mediaType: e.target.value as "image" | "video" })}
+              >
+                <option value="image">Hình ảnh nổi bật</option>
+                <option value="video">Video giới thiệu</option>
+              </SelectField>
+            </div>
+
+            {d.mediaType === "video" ? (
+              <div className="space-y-4">
+                <SelectField
+                  id="about-video-src-type"
+                  label="Nguồn video"
+                  value={d.videoSourceType ?? "upload"}
+                  onChange={(e) => onChange({ ...d, videoSourceType: e.target.value as "upload" | "youtube" | "url" })}
+                >
+                  <option value="upload">Video upload từ máy</option>
+                  <option value="youtube">Nhúng từ YouTube</option>
+                  <option value="url">Đường dẫn tệp video trực tiếp (.mp4 / .webm)</option>
+                </SelectField>
+
+                <TextField
+                  id="about-video-url"
+                  label={d.videoSourceType === "youtube" ? "Link YouTube (vd: https://youtube.com/watch?v=... hoặc https://youtu.be/...)" : "URL tệp video"}
+                  hint="Video không tự động phát có âm thanh, hỗ trợ responsive."
+                  value={d.videoUrl ?? ""}
+                  onChange={(e) => onChange({ ...d, videoUrl: optional(e.target.value) })}
+                />
+
+                <ImageUploadField
+                  label="Ảnh đại diện video (Poster / Fallback)"
+                  hint="Ảnh hiển thị trước khi bấm phát video hoặc khi chưa tải được video."
+                  value={d.videoPosterUrl ?? ""}
+                  onChange={(url) => onChange({ ...d, videoPosterUrl: optional(url) })}
+                />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <ImageUploadField
+                  label="Ảnh minh hoạ toàn chiều rộng (trống = dùng banner mặc định)"
+                  hint="Khuyên dùng ảnh tỷ lệ 16:9 hoặc 21:9 (rộng 1600px), định dạng WebP/JPEG."
+                  value={d.imageUrl ?? ""}
+                  onChange={(url) => onChange({ ...d, imageUrl: optional(url) })}
+                />
+                <TextField
+                  id="about-image-alt"
+                  label="Mô tả ảnh (alt text)"
+                  maxLength={160}
+                  value={d.imageAlt ?? ""}
+                  onChange={(e) => onChange({ ...d, imageAlt: optional(e.target.value) })}
+                />
+              </div>
+            )}
+
+            <div className="mt-4">
+              <TextField
+                id="about-caption"
+                label="Chú thích media (không bắt buộc)"
+                value={d.caption ?? ""}
+                onChange={(e) => onChange({ ...d, caption: optional(e.target.value) })}
+              />
+            </div>
+          </div>
+
+          <OptionalCtaEditor
+            id="about-cta"
+            label="Nút kêu gọi hành động (CTA)"
+            value={d.cta}
+            onChange={(cta) => onChange({ ...d, cta })}
+          />
+        </div>
+      );
+    }
     case "search": {
       const d = section.data;
       return (
@@ -802,6 +1053,22 @@ export function HomeSectionsEditor({
     });
   }
 
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  function handleReorder(sourceId: string, targetId: string) {
+    if (sourceId === targetId) return;
+    setSections((prev) => {
+      const fromIdx = prev.findIndex((item) => item.id === sourceId);
+      const toIdx = prev.findIndex((item) => item.id === targetId);
+      if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved!);
+      return next;
+    });
+  }
+
   function showResult(result: HomeEditorActionState, okText: string) {
     setMessage(result.success ? { ok: true, text: okText } : { ok: false, text: result.error ?? "Thao tác thất bại.", issues: result.issues });
   }
@@ -879,12 +1146,50 @@ export function HomeSectionsEditor({
             {sections.map((s, i) => {
               const label = HOME_SECTION_LABELS[s.type];
               const isSelected = s.id === selectedId;
+              const isDragOver = s.id === dragOverId;
+              const isDragging = s.id === draggedId;
               return (
                 <div
                   key={s.id}
-                  className="flex items-center gap-1 rounded-xl border p-1 transition-colors motion-reduce:transition-none"
+                  draggable
+                  onDragStart={(e) => {
+                    setDraggedId(s.id);
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData("text/plain", s.id);
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                    if (dragOverId !== s.id) setDragOverId(s.id);
+                  }}
+                  onDragLeave={() => {
+                    if (dragOverId === s.id) setDragOverId(null);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const sourceId = e.dataTransfer.getData("text/plain") || draggedId;
+                    setDragOverId(null);
+                    setDraggedId(null);
+                    if (sourceId && sourceId !== s.id) {
+                      handleReorder(sourceId, s.id);
+                    }
+                  }}
+                  onDragEnd={() => {
+                    setDraggedId(null);
+                    setDragOverId(null);
+                  }}
+                  className={`flex items-center gap-1 rounded-xl border p-1 transition-all motion-reduce:transition-none ${
+                    isDragOver ? "ring-2 ring-offset-1 ring-[#0F3B82]" : ""
+                  } ${isDragging ? "opacity-50" : ""}`}
                   style={{ borderColor: isSelected ? brandColors.accent : LINE, background: isSelected ? brandColors.accentSoft : "white" }}
                 >
+                  <span
+                    className="flex h-11 w-5 shrink-0 cursor-grab items-center justify-center text-gray-400 hover:text-gray-700 active:cursor-grabbing lg:h-9"
+                    title="Kéo-thả để đổi thứ tự section"
+                    aria-hidden="true"
+                  >
+                    <IconGripVertical className="h-4 w-4" />
+                  </span>
                   {/* Nút con mắt thay checkbox 16px (target ≥ 44px dưới lg) — cùng mẫu editor Cửa hàng/Trang bán hàng. */}
                   <button
                     type="button"
@@ -901,7 +1206,7 @@ export function HomeSectionsEditor({
                     type="button"
                     onClick={() => setSelectedId(s.id)}
                     aria-current={isSelected ? "true" : undefined}
-                    className={`flex min-h-11 min-w-0 flex-1 cursor-pointer flex-col items-start justify-center rounded-lg px-1.5 text-left lg:min-h-9 ${FOCUS}`}
+                    className={`flex min-h-11 min-w-0 flex-1 cursor-pointer flex-col items-start justify-center rounded-lg px-1 text-left lg:min-h-9 ${FOCUS}`}
                   >
                     <span className="w-full truncate text-sm font-medium" style={{ color: s.visible ? INK : "#6B7280" }}>
                       {label}
