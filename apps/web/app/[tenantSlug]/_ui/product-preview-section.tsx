@@ -14,7 +14,7 @@ const PRIMARY = brandColors.primary;
 const ACCENT_SOFT = brandColors.accentSoft;
 const ACCENT = brandColors.accent;
 
-type IconKind = "docx" | "xlsx" | "pdf" | "text" | "unknown";
+type IconKind = "docx" | "xlsx" | "pdf" | "pptx" | "text" | "unknown";
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "";
@@ -32,7 +32,7 @@ function formatBytes(bytes: number): string {
  * Chọn icon theo kind cache hoặc đuôi file (khi "pending"/"unsupported" vẫn muốn gợi ý định dạng).
  */
 export function inferIconKind(file: PublicProductPreviewFile): IconKind {
-  if (file.kind === "docx" || file.kind === "xlsx" || file.kind === "pdf" || file.kind === "text") {
+  if (file.kind === "docx" || file.kind === "xlsx" || file.kind === "pdf" || file.kind === "pptx" || file.kind === "text") {
     return file.kind;
   }
   const name = file.fileName.toLowerCase();
@@ -40,6 +40,7 @@ export function inferIconKind(file: PublicProductPreviewFile): IconKind {
   if (ext === "docx" || ext === "doc") return "docx";
   if (ext === "xlsx" || ext === "xls" || ext === "csv") return "xlsx";
   if (ext === "pdf") return "pdf";
+  if (ext === "pptx" || ext === "ppt") return "pptx";
   if (ext === "txt" || ext === "md" || ext === "json") return "text";
   return "unknown";
 }
@@ -48,6 +49,7 @@ const BADGE_PALETTE: Record<IconKind, { bg: string; fg: string; label: string }>
   docx: { bg: "#DBEAFE", fg: "#1E40AF", label: "DOC" },
   xlsx: { bg: "#DCFCE7", fg: "#166534", label: "XLS" },
   pdf: { bg: "#FEE2E2", fg: "#B91C1C", label: "PDF" },
+  pptx: { bg: "#FFEDD5", fg: "#C2410C", label: "PPT" },
   text: { bg: "#E2E8F0", fg: "#334155", label: "TXT" },
   unknown: { bg: "#F1F5F9", fg: "#475569", label: "FILE" },
 };
@@ -95,6 +97,7 @@ function MetaLine({ file }: { file: PublicProductPreviewFile }) {
   const parts: string[] = [];
   if (file.sizeBytes > 0) parts.push(formatBytes(file.sizeBytes));
   if (file.pageCount) parts.push(`${file.pageCount} trang`);
+  if (file.slideCount) parts.push(`${file.slideCount} slide`);
   if (file.totalRows) parts.push(`${file.totalRows} hàng`);
   if (!file.pageCount && !file.totalRows && file.totalCharsEstimate) {
     parts.push(`${file.totalCharsEstimate.toLocaleString("vi-VN")} ký tự`);

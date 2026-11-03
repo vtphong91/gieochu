@@ -17,6 +17,46 @@ export const XLSX_PREVIEW_RATIO = 0.2;
 export const XLSX_PREVIEW_MIN = 10;
 export const XLSX_PREVIEW_MAX = 200;
 
+export const PPTX_PREVIEW_RATIO = 0.2;
+export const PPTX_PREVIEW_MIN = 1;
+export const PPTX_PREVIEW_MAX = 20;
+
+export interface PptxSlide {
+  slideNumber: number;
+  title: string;
+  bullets: string[];
+}
+
+export interface PptxSlideSliceResult {
+  slides: PptxSlide[];
+  slidesShown: number;
+  totalSlides: number;
+}
+
+/**
+ * Cắt 20% số slide đầu tiên (min 1, max 20) từ danh sách slide PowerPoint.
+ */
+export function slicePptxSlides(slides: PptxSlide[]): PptxSlideSliceResult {
+  const totalSlides = slides.length;
+  if (totalSlides === 0) return { slides: [], slidesShown: 0, totalSlides: 0 };
+  const target = Math.ceil(totalSlides * PPTX_PREVIEW_RATIO);
+  const bounded = Math.max(PPTX_PREVIEW_MIN, Math.min(PPTX_PREVIEW_MAX, target));
+  const shown = Math.min(bounded, totalSlides);
+  return { slides: slides.slice(0, shown), slidesShown: shown, totalSlides };
+}
+
+export const PDF_PREVIEW_RATIO = 0.2;
+export const PDF_PREVIEW_MIN_PAGES = 1;
+export const PDF_PREVIEW_MAX_PAGES = 20;
+
+export function calculatePdfPagesToSlice(totalPageCount: number): { pagesShown: number; totalPages: number } {
+  if (totalPageCount <= 0) return { pagesShown: 0, totalPages: 0 };
+  const target = Math.ceil(totalPageCount * PDF_PREVIEW_RATIO);
+  const bounded = Math.max(PDF_PREVIEW_MIN_PAGES, Math.min(PDF_PREVIEW_MAX_PAGES, target));
+  const shown = Math.min(bounded, totalPageCount);
+  return { pagesShown: shown, totalPages: totalPageCount };
+}
+
 /**
  * Tách HTML (do mammoth sinh) thành các block `<p>`/`<h1-6>` ở cấp cao nhất; cắt 20% block đầu (bounded by
  * MIN/MAX), ghép lại. Không có DOM server-side — dùng regex nguyên block, chịu được HTML lồng (anchor, em,

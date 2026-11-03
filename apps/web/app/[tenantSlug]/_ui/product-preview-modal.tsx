@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { brandColors } from "@gieochu/config/theme";
 import type { PublicProductPreviewFile } from "../../../lib/product-file-preview";
 import { FileFormatIcon, inferIconKind } from "./product-preview-section";
@@ -18,7 +18,7 @@ interface ApiResponse {
   fileName: string;
   mimeType: string | null;
   sizeBytes: number;
-  kind: "docx" | "xlsx" | "pdf" | "text" | "unsupported";
+  kind: "docx" | "xlsx" | "pdf" | "pptx" | "text" | "unsupported";
   payload: Record<string, unknown>;
   ratio: number;
   totalEstimate: Record<string, number>;
@@ -45,14 +45,12 @@ function useFocusTrap(active: boolean, panelRef: React.RefObject<HTMLDivElement 
   useEffect(() => {
     if (!active) return;
 
-    // Khoá cuộn body
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
     const panel = panelRef.current;
     const previouslyFocused = document.activeElement as HTMLElement | null;
 
-    // Focus nút Đóng khi mở
     const closeBtn = panel?.querySelector<HTMLButtonElement>("[data-adr063-close]");
     closeBtn?.focus();
 
@@ -95,7 +93,6 @@ function useFocusTrap(active: boolean, panelRef: React.RefObject<HTMLDivElement 
       document.body.style.overflow = prevOverflow;
       previouslyFocused?.focus?.();
     };
-    // Chủ ý bỏ `onClose` khỏi deps: dùng ref để tránh teardown mỗi lần parent re-render.
   }, [active, panelRef]);
 }
 
@@ -120,8 +117,6 @@ export function ProductPreviewModal({
   useFocusTrap(true, panelRef, onClose);
 
   useEffect(() => {
-    // Reset state nằm ở retry handler + key prop ở component cha (openFile.id) để tránh gọi setState trong effect
-    // body (ESLint `react-hooks/set-state-in-effect`). Khi file đổi → remount theo key; khi retry → event handler reset.
     let cancelled = false;
     fetch(`/api/${encodeURIComponent(tenantSlug)}/${encodeURIComponent(productSlug)}/preview/${encodeURIComponent(file.id)}`)
       .then(async (res) => {
@@ -154,11 +149,15 @@ export function ProductPreviewModal({
   const totalEstimate = data?.totalEstimate ?? {};
   if (typeof totalEstimate.pageCount === "number") metaParts.push(`${totalEstimate.pageCount} trang`);
   else if (file.pageCount) metaParts.push(`${file.pageCount} trang`);
+  if (typeof totalEstimate.slideCount === "number") metaParts.push(`${totalEstimate.slideCount} slide`);
+  else if (file.slideCount) metaParts.push(`${file.slideCount} slide`);
   if (typeof totalEstimate.totalRows === "number") metaParts.push(`${totalEstimate.totalRows} hàng`);
   else if (file.totalRows) metaParts.push(`${file.totalRows} hàng`);
   if (metaParts.length === 0 && typeof totalEstimate.totalChars === "number") {
     metaParts.push(`${totalEstimate.totalChars.toLocaleString("vi-VN")} ký tự`);
   }
+
+  const isWide = data?.kind === "pdf" || data?.kind === "pptx" || data?.kind === "xlsx";
 
   return (
     <div
@@ -170,7 +169,9 @@ export function ProductPreviewModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="adr063-preview-panel relative flex max-h-[95dvh] w-full max-w-3xl flex-col overflow-hidden bg-white shadow-2xl sm:rounded-2xl"
+        className={`adr063-preview-panel relative flex max-h-[95dvh] w-full flex-col overflow-hidden bg-white shadow-2xl sm:rounded-2xl ${
+          isWide ? "max-w-4xl" : "max-w-3xl"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex items-start gap-3 border-b px-5 py-4" style={{ borderColor: LINE }}>
@@ -203,7 +204,7 @@ export function ProductPreviewModal({
           </button>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-auto px-5 py-5 text-sm" style={{ color: INK }}>
+        <div className="min-h-0 flex-1 overflow-auto px-4 py-4 sm:px-6 sm:py-5 text-sm" style={{ color: INK }}>
           {error ? <ErrorCard message={error} onRetry={retry} /> : null}
           {!data && !error ? <LoadingSkeleton /> : null}
           {data ? <PreviewBody data={data} /> : null}
@@ -286,61 +287,337 @@ function UnsupportedCard() {
   );
 }
 
-const XLSX_MAX_COLS = 10;
+/* -------------------------------------------------------------------------- */
+/*                                PDF Viewer                                  */
+/* -------------------------------------------------------------------------- */
+
+function PdfPreviewView({ payload }: { payload: Record<string, unknown> }) {
+  const pdfBase64 = typeof payload.pdfBase64 === "string" ? payload.pdfBase64 : null;
+  const pagesShown = typeof payload.pagesShown === "number" ? payload.pagesShown : 1;
+  const pageCount = typeof payload.pageCount === "number" ? payload.pageCount : pagesShown;
+  const fallbackText = typeof payload.text === "string" ? payload.text : "";
+  const blobUrl = useMemo(() => {
+    if (!pdfBase64) return null;
+    try {
+      const byteCharacters = atob(pdfBase64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: "application/pdf" });
+      return URL.createObjectURL(blob);
+    } catch {
+      return null;
+    }
+  }, [pdfBase64]);
+
+  useEffect(() => {
+    return () => {
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+  }, [blobUrl]);
+
+  if (blobUrl) {
+    return (
+      <div className="flex flex-col h-full w-full">
+        <div className="mb-2.5 flex items-center justify-between text-xs" style={{ color: INK_SOFT }}>
+          <div className="flex items-center gap-1.5 font-medium">
+            <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+            <span>Đang hiển thị {pagesShown} trang đầu tiên trên tổng số {pageCount} trang</span>
+          </div>
+          <a
+            href={blobUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 font-semibold text-[color:var(--color-primary)] hover:underline"
+          >
+            <span>Mở thẻ mới ↗</span>
+          </a>
+        </div>
+        <div
+          className="relative h-[62vh] min-h-[420px] w-full overflow-hidden rounded-xl border bg-slate-100 shadow-inner"
+          style={{ borderColor: LINE }}
+        >
+          <iframe
+            src={`${blobUrl}#toolbar=0&navpanes=0`}
+            title="Bản xem trước PDF"
+            className="h-full w-full border-0"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback nếu không có stream/base64 PDF
+  return (
+    <pre
+      className="whitespace-pre-wrap break-words font-mono text-[13.5px] leading-relaxed"
+      style={{ color: INK }}
+    >
+      {fallbackText || "Không có nội dung văn bản hiển thị."}
+    </pre>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*                            PPT / PPTX Slide Viewer                         */
+/* -------------------------------------------------------------------------- */
+
+interface SlideItem {
+  slideNumber: number;
+  title: string;
+  bullets: string[];
+}
+
+function PptxPreviewView({ payload }: { payload: Record<string, unknown> }) {
+  const slides = (Array.isArray(payload.slides) ? payload.slides : []) as SlideItem[];
+  const totalSlides = typeof payload.totalSlides === "number" ? payload.totalSlides : slides.length;
+  const [currentIdx, setCurrentIdx] = useState(0);
+
+  if (slides.length === 0) return <UnsupportedCard />;
+
+  const activeSlide = slides[currentIdx] || slides[0];
+  if (!activeSlide) return <UnsupportedCard />;
+  const canPrev = currentIdx > 0;
+  const canNext = currentIdx < slides.length - 1;
+
+  return (
+    <div className="flex flex-col h-full w-full">
+      {/* Top Slide Controls */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs" style={{ color: INK_SOFT }}>
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-slate-800">
+            Slide {currentIdx + 1} / {slides.length}
+          </span>
+          <span>·</span>
+          <span>Đã trích 20% ({slides.length}/{totalSlides} slide)</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setCurrentIdx((i) => Math.max(0, i - 1))}
+            disabled={!canPrev}
+            className="inline-flex h-8 items-center gap-1 rounded-lg border px-3 font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-35"
+            style={{ borderColor: LINE }}
+          >
+            ← Trước
+          </button>
+          <button
+            type="button"
+            onClick={() => setCurrentIdx((i) => Math.min(slides.length - 1, i + 1))}
+            disabled={!canNext}
+            className="inline-flex h-8 items-center gap-1 rounded-lg border px-3 font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-35"
+            style={{ borderColor: LINE }}
+          >
+            Sau →
+          </button>
+        </div>
+      </div>
+
+      {/* Slide Canvas 16:9 Presentation View */}
+      <div
+        className="relative flex flex-col justify-between overflow-hidden rounded-2xl border p-6 sm:p-10 shadow-md transition-all min-h-[340px]"
+        style={{
+          background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
+          borderColor: "#334155",
+          color: "#F8FAFC",
+        }}
+      >
+        <div>
+          {/* Slide badge */}
+          <div className="flex items-center justify-between border-b border-slate-700/60 pb-3">
+            <span className="rounded-md bg-orange-500/20 px-2.5 py-1 text-xs font-bold tracking-wider text-orange-400">
+              SLIDE {String(activeSlide.slideNumber).padStart(2, "0")}
+            </span>
+            <span className="text-xs text-slate-400 font-mono">Bản xem trước PowerPoint</span>
+          </div>
+
+          {/* Slide Title */}
+          <h4 className="mt-4 font-[family-name:var(--font-heading)] text-lg sm:text-2xl font-extrabold text-white leading-snug">
+            {activeSlide.title}
+          </h4>
+
+          {/* Slide Bullets */}
+          {activeSlide.bullets.length > 0 ? (
+            <ul className="mt-6 space-y-3 text-[14.5px] leading-relaxed text-slate-200">
+              {activeSlide.bullets.map((bullet, bIdx) => (
+                <li key={bIdx} className="flex items-start gap-2.5">
+                  <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-orange-400" />
+                  <span className="[overflow-wrap:anywhere]">{bullet}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-6 text-sm text-slate-400 italic">Slide chứa biểu đồ hoặc hình vẽ thuyết trình.</p>
+          )}
+        </div>
+
+        {/* Slide Footer */}
+        <div className="mt-8 flex items-center justify-between border-t border-slate-800 pt-3 text-xs text-slate-400">
+          <span>Gieo Chữ Presentation Preview</span>
+          <span>
+            {currentIdx + 1} / {totalSlides}
+          </span>
+        </div>
+      </div>
+
+      {/* Slide Thumbnails / Indicators */}
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
+        {slides.map((s, idx) => (
+          <button
+            key={s.slideNumber}
+            type="button"
+            onClick={() => setCurrentIdx(idx)}
+            className={`h-7 px-2.5 rounded-md text-xs font-medium transition ${
+              currentIdx === idx
+                ? "bg-slate-900 text-white font-bold shadow-xs"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            Slide {idx + 1}
+          </button>
+        ))}
+        {totalSlides > slides.length ? (
+          <span className="ml-2 inline-flex items-center gap-1 rounded-md bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 border border-amber-200">
+            🔒 Còn {totalSlides - slides.length} slide
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                DOCX Viewer                                 */
+/* -------------------------------------------------------------------------- */
+
+function DocxPreviewView({ payload }: { payload: Record<string, unknown> }) {
+  const html = typeof payload.html === "string" ? payload.html : "";
+  const paragraphsShown = typeof payload.paragraphsShown === "number" ? payload.paragraphsShown : null;
+  const totalParagraphs = typeof payload.totalParagraphs === "number" ? payload.totalParagraphs : null;
+
+  return (
+    <div className="flex flex-col h-full w-full">
+      {paragraphsShown && totalParagraphs ? (
+        <div className="mb-2 text-xs text-right" style={{ color: INK_SOFT }}>
+          Đã trích {paragraphsShown} / {totalParagraphs} đoạn văn bản (20%)
+        </div>
+      ) : null}
+      <div className="mx-auto w-full max-w-3xl rounded-xl border bg-white p-6 sm:p-10 shadow-xs" style={{ borderColor: LINE }}>
+        <div
+          className="gieochu-rich-content max-w-none text-[15px] leading-relaxed [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mb-3 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:mb-2 [&_p]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_table]:w-full [&_table]:border-collapse [&_th]:border [&_th]:border-slate-300 [&_th]:p-2 [&_td]:border [&_td]:border-slate-300 [&_td]:p-2"
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                XLSX Viewer                                 */
+/* -------------------------------------------------------------------------- */
+
+const XLSX_MAX_COLS = 12;
 const XLSX_CELL_MAX_WIDTH_PX = 240;
 
-function PreviewBody({ data }: { data: ApiResponse }) {
-  const p = data.payload;
-  if (data.kind === "docx") {
-    const html = typeof p.html === "string" ? p.html : "";
-    // HTML đã sanitize ở server bằng sanitizeRichTextHtml (ảnh đã bị loại).
-    return (
-      <div
-        className="gieochu-rich-content max-w-none text-[15px] leading-relaxed"
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
-    );
+function XlsxPreviewView({ payload }: { payload: Record<string, unknown> }) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const sheetName = typeof payload.sheetName === "string" ? payload.sheetName : "Sheet1";
+  const rawRows = payload.rows;
+  const rows = useMemo(() => (Array.isArray(rawRows) ? rawRows : []) as unknown[][], [rawRows]);
+
+  const filteredRows = useMemo(() => {
+    if (!searchQuery.trim()) return rows;
+    const q = searchQuery.toLowerCase().trim();
+    return rows.filter((row, idx) => {
+      if (idx === 0) return true; // giữ hàng header
+      return row.some((cell) => String(cell ?? "").toLowerCase().includes(q));
+    });
+  }, [rows, searchQuery]);
+
+  if (rows.length === 0) return <UnsupportedCard />;
+
+  const maxCols = Math.max(0, ...rows.map((r) => (r?.length ?? 0)));
+  const shownCols = Math.min(maxCols, XLSX_MAX_COLS);
+  const hiddenCols = maxCols - shownCols;
+
+  function getColLabel(colIdx: number): string {
+    let label = "";
+    let n = colIdx;
+    while (n >= 0) {
+      label = String.fromCharCode((n % 26) + 65) + label;
+      n = Math.floor(n / 26) - 1;
+    }
+    return label;
   }
-  if (data.kind === "text" || data.kind === "pdf") {
-    const text = typeof p.text === "string" ? p.text : "";
-    return (
-      <pre
-        className="whitespace-pre-wrap break-words font-mono text-[13.5px] leading-relaxed"
-        style={{ color: INK }}
-      >
-        {text}
-      </pre>
-    );
-  }
-  if (data.kind === "xlsx") {
-    const rows = Array.isArray(p.rows) ? (p.rows as unknown[][]) : [];
-    if (rows.length === 0) return <UnsupportedCard />;
-    const maxCols = Math.max(0, ...rows.map((r) => (r?.length ?? 0)));
-    const shownCols = Math.min(maxCols, XLSX_MAX_COLS);
-    const hiddenCols = maxCols - shownCols;
-    return (
-      <div className="overflow-x-auto rounded-xl border" style={{ borderColor: LINE }}>
-        <table className="min-w-full border-collapse text-[13px]" style={{ color: INK }}>
+
+  return (
+    <div className="flex flex-col h-full w-full">
+      {/* Top Excel Bar */}
+      <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div className="flex items-center gap-2">
+          <span className="rounded-md border bg-slate-50 px-2.5 py-1 font-semibold text-emerald-800" style={{ borderColor: LINE }}>
+            📊 {sheetName}
+          </span>
+          <span style={{ color: INK_SOFT }}>
+            {rows.length} hàng dữ liệu xem trước
+          </span>
+        </div>
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Tìm kiếm ô dữ liệu..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-8 w-44 rounded-lg border bg-white px-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            style={{ borderColor: LINE }}
+          />
+          {searchQuery ? (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2 top-2 text-slate-400 hover:text-slate-600"
+            >
+              ×
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Excel Table Grid */}
+      <div className="overflow-x-auto rounded-xl border bg-white shadow-xs" style={{ borderColor: LINE }}>
+        <table className="min-w-full border-collapse text-[13px] font-sans" style={{ color: INK }}>
+          <thead>
+            <tr className="bg-slate-100 text-slate-600">
+              <th className="w-10 border border-slate-300 bg-slate-200/80 px-2 py-1 text-center font-normal select-none">#</th>
+              {Array.from({ length: shownCols }).map((_, cIdx) => (
+                <th key={cIdx} className="border border-slate-300 px-3 py-1 text-center font-semibold text-slate-700 select-none">
+                  {getColLabel(cIdx)}
+                </th>
+              ))}
+            </tr>
+          </thead>
           <tbody>
-            {rows.map((row, i) => {
+            {filteredRows.map((row, i) => {
               const isHeader = i === 0;
               return (
                 <tr
                   key={i}
-                  className="transition-colors hover:bg-slate-50"
+                  className="transition-colors hover:bg-blue-50/40"
                   style={isHeader ? { background: SURFACE, fontWeight: 600 } : undefined}
                 >
+                  <td className="border border-slate-300 bg-slate-100 px-2 py-1 text-center font-medium text-slate-500 select-none text-xs">
+                    {i + 1}
+                  </td>
                   {Array.from({ length: shownCols }).map((_, j) => {
                     const cell = (row ?? [])[j];
                     const text = cell == null ? "" : String(cell);
                     return (
                       <td
                         key={j}
-                        className="truncate border-r border-b px-3 py-2 align-top"
-                        style={{
-                          borderColor: LINE,
-                          maxWidth: XLSX_CELL_MAX_WIDTH_PX,
-                        }}
+                        className="truncate border border-slate-200 px-3 py-2 align-top text-xs"
+                        style={{ maxWidth: XLSX_CELL_MAX_WIDTH_PX }}
                         title={text || undefined}
                       >
                         {text}
@@ -357,6 +634,35 @@ function PreviewBody({ data }: { data: ApiResponse }) {
             Còn {hiddenCols} cột không hiển thị trong bản xem trước.
           </p>
         ) : null}
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*                               Preview Body                                 */
+/* -------------------------------------------------------------------------- */
+
+function PreviewBody({ data }: { data: ApiResponse }) {
+  const p = data.payload;
+
+  if (data.kind === "pdf") {
+    return <PdfPreviewView payload={p} />;
+  }
+  if (data.kind === "pptx") {
+    return <PptxPreviewView payload={p} />;
+  }
+  if (data.kind === "docx") {
+    return <DocxPreviewView payload={p} />;
+  }
+  if (data.kind === "xlsx") {
+    return <XlsxPreviewView payload={p} />;
+  }
+  if (data.kind === "text") {
+    const text = typeof p.text === "string" ? p.text : "";
+    return (
+      <div className="rounded-xl border bg-slate-900 p-4 font-mono text-xs text-slate-200 shadow-xs">
+        <pre className="whitespace-pre-wrap break-words leading-relaxed">{text}</pre>
       </div>
     );
   }
