@@ -88,6 +88,8 @@ export interface SepayConfig extends ManualQrConfig {
   secret: string;
   /** matches the tenant's orderCodePrefix (or "SUB" for platform) — §"M7" */
   paymentPrefix: string;
+  /** SePay User API token — chỉ dùng cho testConnection (gọi danh sách tài khoản), không dùng xác thực webhook. */
+  apiToken?: string;
 }
 
 /** ADR-059 bổ sung lần 3 — chỉ publicConfig, không secret. */

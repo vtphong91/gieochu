@@ -71,6 +71,10 @@ export default async function AdminBillingPaymentPage() {
             paymentPrefix: String(sepay?.publicConfig.paymentPrefix ?? "SUB"),
             isEnabled: sepay?.isEnabled ?? false,
             maskedSecret: sepay?.maskedSecrets.secret,
+            maskedApiToken: sepay?.maskedSecrets.apiToken,
+            lastVerifiedAt: sepay?.lastVerifiedAt
+              ? sepay.lastVerifiedAt.toLocaleString("vi-VN", { timeZone: DISPLAY_TIME_ZONE })
+              : null,
           }}
         />
 

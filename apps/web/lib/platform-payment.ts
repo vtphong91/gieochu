@@ -26,6 +26,16 @@ function accountIdentity(provider: PaymentProviderId, cfg: PublicProviderConfig)
 }
 
 /**
+ * Secret chỉ phục vụ "Kiểm tra kết nối" (SePay `apiToken` — gọi User API, không dùng xác thực webhook/nhận tiền) → thêm/đổi
+ * không làm cổng tự tắt (ADR-013 chỉ áp cho định danh nhận tiền).
+ */
+const TEST_ONLY_SECRET_KEYS = new Set(["apiToken"]);
+
+function identitySecrets(secrets: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(secrets).filter(([key]) => !TEST_ONLY_SECRET_KEYS.has(key)));
+}
+
+/**
  * §"M3", informed by the TaniGos report's `config.service.ts` pattern: saving
  * a config whose bank account / partnerCode / secret changed from what was
  * stored before automatically clears `isEnabled` and `lastVerifiedAt` — a
@@ -49,8 +59,11 @@ export async function savePlatformProviderConfig(input: SavePlatformProviderConf
     ? (JSON.parse(decryptSecret(existing.encryptedSecrets, env.PAYMENT_ENCRYPTION_KEY)) as Record<string, string>)
     : {};
 
+  // Secret không bắt buộc (SePay `apiToken`) chưa từng nhập → bỏ hẳn khoá thay vì lưu "" (zod `optional()` không nhận "").
   const resolvedSecrets = Object.fromEntries(
-    Object.entries(input.secrets).map(([key, value]) => [key, value || existingSecrets[key] || ""]),
+    Object.entries(input.secrets)
+      .map(([key, value]) => [key, value || existingSecrets[key] || ""] as const)
+      .filter(([, value]) => value !== ""),
   );
 
   const provider = getProvider(input.provider);
@@ -64,7 +77,7 @@ export async function savePlatformProviderConfig(input: SavePlatformProviderConf
     !existing ||
     JSON.stringify(accountIdentity(input.provider, input.publicConfig)) !==
       JSON.stringify(accountIdentity(input.provider, existing.publicConfig as PublicProviderConfig)) ||
-    JSON.stringify(resolvedSecrets) !== JSON.stringify(existingSecrets);
+    JSON.stringify(identitySecrets(resolvedSecrets)) !== JSON.stringify(identitySecrets(existingSecrets));
 
   const isEnabled = identityChanged ? false : input.isEnabled;
   const lastVerifiedAt = identityChanged ? null : (existing?.lastVerifiedAt ?? null);
@@ -138,8 +151,8 @@ export async function getEnabledPlatformProviders(): Promise<PaymentProviderId[]
 }
 
 /**
- * Runs the provider's own testConnection (MoMo only — SePay/MANUAL_QR have
- * none, see docs/BACKLOG.md M7 entry) and, on success, sets lastVerifiedAt
+ * Runs the provider's own testConnection (MoMo; SePay qua User API khi đã lưu `apiToken` — MANUAL_QR has
+ * none) and, on success, sets lastVerifiedAt
  * and flips isEnabled back on — the other half of the auto-disable guard above.
  */
 export async function testPlatformProviderConnection(provider: PaymentProviderId, actorId: string | null = null): Promise<TestResult> {

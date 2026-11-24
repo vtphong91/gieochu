@@ -1,4 +1,4 @@
-import { decryptSecret, encryptSecret, getProvider, maskSecret, type PaymentProviderId } from "@gieochu/payments";
+import { decryptSecret, encryptSecret, getProvider, maskSecret, type PaymentProviderId, type TestResult } from "@gieochu/payments";
 import { AppError } from "@gieochu/core";
 import { getEnv } from "@gieochu/config";
 import { getPrismaClient, withTenant, Prisma } from "@gieochu/db";
@@ -33,8 +33,11 @@ export async function saveTenantProviderConfig(tenantId: string, input: SaveProv
     ? (JSON.parse(decryptSecret(existing.encryptedSecrets, env.PAYMENT_ENCRYPTION_KEY)) as Record<string, string>)
     : {};
 
+  // Secret không bắt buộc (SePay `apiToken`) chưa từng nhập → bỏ hẳn khoá thay vì lưu "" (zod `optional()` không nhận "").
   const resolvedSecrets = Object.fromEntries(
-    Object.entries(input.secrets).map(([key, value]) => [key, value || existingSecrets[key] || ""]),
+    Object.entries(input.secrets)
+      .map(([key, value]) => [key, value || existingSecrets[key] || ""] as const)
+      .filter(([, value]) => value !== ""),
   );
 
   const provider = getProvider(input.provider);
@@ -75,6 +78,45 @@ export async function saveTenantProviderConfig(tenantId: string, input: SaveProv
       credentialsChanged: JSON.stringify(resolvedSecrets) !== JSON.stringify(existingSecrets),
     },
   });
+}
+
+/**
+ * Bản tenant của `testPlatformProviderConnection` (PaymentScope TENANT, `tenant_payment_configs` qua `withTenant`): chạy
+ * `testConnection` của provider với cấu hình ĐÃ LƯU; thành công → đặt `lastVerifiedAt` và bật cổng + ghi audit. Secret chỉ
+ * giải mã trong hàm, không trả ra ngoài.
+ */
+export async function testTenantProviderConnection(tenantId: string, provider: PaymentProviderId, actorId: string | null = null): Promise<TestResult> {
+  const env = getEnv();
+  const row = await withTenant(tenantId, (tx) =>
+    tx.tenantPaymentConfig.findUnique({ where: { tenantId_provider: { tenantId, provider } } }),
+  );
+  if (!row) return { ok: false, message: "Chưa cấu hình phương thức này." };
+
+  const providerImpl = getProvider(provider);
+  if (!providerImpl.testConnection) return { ok: false, message: "Phương thức này không hỗ trợ kiểm tra kết nối." };
+
+  const secrets = JSON.parse(decryptSecret(row.encryptedSecrets, env.PAYMENT_ENCRYPTION_KEY)) as Record<string, string>;
+  const cfg = { ...(row.publicConfig as Record<string, unknown>), ...secrets };
+  const result = await providerImpl.testConnection(cfg as never);
+
+  if (result.ok) {
+    await withTenant(tenantId, (tx) =>
+      tx.tenantPaymentConfig.update({
+        where: { tenantId_provider: { tenantId, provider } },
+        data: { isEnabled: true, lastVerifiedAt: new Date() },
+      }),
+    );
+    await audit.log({
+      actorId,
+      scope: "TENANT",
+      tenantId,
+      action: "PAYMENT_CONFIG_UPDATED",
+      targetType: "TenantPaymentConfig",
+      targetId: provider,
+      metadata: { provider, isEnabled: true, verified: true, wasEnabled: row.isEnabled },
+    });
+  }
+  return result;
 }
 
 export interface MaskedProviderConfig {

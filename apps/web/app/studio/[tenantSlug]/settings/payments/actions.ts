@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { AppError } from "@gieochu/core";
 import { requireTenantMember } from "../../../../../lib/tenant";
-import { saveTenantProviderConfig } from "../../../../../lib/tenant-payment";
+import { saveTenantProviderConfig, testTenantProviderConnection } from "../../../../../lib/tenant-payment";
 import { readMomoManualForm } from "../../../../../lib/momo-manual-config";
 import { isMissingEnumValueError, MOMO_MANUAL_NOT_READY_MESSAGE } from "../../../../../lib/db-errors";
 
@@ -13,6 +13,7 @@ export interface PaymentActionState {
   success?: boolean;
   /** ADR-059 bổ sung lần 2 (c): cảnh báo kèm lưu thành công (vd tiền tố SePay khác tiền tố mã đơn). */
   warning?: string;
+  testResult?: { ok: boolean; message?: string };
 }
 
 const manualQrSchema = z.object({
@@ -69,6 +70,7 @@ export async function saveSepayAction(
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ." };
 
   const secret = String(formData.get("secret") ?? "").trim();
+  const apiToken = String(formData.get("apiToken") ?? "").trim();
   const { authType, paymentPrefix, ...publicConfig } = parsed.data;
 
   try {
@@ -77,7 +79,8 @@ export async function saveSepayAction(
       provider: "SEPAY",
       isEnabled: formData.get("isEnabled") === "on",
       publicConfig: { ...publicConfig, authType, paymentPrefix },
-      secrets: { secret },
+      // `apiToken` để trống = giữ token đã lưu (chỉ dùng cho "Kiểm tra kết nối", không bắt buộc).
+      secrets: { secret, apiToken },
     });
   } catch (error) {
     if (error instanceof AppError) return { error: "Thiếu secret/API key (bắt buộc khi lưu lần đầu)." };
@@ -93,6 +96,14 @@ export async function saveSepayAction(
     };
   }
   return { success: true };
+}
+
+/** Kiểm tra kết nối SePay của gian hàng bằng cấu hình đã lưu — thành công tự bật cổng (chủ dự án chốt 2026-11-24). */
+export async function testSepayConnectionAction(tenantSlug: string): Promise<PaymentActionState> {
+  const { tenant, user } = await requireTenantMember(tenantSlug);
+  const result = await testTenantProviderConnection(tenant.id, "SEPAY", user.userId);
+  revalidatePath(`/studio/${tenantSlug}/settings/payments`);
+  return { testResult: result };
 }
 
 const momoSchema = z.object({

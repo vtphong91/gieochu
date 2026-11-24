@@ -1,18 +1,19 @@
 "use client";
 
-import { useActionState } from "react";
-import { saveSepayAction, type PlatformPaymentActionState } from "./actions";
-import { FormBanner, MaskedTextField, PrimaryButton, SelectField, TextField, Toggle } from "../../_ui/kit";
+import { useActionState, useState, useTransition } from "react";
+import { saveSepayAction, testSepayConnectionAction, type PlatformPaymentActionState } from "./actions";
+import { FormBanner, GhostButton, MaskedTextField, PasswordField, PrimaryButton, SelectField, TextField, Toggle } from "../../_ui/kit";
 import { IconBolt } from "../../_ui/icons";
 import { CopyValue } from "../../_ui/copy-value";
+import { SecretKeyField, sepaySecretHint, SEPAY_API_TOKEN_HINT } from "../../_ui/secret-key-field";
 import { CollapsibleSection, sectionStatus } from "../../_ui/collapsible-section";
 import { useFormDraft } from "../../_ui/use-form-draft";
 import { useUnsavedChanges } from "../../_ui/unsaved-changes";
 
 const initialState: PlatformPaymentActionState = {};
 const FIELDS = ["isEnabled", "bankBin", "accountNo", "accountName", "paymentPrefix", "authType"] as const;
-/** Không bao giờ ghi lại sau khi lưu lỗi — để trống = giữ secret đã lưu. */
-const SECRET_FIELDS = ["secret"] as const;
+/** Không bao giờ ghi lại sau khi lưu lỗi — để trống = giữ secret/token đã lưu. */
+const SECRET_FIELDS = ["secret", "apiToken"] as const;
 
 interface BankOption {
   bin: string;
@@ -23,6 +24,7 @@ interface BankOption {
 /**
  * ADR-058 (task 1.11): khối thu gọn — cổng đang bật thì mở sẵn. Khối nằm NGOÀI `<form key>` để trạng thái mở và thông báo
  * (kể cả thông báo tự tắt ADR-013) không mất khi form dựng lại sau lần lưu. Lưu lỗi giữ giá trị đã nhập trừ secret.
+ * "Kiểm tra kết nối" chạy trên cấu hình ĐÃ LƯU (User API SePay + API Token) — thành công tự bật cổng như MoMo.
  */
 export function SepayForm({
   banks,
@@ -39,11 +41,16 @@ export function SepayForm({
     paymentPrefix: string;
     isEnabled: boolean;
     maskedSecret?: string;
+    maskedApiToken?: string;
+    lastVerifiedAt: string | null;
   };
 }) {
   const [state, formAction, isPending] = useActionState(saveSepayAction, initialState);
-  const formKey = JSON.stringify(initial);
-  const { dirty, formProps } = useFormDraft({
+  const [testResult, setTestResult] = useState<{ ok: boolean; message?: string } | null>(null);
+  const [isTesting, startTest] = useTransition();
+  // `lastVerifiedAt` đổi khi bấm "Kiểm tra kết nối" — không đưa vào key để không dựng lại form vì lý do đó.
+  const formKey = JSON.stringify({ ...initial, lastVerifiedAt: null });
+  const { dirty, values, formProps } = useFormDraft({
     names: FIELDS,
     secretNames: SECRET_FIELDS,
     // Khớp `defaultValue` của từng ô (prefix/authType có giá trị mặc định khi chưa cấu hình).
@@ -68,7 +75,11 @@ export function SepayForm({
       defaultOpen={initial.isEnabled}
       icon={<IconBolt className="h-5 w-5" />}
       title="SePay"
-      description="Xác nhận real-time qua webhook — không cần admin thao tác thủ công cho từng hoá đơn."
+      description={
+        initial.lastVerifiedAt
+          ? `Đã xác minh — kiểm tra kết nối thành công lúc ${initial.lastVerifiedAt}.`
+          : "Xác nhận real-time qua webhook — không cần admin thao tác thủ công cho từng hoá đơn."
+      }
       status={sectionStatus({ errorCount, dirty, empty: !initial.isEnabled, emptyLabel: configured ? "Đang tắt" : "Chưa cấu hình", okLabel: "Đang bật" })}
       errorCount={errorCount}
     >
@@ -103,18 +114,45 @@ export function SepayForm({
           <option value="HMAC_SHA256">HMAC-SHA256 (khuyến nghị)</option>
           <option value="API_KEY">API Key</option>
         </SelectField>
-        <TextField
+        <SecretKeyField
           id="sepay-secret"
           label="Secret / API key"
           name="secret"
-          type="password"
-          autoComplete="new-password"
-          placeholder={initial.maskedSecret ? `Secret hiện tại: ${initial.maskedSecret} — để trống nếu giữ nguyên` : undefined}
+          hint={sepaySecretHint(String(values.authType ?? "HMAC_SHA256"))}
+          placeholder={initial.maskedSecret ? `Secret hiện tại: ${initial.maskedSecret} — để trống nếu giữ nguyên` : "Nhập hoặc bấm “Tạo key ngẫu nhiên”"}
+        />
+        <PasswordField
+          id="sepay-apiToken"
+          label="API Token (để kiểm tra kết nối)"
+          name="apiToken"
+          hint={SEPAY_API_TOKEN_HINT}
+          placeholder={initial.maskedApiToken ? `Token hiện tại: ${initial.maskedApiToken} — để trống nếu giữ nguyên` : "Không bắt buộc"}
         />
         <FormBanner ok={Boolean(state.success)} message={state.error ?? (state.success ? (state.message ?? "Đã lưu.") : undefined)} />
-        <PrimaryButton loading={isPending}>{isPending ? "Đang lưu..." : "Lưu cấu hình"}</PrimaryButton>
+        <div className="flex flex-wrap items-center gap-3">
+          <PrimaryButton loading={isPending}>{isPending ? "Đang lưu..." : "Lưu cấu hình"}</PrimaryButton>
+          <GhostButton
+            disabled={isTesting || dirty || !configured}
+            aria-describedby={dirty ? "sepay-test-note" : undefined}
+            onClick={() =>
+              startTest(async () => {
+                const result = await testSepayConnectionAction();
+                setTestResult(result.testResult ?? null);
+              })
+            }
+          >
+            {isTesting ? "Đang kiểm tra..." : "Kiểm tra kết nối"}
+          </GhostButton>
+          {dirty ? (
+            <span id="sepay-test-note" className="text-xs text-gray-500">
+              Lưu cấu hình trước khi kiểm tra kết nối.
+            </span>
+          ) : null}
+        </div>
+        {testResult ? <FormBanner ok={testResult.ok} message={testResult.message ?? (testResult.ok ? "Kết nối thành công." : "Kết nối thất bại.")} /> : null}
         <p className="border-t pt-4 text-xs" style={{ color: "#B45309", borderColor: "#E5E7EB" }}>
-          Đổi số tài khoản hoặc secret sẽ tự tắt phương thức này — lưu lại lần nữa (đã tích &quot;Bật&quot;) để xác nhận.
+          Đổi số tài khoản hoặc secret sẽ tự tắt phương thức này — bấm &quot;Kiểm tra kết nối&quot; hoặc lưu lại lần nữa (đã tích &quot;Bật&quot;)
+          để bật lại.
         </p>
       </form>
     </CollapsibleSection>

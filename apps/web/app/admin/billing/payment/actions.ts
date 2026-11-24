@@ -77,6 +77,7 @@ export async function saveSepayAction(
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ." };
 
   const secret = String(formData.get("secret") ?? "").trim();
+  const apiToken = String(formData.get("apiToken") ?? "").trim();
   const { authType, paymentPrefix, ...publicConfig } = parsed.data;
 
   const previousPrefix = normalizeInvoiceCodePrefix(((await getPlatformPaymentConfigRow("SEPAY"))?.publicConfig as Record<string, unknown> | undefined)?.paymentPrefix);
@@ -87,7 +88,8 @@ export async function saveSepayAction(
       provider: "SEPAY",
       isEnabled: formData.get("isEnabled") === "on",
       publicConfig: { ...publicConfig, authType, paymentPrefix: paymentPrefix.toUpperCase() },
-      secrets: { secret },
+      // `apiToken` để trống = giữ token đã lưu (chỉ dùng cho "Kiểm tra kết nối", không bắt buộc).
+      secrets: { secret, apiToken },
     });
   } catch (error) {
     if (error instanceof AppError) return { error: "Thiếu secret/API key (bắt buộc khi lưu lần đầu)." };
@@ -95,6 +97,14 @@ export async function saveSepayAction(
   }
   revalidatePath("/admin/billing/payment");
   return withPrefixWarning(savedState(result), paymentPrefix, previousPrefix);
+}
+
+/** Kiểm tra kết nối SePay bằng cấu hình đã lưu (User API + API Token) — thành công tự bật cổng (ADR-013, như MoMo). */
+export async function testSepayConnectionAction(): Promise<PlatformPaymentActionState> {
+  const actor = await requireRole("SYSTEM_ADMIN");
+  const result = await testPlatformProviderConnection("SEPAY", actor.userId);
+  revalidatePath("/admin/billing/payment");
+  return { testResult: result };
 }
 
 /**

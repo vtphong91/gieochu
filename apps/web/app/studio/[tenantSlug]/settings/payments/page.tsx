@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getEnv } from "@gieochu/config";
 import { buildWebhookNotifyUrl } from "@gieochu/payments";
+import { DISPLAY_TIME_ZONE } from "@gieochu/core/system-settings";
 import { requireTenantMemberPage } from "../../../../../lib/page-guards";
 import { listBankBins, listTenantProviderConfigs } from "../../../../../lib/tenant-payment";
 import { ManualQrForm } from "./manual-qr-form";
@@ -76,6 +77,10 @@ export default async function StudioPaymentsSettingsPage({
             paymentPrefix: String(sepay?.publicConfig.paymentPrefix ?? tenant.orderCodePrefix),
             isEnabled: sepay?.isEnabled ?? false,
             maskedSecret: sepay?.maskedSecrets.secret,
+            maskedApiToken: sepay?.maskedSecrets.apiToken,
+            lastVerifiedAt: sepay?.lastVerifiedAt
+              ? sepay.lastVerifiedAt.toLocaleString("vi-VN", { timeZone: DISPLAY_TIME_ZONE })
+              : null,
           }}
         />
 

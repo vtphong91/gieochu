@@ -28,7 +28,11 @@
       "Bash(pnpm --filter @gieochu/db exec prisma migrate dev --name user_login_lockout)",
       "Bash(pnpm --filter web exec eslint app/page.tsx --max-warnings=0)",
       "Bash(pnpm --filter web exec eslint app/page.tsx app/_ui/account-menu.tsx --max-warnings=0)",
-      "Bash(git log *)"
+      "Bash(git log *)",
+      "Bash(xargs -I{} git show {} -- .gitignore)",
+      "Bash(pnpm --version)",
+      "Bash(sed -i '/^pnpm-lock\\\\.yaml$/d' .gitignore)",
+      "Bash(pnpm install *)"
     ],
     "additionalDirectories": [
       "F:\\VSCODE\\gieochu\\apps\\web\\app\\admin\\plans",
