@@ -1272,6 +1272,26 @@ Checklist pháp lý: `docs/legal/LEGAL_REVIEW_CHECKLIST.md`.
   - Rate limit 60 req/phút/IP (ADR-063 §5): bảng `rate_limit_counters` đã có nhưng chưa có helper public — route handler còn TODO.
   - Chạy integration test sau khi áp migration ADR-061 + ADR-063 (hiện FAIL do DB thiếu `users.hasPassword`).
 
+## ADR-065 — Mã thanh toán SePay dùng chung System + Studio (2026-11-24) — đã code, verify đạt, chưa commit; migration đã áp
+
+- ✅ `@gieochu/core` `generatePaymentCode` (tiền tố 2–5 chữ cái + 8 chữ số) — mã hoá đơn gói dùng định dạng này.
+- ✅ `orders.paymentRef` (migration expand `20261124120000_adr065_order_payment_ref` — **đã áp DB dev (Neon, `.env`)**; **DB production
+  VPS CHƯA áp** — bắt buộc `prisma migrate deploy` trên production trước/khi deploy code này, xác minh 2026-11-24): sinh khi khách chọn
+  SePay, là nội dung QR/chuyển khoản; webhook + job `payment.process` khớp theo `paymentRef` hoặc mã đơn.
+- ✅ Webhook hai phía bỏ qua giao dịch của tài khoản ngân hàng khác; form hai phía bắt tiền tố 2–5 chữ cái + hướng dẫn cấu hình SePay.
+- ✅ Kèm phiên này: nút "Tạo key ngẫu nhiên" cho Webhook API key, ô API Token + "Kiểm tra kết nối" SePay (thành công tự bật cổng) cho cả
+  System lẫn Studio.
+- Verify: typecheck, unit 105/105, `test:count` 105/69, integration `order` + `subscription-billing` + `tenant-payment` 21/21.
+  `pnpm lint` còn 1 cảnh báo có sẵn ở `app/huong-dan-su-dung/page.tsx` (biến `AMBER` thừa — commit `2697774`, ngoài phạm vi).
+- **Việc vận hành (chủ dự án):** trên SePay đặt Cấu trúc mã thanh toán = tiền tố đang dùng, hậu tố từ 8 đến 8, "Là số nguyên", chỉ một
+  mẫu; chuyển thử một hoá đơn gói mới và một đơn tenant mới để xác nhận webhook. Long ghi KB (spec thanh toán, contract webhook, runbook SePay).
+
+## ADR-066 — Xác nhận tay hoá đơn gói mọi cổng + cột "Thao tác" ở Đơn hàng gói dịch vụ (2026-11-24) — đã code, verify đạt, chưa commit
+
+- ✅ `confirmManualInvoicePayment` cho mọi cổng, ghi chú không bắt buộc → audit; `ManualConfirmButton` dùng chung ở
+  `/admin/billing/invoices` và cột "Thao tác" `/admin/subscriptions`; cột "Hoá đơn gần nhất" mã trên / trạng thái dưới.
+- Verify: typecheck, lint (trừ cảnh báo có sẵn ở `huong-dan-su-dung`), integration `subscription-billing` 7/7, `test:count` 105/69.
+
 ## Kế hoạch SEO tổng thể — hoãn (chủ dự án chốt 2026-10-24)
 
 - Không làm thêm chức năng SEO lẻ trong các phiên hiện tại; gom thành **một kế hoạch tổng thể cho toàn hệ thống** sau:

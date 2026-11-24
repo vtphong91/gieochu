@@ -7,7 +7,7 @@ tags:
   - ui-ux
   - status/living
 date: 2026-10-18
-updated: 2026-10-27
+updated: 2026-11-24
 author: Long
 ---
 
@@ -120,7 +120,8 @@ Luật trạng thái gốc: [[02-System-Specs/Order-State-Machine|Order-State-Ma
 
 - Đơn không thuộc gian hàng → `notFound("Không tìm thấy đơn hàng.")` (AppError 404) → trang 404 ✅.
 - **Thông tin chung:** mã, ngày tạo, ngày thanh toán (giờ VN), trạng thái hiệu lực, `expiresAt`, tạm tính / giảm / tổng, mã giảm giá,
-  `confirmNote`.
+  `confirmNote`. Từ ADR-065 (2026-11-24, working tree) ✅ code: dòng **"Mã thanh toán SePay"** (`paymentRef`, font mono) ngay dưới "Mã đơn", chỉ khi khách đã chọn SePay —
+  đó là nội dung chuyển khoản khách dùng, khác mã đơn ([[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5M).
 - **Kênh thanh toán** `paymentChannel` (suy ra, không có cột riêng):
 
 | `kind` | Điều kiện (theo thứ tự) |

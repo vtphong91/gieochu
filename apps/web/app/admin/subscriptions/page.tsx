@@ -5,7 +5,11 @@ import { AdminPageHeader, Badge, DataTable, EmptyState, FilterBar, FilterSelect,
 import { IconPackage } from "../_ui/icons";
 import { Pagination } from "../_ui/pagination";
 import { parsePagination } from "../_ui/pagination-utils";
+import { isManualConfirmProvider } from "@gieochu/payments";
+import { ManualConfirmButton } from "../billing/invoices/confirm-button";
+import { formatVndFull } from "../_ui/stats-chart";
 import {
+  INVOICE_PROVIDER_LABEL,
   INVOICE_STATUS_LABEL,
   INVOICE_STATUS_TONE,
   SUBSCRIPTION_STATUS_LABEL,
@@ -15,7 +19,8 @@ import {
 
 const BASE_PATH = "/admin/subscriptions";
 const HIDE_BELOW_MD = "hidden md:table-cell";
-const HIDE_BELOW_LG = "hidden lg:table-cell";
+/** "Bắt đầu chu kỳ" + "Hạn ân hạn" chỉ hiện từ xl: ở lg sidebar 288px chiếm chỗ, thêm 2 cột ngày làm bảng cuộn ngang. */
+const HIDE_BELOW_XL = "hidden xl:table-cell";
 
 function Dash({ srText }: { srText: string }) {
   return (
@@ -28,7 +33,7 @@ function Dash({ srText }: { srText: string }) {
 
 /**
  * ADR-056 mục 2 (+ bổ sung: nhãn "Đơn hàng") — danh sách thuê bao gói dịch vụ (L1: subscriptions/plans/subscription_invoices + tên/slug gian hàng).
- * Không đọc đơn hàng/khách hàng của tenant (§7.9).
+ * Không đọc đơn hàng/khách hàng của tenant (§7.9). ADR-066: cột "Thao tác" xác nhận tay hoá đơn gần nhất (chờ/hết hạn, mọi cổng).
  */
 export default async function AdminSubscriptionsPage({
   searchParams,
@@ -88,8 +93,8 @@ export default async function AdminSubscriptionsPage({
             </p>
             <div className="overflow-x-auto">
               <DataTable
-                head={["Gian hàng", "Gói", "Trạng thái", "Bắt đầu chu kỳ", "Hết hạn", "Hạn ân hạn", "Hoá đơn gần nhất"]}
-                headClassName={[undefined, HIDE_BELOW_MD, undefined, HIDE_BELOW_LG, undefined, HIDE_BELOW_LG, HIDE_BELOW_MD]}
+                head={["Gian hàng", "Gói", "Trạng thái", "Bắt đầu chu kỳ", "Hết hạn", "Hạn ân hạn", "Hoá đơn gần nhất", "Thao tác"]}
+                headClassName={[undefined, HIDE_BELOW_MD, undefined, HIDE_BELOW_XL, undefined, HIDE_BELOW_XL, HIDE_BELOW_MD, "text-right"]}
                 caption="Đơn hàng gói dịch vụ"
               >
                 {items.map((sub) => (
@@ -103,25 +108,53 @@ export default async function AdminSubscriptionsPage({
                       </Link>
                       <span className="block text-xs text-gray-500">/{sub.tenant.slug}</span>
                       <span className="block text-xs text-gray-500 md:hidden">Gói: {sub.plan.name}</span>
+                      {/* Dưới md cột "Hoá đơn gần nhất" ẩn → lặp mã + trạng thái hoá đơn để biết nút "Xác nhận…" áp cho hoá đơn nào. */}
+                      {sub.latestInvoice ? (
+                        <span className="mt-1.5 flex flex-wrap items-center gap-1.5 md:hidden">
+                          <span className="sr-only">Hoá đơn gần nhất: </span>
+                          <span className="font-mono text-xs [overflow-wrap:anywhere]">{sub.latestInvoice.code}</span>
+                          <Badge tone={INVOICE_STATUS_TONE[sub.latestInvoice.status]}>{INVOICE_STATUS_LABEL[sub.latestInvoice.status]}</Badge>
+                        </span>
+                      ) : null}
                     </Td>
                     <Td className={HIDE_BELOW_MD}>{sub.plan.name}</Td>
                     <Td className="whitespace-nowrap">
                       <Badge tone={SUBSCRIPTION_STATUS_TONE[sub.status]}>{SUBSCRIPTION_STATUS_LABEL[sub.status]}</Badge>
                     </Td>
-                    <Td className={`whitespace-nowrap text-gray-600 tabular-nums ${HIDE_BELOW_LG}`}>{formatAdminDate(sub.currentPeriodStart)}</Td>
+                    <Td className={`whitespace-nowrap text-gray-600 tabular-nums ${HIDE_BELOW_XL}`}>{formatAdminDate(sub.currentPeriodStart)}</Td>
                     <Td className="whitespace-nowrap text-gray-600 tabular-nums">{sub.plan.isFree ? "Không thời hạn" : formatAdminDate(sub.currentPeriodEnd)}</Td>
-                    <Td className={`whitespace-nowrap text-gray-600 tabular-nums ${HIDE_BELOW_LG}`}>
+                    <Td className={`whitespace-nowrap text-gray-600 tabular-nums ${HIDE_BELOW_XL}`}>
                       {sub.graceEndsAt ? formatAdminDate(sub.graceEndsAt) : <Dash srText="Không có" />}
                     </Td>
                     <Td className={HIDE_BELOW_MD}>
+                      {/* ADR-066: mã hoá đơn ở trên, trạng thái thanh toán ở dưới (+ số tiền, cổng). */}
                       {sub.latestInvoice ? (
-                        <span className="flex flex-wrap items-center gap-2">
+                        <span className="flex flex-col items-start gap-1">
                           <span className="font-mono text-xs">{sub.latestInvoice.code}</span>
                           <Badge tone={INVOICE_STATUS_TONE[sub.latestInvoice.status]}>{INVOICE_STATUS_LABEL[sub.latestInvoice.status]}</Badge>
+                          <span className="text-xs text-gray-500 tabular-nums">
+                            {formatVndFull(sub.latestInvoice.amountVnd)} · {INVOICE_PROVIDER_LABEL[sub.latestInvoice.provider]}
+                          </span>
                         </span>
                       ) : (
                         <span className="text-gray-500">
                           <Dash srText="Chưa có hoá đơn" />
+                        </span>
+                      )}
+                    </Td>
+                    <Td className="text-right">
+                      {sub.latestInvoice && (sub.latestInvoice.status === "PENDING" || sub.latestInvoice.status === "EXPIRED") ? (
+                        <ManualConfirmButton
+                          invoiceId={sub.latestInvoice.id}
+                          invoiceCode={sub.latestInvoice.code}
+                          amountLabel={formatVndFull(sub.latestInvoice.amountVnd)}
+                          providerLabel={INVOICE_PROVIDER_LABEL[sub.latestInvoice.provider]}
+                          expired={sub.latestInvoice.status === "EXPIRED"}
+                          autoProvider={!isManualConfirmProvider(sub.latestInvoice.provider)}
+                        />
+                      ) : (
+                        <span className="text-gray-500">
+                          <Dash srText="Không có thao tác" />
                         </span>
                       )}
                     </Td>

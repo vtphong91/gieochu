@@ -23,7 +23,7 @@ import {
   PLATFORM_TXN_STATE_TONE,
   formatAdminDateTime,
 } from "../../_ui/billing-labels";
-import { ConfirmButton, ExpiredConfirmButton, TransactionConfirmButton } from "./confirm-button";
+import { ManualConfirmButton, TransactionConfirmButton } from "./confirm-button";
 
 type InvoiceTab = "cho-doi-soat" | "tat-ca" | "giao-dich";
 
@@ -118,7 +118,14 @@ async function PendingTab() {
               <Td className="text-right font-semibold whitespace-nowrap tabular-nums">{formatVndFull(invoice.amountVnd)}</Td>
               <Td className={`whitespace-nowrap text-gray-600 tabular-nums ${HIDE_BELOW_MD}`}>{formatAdminDateTime(invoice.dueAt)}</Td>
               <Td className="text-right">
-                <ConfirmButton invoiceId={invoice.id} invoiceCode={invoice.code} />
+                <ManualConfirmButton
+                  invoiceId={invoice.id}
+                  invoiceCode={invoice.code}
+                  amountLabel={formatVndFull(invoice.amountVnd)}
+                  providerLabel={INVOICE_PROVIDER_LABEL[invoice.provider]}
+                  expired={false}
+                  autoProvider={false}
+                />
               </Td>
             </Tr>
           ))}
@@ -228,10 +235,16 @@ async function AllInvoicesTab({ sp }: { sp: { status?: string; provider?: string
                       )}
                     </Td>
                     <Td className="text-right">
-                      {isManualConfirmProvider(invoice.provider) && invoice.status === "PENDING" ? (
-                        <ConfirmButton invoiceId={invoice.id} invoiceCode={invoice.code} />
-                      ) : isManualConfirmProvider(invoice.provider) && invoice.status === "EXPIRED" ? (
-                        <ExpiredConfirmButton invoiceId={invoice.id} invoiceCode={invoice.code} amountLabel={formatVndFull(invoice.amountVnd)} />
+                      {/* ADR-066: xác nhận tay mọi cổng — hoá đơn chờ hoặc đã hết hạn. */}
+                      {invoice.status === "PENDING" || invoice.status === "EXPIRED" ? (
+                        <ManualConfirmButton
+                          invoiceId={invoice.id}
+                          invoiceCode={invoice.code}
+                          amountLabel={formatVndFull(invoice.amountVnd)}
+                          providerLabel={INVOICE_PROVIDER_LABEL[invoice.provider]}
+                          expired={invoice.status === "EXPIRED"}
+                          autoProvider={!isManualConfirmProvider(invoice.provider)}
+                        />
                       ) : null}
                     </Td>
                   </Tr>

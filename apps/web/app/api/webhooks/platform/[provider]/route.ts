@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { decryptSecret, getProvider, type PaymentProviderId } from "@gieochu/payments";
+import { decryptSecret, getProvider, sepayAccountMatches, type PaymentProviderId } from "@gieochu/payments";
 import { logger } from "@gieochu/core";
 import { getEnv } from "@gieochu/config";
 import { getPrismaClient, Prisma, withSystemJob } from "@gieochu/db";
@@ -55,6 +55,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
   } catch (error) {
     logger.warn({ provider: providerId, err: error }, "platform payment webhook rejected: invalid body");
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
+  }
+
+  // ADR-065: giao dịch của tài khoản ngân hàng KHÁC (cùng tài khoản SePay) — không phải tiền của cổng này. Trả 200 để SePay không
+  // gửi lại; không ghi webhook_events/giao dịch.
+  if (providerId === "SEPAY" && !sepayAccountMatches(parsedBody, String((cfg as { accountNo?: unknown }).accountNo ?? ""))) {
+    logger.warn({ provider: providerId, providerEventId: event.providerEventId }, "platform payment webhook ignored: other bank account");
+    return NextResponse.json({ success: true });
   }
 
   try {

@@ -3,7 +3,7 @@ tags:
   - meta
   - spec
 date: 2026-09-26
-updated: 2026-10-27
+updated: 2026-11-24
 ---
 
 # 📐 System Specifications (Living Specs)
@@ -26,7 +26,9 @@ bộ nội dung được viết lại từ nguồn thật: `CLAUDE.md`, `docs/AR
   `packages/payments` qua `PaymentScope`, mô hình Free Forever + Paid Subscription (ADR-021), webhook
   idempotent với `timingSafeEqual`; §5A hạn mức `0`/`-1` + cờ tính năng + gói năm, §5B hoàn tiền gói 7 ngày (bảng L1
   `subscription_refund_requests`, ADR-041 B); §5C hoá đơn gói tab "Tất cả" + trang "Đơn hàng gói dịch vụ" `/admin/subscriptions`, §5D khối chuyển
-  khoản `BankTransferPanel`, §5E lưu cấu hình cổng platform trả `{ isEnabled, autoDisabled }` (ADR-056).
+  khoản `BankTransferPanel`, §5E lưu cấu hình cổng platform trả `{ isEnabled, autoDisabled }` (ADR-056); §5L cấu hình SePay — "Tạo key ngẫu nhiên",
+  API Token, "Kiểm tra kết nối" tự bật cổng; §5M mã thanh toán SePay tiền tố 2–5 chữ cái + 8 chữ số, `orders.paymentRef` (ADR-065); §5N xác nhận tay hoá đơn gói
+  mọi cổng (ADR-066).
 - `[[File-Storage-And-Downloads-Specs]]`: Lưu trữ file sản phẩm qua S3-compatible (Cloudflare R2), presigned
   URL ≤ 10 phút, `DownloadToken`/`ShareLink`, mật khẩu share link bằng argon2 riêng trong `packages/core`; §7 ảnh
   tenant trên Cloudinary hệ thống — chữ ký `public_id`, giữ chỗ + đối soát hạn mức, `cloudinaryDeliveryUrl`,

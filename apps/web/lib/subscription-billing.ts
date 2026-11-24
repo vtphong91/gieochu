@@ -3,9 +3,9 @@ import {
   computeRenewalPeriod,
   DISPLAY_TIME_ZONE,
   generateInvoiceCode,
-  INVOICE_CODE_SUFFIX_LENGTH,
   internalError,
   logger,
+  normalizePaymentCodePrefix,
   transitionSubscriptionStatus,
   type SubscriptionStatus,
 } from "@gieochu/core";
@@ -18,7 +18,7 @@ import type {
 import {
   buildWebhookNotifyUrl,
   decryptSecret,
-  extractSepayReferences,
+  extractSepayPaymentCodes,
   getProvider,
   isManualConfirmProvider,
   type PaymentProviderId,
@@ -47,23 +47,20 @@ async function lockSubscriptionRow(tx: Prisma.TransactionClient, tenantId: strin
 export const DEFAULT_INVOICE_CODE_PREFIX = "SUB";
 
 /**
- * ADR-059 bổ sung lần 2 (c): tiền tố mã hoá đơn = `paymentPrefix` admin đã điền cho SePay nền tảng (để SePay nhận diện "mã thanh
- * toán" đúng cấu hình). Chỉ nhận chữ/số 1–10 ký tự (sau khi viết hoa) — giá trị khác (có dấu, khoảng trắng...) không dùng được
- * làm mã chuyển khoản → về `SUB`. Không đổi mã hoá đơn đã có.
+ * ADR-059 bổ sung lần 2 (c) + ADR-065: tiền tố mã hoá đơn = `paymentPrefix` admin đã điền cho SePay nền tảng. Chỉ nhận 2–5 chữ
+ * cái (giới hạn ô "Tiền tố" của SePay) — giá trị khác không dùng được làm mã thanh toán → về `SUB`. Không đổi mã hoá đơn đã có.
  */
 export function normalizeInvoiceCodePrefix(value: unknown): string | null {
-  const prefix = typeof value === "string" ? value.trim().toUpperCase() : "";
-  return /^[A-Z0-9]{1,10}$/.test(prefix) ? prefix : null;
+  return normalizePaymentCodePrefix(value);
 }
 
 /**
- * ADR-059 bổ sung lần 2: mã hoá đơn đọc được từ payload SePay của cổng nền tảng — thử tiền tố đã cấu hình rồi `SUB` (hoá đơn tạo
- * trước khi đổi tiền tố), đúng độ dài mã hoá đơn. Dùng chung cho webhook và tab "Giao dịch cổng".
+ * ADR-065: mã hoá đơn đọc được từ payload SePay của cổng nền tảng — tiền tố đã cấu hình rồi `SUB` (hoá đơn cổng khác / tiền tố cấu
+ * hình không hợp lệ), hậu tố 8 chữ số. Dùng chung cho webhook và tab "Giao dịch cổng".
  */
 export function sepayInvoiceReferenceCandidates(payload: unknown, configuredPrefix: unknown): string[] {
   const body = (typeof payload === "object" && payload !== null ? payload : {}) as SepayWebhookBody;
-  const prefixes = [normalizeInvoiceCodePrefix(configuredPrefix), DEFAULT_INVOICE_CODE_PREFIX].filter((p): p is string => Boolean(p));
-  return extractSepayReferences(body, prefixes, { codeLength: INVOICE_CODE_SUFFIX_LENGTH });
+  return extractSepayPaymentCodes(body, [configuredPrefix, DEFAULT_INVOICE_CODE_PREFIX]);
 }
 
 async function resolveUniqueInvoiceCode(prefix: string = DEFAULT_INVOICE_CODE_PREFIX): Promise<string> {
@@ -142,7 +139,7 @@ export async function createRenewalInvoice(tenantId: string, input: CreateRenewa
   const configuredPrefix =
     input.provider === "SEPAY" ? normalizeInvoiceCodePrefix((platformConfigRow.publicConfig as Record<string, unknown>).paymentPrefix) : null;
   if (input.provider === "SEPAY" && !configuredPrefix) {
-    logger.warn({ tenantId }, "invoice: paymentPrefix SePay nền tảng không hợp lệ (chỉ chữ/số, ≤ 10 ký tự) — dùng tiền tố SUB");
+    logger.warn({ tenantId }, "invoice: paymentPrefix SePay nền tảng không hợp lệ (cần 2–5 chữ cái) — dùng tiền tố SUB");
   }
   const code = await resolveUniqueInvoiceCode(configuredPrefix ?? DEFAULT_INVOICE_CODE_PREFIX);
   const { invoicePendingTtlHours } = await getSystemSettings();
@@ -254,7 +251,7 @@ export type InvoicePaidSource = "PLATFORM_WEBHOOK" | "ADMIN_MANUAL_CONFIRM";
 
 export async function markInvoicePaid(
   invoiceId: string,
-  options: { source: InvoicePaidSource; actorId?: string | null } = { source: "PLATFORM_WEBHOOK" },
+  options: { source: InvoicePaidSource; actorId?: string | null; note?: string | null } = { source: "PLATFORM_WEBHOOK" },
 ): Promise<void> {
   const prisma = getPrismaClient();
   const applied = await prisma.$transaction(async (tx) => {
@@ -284,6 +281,7 @@ export async function markInvoicePaid(
       amountVnd: invoice.amountVnd,
       periodEnd: invoice.periodEnd,
       reactivated: result.reactivated,
+      ...(options.note ? { note: options.note } : {}),
     },
   });
 }
@@ -352,25 +350,32 @@ export async function listPendingManualInvoices() {
   });
 }
 
+/** Ghi chú admin khi xác nhận tay (không bắt buộc) — chỉ ghi vào audit; trống → null, cắt 500 ký tự. */
+export const MANUAL_CONFIRM_NOTE_MAX = 500;
+
+function normalizeConfirmNote(note: string | null | undefined): string | null {
+  const trimmed = (note ?? "").trim();
+  return trimmed ? trimmed.slice(0, MANUAL_CONFIRM_NOTE_MAX) : null;
+}
+
 /**
- * Admin reconciles a MANUAL_QR invoice against the bank statement by hand — SePay/MoMo are only ever marked PAID by their own webhook
- * (hoặc qua một giao dịch cụ thể — {@link confirmInvoiceFromPlatformTransaction}).
+ * Admin xác nhận tay một hoá đơn gói đã nhận tiền, đối chiếu sao kê — ADR-066: **mọi cổng** (QR thủ công, MoMo cá nhân, SePay,
+ * MoMo). SePay/MoMo bình thường tự xác nhận qua webhook; đây là đường cứu khi tiền đã về mà webhook không tới (VD mã thanh toán
+ * SePay không nhận diện được). Ghi chú không bắt buộc, ghi vào audit `SUBSCRIPTION_PAID` (`source: ADMIN_MANUAL_CONFIRM`).
  * ADR-059 bổ sung: hoá đơn đã EXPIRED đi nhánh riêng {@link confirmExpiredManualInvoice} (chặn khi có hoá đơn mới hơn, tính lại kỳ);
  * hoá đơn PENDING giữ nguyên hành vi cũ (`markInvoicePaid`, kỳ đã lưu).
  */
-export async function confirmManualInvoicePayment(invoiceId: string, actorId: string | null = null): Promise<void> {
+export async function confirmManualInvoicePayment(invoiceId: string, actorId: string | null = null, note: string | null = null): Promise<void> {
   const prisma = getPrismaClient();
   const invoice = await prisma.subscriptionInvoice.findUniqueOrThrow({ where: { id: invoiceId } });
-  if (!isManualConfirmProvider(invoice.provider)) {
-    throw new AppError({ code: "NOT_MANUAL_INVOICE", message: "Chỉ xác nhận thủ công cho hoá đơn chuyển khoản thủ công (QR ngân hàng / MoMo).", httpStatus: 400 });
-  }
+  const confirmNote = normalizeConfirmNote(note);
   if (invoice.status === "EXPIRED") {
-    await confirmExpiredManualInvoice(invoiceId, actorId);
+    await confirmExpiredManualInvoice(invoiceId, actorId, confirmNote);
     return;
   }
   if (invoice.status === "PAID") return;
   if (invoice.status !== "PENDING") throw invoiceNotConfirmableError();
-  await markInvoicePaid(invoiceId, { source: "ADMIN_MANUAL_CONFIRM", actorId });
+  await markInvoicePaid(invoiceId, { source: "ADMIN_MANUAL_CONFIRM", actorId, note: confirmNote });
 }
 
 const invoiceNotConfirmableError = () =>
@@ -406,7 +411,7 @@ function lateConfirmationMetadata(invoice: InvoiceWithPlan, applied: AppliedInvo
 }
 
 /**
- * ADR-059 bổ sung — admin xác nhận tay hoá đơn MANUAL_QR đã EXPIRED (tiền về trễ):
+ * ADR-059 bổ sung — admin xác nhận tay hoá đơn đã EXPIRED (tiền về trễ; ADR-066: mọi cổng):
  * 1. Chặn nếu gian hàng có hoá đơn TẠO SAU hoá đơn này đang PENDING hoặc PAID (tránh trả 2 lần / lùi gói) → admin hoàn tiền
  *    ngoài hệ thống.
  * 2. Kỳ tính lại theo lúc xác nhận: `computeRenewalPeriod(now, currentPeriodEnd, plan)` (không dùng kỳ lưu lúc tạo), ghi đè
@@ -415,7 +420,7 @@ function lateConfirmationMetadata(invoice: InvoiceWithPlan, applied: AppliedInvo
  * Nguyên tử: một transaction khoá dòng `subscriptions` của gian hàng (`FOR UPDATE`) rồi đọc lại hoá đơn, kiểm tra và ghi; cập nhật
  * hoá đơn có điều kiện `status = EXPIRED`. Hai admin bấm cùng lúc → lần sau thấy hoá đơn đã PAID → no-op, không gia hạn hai lần.
  */
-async function confirmExpiredManualInvoice(invoiceId: string, actorId: string | null): Promise<void> {
+async function confirmExpiredManualInvoice(invoiceId: string, actorId: string | null, note: string | null): Promise<void> {
   const prisma = getPrismaClient();
   const result = await prisma.$transaction(async (tx) => {
     const head = await tx.subscriptionInvoice.findUniqueOrThrow({ where: { id: invoiceId }, select: { tenantId: true } });
@@ -424,7 +429,7 @@ async function confirmExpiredManualInvoice(invoiceId: string, actorId: string | 
     const invoice = await tx.subscriptionInvoice.findUniqueOrThrow({ where: { id: invoiceId }, include: { plan: true } });
     // Lần bấm song song đã xác nhận xong (hoặc đã hoàn tiền) — idempotent như markInvoicePaid.
     if (invoice.status === "PAID" || invoice.status === "REFUNDED") return null;
-    if (invoice.status !== "EXPIRED" || !isManualConfirmProvider(invoice.provider)) throw invoiceNotConfirmableError();
+    if (invoice.status !== "EXPIRED") throw invoiceNotConfirmableError();
     await assertNoNewerInvoiceLocked(tx, invoice);
     const applied = await applyInvoicePaymentLocked(tx, invoice, { recomputePeriod: true });
     return applied ? { invoice, applied } : null;
@@ -447,6 +452,7 @@ async function confirmExpiredManualInvoice(invoiceId: string, actorId: string | 
       amountVnd: result.invoice.amountVnd,
       reactivated: result.applied.reactivated,
       ...lateConfirmationMetadata(result.invoice, result.applied),
+      ...(note ? { note } : {}),
     },
   });
 }
@@ -636,7 +642,12 @@ export async function listSubscriptions(input: ListSubscriptionsInput) {
             id: true,
             name: true,
             slug: true,
-            subscriptionInvoices: { orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1, select: { code: true, status: true } },
+            // ADR-066: đủ dữ liệu cho cột "Hoá đơn gần nhất" (mã/trạng thái/số tiền/cổng) + nút xác nhận tay ở cột "Thao tác".
+            subscriptionInvoices: {
+              orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+              take: 1,
+              select: { id: true, code: true, status: true, amountVnd: true, provider: true },
+            },
           },
         },
       },

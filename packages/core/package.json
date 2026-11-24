@@ -16,6 +16,7 @@
     "./brand-token": "./src/content/brand-token.ts",
     "./legal": "./src/legal/legal-document.ts",
     "./plan-limits": "./src/billing/plan-limits.ts",
+    "./payment-code": "./src/billing/payment-code.ts",
     "./plan-features": "./src/billing/feature-gate.ts",
     "./subscription-refund": "./src/billing/subscription-refund.ts",
     "./storefront-sections": "./src/tenant/storefront-sections.ts",

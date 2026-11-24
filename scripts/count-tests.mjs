@@ -21,6 +21,8 @@
 // version; opening a store requires + records the seller-policy acceptance in the tenant transaction). Unit cap unchanged.
 // ADR-063 (owner-approved +2/+2): unit 100 -> 102 (preview extract docx + xlsx 20% boundaries); integration 66 -> 68
 // (preview route 200 PUBLISHED, 404 DRAFT/wrong tenant).
+// ADR-065 (owner-approved 2026-11-24, +3/+1): unit 102 -> 105 (SePay numeric payment-code extraction, other-bank-account
+// guard, test connection), integration 68 -> 69 (SePay checkout paymentRef -> webhook job fulfils the order by it).
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
@@ -63,10 +65,10 @@ const integrationFiles = walk(join(ROOT, "apps", "web", "tests", "integration"),
 const unitCount = countCases(unitFiles);
 const integrationCount = countCases(integrationFiles);
 
-console.log(`Jest unit test cases (packages/*):        ${unitCount} / 102`);
-console.log(`Vitest integration test cases (apps/web):  ${integrationCount} / 68`);
+console.log(`Jest unit test cases (packages/*):        ${unitCount} / 105`);
+console.log(`Vitest integration test cases (apps/web):  ${integrationCount} / 69`);
 
-if (unitCount > 102 || integrationCount > 68) {
+if (unitCount > 105 || integrationCount > 69) {
   console.error("\nTest count exceeds the target in docs/GIEOCHU_PROMPT_MVP_PHASE1.md §9 — check before adding more.");
   process.exitCode = 1;
 }

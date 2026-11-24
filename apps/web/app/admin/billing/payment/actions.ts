@@ -59,7 +59,11 @@ const sepaySchema = z.object({
   accountNo: z.string().min(4),
   accountName: z.string().min(1),
   authType: z.enum(["API_KEY", "HMAC_SHA256"]),
-  paymentPrefix: z.string().min(2).max(6),
+  // ADR-065: 2–5 chữ cái (giới hạn ô "Tiền tố" của SePay); mã hoá đơn = tiền tố + 8 chữ số.
+  paymentPrefix: z
+    .string()
+    .transform((value) => value.trim().toUpperCase())
+    .pipe(z.string().regex(/^[A-Z]{2,5}$/, "Tiền tố mã hoá đơn phải gồm 2–5 chữ cái (không dấu, không số).")),
 });
 
 export async function saveSepayAction(
@@ -87,7 +91,7 @@ export async function saveSepayAction(
       actorId: actor.userId,
       provider: "SEPAY",
       isEnabled: formData.get("isEnabled") === "on",
-      publicConfig: { ...publicConfig, authType, paymentPrefix: paymentPrefix.toUpperCase() },
+      publicConfig: { ...publicConfig, authType, paymentPrefix },
       // `apiToken` để trống = giữ token đã lưu (chỉ dùng cho "Kiểm tra kết nối", không bắt buộc).
       secrets: { secret, apiToken },
     });
@@ -108,18 +112,12 @@ export async function testSepayConnectionAction(): Promise<PlatformPaymentAction
 }
 
 /**
- * ADR-059 bổ sung lần 2 (c): tiền tố không khoá, nhưng cảnh báo rõ khi lưu — (1) tiền tố có ký tự ngoài chữ/số không dùng làm mã
- * hoá đơn được (hệ thống dùng SUB); (2) đổi tiền tố: hoá đơn đang chờ tạo với tiền tố cũ (khác SUB) không còn tự khớp.
+ * ADR-059 bổ sung lần 2 (c) + ADR-065: nhắc đúng cấu hình "Cấu trúc mã thanh toán" bên SePay sau mỗi lần lưu; đổi tiền tố → hoá
+ * đơn đang chờ tạo với tiền tố cũ (khác SUB) không còn tự khớp.
  */
-function withPrefixWarning(state: PlatformPaymentActionState, rawPrefix: string, previousPrefix: string | null): PlatformPaymentActionState {
-  const prefix = normalizeInvoiceCodePrefix(rawPrefix);
-  const warnings: string[] = [];
-  if (!prefix) {
-    warnings.push(`Cảnh báo: tiền tố "${rawPrefix}" có ký tự ngoài chữ/số nên hoá đơn SePay sẽ dùng tiền tố ${DEFAULT_INVOICE_CODE_PREFIX} — hãy đặt cấu trúc mã thanh toán bên SePay là ${DEFAULT_INVOICE_CODE_PREFIX}.`);
-  } else {
-    warnings.push(`Mã hoá đơn SePay mới sẽ có dạng ${prefix} + 8 ký tự — cấu trúc mã thanh toán bên SePay phải dùng đúng tiền tố ${prefix}.`);
-  }
-  if (previousPrefix && prefix && previousPrefix !== prefix && previousPrefix !== DEFAULT_INVOICE_CODE_PREFIX) {
+function withPrefixWarning(state: PlatformPaymentActionState, prefix: string, previousPrefix: string | null): PlatformPaymentActionState {
+  const warnings = [`Mã hoá đơn SePay mới có dạng ${prefix} + 8 chữ số — Cấu trúc mã thanh toán bên SePay phải cùng tiền tố.`];
+  if (previousPrefix && previousPrefix !== prefix && previousPrefix !== DEFAULT_INVOICE_CODE_PREFIX) {
     warnings.push(`Hoá đơn đang chờ tạo với tiền tố cũ ${previousPrefix} sẽ không tự khớp nữa — kiểm tra ở tab "Giao dịch cổng".`);
   }
   const base = state.message ?? "Đã lưu.";

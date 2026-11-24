@@ -4,7 +4,7 @@ tags:
   - order
   - status/living
 date: 2026-09-26
-updated: 2026-10-27
+updated: 2026-11-24
 author: System Architect
 ---
 
@@ -236,6 +236,10 @@ Quyết định: [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confir
 - **Mã ứng viên:** route `POST /api/webhooks/tenants/[tenantId]/sepay` đọc `referenceCandidates` bằng `extractSepayReferences(body, [cfg.paymentPrefix,
   tenant.orderCodePrefix], { codeLength: 6 })`; `reference` = phần tử đầu. `processPaymentEvent` tìm các đơn có `code IN candidates` và lấy đơn đầu tiên theo thứ tự ưu
   tiên; job cũ (không có `referenceCandidates`) dùng `reference`. MoMo giữ `event.reference`.
+  - **Từ ADR-065 (2026-11-24, working tree) ✅ code:** đơn chọn SePay có **mã thanh toán riêng `orders.paymentRef`** (tiền tố SePay + 8 chữ số) làm nội dung QR/CK; ứng viên =
+    `extractSepayPaymentCodes(body, [cfg.paymentPrefix, orderCodePrefix])` **rồi** mã đơn (`orderCodePrefix` + 6 ký tự); `processPaymentEvent` tìm đơn trong gian hàng có
+    `paymentRef IN …` **hoặc** `code IN …`. Giao dịch có `accountNumber` khác tài khoản cấu hình bị bỏ qua (200, không ghi `webhook_events`). Chi tiết:
+    [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5M.
 - **Luật khớp không đổi:** không tìm thấy đơn → `UNMATCHED`; có đơn → ghi `MATCHED`/`MISMATCH_AMOUNT` theo `matchPaymentAmount`; chỉ `markOrderPaid` khi tiền vào thành
   công + `MATCHED` + `canManuallyConfirmOrder` ✅.
 - **Email `payment_mismatch`** — khi tiền vào thành công (`success`) và có đơn nhưng `matchStatus ≠ MATCHED`: sau khi transaction commit, `notifyOwnerOfPaymentMismatch`

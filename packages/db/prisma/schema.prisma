@@ -993,6 +993,10 @@ model Order {
   /// provider (MoMo's createCheckout hits their API), same as
   /// SubscriptionInvoice.checkoutPayload (M3).
   checkoutPayload                Json?
+  /// ADR-065: mã thanh toán SePay (nội dung chuyển khoản) = tiền tố SePay của gian hàng + 8 chữ số, sinh khi khách chọn SePay.
+  /// Tách khỏi `code` vì mã đơn có trước khi chọn phương thức, nằm trong URL, và tiền tố gian hàng không thể là từ khoá ngân hàng
+  /// bắt buộc (VietinBank: SEVQR). Duy nhất trong gian hàng; webhook SePay khớp đơn theo cột này.
+  paymentRef                     String?
   proofImageKey                  String?
   /// Ghi chú bắt buộc khi owner xác nhận thủ công (§"M8"), cùng mẫu với
   /// SubscriptionInvoice.confirmNote (M3).
@@ -1023,6 +1027,8 @@ model Order {
   @@index([customerId])
   /// ADR-061 Q7: cron nhắc khách + sweep hết hạn quét theo (status, expiresAt).
   @@index([status, expiresAt])
+  /// ADR-065: NULL không đụng nhau (Postgres) — chỉ đơn đã chọn SePay mới có giá trị.
+  @@unique([tenantId, paymentRef])
   @@map("orders")
 }
 

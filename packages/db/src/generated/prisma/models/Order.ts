@@ -53,6 +53,7 @@ export type OrderMinAggregateOutputType = {
   totalVnd: number | null
   couponCode: string | null
   provider: $Enums.PaymentProviderId | null
+  paymentRef: string | null
   proofImageKey: string | null
   confirmNote: string | null
   expiresAt: Date | null
@@ -78,6 +79,7 @@ export type OrderMaxAggregateOutputType = {
   totalVnd: number | null
   couponCode: string | null
   provider: $Enums.PaymentProviderId | null
+  paymentRef: string | null
   proofImageKey: string | null
   confirmNote: string | null
   expiresAt: Date | null
@@ -104,6 +106,7 @@ export type OrderCountAggregateOutputType = {
   couponCode: number
   provider: number
   checkoutPayload: number
+  paymentRef: number
   proofImageKey: number
   confirmNote: number
   expiresAt: number
@@ -143,6 +146,7 @@ export type OrderMinAggregateInputType = {
   totalVnd?: true
   couponCode?: true
   provider?: true
+  paymentRef?: true
   proofImageKey?: true
   confirmNote?: true
   expiresAt?: true
@@ -168,6 +172,7 @@ export type OrderMaxAggregateInputType = {
   totalVnd?: true
   couponCode?: true
   provider?: true
+  paymentRef?: true
   proofImageKey?: true
   confirmNote?: true
   expiresAt?: true
@@ -194,6 +199,7 @@ export type OrderCountAggregateInputType = {
   couponCode?: true
   provider?: true
   checkoutPayload?: true
+  paymentRef?: true
   proofImageKey?: true
   confirmNote?: true
   expiresAt?: true
@@ -307,6 +313,7 @@ export type OrderGroupByOutputType = {
   couponCode: string | null
   provider: $Enums.PaymentProviderId | null
   checkoutPayload: runtime.JsonValue | null
+  paymentRef: string | null
   proofImageKey: string | null
   confirmNote: string | null
   expiresAt: Date
@@ -356,6 +363,7 @@ export type OrderWhereInput = {
   couponCode?: Prisma.StringNullableFilter<"Order"> | string | null
   provider?: Prisma.EnumPaymentProviderIdNullableFilter<"Order"> | $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.JsonNullableFilter<"Order">
+  paymentRef?: Prisma.StringNullableFilter<"Order"> | string | null
   proofImageKey?: Prisma.StringNullableFilter<"Order"> | string | null
   confirmNote?: Prisma.StringNullableFilter<"Order"> | string | null
   expiresAt?: Prisma.DateTimeFilter<"Order"> | Date | string
@@ -388,6 +396,7 @@ export type OrderOrderByWithRelationInput = {
   couponCode?: Prisma.SortOrderInput | Prisma.SortOrder
   provider?: Prisma.SortOrderInput | Prisma.SortOrder
   checkoutPayload?: Prisma.SortOrderInput | Prisma.SortOrder
+  paymentRef?: Prisma.SortOrderInput | Prisma.SortOrder
   proofImageKey?: Prisma.SortOrderInput | Prisma.SortOrder
   confirmNote?: Prisma.SortOrderInput | Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
@@ -411,6 +420,7 @@ export type OrderOrderByWithRelationInput = {
 export type OrderWhereUniqueInput = Prisma.AtLeast<{
   id?: string
   code?: string
+  tenantId_paymentRef?: Prisma.OrderTenantIdPaymentRefCompoundUniqueInput
   AND?: Prisma.OrderWhereInput | Prisma.OrderWhereInput[]
   OR?: Prisma.OrderWhereInput[]
   NOT?: Prisma.OrderWhereInput | Prisma.OrderWhereInput[]
@@ -423,6 +433,7 @@ export type OrderWhereUniqueInput = Prisma.AtLeast<{
   couponCode?: Prisma.StringNullableFilter<"Order"> | string | null
   provider?: Prisma.EnumPaymentProviderIdNullableFilter<"Order"> | $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.JsonNullableFilter<"Order">
+  paymentRef?: Prisma.StringNullableFilter<"Order"> | string | null
   proofImageKey?: Prisma.StringNullableFilter<"Order"> | string | null
   confirmNote?: Prisma.StringNullableFilter<"Order"> | string | null
   expiresAt?: Prisma.DateTimeFilter<"Order"> | Date | string
@@ -441,7 +452,7 @@ export type OrderWhereUniqueInput = Prisma.AtLeast<{
   transactions?: Prisma.TenantPaymentTransactionListRelationFilter
   couponRedemptions?: Prisma.CouponRedemptionListRelationFilter
   notes?: Prisma.OrderNoteListRelationFilter
-}, "id" | "code">
+}, "id" | "code" | "tenantId_paymentRef">
 
 export type OrderOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -455,6 +466,7 @@ export type OrderOrderByWithAggregationInput = {
   couponCode?: Prisma.SortOrderInput | Prisma.SortOrder
   provider?: Prisma.SortOrderInput | Prisma.SortOrder
   checkoutPayload?: Prisma.SortOrderInput | Prisma.SortOrder
+  paymentRef?: Prisma.SortOrderInput | Prisma.SortOrder
   proofImageKey?: Prisma.SortOrderInput | Prisma.SortOrder
   confirmNote?: Prisma.SortOrderInput | Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
@@ -489,6 +501,7 @@ export type OrderScalarWhereWithAggregatesInput = {
   couponCode?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
   provider?: Prisma.EnumPaymentProviderIdNullableWithAggregatesFilter<"Order"> | $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.JsonNullableWithAggregatesFilter<"Order">
+  paymentRef?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
   proofImageKey?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
   confirmNote?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
   expiresAt?: Prisma.DateTimeWithAggregatesFilter<"Order"> | Date | string
@@ -513,6 +526,7 @@ export type OrderCreateInput = {
   couponCode?: string | null
   provider?: $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: string | null
   proofImageKey?: string | null
   confirmNote?: string | null
   expiresAt: Date | string
@@ -545,6 +559,7 @@ export type OrderUncheckedCreateInput = {
   couponCode?: string | null
   provider?: $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: string | null
   proofImageKey?: string | null
   confirmNote?: string | null
   expiresAt: Date | string
@@ -573,6 +588,7 @@ export type OrderUpdateInput = {
   couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   proofImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -605,6 +621,7 @@ export type OrderUncheckedUpdateInput = {
   couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   proofImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -635,6 +652,7 @@ export type OrderCreateManyInput = {
   couponCode?: string | null
   provider?: $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: string | null
   proofImageKey?: string | null
   confirmNote?: string | null
   expiresAt: Date | string
@@ -659,6 +677,7 @@ export type OrderUpdateManyMutationInput = {
   couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   proofImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -685,6 +704,7 @@ export type OrderUncheckedUpdateManyInput = {
   couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   proofImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -714,6 +734,11 @@ export type OrderScalarRelationFilter = {
   isNot?: Prisma.OrderWhereInput
 }
 
+export type OrderTenantIdPaymentRefCompoundUniqueInput = {
+  tenantId: string
+  paymentRef: string
+}
+
 export type OrderCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   tenantId?: Prisma.SortOrder
@@ -726,6 +751,7 @@ export type OrderCountOrderByAggregateInput = {
   couponCode?: Prisma.SortOrder
   provider?: Prisma.SortOrder
   checkoutPayload?: Prisma.SortOrder
+  paymentRef?: Prisma.SortOrder
   proofImageKey?: Prisma.SortOrder
   confirmNote?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
@@ -757,6 +783,7 @@ export type OrderMaxOrderByAggregateInput = {
   totalVnd?: Prisma.SortOrder
   couponCode?: Prisma.SortOrder
   provider?: Prisma.SortOrder
+  paymentRef?: Prisma.SortOrder
   proofImageKey?: Prisma.SortOrder
   confirmNote?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
@@ -782,6 +809,7 @@ export type OrderMinOrderByAggregateInput = {
   totalVnd?: Prisma.SortOrder
   couponCode?: Prisma.SortOrder
   provider?: Prisma.SortOrder
+  paymentRef?: Prisma.SortOrder
   proofImageKey?: Prisma.SortOrder
   confirmNote?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
@@ -967,6 +995,7 @@ export type OrderCreateWithoutCustomerInput = {
   couponCode?: string | null
   provider?: $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: string | null
   proofImageKey?: string | null
   confirmNote?: string | null
   expiresAt: Date | string
@@ -997,6 +1026,7 @@ export type OrderUncheckedCreateWithoutCustomerInput = {
   couponCode?: string | null
   provider?: $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: string | null
   proofImageKey?: string | null
   confirmNote?: string | null
   expiresAt: Date | string
@@ -1056,6 +1086,7 @@ export type OrderScalarWhereInput = {
   couponCode?: Prisma.StringNullableFilter<"Order"> | string | null
   provider?: Prisma.EnumPaymentProviderIdNullableFilter<"Order"> | $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.JsonNullableFilter<"Order">
+  paymentRef?: Prisma.StringNullableFilter<"Order"> | string | null
   proofImageKey?: Prisma.StringNullableFilter<"Order"> | string | null
   confirmNote?: Prisma.StringNullableFilter<"Order"> | string | null
   expiresAt?: Prisma.DateTimeFilter<"Order"> | Date | string
@@ -1080,6 +1111,7 @@ export type OrderCreateWithoutTenantInput = {
   couponCode?: string | null
   provider?: $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: string | null
   proofImageKey?: string | null
   confirmNote?: string | null
   expiresAt: Date | string
@@ -1110,6 +1142,7 @@ export type OrderUncheckedCreateWithoutTenantInput = {
   couponCode?: string | null
   provider?: $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: string | null
   proofImageKey?: string | null
   confirmNote?: string | null
   expiresAt: Date | string
@@ -1164,6 +1197,7 @@ export type OrderCreateWithoutCouponRedemptionsInput = {
   couponCode?: string | null
   provider?: $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: string | null
   proofImageKey?: string | null
   confirmNote?: string | null
   expiresAt: Date | string
@@ -1195,6 +1229,7 @@ export type OrderUncheckedCreateWithoutCouponRedemptionsInput = {
   couponCode?: string | null
   provider?: $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: string | null
   proofImageKey?: string | null
   confirmNote?: string | null
   expiresAt: Date | string
@@ -1238,6 +1273,7 @@ export type OrderUpdateWithoutCouponRedemptionsInput = {
   couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   proofImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1269,6 +1305,7 @@ export type OrderUncheckedUpdateWithoutCouponRedemptionsInput = {
   couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   proofImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1296,6 +1333,7 @@ export type OrderCreateWithoutNotesInput = {
   couponCode?: string | null
   provider?: $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: string | null
   proofImageKey?: string | null
   confirmNote?: string | null
   expiresAt: Date | string
@@ -1327,6 +1365,7 @@ export type OrderUncheckedCreateWithoutNotesInput = {
   couponCode?: string | null
   provider?: $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: string | null
   proofImageKey?: string | null
   confirmNote?: string | null
   expiresAt: Date | string
@@ -1370,6 +1409,7 @@ export type OrderUpdateWithoutNotesInput = {
   couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   proofImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1401,6 +1441,7 @@ export type OrderUncheckedUpdateWithoutNotesInput = {
   couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   proofImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1428,6 +1469,7 @@ export type OrderCreateWithoutItemsInput = {
   couponCode?: string | null
   provider?: $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: string | null
   proofImageKey?: string | null
   confirmNote?: string | null
   expiresAt: Date | string
@@ -1459,6 +1501,7 @@ export type OrderUncheckedCreateWithoutItemsInput = {
   couponCode?: string | null
   provider?: $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: string | null
   proofImageKey?: string | null
   confirmNote?: string | null
   expiresAt: Date | string
@@ -1502,6 +1545,7 @@ export type OrderUpdateWithoutItemsInput = {
   couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   proofImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1533,6 +1577,7 @@ export type OrderUncheckedUpdateWithoutItemsInput = {
   couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   proofImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1560,6 +1605,7 @@ export type OrderCreateWithoutTransactionsInput = {
   couponCode?: string | null
   provider?: $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: string | null
   proofImageKey?: string | null
   confirmNote?: string | null
   expiresAt: Date | string
@@ -1591,6 +1637,7 @@ export type OrderUncheckedCreateWithoutTransactionsInput = {
   couponCode?: string | null
   provider?: $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: string | null
   proofImageKey?: string | null
   confirmNote?: string | null
   expiresAt: Date | string
@@ -1634,6 +1681,7 @@ export type OrderUpdateWithoutTransactionsInput = {
   couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   proofImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1665,6 +1713,7 @@ export type OrderUncheckedUpdateWithoutTransactionsInput = {
   couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   proofImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1693,6 +1742,7 @@ export type OrderCreateManyCustomerInput = {
   couponCode?: string | null
   provider?: $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: string | null
   proofImageKey?: string | null
   confirmNote?: string | null
   expiresAt: Date | string
@@ -1717,6 +1767,7 @@ export type OrderUpdateWithoutCustomerInput = {
   couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   proofImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1747,6 +1798,7 @@ export type OrderUncheckedUpdateWithoutCustomerInput = {
   couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   proofImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1776,6 +1828,7 @@ export type OrderUncheckedUpdateManyWithoutCustomerInput = {
   couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   proofImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1801,6 +1854,7 @@ export type OrderCreateManyTenantInput = {
   couponCode?: string | null
   provider?: $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: string | null
   proofImageKey?: string | null
   confirmNote?: string | null
   expiresAt: Date | string
@@ -1825,6 +1879,7 @@ export type OrderUpdateWithoutTenantInput = {
   couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   proofImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1855,6 +1910,7 @@ export type OrderUncheckedUpdateWithoutTenantInput = {
   couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   proofImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1884,6 +1940,7 @@ export type OrderUncheckedUpdateManyWithoutTenantInput = {
   couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider?: Prisma.NullableEnumPaymentProviderIdFieldUpdateOperationsInput | $Enums.PaymentProviderId | null
   checkoutPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   proofImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   confirmNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1968,6 +2025,7 @@ export type OrderSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   couponCode?: boolean
   provider?: boolean
   checkoutPayload?: boolean
+  paymentRef?: boolean
   proofImageKey?: boolean
   confirmNote?: boolean
   expiresAt?: boolean
@@ -2001,6 +2059,7 @@ export type OrderSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   couponCode?: boolean
   provider?: boolean
   checkoutPayload?: boolean
+  paymentRef?: boolean
   proofImageKey?: boolean
   confirmNote?: boolean
   expiresAt?: boolean
@@ -2029,6 +2088,7 @@ export type OrderSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   couponCode?: boolean
   provider?: boolean
   checkoutPayload?: boolean
+  paymentRef?: boolean
   proofImageKey?: boolean
   confirmNote?: boolean
   expiresAt?: boolean
@@ -2057,6 +2117,7 @@ export type OrderSelectScalar = {
   couponCode?: boolean
   provider?: boolean
   checkoutPayload?: boolean
+  paymentRef?: boolean
   proofImageKey?: boolean
   confirmNote?: boolean
   expiresAt?: boolean
@@ -2071,7 +2132,7 @@ export type OrderSelectScalar = {
   updatedAt?: boolean
 }
 
-export type OrderOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tenantId" | "customerId" | "code" | "status" | "subtotalVnd" | "discountVnd" | "totalVnd" | "couponCode" | "provider" | "checkoutPayload" | "proofImageKey" | "confirmNote" | "expiresAt" | "paidAt" | "customerDeclaredPaidAt" | "ownerManualNotifiedAt" | "ownerDeclaredPaidNotifiedAt" | "customerPaymentEmailedAt" | "customerPaymentEmailedProvider" | "customerReminderSentAt" | "createdAt" | "updatedAt", ExtArgs["result"]["order"]>
+export type OrderOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tenantId" | "customerId" | "code" | "status" | "subtotalVnd" | "discountVnd" | "totalVnd" | "couponCode" | "provider" | "checkoutPayload" | "paymentRef" | "proofImageKey" | "confirmNote" | "expiresAt" | "paidAt" | "customerDeclaredPaidAt" | "ownerManualNotifiedAt" | "ownerDeclaredPaidNotifiedAt" | "customerPaymentEmailedAt" | "customerPaymentEmailedProvider" | "customerReminderSentAt" | "createdAt" | "updatedAt", ExtArgs["result"]["order"]>
 export type OrderInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
   customer?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -2118,6 +2179,12 @@ export type $OrderPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
      * SubscriptionInvoice.checkoutPayload (M3).
      */
     checkoutPayload: runtime.JsonValue | null
+    /**
+     * ADR-065: mã thanh toán SePay (nội dung chuyển khoản) = tiền tố SePay của gian hàng + 8 chữ số, sinh khi khách chọn SePay.
+     * Tách khỏi `code` vì mã đơn có trước khi chọn phương thức, nằm trong URL, và tiền tố gian hàng không thể là từ khoá ngân hàng
+     * bắt buộc (VietinBank: SEVQR). Duy nhất trong gian hàng; webhook SePay khớp đơn theo cột này.
+     */
+    paymentRef: string | null
     proofImageKey: string | null
     /**
      * Ghi chú bắt buộc khi owner xác nhận thủ công (§"M8"), cùng mẫu với
@@ -2590,6 +2657,7 @@ export interface OrderFieldRefs {
   readonly couponCode: Prisma.FieldRef<"Order", 'String'>
   readonly provider: Prisma.FieldRef<"Order", 'PaymentProviderId'>
   readonly checkoutPayload: Prisma.FieldRef<"Order", 'Json'>
+  readonly paymentRef: Prisma.FieldRef<"Order", 'String'>
   readonly proofImageKey: Prisma.FieldRef<"Order", 'String'>
   readonly confirmNote: Prisma.FieldRef<"Order", 'String'>
   readonly expiresAt: Prisma.FieldRef<"Order", 'DateTime'>

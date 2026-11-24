@@ -8,7 +8,7 @@ tags:
   - database
   - status/living
 date: 2026-10-16
-updated: 2026-10-27
+updated: 2026-11-24
 author: Long
 ---
 
@@ -128,9 +128,9 @@ cần DDL (`action` là chuỗi).
 | `TENANT_LOCKED` / `TENANT_UNLOCKED` | SYSTEM (+`tenantId`) | `lib/tenant-lock.ts` — gọi từ `app/admin/tenants/actions.ts`; `TENANT_LOCKED` còn ghi khi xử lý báo cáo `LOCK_TENANT` (metadata `source: "ABUSE_REPORT"`, chỉ khi tenant chưa khoá) | admin |
 | `TENANT_SLUG_CHANGED` | TENANT | `app/studio/[tenantSlug]/settings/actions.ts` — `{ from, to }` | thành viên |
 | `PLAN_CREATED` / `PLAN_UPDATED` | SYSTEM | `app/admin/plans/actions.ts` (tạo, sửa, bật/tắt) | admin |
-| `SUBSCRIPTION_PAID` | SYSTEM (+`tenantId`) | `lib/subscription-billing.ts` — 3 nơi ghi, phân biệt bằng `metadata.source` (ADR-059, ✅ đọc code 2026-10-26, đã commit `fa29d99`): `markInvoicePaid` (`PLATFORM_WEBHOOK` hoặc `ADMIN_MANUAL_CONFIRM`; metadata `provider`, `planId`, `previousPlanId`, `amountVnd`, `periodEnd`, `reactivated`); `confirmExpiredManualInvoice` (`ADMIN_MANUAL_CONFIRM` + `previousInvoiceStatus: "EXPIRED"`, `lateConfirmation: true`, `dueAt`, `storedPeriodStart/End`, `periodRecomputed: true`, `periodStart/End`); `confirmInvoiceFromPlatformTransaction` (**`ADMIN_TRANSACTION_CONFIRM`** + `transactionId`, `transactionProvider`, `receivedAmountVnd`, `differenceVnd`, kèm metadata trễ nếu hoá đơn EXPIRED, không thì `periodEnd`). Không thêm action mới | null (webhook) hoặc admin (xác nhận tay / từ giao dịch) |
+| `SUBSCRIPTION_PAID` | SYSTEM (+`tenantId`) | `lib/subscription-billing.ts` — 3 nơi ghi, phân biệt bằng `metadata.source` (ADR-059, ✅ đọc code 2026-10-26, đã commit `fa29d99`): `markInvoicePaid` (`PLATFORM_WEBHOOK` hoặc `ADMIN_MANUAL_CONFIRM`; metadata `provider`, `planId`, `previousPlanId`, `amountVnd`, `periodEnd`, `reactivated`); `confirmExpiredManualInvoice` (`ADMIN_MANUAL_CONFIRM` + `previousInvoiceStatus: "EXPIRED"`, `lateConfirmation: true`, `dueAt`, `storedPeriodStart/End`, `periodRecomputed: true`, `periodStart/End`); `confirmInvoiceFromPlatformTransaction` (**`ADMIN_TRANSACTION_CONFIRM`** + `transactionId`, `transactionProvider`, `receivedAmountVnd`, `differenceVnd`, kèm metadata trễ nếu hoá đơn EXPIRED, không thì `periodEnd`). Không thêm action mới. Từ ADR-066 (2026-11-24, working tree ✅ code): `ADMIN_MANUAL_CONFIRM` áp cho **mọi cổng** (cả SePay/MoMo) và có thêm khoá **`note`** khi admin nhập ghi chú (trim, ≤ 500 ký tự; trống → không có khoá) | null (webhook) hoặc admin (xác nhận tay / từ giao dịch) |
 | `PAYMENT_CONFIG_UPDATED` | SYSTEM | `lib/platform-payment.ts` (lưu cấu hình; kiểm tra kết nối thành công tự bật) — chỉ cờ thay đổi, không secret | admin |
-| `PAYMENT_CONFIG_UPDATED` | TENANT | `lib/tenant-payment.ts` | thành viên |
+| `PAYMENT_CONFIG_UPDATED` | TENANT | `lib/tenant-payment.ts` (lưu cấu hình; từ 2026-11-24 cả "Kiểm tra kết nối" SePay thành công tự bật — `testTenantProviderConnection`, metadata `verified: true`, `wasEnabled`) | thành viên |
 | `PRODUCT_PUBLISHED` / `PRODUCT_ARCHIVED` | TENANT | `lib/product.ts` | thành viên |
 | `PRODUCT_DELETED` | TENANT | `lib/product.ts` `deleteProduct` (sau transaction xoá) — `targetType: "Product"`, `targetId` = id tài liệu, metadata `{ title, slug, deletedFilesCount, freedStorageBytes }`. Nhãn "Xoá tài liệu" (ADR-051 — vuong; nghiệp vụ ở [[01-Architecture-Decisions/ADR-037-Product-Archive-Deletion-Storage-Cleanup|ADR-037 KB]]) ✅ code | thành viên |
 | `ORDER_MANUALLY_CONFIRMED` / `ORDER_REFUNDED` | TENANT | `lib/order.ts` — từ đợt 1 ADR-061/062 (2026-10-27, chưa commit) metadata xác nhận tay thêm **`lateDeclaredPaid`** (xác nhận khi đơn đã hết hạn — chỉ được nhờ ngoại lệ "khách báo chuyển trước hạn") và **`customerDeclaredPaid`** (khách đã bấm "Tôi đã chuyển khoản") | thành viên |

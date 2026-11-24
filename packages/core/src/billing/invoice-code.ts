@@ -1,18 +1,16 @@
-const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-const SUFFIX_LENGTH = 8;
-/** Số ký tự sau tiền tố của mã hoá đơn — dùng để tách mã khỏi nội dung chuyển khoản (ADR-059). */
-export const INVOICE_CODE_SUFFIX_LENGTH = SUFFIX_LENGTH;
+import { generatePaymentCode, isPaymentCode, PAYMENT_CODE_DIGITS } from "./payment-code";
 
-/** §"M3": "mã SUB + chuỗi ngẫu nhiên 8 ký tự in hoa". */
+/** Số ký tự sau tiền tố của mã hoá đơn — dùng để tách mã khỏi nội dung chuyển khoản (ADR-059, ADR-065). */
+export const INVOICE_CODE_SUFFIX_LENGTH = PAYMENT_CODE_DIGITS;
+
+/**
+ * Mã hoá đơn gói = mã thanh toán ADR-065 (tiền tố + 8 chữ số) — với SePay, tiền tố là tiền tố đã cấu hình (VD "SEVQR"); cổng
+ * khác dùng "SUB". Mã hoá đơn chính là nội dung chuyển khoản nên phải đúng định dạng SePay nhận diện được.
+ */
 export function generateInvoiceCode(prefix = "SUB"): string {
-  let suffix = "";
-  for (let i = 0; i < SUFFIX_LENGTH; i += 1) {
-    suffix += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
-  }
-  return `${prefix}${suffix}`;
+  return generatePaymentCode(prefix);
 }
 
 export function isValidInvoiceCode(code: string, prefix = "SUB"): boolean {
-  const pattern = new RegExp(`^${prefix}[A-Z0-9]{${SUFFIX_LENGTH}}$`);
-  return pattern.test(code);
+  return isPaymentCode(code, prefix);
 }

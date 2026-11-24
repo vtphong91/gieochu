@@ -65,6 +65,14 @@ export type { TenantMemberRole } from "./tenant/membership";
 export { addBillingPeriod, computeGraceEndsAt, computeRenewalPeriod } from "./billing/period";
 export type { PlanInterval, PlanIntervalInfo } from "./billing/period";
 export { generateInvoiceCode, INVOICE_CODE_SUFFIX_LENGTH, isValidInvoiceCode } from "./billing/invoice-code";
+export {
+  generatePaymentCode,
+  isPaymentCode,
+  normalizePaymentCodePrefix,
+  PAYMENT_CODE_DIGITS,
+  PAYMENT_CODE_PREFIX_MAX,
+  PAYMENT_CODE_PREFIX_MIN,
+} from "./billing/payment-code";
 export { transitionSubscriptionStatus } from "./billing/subscription-state";
 export type { SubscriptionEvent, SubscriptionStatus } from "./billing/subscription-state";
 export {

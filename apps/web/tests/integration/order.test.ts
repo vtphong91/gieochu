@@ -3,7 +3,7 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 import { getPrismaClient, withCustomer, withPublic, withSystemJob, withTenant } from "@gieochu/db";
 import type { CheckoutQrResult } from "@gieochu/payments";
 import { QUEUE_NAMES } from "@gieochu/jobs";
-import { getStartedQueue } from "../../lib/jobs";
+import { getStartedQueue, type PaymentProcessJobData } from "../../lib/jobs";
 import { createTenantForUser } from "../../lib/create-tenant";
 import { saveTenantProviderConfig } from "../../lib/tenant-payment";
 import { createCoupon } from "../../lib/coupon";
@@ -397,6 +397,63 @@ describe("M8 checkout and orders", () => {
     const fulfilled = await getOrderDetailView(tenant.id, order.id);
     expect(fulfilled.status).toBe("FULFILLED");
     expect(fulfilled.transactions.some((t) => t.matchStatus === "MATCHED")).toBe(true);
+  });
+
+  it("ADR-065: a SePay checkout uses a numeric paymentRef as transfer content and the webhook job fulfills the order by it", async () => {
+    const { tenant } = await createOwnerAndTenant("Sepay Ref Test", "sepayref");
+    const product = await createPublishedProduct(tenant.id, "de-thi", 99_000);
+    const buyer = await createActiveUser(nextEmail());
+    const apiKey = "tenant-sepay-apikey";
+    await saveTenantProviderConfig(tenant.id, {
+      provider: "SEPAY",
+      isEnabled: true,
+      publicConfig: { bankBin: "970415", accountNo: "106887878525", accountName: "NGUYEN VAN A", authType: "API_KEY", paymentPrefix: "SEVQR" },
+      secrets: { secret: apiKey },
+    });
+
+    // Nội dung CK = mã thanh toán riêng (tiền tố SePay + 8 chữ số), không phải mã đơn; áp mã giảm giá giữ nguyên mã thanh toán.
+    const order = await createOrder(buyer.id, tenant.slug, product.id);
+    const checkedOut = await initiateOrderCheckout(tenant.id, order.id, buyer.id, "SEPAY");
+    const qr = checkedOut.checkoutPayload as unknown as CheckoutQrResult;
+    expect(checkedOut.code).toBe(order.code);
+    expect(checkedOut.paymentRef).toMatch(/^SEVQR[1-9]\d{7}$/);
+    expect(qr.content).toBe(checkedOut.paymentRef);
+    await createCoupon(tenant.id, { code: "REF10", type: "PERCENT", value: 10, isEnabled: true });
+    const discounted = await applyCouponToOrder(tenant.id, order.id, buyer.id, "REF10");
+    expect(discounted.paymentRef).toBe(checkedOut.paymentRef);
+
+    const sendWebhook = (id: string, accountNumber: string) =>
+      tenantWebhook(
+        new Request(`http://localhost/api/webhooks/tenants/${tenant.id}/sepay`, {
+          method: "POST",
+          headers: { authorization: `Apikey ${apiKey}` },
+          body: JSON.stringify({
+            id,
+            accountNumber,
+            code: null,
+            content: `CT DEN:945T26B14AZ5VN4P MBVCB.13345.${checkedOut.paymentRef}.NGUYEN VAN A`,
+            transferType: "in",
+            transferAmount: discounted.totalVnd,
+            transactionDate: "2026-11-24 14:07:22",
+          }),
+        }),
+        { params: Promise.resolve({ tenantId: tenant.id, provider: "sepay" }) },
+      );
+
+    // Giao dịch của tài khoản ngân hàng khác (cùng tài khoản SePay) → 200 nhưng bỏ qua, không ghi webhook_events.
+    expect((await sendWebhook(`evt_${RUN_PREFIX}_ref_other`, "0011012345678")).status).toBe(200);
+    expect(await prisma.webhookEvent.count({ where: { tenantId: tenant.id, providerEventId: `evt_${RUN_PREFIX}_ref_other` } })).toBe(0);
+
+    expect((await sendWebhook(`evt_${RUN_PREFIX}_ref`, "106887878525")).status).toBe(200);
+    const queue = await getStartedQueue();
+    const [job] = await queue.boss.findJobs<PaymentProcessJobData>(QUEUE_NAMES.PAYMENT_PROCESS, { data: { tenantId: tenant.id } });
+    expect(job?.data.referenceCandidates?.[0]).toBe(checkedOut.paymentRef);
+    await queue.boss.deleteJob(QUEUE_NAMES.PAYMENT_PROCESS, [job!.id]);
+    await processPaymentEvent(job!.data);
+
+    const fulfilled = await getOrderDetailView(tenant.id, order.id);
+    expect(fulfilled.status).toBe("FULFILLED");
+    expect(fulfilled.paymentRef).toBe(checkedOut.paymentRef);
   });
 
   it("processPaymentEvent also fulfills via a MoMo IPN-shaped event", async () => {

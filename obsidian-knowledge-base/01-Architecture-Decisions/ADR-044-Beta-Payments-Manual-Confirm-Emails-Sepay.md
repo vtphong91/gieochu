@@ -25,6 +25,14 @@ trong case có sẵn (`sepay.test.ts`, `order.test.ts`, `subscription-billing.te
 
 Mức xác minh: ✅ Long đã đối chiếu code working tree · 🟡 theo `docs/DECISIONS.md`/brief của Quốc · ❓ cần môi trường thật (SMTP, SePay thật, VPS).
 
+> [!NOTE] Bị sửa bởi ADR-049/ADR-050 (KB) — tương ứng ADR-065/ADR-066 docs (2026-11-24, Quốc duyệt ghi chú)
+> - [[01-Architecture-Decisions/ADR-049-Sepay-Numeric-Payment-Code-Shared|ADR-049 KB (≙ ADR-065)]] sửa §3.4 (c): tiền tố SePay nay **2–5 chữ cái** + mã 8 chữ số, dùng
+>   chung System và Studio; Studio bỏ cảnh báo "tiền tố khác mã đơn".
+> - [[01-Architecture-Decisions/ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider|ADR-050 KB (≙ ADR-066)]] sửa §3.3 và §3.4: admin xác nhận tay / xác nhận trễ hoá đơn
+>   gói cho **mọi cổng** (không còn giới hạn ở cổng xác nhận tay).
+>
+> Nội dung bên dưới giữ nguyên như lúc ghi ADR-059.
+
 ---
 
 ## 2. Bối Cảnh (Context) 🟡

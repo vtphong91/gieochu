@@ -1,5 +1,13 @@
 import { NextResponse } from "next/server";
-import { decryptSecret, extractSepayReferences, getProvider, type PaymentProviderId, type SepayWebhookBody } from "@gieochu/payments";
+import {
+  decryptSecret,
+  extractSepayPaymentCodes,
+  extractSepayReferences,
+  getProvider,
+  sepayAccountMatches,
+  type PaymentProviderId,
+  type SepayWebhookBody,
+} from "@gieochu/payments";
 import { logger, ORDER_CODE_SUFFIX_LENGTH } from "@gieochu/core";
 import { getEnv } from "@gieochu/config";
 import { getPrismaClient, withSystemJob } from "@gieochu/db";
@@ -69,6 +77,13 @@ export async function POST(
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
 
+  // ADR-065: giao dịch của tài khoản ngân hàng KHÁC (cùng tài khoản SePay) — không phải tiền của cổng này. Trả 200 để SePay không
+  // gửi lại; không ghi webhook_events/giao dịch.
+  if (providerId === "SEPAY" && !sepayAccountMatches(parsedBody, String((cfg as { accountNo?: unknown }).accountNo ?? ""))) {
+    logger.warn({ tenantId, provider: providerId, providerEventId: event.providerEventId }, "tenant payment webhook ignored: other bank account");
+    return NextResponse.json({ success: true });
+  }
+
   try {
     await withSystemJob((tx) =>
       tx.webhookEvent.create({
@@ -80,19 +95,18 @@ export async function POST(
     return NextResponse.json({ success: true });
   }
 
-  // SePay's parseWebhook can't know the tenant's paymentPrefix (no cfg param on the shared
-  // interface) — extract the reference here, with cfg already decrypted above. MoMo's own
-  // orderId already comes back as `event.reference` from parseWebhook.
-  // ADR-059 bổ sung lần 2: thử cả tiền tố SePay người bán tự điền lẫn tiền tố mã đơn của gian hàng (mã đơn luôn mang tiền tố
-  // này, nội dung QR = mã đơn) → không bao giờ trượt khớp chỉ vì cấu hình lệch; chỉ bắt đúng độ dài mã đơn.
+  // SePay's parseWebhook can't know the tenant's paymentPrefix (no cfg param on the shared interface) — extract the reference
+  // here, with cfg already decrypted above. MoMo's own orderId already comes back as `event.reference` from parseWebhook.
+  // ADR-065: ưu tiên mã thanh toán (`orders.paymentRef` = tiền tố SePay + 8 chữ số — đúng tiền tố `tenantSepayPrefix` dùng lúc
+  // sinh, tức tiền tố cấu hình hoặc tiền tố mã đơn), sau đó mới tới mã đơn (khách tự gõ mã đơn vào nội dung CK).
   let referenceCandidates: string[] = [];
   if (providerId === "SEPAY") {
     const tenant = await getPrismaClient().tenant.findUnique({ where: { id: tenantId }, select: { orderCodePrefix: true } });
-    referenceCandidates = extractSepayReferences(
-      parsedBody as SepayWebhookBody,
-      [String((cfg as { paymentPrefix?: unknown }).paymentPrefix ?? ""), tenant?.orderCodePrefix ?? ""],
-      { codeLength: ORDER_CODE_SUFFIX_LENGTH },
-    );
+    const body = parsedBody as SepayWebhookBody;
+    const orderCodePrefix = tenant?.orderCodePrefix ?? "";
+    const paymentCodes = extractSepayPaymentCodes(body, [(cfg as { paymentPrefix?: unknown }).paymentPrefix, orderCodePrefix]);
+    const orderCodes = orderCodePrefix ? extractSepayReferences(body, [orderCodePrefix], { codeLength: ORDER_CODE_SUFFIX_LENGTH }) : [];
+    referenceCandidates = [...new Set([...paymentCodes, ...orderCodes])];
   } else if (event.reference) {
     referenceCandidates = [event.reference];
   }

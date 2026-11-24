@@ -5037,6 +5037,7 @@ export const OrderScalarFieldEnum = {
   couponCode: 'couponCode',
   provider: 'provider',
   checkoutPayload: 'checkoutPayload',
+  paymentRef: 'paymentRef',
   proofImageKey: 'proofImageKey',
   confirmNote: 'confirmNote',
   expiresAt: 'expiresAt',

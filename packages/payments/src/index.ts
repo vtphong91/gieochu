@@ -21,7 +21,14 @@ export { buildVietQrPayload, crc16ccitt } from "./vietqr";
 export type { VietQrInput } from "./vietqr";
 
 export { manualQrProvider } from "./providers/manual-qr";
-export { sepayProvider, extractSepayReference, extractSepayReferences } from "./providers/sepay";
+export {
+  sepayProvider,
+  extractSepayPaymentCodes,
+  extractSepayReference,
+  extractSepayReferences,
+  sepayAccountMatches,
+  testSepayConnection,
+} from "./providers/sepay";
 export type { SepayReferenceOptions, SepayWebhookBody } from "./providers/sepay";
 export { momoProvider, buildMomoCreateSignature, buildMomoIpnSignature } from "./providers/momo";
 

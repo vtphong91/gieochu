@@ -5,7 +5,7 @@ tags:
   - billing
   - status/living
 date: 2026-09-26
-updated: 2026-10-27
+updated: 2026-11-24
 author: System Architect
 ---
 
@@ -44,6 +44,8 @@ enum PaymentProviderId { MANUAL_QR  SEPAY  MOMO  MOMO_MANUAL }
 - **`SEPAY`**: `authType` là `API_KEY` hoặc `HMAC_SHA256`, có `paymentPrefix` (khớp `Tenant.orderCodePrefix`
   hoặc `"SUB"` cho platform) để đối soát nội dung chuyển khoản. Từ ADR-059 bổ sung lần 2 tiền tố **không khoá**: platform sinh mã hoá
   đơn SePay theo `paymentPrefix`, gian hàng thử cả `paymentPrefix` lẫn `orderCodePrefix` khi đọc webhook — §5H ✅.
+  **Từ ADR-065 (2026-11-24, working tree) ✅ code:** `paymentPrefix` bắt buộc **2–5 chữ cái**; mã thanh toán SePay = tiền tố + **8 chữ số** cho cả hoá đơn gói lẫn
+  đơn gian hàng (đơn dùng cột riêng `orders.paymentRef`); secret tuỳ chọn mới **`apiToken`** chỉ phục vụ "Kiểm tra kết nối" — §5L, §5M.
 - **`MOMO_MANUAL`** (ADR-059 bổ sung lần 3, đã commit `fa29d99`, migration đã áp) ✅ code: ví MoMo cá nhân, khách chuyển tay, người nhận xác nhận tay; không webhook. Dùng cho **cả**
   PLATFORM lẫn TENANT, bật song song được với chuyển khoản ngân hàng. Chi tiết §5J. **`MOMO`** (MoMo API) giữ nguyên cấu hình và code.
 - **Loại xác nhận tay** (`MANUAL_CONFIRM_PROVIDERS` / `isManualConfirmProvider`, `packages/payments/src/registry.ts`) ✅: **`MANUAL_QR`, `MOMO_MANUAL`** — dùng chung
@@ -58,7 +60,8 @@ storage) — secret **không bao giờ** trả về client, UI chỉ hiện `•
 **Tự tắt khi đổi định danh tài khoản (ADR-013):** khi admin/owner sửa số tài khoản/BIN (hoặc `partnerCode`
 MoMo) hay secret, hệ thống tự đặt `isEnabled=false` + xoá `lastVerifiedAt` — phải lưu lại và bật lại chủ động
 để xác nhận cấu hình mới. Sửa các trường không ảnh hưởng định danh (tên chủ TK, `authType`...) không kích hoạt
-việc này.
+việc này. Cơ chế này chỉ có ở cấu hình **platform** (`savePlatformProviderConfig`); thêm/đổi SePay `apiToken` **không** làm cổng tự tắt (`TEST_ONLY_SECRET_KEYS`,
+2026-11-24) ✅ code — §5L.
 
 ---
 
@@ -236,13 +239,14 @@ Quyết định: [[01-Architecture-Decisions/ADR-041-System-Center-Subscription-
   - *Chờ đối soát*: `listPendingManualInvoices()` như cũ (MANUAL_QR PENDING), nút "Xác nhận đã nhận tiền" → `confirmManualInvoicePayment` (không đổi).
   - *Tất cả*: `listSubscriptionInvoices({ status, provider, page, pageSize })` — mọi trạng thái/cổng, mới nhất trước (`createdAt desc, id desc`),
     `pageSize` kẹp 1–100 (trang dùng 10/20/50/100, mặc định 20). Cột: mã, gian hàng, gói, cổng, số tiền, trạng thái, ngày tạo, hạn thanh toán, ngày thu.
-    Nút xác nhận **chỉ** ở dòng `provider = MANUAL_QR` và `status = PENDING`.
+    Nút xác nhận **chỉ** ở dòng `provider = MANUAL_QR` và `status = PENDING`. *(Từ ADR-066: nút `ManualConfirmButton` ở mọi dòng PENDING/EXPIRED, mọi cổng — §5N.)*
 - **`/admin/subscriptions`** (menu Kinh doanh → "Đơn hàng", tiêu đề "Đơn hàng gói dịch vụ") ✅ — `listSubscriptions({ planCode, status, page, pageSize })`:
   - Lọc `?plan=` (mã gói; chỉ nhận mã có trong `listPlanFilterOptions()` — mọi gói kể cả đã ngừng bán, xếp theo giá) và `?status=` (6 giá trị
     `SubscriptionStatus`); có `page`/`pageSize`.
   - Sắp xếp `plan.isFree asc` → `currentPeriodEnd asc` → `id asc`: gói trả phí hết hạn sớm nhất lên đầu, **gói miễn phí xếp sau**; cột "Hết hạn" của gói
     miễn phí hiện **"Không thời hạn"** (Free có `currentPeriodEnd = currentPeriodStart` — comment code).
   - "Hoá đơn gần nhất" = hoá đơn mới nhất của tenant (`createdAt desc`, lấy 1). Tên gian hàng link tới `/admin/tenants` (danh sách chung, không trang chi tiết).
+    Từ ADR-066: ô hiện mã / trạng thái / "số tiền · cổng" và có cột mới **"Thao tác"** — §5N.
 - `parseEnumParam(allowed, value)` — query không thuộc danh sách → `undefined` (bỏ lọc), không ném lỗi ✅.
 - Nhãn/tông badge dùng chung ở `app/admin/_ui/billing-labels.ts` (`INVOICE_STATUS_LABEL`, `INVOICE_PROVIDER_LABEL`, `SUBSCRIPTION_STATUS_LABEL`, …,
   `formatAdminDateTime`/`formatAdminDate` theo `DISPLAY_TIME_ZONE`) ✅.
@@ -299,7 +303,7 @@ Quyết định: [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confir
   | EXPIRED | `confirmExpiredManualInvoice` (dưới) |
   | PAID | no-op |
   | VOID / REFUNDED | **409 `INVOICE_NOT_CONFIRMABLE`** |
-  | cổng tự đối soát (SEPAY, MOMO) | 400 `NOT_MANUAL_INVOICE` (như cũ) |
+  | ~~cổng tự đối soát (SEPAY, MOMO)~~ | ~~400 `NOT_MANUAL_INVOICE` (như cũ)~~ — **bỏ từ ADR-066** (2026-11-24): mọi cổng đi theo các dòng trên, cả nhánh EXPIRED — §5N |
 - **`confirmExpiredManualInvoice`** ✅ — một transaction: khoá dòng `subscriptions` của gian hàng (`FOR UPDATE`) → đọc lại hoá đơn (PAID/REFUNDED → no-op
   idempotent; không phải EXPIRED + cổng xác nhận tay → `INVOICE_NOT_CONFIRMABLE`) → chặn **`NEWER_INVOICE_EXISTS` 409** nếu có hoá đơn khác của gian hàng
   `createdAt` sau hoá đơn này đang PENDING (kể cả đã quá hạn, chưa sweep) hoặc PAID → áp thanh toán với **kỳ tính lại**
@@ -309,7 +313,8 @@ Quyết định: [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confir
     ADR; `evaluateRefundEligibility` không đổi ✅).
   - Audit `SUBSCRIPTION_PAID`, `source: ADMIN_MANUAL_CONFIRM` + `previousInvoiceStatus: "EXPIRED"`, `lateConfirmation: true`, `dueAt`,
     `storedPeriodStart/End` (kỳ cũ), `periodRecomputed: true`, `periodStart/End` (kỳ mới) — [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]] §4.
-  - UI: nút **"Xác nhận trễ…"** ở dòng cổng xác nhận tay + EXPIRED (tab "Tất cả") — `ExpiredConfirmButton` ✅ code; xem trình duyệt ❓.
+  - UI: nút **"Xác nhận trễ…"** ở dòng cổng xác nhận tay + EXPIRED (tab "Tất cả") — `ExpiredConfirmButton` ✅ code; xem trình duyệt ❓. *(Từ ADR-066: thay bằng
+    `ManualConfirmButton`, mọi cổng; điều kiện "không phải cổng xác nhận tay → `INVOICE_NOT_CONFIRMABLE`" trong `confirmExpiredManualInvoice` đã bỏ — §5N.)*
 - Test: assert thêm trong `subscription-billing.test.ts` (case có sẵn) ✅ đọc `git diff --stat`; chạy xanh 🟡 (Quốc báo). Gửi SMTP thật ❓.
 
 ### 5G. Áp hoá đơn nguyên tử, webhook ghi giao dịch trước, tab "Giao dịch cổng" (ADR-059 B2) ✅ `git diff`
@@ -351,6 +356,9 @@ Quyết định: [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confir
   6. Gắn `matchedInvoiceId` có điều kiện (chưa gắn hoặc gắn đúng hoá đơn này) → mỗi giao dịch dùng một lần.
   7. Audit `SUBSCRIPTION_PAID`, **`source: ADMIN_TRANSACTION_CONFIRM`**, `transactionId`, `transactionProvider`, `receivedAmountVnd`, `amountVnd`, **`differenceVnd`**
      (+ metadata trễ nếu EXPIRED). Phần thừa admin hoàn ngoài hệ thống 🟡.
+> **Đã thay bởi ADR-065 (2026-11-24)** — ba gạch đầu dòng "Tiền tố platform", "Tiền tố gian hàng", "Đọc mã" dưới đây mô tả hành vi ADR-059, giữ để tra cứu. Hành vi
+> hiện hành: §5M.
+
 - **Tiền tố platform:** hoá đơn **SEPAY mới** sinh mã `normalizeInvoiceCodePrefix(paymentPrefix)` + 8 ký tự; prefix hợp lệ = chữ/số 1–10 ký tự sau khi viết hoa, không
   hợp lệ → `SUB` + `logger.warn`. Cổng khác vẫn `SUB`. Mã đã có không đổi. Webhook/tab Giao dịch đọc mã bằng `sepayInvoiceReferenceCandidates(payload, prefix)`: thử
   tiền tố đã cấu hình rồi `SUB`, đúng **8** ký tự (`INVOICE_CODE_SUFFIX_LENGTH`). Lưu cấu hình SePay (`/admin/billing/payment`) luôn kèm câu cảnh báo/nhắc dạng mã;
@@ -443,6 +451,103 @@ Quyết định: [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confir
   "Chính sách người bán". **Chưa sửa** văn bản trong CMS (ngoài phạm vi; ghi ở `docs/PLAN.md`).
 - **Test:** `pnpm test:count` = **100/100 unit, 66/66 integration** ✅ (Long chạy). Kiểm thật với ví MoMo + app ngân hàng ❓ (runbook).
 
+### 5L. Cấu hình SePay — key webhook ngẫu nhiên, API Token, "Kiểm tra kết nối" (2026-11-24) — đã commit `14f08ba` (key + API Token + kiểm tra) ✅ đọc code
+
+Áp dụng **cả hai phía**: System Center `/admin/billing/payment` (PaymentScope PLATFORM) và Studio `/studio/{slug}/settings/payments` (PaymentScope TENANT). Không thuộc văn
+bản ADR-065 gốc — ghi ở `docs/PLAN.md` mục ADR-065 "kèm phiên này". Phần lớn đã ở commit `14f08ba` ✅ `git show --stat`; working tree chỉ sửa thêm `secret-key-field.tsx` và
+các chuỗi hướng dẫn (`apps/web/lib/sepay-setup.ts`, chưa track) ✅ `git status`.
+
+- **Ô "Secret / API key" webhook** (`SecretKeyField`, `apps/web/app/admin/_ui/secret-key-field.tsx`, dùng chung hai form) ✅ code:
+  - Nút **"Tạo key ngẫu nhiên"**: 48 ký tự chữ/số (A–Z, a–z, 0–9) bằng `crypto.getRandomValues` **của trình duyệt**, loại byte ≥ 248 để phân bố đều. Chỉ chữ/số → dán
+    vào header `Authorization: Apikey <key>` không cần escape.
+  - Sau khi tạo: hiện key + **khung nhắc sao chép trước khi lưu**; form reset (sau khi lưu) hoặc sửa tay khác key → ẩn khung.
+  - Ô vẫn là ô bí mật: để trống = giữ secret đã lưu; key gửi lên như khi gõ tay, server mã hoá **AES-256-GCM** (`PAYMENT_ENCRYPTION_KEY`), **không bao giờ trả về client**
+    (form chỉ thấy bản che `maskSecret`).
+  - Gợi ý theo `authType` (`sepaySecretHint`): `API_KEY` → "SePay gửi header Authorization: Apikey <key>…"; `HMAC_SHA256` → dán cùng secret vào ô HMAC bên SePay.
+- **Ô "API Token (để kiểm tra kết nối)"** — secret **tuỳ chọn** `apiToken` (`sepayConfigSchema.apiToken: z.string().optional()`), gợi ý: lấy ở **my.sepay.vn → Cấu hình
+  Công ty → API Access**; chỉ dùng cho kiểm tra kết nối, không ảnh hưởng nhận tiền ✅ code (đường dẫn trên SePay: 🟡 theo chuỗi gợi ý trong code, Long chưa xem giao diện SePay).
+  - Để trống = giữ token đã lưu; secret tuỳ chọn **chưa từng nhập** thì **không lưu khoá rỗng `""`** (lọc trước khi `validateConfig` — cả `savePlatformProviderConfig`
+    lẫn `saveTenantProviderConfig`) ✅ code.
+  - Platform: thêm/đổi `apiToken` **không** làm cổng tự tắt — `TEST_ONLY_SECRET_KEYS = {"apiToken"}` bị loại khỏi so sánh định danh (ADR-013 chỉ áp cho định danh nhận
+    tiền: số TK/BIN + secret webhook) ✅ code. Audit `PAYMENT_CONFIG_UPDATED` vẫn có cờ `credentialsChanged` (tính trên toàn bộ secret).
+- **Nút "Kiểm tra kết nối"** — chạy trên cấu hình **đã lưu** (`testSepayConnection`, `packages/payments/src/providers/sepay.ts`) ✅ code:
+  - Gọi `GET https://my.sepay.vn/userapi/bankaccounts/list` với `Authorization: Bearer <apiToken>`, timeout **10 giây** (`AbortSignal.timeout`). Comment code: User API
+    giới hạn 2 request/giây/IP.
+  - Kết quả: chưa có token → hướng dẫn lấy token; lỗi mạng/quá giờ; 401/403 → token không hợp lệ/đã tắt; 429 → đợi rồi thử lại; HTTP khác → "SePay trả lỗi HTTP N";
+    phản hồi không có mảng `bankaccounts` → không hợp lệ; **không thấy số tài khoản** đã cấu hình; tài khoản thuộc **ngân hàng khác** (`bank_bin` ≠ BIN cấu hình);
+    tài khoản **tạm khoá** (`active ≠ 1`); thành công → "Kết nối thành công — tài khoản … ••••1234 đang hoạt động trên SePay". Thông báo chỉ có 4 số cuối, không có token.
+  - **Không kiểm được secret webhook** (SePay không có API cho việc này) — webhook chỉ kiểm được bằng giao dịch thật.
+  - Thành công → đặt `lastVerifiedAt = now`, **tự BẬT cổng** (`isEnabled = true`) + audit `PAYMENT_CONFIG_UPDATED` (`verified: true`, `wasEnabled`):
+    platform `testPlatformProviderConnection` (`getPrismaClient`, bảng L1); tenant **`testTenantProviderConnection`** (`lib/tenant-payment.ts`, đọc/ghi qua **`withTenant`**,
+    audit scope TENANT) ✅ code. Server Action: `testSepayConnectionAction` (System Center `requireRole("SYSTEM_ADMIN")`; Studio `requireTenantMember`).
+- **Test** ✅ đọc `git diff`: unit "test connection: rejects a bad token or an unlinked account, accepts a linked active account" (`sepay.test.ts`, `fetch` giả).
+  Gọi SePay thật với token thật ❓ **chưa thử giao dịch thật**.
+
+### 5M. Mã thanh toán SePay dùng chung System + Studio (ADR-065) — working tree, chưa commit ✅ đọc code 2026-11-24; migration đã áp DB dev (Neon, `.env`) 🟡 Quốc báo; production (VPS) chưa áp ❓ — bước bắt buộc khi deploy
+
+> [!WARNING] Deploy
+> Production (VPS) dùng **DB riêng**, khác DB của `.env` máy dev (Quốc xác minh 2026-11-24 bằng truy vấn chỉ đọc 🟡). Phải chạy `prisma migrate deploy` (migration
+> `20261124120000_adr065_order_payment_ref`) trên DB production **trước/khi** deploy code ADR-065 — code mới đọc/ghi `orders.paymentRef`. KB-Audit §50 mục 12.
+
+Quyết định: [[01-Architecture-Decisions/ADR-049-Sepay-Numeric-Payment-Code-Shared|ADR-049 KB (≙ ADR-065)]]. Thay hành vi tiền tố/đọc mã của §5H.
+
+- **Định dạng** (`packages/core/src/billing/payment-code.ts`): `generatePaymentCode(prefix)` = tiền tố **2–5 chữ cái in hoa** + **8 chữ số** (chữ số đầu 1–9), CSPRNG Web Crypto;
+  `normalizePaymentCodePrefix` (trim + in hoa, sai → `null`); `isPaymentCode(code, prefix?)`. Lý do 🟡 (ADR + comment): SePay "Cấu trúc mã thanh toán" chỉ nhận diện hậu tố
+  toàn số, độ dài cố định; sai dạng → SePay ghi "Mã thanh toán: —" và **không gọi webhook**.
+- **Hoá đơn gói (PLATFORM):** `generateInvoiceCode(prefix = "SUB")` = `generatePaymentCode` → mã hoá đơn **chính là** nội dung chuyển khoản. SePay: tiền tố = `paymentPrefix`
+  đã cấu hình (`normalizeInvoiceCodePrefix` nay = `normalizePaymentCodePrefix`; không hợp lệ → `SUB` + `logger.warn`); cổng khác: `SUB`. `INVOICE_CODE_SUFFIX_LENGTH` = 8.
+- **Đơn hàng gian hàng (TENANT):** cột **`orders.paymentRef`** (`String?`, unique `(tenantId, paymentRef)`):
+  - Sinh trong `buildTenantCheckoutPayload` khi `provider = SEPAY` (`resolveSepayPaymentRef`): giữ mã cũ nếu `isPaymentCode(mã, tiền tố hiện hành)`, không thì sinh mới, kiểm
+    trùng trong gian hàng qua `withTenant`, tối đa **10** lần rồi `internalError` "Không tạo được mã thanh toán…"; unique index là chốt chặn cuối.
+  - Tiền tố `tenantSepayPrefix(paymentPrefix, orderCodePrefix)`: `paymentPrefix` hợp lệ → dùng; không → tiền tố mã đơn; không nữa → `"SHOP"`.
+  - `createCheckout` nhận `reference = paymentRef` (SePay) hoặc `orders.code` (cổng khác) → QR/nội dung CK SePay = `paymentRef`. **Mã đơn, URL checkout, QR thủ công,
+    MoMo giữ `orders.code`**; `description` gửi cổng vẫn "Thanh toan don hang {mã đơn}".
+  - Ghi `paymentRef` cùng `checkoutPayload` ở `initiateOrderCheckout`, `applyCouponToOrder`, `removeCouponFromOrder` (áp/gỡ mã giảm giá tạo lại payload nhưng giữ
+    `paymentRef`). Chọn cổng khác sau SePay: `paymentRef` cũ **được giữ** trên đơn (không xoá) ✅ code.
+  - `getOrderDetailView` trả `paymentRef`; trang chi tiết đơn Studio hiện "Mã thanh toán SePay" dưới "Mã đơn" khi có.
+- **Đọc mã từ webhook** — `extractSepayPaymentCodes(body, prefixes)` (`@gieochu/payments`): bỏ tiền tố không hợp lệ, bắt **đúng 8 chữ số không theo sau bởi chữ số**
+  (`extractSepayReferences(..., { codeLength: 8, numeric: true })`), `code` SePay trước rồi `content`.
+  - Platform: `sepayInvoiceReferenceCandidates(payload, paymentPrefix)` thử `[paymentPrefix, "SUB"]` — dùng cho webhook **và** tab "Giao dịch cổng".
+  - Tenant: ứng viên = mã thanh toán theo `[paymentPrefix, orderCodePrefix]` **rồi** mã đơn (`orderCodePrefix` + 6 ký tự, `ORDER_CODE_SUFFIX_LENGTH`, cho khách tự gõ mã
+    đơn), bỏ trùng. Job `payment.process` tìm đơn `tenantId = …` **và** (`paymentRef IN ứng viên` **hoặc** `code IN ứng viên`), lấy đơn khớp ứng viên đầu tiên.
+- **Bỏ qua giao dịch tài khoản khác** — `sepayAccountMatches(body, accountNo)` ở cả hai route webhook, **sau** khi xác thực chữ ký và parse body, **trước** khi ghi
+  `webhook_events`: `accountNumber` (so chỉ chữ số) khác số TK cấu hình → **200 `{ success: true }`**, không ghi `webhook_events`/giao dịch, `logger.warn … ignored: other bank
+  account`. Payload thiếu `accountNumber` → coi là khớp.
+- **Form cấu hình hai phía** — Server Action zod: trim + in hoa rồi `^[A-Z]{2,5}$` (thông báo "…2–5 chữ cái (không dấu, không số)"); ô nhập `pattern="[A-Za-z]{2,5}"`;
+  provider `validateConfig` cũng bắt `^[A-Z]{2,5}$` (chỉ khi lưu). Chuỗi ở `apps/web/lib/sepay-setup.ts` ✅ đọc code (bản cuối 2026-11-24):
+  - thông báo sau lưu `sepayCodeStructureInstruction`: *"Trên SePay → Công ty → Cấu hình chung → Cấu trúc mã thanh toán: tiền tố "X", hậu tố dài 8 ký tự, "Là số nguyên"; chỉ
+    giữ một mẫu."*;
+  - gợi ý ô tiền tố `sepayPrefixHint(prefix, fallback)`: *"2–5 chữ cái không dấu. Mã thanh toán = tiền tố + 8 chữ số, VD: X40718256. VietinBank bắt buộc SEVQR."*;
+  - khối hướng dẫn `sepaySetupSteps(prefix, fallback)` (3 bước): hậu tố dài 8 ký tự *"(đặt từ 8 đến 8, hoặc khoảng có chứa 8)"*, "Là số nguyên"; không để hai mẫu cùng tiền
+    tố; đổi tiền tố ở app thì đổi mẫu bên SePay cùng lúc. Câu "hoặc khoảng có chứa 8" chưa được kiểm trên SePay thật ❓ (KB-Audit §50 mục 13).
+  Trình bày: [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §27.4. VietinBank bắt buộc `SEVQR`. System Center vẫn cảnh báo khi đổi
+  tiền tố cũ (khác `SUB`) — hoá đơn chờ mang tiền tố cũ không còn tự khớp. Studio **bỏ** cảnh báo "tiền tố khác mã đơn"; state đổi `warning` → `message`.
+- **Không xử lý** hoá đơn/đơn tạo trước thay đổi (mã cũ SePay không nhận diện) — xác nhận tay (§5N cho hoá đơn gói; đơn gian hàng: người bán xác nhận ở chi tiết đơn,
+  [[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.1) 🟡 ADR.
+- **Test** ✅ đọc `git diff` + đếm: unit "generates prefix + 8 digits…", "extracts only prefix + 8-digit payment codes, SePay's own `code` first", "ignores a transaction credited to
+  another bank account…"; integration "a SePay checkout uses a numeric paymentRef as transfer content and the webhook job fulfills the order by it". `pnpm test:count` =
+  **105/105, 69/69** ✅. Webhook SePay thật với mã mới ❓ **chưa thử giao dịch thật**.
+
+### 5N. Admin xác nhận tay hoá đơn gói mọi cổng (ADR-066) — working tree, chưa commit, không migration ✅ đọc code 2026-11-24
+
+Quyết định: [[01-Architecture-Decisions/ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider|ADR-050 KB (≙ ADR-066)]]. Thay quy tắc ADR-059 "SePay/MoMo chỉ PAID qua webhook
+hoặc qua giao dịch".
+
+- **`confirmManualInvoicePayment(invoiceId, actorId, note?)`** — bỏ kiểm `isManualConfirmProvider`: PENDING → `markInvoicePaid(source: ADMIN_MANUAL_CONFIRM, note)` (kỳ đã lưu);
+  EXPIRED → `confirmExpiredManualInvoice` (khoá `subscriptions`, chặn `NEWER_INVOICE_EXISTS`, tính lại kỳ — §5F) cho **mọi cổng**; PAID → no-op; khác → 409
+  `INVOICE_NOT_CONFIRMABLE`.
+- **Ghi chú** không bắt buộc: trim, cắt 500 ký tự (`MANUAL_CONFIRM_NOTE_MAX`), trống → bỏ; chỉ ghi vào metadata audit `SUBSCRIPTION_PAID` (khoá `note`, cùng
+  `source: ADMIN_MANUAL_CONFIRM`) — [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]] §4. Không cột mới.
+- **UI** — `ManualConfirmButton` (hai bước, khung xác nhận: mã + cổng + số tiền; cổng tự xác nhận nhắc chỉ dùng khi đã đối chiếu sao kê mà hệ thống chưa ghi; hoá đơn hết hạn
+  nêu kỳ tính lại; "Không hoàn tác được"; ô ghi chú `maxLength=500`; hộp `<dialog>` `showModal()`, thành công thì đóng hộp — chi tiết trình bày
+  [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §27.1–§27.2, §27.5):
+  - `/admin/billing/invoices` tab "Chờ đối soát" (vẫn chỉ cổng xác nhận tay) và tab "Tất cả" (mọi cổng, dòng PENDING/EXPIRED).
+  - `/admin/subscriptions` cột mới **"Thao tác"** — nút cho hoá đơn gần nhất đang PENDING/EXPIRED; cột "Hoá đơn gần nhất" hiện mã (trên), nhãn trạng thái (dưới), "số tiền ·
+    cổng". `listSubscriptions` trả `latestInvoice { id, code, status, amountVnd, provider }`.
+  - Action revalidate cả hai trang; `confirmInvoiceFromTransactionAction` cũng revalidate thêm `/admin/subscriptions`.
+- **Ranh giới:** chỉ bảng L1 (`subscription_invoices`, `subscriptions`, `plans`, tên/slug gian hàng), không đọc đơn/khách tenant (§7.9) ✅.
+- **Test:** không thêm case — assert thêm trong `subscription-billing.test.ts` (xác nhận tay hoá đơn SePay kèm ghi chú → PAID + audit có `note`) ✅ đọc `git diff`; xem UI thật ❓.
+
 ---
 
 ## 6. Nguyên Tắc Bảo Mật Bắt Buộc (CLAUDE.md §7, không đổi theo module)
@@ -463,7 +568,10 @@ Quyết định: [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confir
 * [docs/DECISIONS.md](../../docs/DECISIONS.md) — ADR-011 (bảng platform config sớm), ADR-012 (xác minh VietQR/CRC16),
   ADR-013 (dedupe/tự tắt config), ADR-019 (webhook Tenant qua job, khoảng lệch với Platform), ADR-021 (Hybrid
   Monetization), ADR-041 (Bảng giá CMS, hạn mức -1/0, hoàn tiền gói 7 ngày), ADR-056 (lịch sử hoá đơn gói, Đơn hàng gói dịch vụ, khối chuyển khoản, mã giảm giá tạo lại QR),
-  ADR-059 (beta: email báo xác nhận tay, xác nhận trễ hoá đơn EXPIRED, giao dịch cổng, tiền tố SePay)
+  ADR-059 (beta: email báo xác nhận tay, xác nhận trễ hoá đơn EXPIRED, giao dịch cổng, tiền tố SePay), ADR-065 (mã thanh toán SePay tiền tố + 8 chữ số,
+  `orders.paymentRef`), ADR-066 (xác nhận tay hoá đơn gói mọi cổng)
+* [[01-Architecture-Decisions/ADR-049-Sepay-Numeric-Payment-Code-Shared|ADR-049 KB (≙ ADR-065)]] ([ADR-049-Sepay-Numeric-Payment-Code-Shared.md](../01-Architecture-Decisions/ADR-049-Sepay-Numeric-Payment-Code-Shared.md)) ·
+  [[01-Architecture-Decisions/ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider|ADR-050 KB (≙ ADR-066)]] ([ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider.md](../01-Architecture-Decisions/ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider.md))
 * [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay|ADR-044 KB (≙ ADR-059)]] ([ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md](../01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md)) ·
   [[04-Operations-Runbooks/SePay-Live-Test-Runbook|SePay-Live-Test-Runbook]] ([SePay-Live-Test-Runbook.md](../04-Operations-Runbooks/SePay-Live-Test-Runbook.md))
 * [[01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr|ADR-041 KB (≙ ADR-056)]] ([ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr.md](../01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr.md))
@@ -474,6 +582,6 @@ Quyết định: [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confir
   `packages/email/src/templates/manual-payment-pending.ts`, `apps/web/app/studio/[tenantSlug]/orders/giao-dich/`,
   `apps/web/app/admin/billing/{refunds,invoices,payment}/`, `apps/web/app/admin/subscriptions/`, `apps/web/app/admin/_ui/billing-labels.ts`,
   `apps/web/app/_ui/bank-transfer-panel.tsx`, `apps/web/app/_ui/wallet-transfer-panel.tsx`, `apps/web/lib/momo-manual-config.ts`, `apps/web/lib/db-errors.ts`, `apps/web/app/studio/[tenantSlug]/billing/`,
-  `packages/core/src/billing/*`
+  `packages/core/src/billing/*` (gồm `payment-code.ts`), `apps/web/lib/sepay-setup.ts`, `apps/web/app/admin/_ui/secret-key-field.tsx`, `apps/web/app/studio/[tenantSlug]/settings/payments/`
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

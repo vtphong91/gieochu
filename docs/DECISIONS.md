@@ -1628,3 +1628,58 @@
     dấu chấm). `blog`, `danh-muc` vào slug dành riêng (quét DB trước). Slug bài duy nhất trong phạm vi (hệ thống / từng gian
     hàng). Địa chỉ cũ `/{gian-hang}/posts` và `/{gian-hang}/posts/{id}` chuyển hướng 301 sang địa chỉ mới.
   - **GĐ6** (tìm kiếm, đăng ký nhận tin, bình luận): không làm.
+
+## ADR-065 — Mã thanh toán SePay: tiền tố 2–5 chữ cái + 8 chữ số, dùng chung System và Studio
+
+- **Bối cảnh (2026-11-24):** hoá đơn gói `SEVQRWQRMN878` (99.000đ, VietinBank) đã chuyển khoản đúng nhưng kẹt "Chờ thanh toán".
+  Trên SePay giao dịch có "Mã thanh toán: —" và không có webhook. Nguyên nhân: SePay "Cấu trúc mã thanh toán" chỉ nhận diện
+  **hậu tố toàn số, độ dài cố định** (ô tiền tố 2–5 chữ cái); mã hoá đơn sinh hậu tố 8 ký tự lẫn chữ → SePay không trích được mã
+  và không gọi webhook. Phía tenant lỗi y hệt (mã đơn = tiền tố gian hàng + 6 ký tự lẫn chữ), và còn không thể bắt đầu bằng từ
+  khoá ngân hàng bắt buộc (VietinBank: `SEVQR`). Đối chiếu tài liệu chạy thật `docs/sepay-auto-payment-guide.md` §7, §13.
+- **Chủ dự án chốt:** sửa đồng bộ cả System và Studio (không vá một phía); Studio dùng **cột `paymentRef` riêng**; cho chạy
+  migration expand; nâng trần test +3 unit / +1 integration; không xử lý hoá đơn/đơn cũ.
+- **Quyết định:**
+  1. **Định dạng duy nhất** `generatePaymentCode(prefix)` (`@gieochu/core`, subpath `@gieochu/core/payment-code`): tiền tố 2–5 chữ
+     cái in hoa + **8 chữ số**, chữ số đầu khác 0, CSPRNG (Web Crypto). `normalizePaymentCodePrefix` kiểm tiền tố.
+  2. **System (hoá đơn gói):** mã hoá đơn = mã thanh toán (SePay: tiền tố đã cấu hình, cổng khác: `SUB`). Webhook/tab "Giao dịch
+     cổng" tách mã bằng `extractSepayPaymentCodes` (chỉ hậu tố 8 chữ số, không theo sau bởi chữ số), thử tiền tố cấu hình rồi `SUB`.
+  3. **Studio (đơn hàng):** cột mới `orders.paymentRef` (nullable, unique `(tenantId, paymentRef)`, migration
+     `20261124120000_adr065_order_payment_ref`). Sinh khi khách chọn SePay (`buildTenantCheckoutPayload`), giữ nguyên khi áp/gỡ mã
+     giảm giá hoặc chọn lại SePay nếu còn đúng tiền tố; QR/nội dung CK SePay = `paymentRef`. Mã đơn, URL, QR thủ công, MoMo giữ
+     nguyên `orders.code`. Tiền tố = `paymentPrefix` cấu hình, không hợp lệ thì tiền tố mã đơn. Webhook ưu tiên `paymentRef`, sau đó
+     mã đơn (khách tự gõ); job `payment.process` khớp `paymentRef` **hoặc** `code` trong gian hàng.
+  4. **Webhook hai phía** bỏ qua (200, không ghi `webhook_events`) giao dịch có `accountNumber` khác tài khoản đã cấu hình
+     (`sepayAccountMatches`) — một tài khoản SePay có thể nối nhiều tài khoản ngân hàng.
+  5. **Form cấu hình hai phía:** tiền tố bắt buộc 2–5 chữ cái (zod + `pattern`), gợi ý và thông báo sau lưu nêu đúng cấu hình
+     SePay: *Cấu trúc mã thanh toán: tiền tố X, hậu tố từ 8 đến 8, "Là số nguyên", chỉ giữ một mẫu*; VietinBank bắt buộc `SEVQR`.
+     Chuỗi dùng chung ở `apps/web/lib/sepay-setup.ts`. Bỏ cảnh báo cũ "tiền tố SePay khác tiền tố mã đơn" (không còn đúng).
+- **Migration:** đã áp lên DB dev (Neon, `.env`). **Production (VPS) dùng DB riêng và CHƯA áp** — phải chạy
+  `prisma migrate deploy` trên DB production trước/khi deploy code (Quốc xác minh 2026-11-24: DB dev không có dữ liệu production).
+  Chỗ lệch với ADR-034 "một DB dùng chung" chờ chủ dự án xác nhận để ghi ADR riêng.
+- **Vận hành:** trên SePay đặt **một** mẫu cấu trúc mã khớp tiền tố đang dùng (System và từng gian hàng tự cấu hình trên tài khoản
+  SePay của mình). Đổi tiền tố trong app ⇒ đổi mẫu trên SePay cùng lúc.
+- **Không xử lý:** hoá đơn/đơn đã tạo trước thay đổi (mã cũ SePay không nhận diện được — admin/người bán xác nhận tay nếu cần).
+  Hoá đơn gói `PENDING` còn hạn vẫn được dùng lại khi gian hàng bấm gia hạn (dedupe sẵn có) cho tới khi hết hạn.
+- **Test:** unit 102 → 105 (tách mã 8 chữ số; bỏ qua tài khoản khác; kiểm tra kết nối SePay), integration 68 → 69 (đơn chọn
+  SePay có `paymentRef` → webhook → job khớp theo `paymentRef`). Cập nhật `scripts/count-tests.mjs`.
+
+## ADR-066 — Admin xác nhận tay hoá đơn gói của mọi cổng; cột "Thao tác" ở Đơn hàng gói dịch vụ
+
+- **Bối cảnh (2026-11-24):** hoá đơn SePay `SEVQRWQRMN878` đã nhận tiền nhưng không có webhook (ADR-065) → không có giao dịch
+  trong "Giao dịch cổng" để xác nhận, và ADR-059 chỉ cho xác nhận tay hoá đơn QR thủ công / MoMo cá nhân → không còn đường nào
+  ghi nhận. Chủ dự án yêu cầu cột "Thao tác" ở `/admin/subscriptions` để xác nhận thanh toán khi tiền đã về mà hệ thống chưa ghi.
+- **Chủ dự án chốt:** áp dụng **mọi cổng**; ghi chú **không bắt buộc**.
+- **Quyết định:**
+  1. `confirmManualInvoicePayment(invoiceId, actorId, note?)` bỏ giới hạn `isManualConfirmProvider` (thay quy tắc ADR-059 "SePay/MoMo
+     chỉ PAID qua webhook hoặc qua giao dịch"). Hoá đơn PENDING → `markInvoicePaid` (kỳ đã lưu); EXPIRED → nhánh xác nhận trễ sẵn
+     có (chặn khi gian hàng có hoá đơn mới hơn, tính lại kỳ) — nay cho mọi cổng. PAID → no-op; trạng thái khác → 409.
+  2. Ghi chú (≤ 500 ký tự, trống → bỏ) chỉ lưu trong metadata audit `SUBSCRIPTION_PAID` (`source: ADMIN_MANUAL_CONFIRM`, `note`) —
+     không migration.
+  3. UI: một component `ManualConfirmButton` (hai bước, khung xác nhận nêu mã, số tiền, cổng; cổng tự xác nhận nhắc "chỉ dùng khi
+     webhook không tới"; hoá đơn hết hạn nêu kỳ tính lại) dùng ở `/admin/billing/invoices` (tab "Chờ đối soát" + "Tất cả", mọi
+     cổng) và cột **"Thao tác"** của `/admin/subscriptions` (hoá đơn gần nhất đang chờ/hết hạn).
+  4. Cột "Hoá đơn gần nhất" ở `/admin/subscriptions`: mã hoá đơn ở trên, nhãn trạng thái thanh toán ở dưới, kèm số tiền · cổng.
+- **Không đổi:** tab "Chờ đối soát" vẫn chỉ liệt kê hoá đơn QR thủ công / MoMo cá nhân; "Xác nhận hoá đơn từ giao dịch" giữ nguyên;
+  không có route nào đọc đơn hàng/khách hàng của tenant (§7.9).
+- **Test:** không thêm test case (trần 105/69) — mở rộng test integration hoá đơn SePay sẵn có: xác nhận tay hoá đơn SePay kèm
+  ghi chú → PAID + audit có `note`; định dạng mã hoá đơn ADR-065.

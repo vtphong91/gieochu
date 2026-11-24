@@ -2,10 +2,12 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { saveSepayAction, testSepayConnectionAction, type PaymentActionState } from "./actions";
-import { FormBanner, GhostButton, MaskedTextField, PasswordField, PrimaryButton, SelectField, TextField, Toggle } from "../../../../admin/_ui/kit";
+import { brandColors } from "@gieochu/config/theme";
+import { FormBanner, GhostButton, MaskedTextField, Notice, PasswordField, PrimaryButton, SelectField, TextField, Toggle } from "../../../../admin/_ui/kit";
 import { IconBolt } from "../../../../admin/_ui/icons";
 import { CopyValue } from "../../../../admin/_ui/copy-value";
-import { SecretKeyField, sepaySecretHint, SEPAY_API_TOKEN_HINT } from "../../../../admin/_ui/secret-key-field";
+import { SecretKeyField } from "../../../../admin/_ui/secret-key-field";
+import { SEPAY_API_TOKEN_HINT, sepayPrefixHint, sepaySecretHint, sepaySetupSteps } from "../../../../../lib/sepay-setup";
 import { CollapsibleSection, sectionStatus } from "../../../../admin/_ui/collapsible-section";
 import { useFormDraft } from "../../../../admin/_ui/use-form-draft";
 import { useUnsavedChanges } from "../../../../admin/_ui/unsaved-changes";
@@ -14,6 +16,7 @@ const initialState: PaymentActionState = {};
 const FIELDS = ["isEnabled", "bankBin", "accountNo", "accountName", "paymentPrefix", "authType"] as const;
 /** Không bao giờ ghi lại sau khi lưu lỗi — để trống = giữ secret/token đã lưu. */
 const SECRET_FIELDS = ["secret", "apiToken"] as const;
+const TEST_NOTE_ID = "sepay-test-note";
 
 interface BankOption {
   bin: string;
@@ -71,6 +74,21 @@ export function SepayForm({
   useUnsavedChanges(dirty, "Cấu hình SePay có thay đổi chưa lưu. Rời trang và bỏ thay đổi?");
   const configured = initial.accountNo.trim() !== "" || Boolean(initial.maskedSecret);
   const errorCount = state.error ? 1 : 0;
+  // Gợi ý khi ô tiền tố trống/không hợp lệ: tiền tố đã lưu — page đã mặc định nó về tiền tố mã đơn của gian hàng.
+  const fallbackPrefix = initial.paymentPrefix;
+  const prefixValue = String(values.paymentPrefix ?? "");
+  // Kết quả kiểm tra cũ không còn đúng khi form có thay đổi chưa lưu → xoá (điều chỉnh state trong render, không dùng effect).
+  const [prevDirty, setPrevDirty] = useState(dirty);
+  if (dirty !== prevDirty) {
+    setPrevDirty(dirty);
+    if (dirty) setTestResult(null);
+  }
+  // Server kiểm tra bằng User API (bắt buộc API Token đã lưu) trên cấu hình ĐÃ LƯU.
+  const testBlockedReason = !initial.maskedApiToken
+    ? "Nhập và lưu API Token để kiểm tra kết nối."
+    : dirty || !configured
+      ? "Lưu cấu hình trước khi kiểm tra kết nối."
+      : null;
 
   return (
     <CollapsibleSection
@@ -94,6 +112,14 @@ export function SepayForm({
           <span className="font-medium">Webhook URL</span> — dán vào trang quản trị SePay:
           <CopyValue value={webhookUrl} label="Webhook URL" />
         </div>
+        <Notice tone="info">
+          <p className="font-semibold">Cấu hình bên SePay (Công ty → Cấu hình chung)</p>
+          <ol className="mt-1.5 list-decimal space-y-1 pl-5">
+            {sepaySetupSteps(prefixValue, fallbackPrefix).map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ol>
+        </Notice>
         <SelectField id="sepay-bankBin" label="Ngân hàng" name="bankBin" defaultValue={initial.bankBin} required>
           <option value="">Chọn ngân hàng</option>
           {banks.map((bank) => (
@@ -110,8 +136,15 @@ export function SepayForm({
           name="paymentPrefix"
           defaultValue={initial.paymentPrefix}
           placeholder="VD: HAN"
+          hint={sepayPrefixHint(prefixValue, fallbackPrefix)}
           required
-          maxLength={4}
+          minLength={2}
+          maxLength={5}
+          pattern="[A-Za-z]{2,5}"
+          title="2–5 chữ cái không dấu (A–Z)"
+          autoCapitalize="characters"
+          spellCheck={false}
+          autoComplete="off"
         />
         <SelectField id="sepay-authType" label="Kiểu xác thực" name="authType" defaultValue={initial.authType || "HMAC_SHA256"}>
           <option value="HMAC_SHA256">HMAC-SHA256 (khuyến nghị)</option>
@@ -121,6 +154,7 @@ export function SepayForm({
           id="sepay-secret"
           label="Secret / API key"
           name="secret"
+          hasSaved={Boolean(initial.maskedSecret)}
           hint={sepaySecretHint(String(values.authType ?? "HMAC_SHA256"))}
           placeholder={initial.maskedSecret ? `Secret hiện tại: ${initial.maskedSecret} — để trống nếu giữ nguyên` : "Nhập hoặc bấm “Tạo key ngẫu nhiên”"}
         />
@@ -131,34 +165,31 @@ export function SepayForm({
           hint={SEPAY_API_TOKEN_HINT}
           placeholder={initial.maskedApiToken ? `Token hiện tại: ${initial.maskedApiToken} — để trống nếu giữ nguyên` : "Không bắt buộc"}
         />
-        <FormBanner ok={Boolean(state.success)} message={state.error ?? (state.success ? "Đã lưu." : undefined)} />
-        {state.warning ? (
-          <p role="alert" className="rounded-lg border border-amber-300 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-900">
-            {state.warning}
-          </p>
-        ) : null}
+        <FormBanner ok={Boolean(state.success)} message={state.error ?? (state.success ? (state.message ?? "Đã lưu.") : undefined)} />
         <div className="flex flex-wrap items-center gap-3">
           <PrimaryButton loading={isPending}>{isPending ? "Đang lưu..." : "Lưu"}</PrimaryButton>
           <GhostButton
-            disabled={isTesting || dirty || !configured}
-            aria-describedby={dirty ? "sepay-test-note" : undefined}
-            onClick={() =>
+            loading={isTesting}
+            disabled={testBlockedReason !== null}
+            aria-describedby={testBlockedReason ? TEST_NOTE_ID : undefined}
+            onClick={() => {
+              setTestResult(null);
               startTest(async () => {
                 const result = await testSepayConnectionAction(tenantSlug);
                 setTestResult(result.testResult ?? null);
-              })
-            }
+              });
+            }}
           >
             {isTesting ? "Đang kiểm tra..." : "Kiểm tra kết nối"}
           </GhostButton>
-          {dirty ? (
-            <span id="sepay-test-note" className="text-xs text-gray-500">
-              Lưu cấu hình trước khi kiểm tra kết nối.
+          {testBlockedReason ? (
+            <span id={TEST_NOTE_ID} className="text-xs text-gray-600">
+              {testBlockedReason}
             </span>
           ) : null}
         </div>
         {testResult ? <FormBanner ok={testResult.ok} message={testResult.message ?? (testResult.ok ? "Kết nối thành công." : "Kết nối thất bại.")} /> : null}
-        <p className="border-t pt-4 text-xs" style={{ color: "#B45309", borderColor: "#E5E7EB" }}>
+        <p className="border-t pt-4 text-xs" style={{ color: brandColors.inkSoft, borderColor: "#E5E7EB" }}>
           Kiểm tra kết nối thành công sẽ tự bật phương thức này.
         </p>
       </form>

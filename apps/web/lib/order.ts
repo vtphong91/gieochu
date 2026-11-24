@@ -10,9 +10,12 @@ import {
   DISPLAY_TIME_ZONE,
   effectiveOrderStatus,
   generateOrderCode,
+  generatePaymentCode,
   internalError,
+  isPaymentCode,
   logger,
   manualConfirmDeadline,
+  normalizePaymentCodePrefix,
   notFound,
   REMEDY_REFUND_SLA_DAYS,
   resolveDashboardRange,
@@ -446,9 +449,9 @@ export async function applyCouponToOrder(tenantId: string, orderId: string, cust
 
   // ADR-056 bổ sung: đơn đã có QR/link thanh toán → tạo lại payload theo tổng mới TRƯỚC khi ghi (lỗi cổng → không đổi gì).
   // Tổng mới 0đ → không cần payload, luồng ZERO_AMOUNT bên dưới đánh dấu PAID và trang ẩn khối thanh toán.
-  const checkoutPayload =
+  const rebuilt =
     order.provider && order.checkoutPayload !== null && pricing.totalVnd > 0
-      ? await buildTenantCheckoutPayload(tenantId, { code: order.code, totalVnd: pricing.totalVnd }, order.provider)
+      ? await buildTenantCheckoutPayload(tenantId, { code: order.code, totalVnd: pricing.totalVnd, paymentRef: order.paymentRef }, order.provider)
       : undefined;
 
   const updated = await withTenant(tenantId, async (tx) => {
@@ -460,7 +463,7 @@ export async function applyCouponToOrder(tenantId: string, orderId: string, cust
         discountVnd: pricing.discountVnd,
         totalVnd: pricing.totalVnd,
         couponCode: code,
-        ...(checkoutPayload !== undefined ? { checkoutPayload } : {}),
+        ...(rebuilt !== undefined ? { checkoutPayload: rebuilt.checkoutPayload, paymentRef: rebuilt.paymentRef } : {}),
       },
     });
     if (count === 0) throw orderChangedError();
@@ -492,9 +495,9 @@ export async function removeCouponFromOrder(tenantId: string, orderId: string, c
   if (order.customerDeclaredPaidAt) throw declaredPaidLockedError();
 
   // ADR-056 bổ sung: đơn đã có QR/link thanh toán → tạo lại payload theo tổng không giảm giá trước khi ghi.
-  const checkoutPayload =
+  const rebuilt =
     order.provider && order.checkoutPayload !== null && order.subtotalVnd > 0
-      ? await buildTenantCheckoutPayload(tenantId, { code: order.code, totalVnd: order.subtotalVnd }, order.provider)
+      ? await buildTenantCheckoutPayload(tenantId, { code: order.code, totalVnd: order.subtotalVnd, paymentRef: order.paymentRef }, order.provider)
       : undefined;
 
   return withTenant(tenantId, async (tx) => {
@@ -505,7 +508,7 @@ export async function removeCouponFromOrder(tenantId: string, orderId: string, c
         discountVnd: 0,
         totalVnd: order.subtotalVnd,
         couponCode: null,
-        ...(checkoutPayload !== undefined ? { checkoutPayload } : {}),
+        ...(rebuilt !== undefined ? { checkoutPayload: rebuilt.checkoutPayload, paymentRef: rebuilt.paymentRef } : {}),
       },
     });
     if (count === 0) throw orderChangedError();
@@ -515,12 +518,41 @@ export async function removeCouponFromOrder(tenantId: string, orderId: string, c
   });
 }
 
+const PAYMENT_REF_RETRIES = 10;
+
+/**
+ * ADR-065: tiền tố mã thanh toán SePay của gian hàng — `paymentPrefix` đã cấu hình (2–5 chữ cái); cấu hình cũ không hợp lệ → tiền
+ * tố mã đơn (3–4 chữ cái, luôn hợp lệ). Webhook thử đúng hai tiền tố này.
+ */
+export function tenantSepayPrefix(paymentPrefix: unknown, orderCodePrefix: string): string {
+  return normalizePaymentCodePrefix(paymentPrefix) ?? normalizePaymentCodePrefix(orderCodePrefix) ?? "SHOP";
+}
+
+/**
+ * ADR-065: mã thanh toán SePay của đơn — giữ mã đã có nếu còn đúng tiền tố hiện hành (áp/gỡ mã giảm giá, chọn lại SePay không đổi
+ * nội dung CK), ngược lại sinh mã mới duy nhất trong gian hàng (unique `(tenantId, paymentRef)` là chốt chặn cuối).
+ */
+async function resolveSepayPaymentRef(tenantId: string, currentRef: string | null, prefix: string): Promise<string> {
+  if (currentRef && isPaymentCode(currentRef, prefix)) return currentRef;
+  for (let attempt = 0; attempt < PAYMENT_REF_RETRIES; attempt += 1) {
+    const candidate = generatePaymentCode(prefix);
+    const taken = await withTenant(tenantId, (tx) => tx.order.findFirst({ where: { tenantId, paymentRef: candidate }, select: { id: true } }));
+    if (!taken) return candidate;
+  }
+  throw internalError("Không tạo được mã thanh toán, vui lòng thử lại.");
+}
+
 /**
  * Tạo `checkoutPayload` qua cổng của tenant (§`PaymentScope: {kind:"TENANT", tenantId}` — không bao giờ dùng chung cấu hình/route
- * với thanh toán gói). Số tiền luôn là `totalVnd` server vừa tính, nội dung CK/reference luôn là mã đơn (webhook SePay/MoMo tra
- * đơn theo mã rồi tự đối chiếu số tiền với `orders.totalVnd`). Lỗi từ cổng (vd MoMo từ chối) → AppError, không đổi gì trên đơn.
+ * với thanh toán gói). Số tiền luôn là `totalVnd` server vừa tính. Nội dung CK/reference: SePay = `paymentRef` (ADR-065, tiền tố +
+ * 8 chữ số — SePay chỉ nhận diện dạng này), cổng khác = mã đơn. Trả kèm `paymentRef` cần lưu trên đơn (giữ nguyên nếu không phải
+ * SePay). Lỗi từ cổng (vd MoMo từ chối) → AppError, không đổi gì trên đơn.
  */
-async function buildTenantCheckoutPayload(tenantId: string, order: { code: string; totalVnd: number }, provider: PaymentProviderId) {
+async function buildTenantCheckoutPayload(
+  tenantId: string,
+  order: { code: string; totalVnd: number; paymentRef: string | null },
+  provider: PaymentProviderId,
+): Promise<{ checkoutPayload: Prisma.InputJsonValue; paymentRef: string | null }> {
   const [configRow, tenant] = await Promise.all([
     withTenant(tenantId, (tx) => tx.tenantPaymentConfig.findUnique({ where: { tenantId_provider: { tenantId, provider } } })),
     getPrismaClient().tenant.findUniqueOrThrow({ where: { id: tenantId } }),
@@ -532,18 +564,23 @@ async function buildTenantCheckoutPayload(tenantId: string, order: { code: strin
   const env = getEnv();
   const secrets = JSON.parse(decryptSecret(configRow.encryptedSecrets, env.PAYMENT_ENCRYPTION_KEY)) as Record<string, string>;
   const cfg = { ...(configRow.publicConfig as Record<string, unknown>), ...secrets };
+  const paymentRef =
+    provider === "SEPAY"
+      ? await resolveSepayPaymentRef(tenantId, order.paymentRef, tenantSepayPrefix(cfg.paymentPrefix, tenant.orderCodePrefix))
+      : order.paymentRef;
+  const reference = provider === "SEPAY" ? paymentRef! : order.code;
 
   try {
     const checkout = await getProvider(provider).createCheckout({
       scope: { kind: "TENANT", tenantId },
       cfg: cfg as never,
-      reference: order.code,
+      reference,
       amountVnd: order.totalVnd,
       description: `Thanh toan don hang ${order.code}`,
       returnUrl: `${env.APP_URL}/${tenant.slug}/checkout/${order.code}`,
       notifyUrl: buildWebhookNotifyUrl(env.APP_URL, { kind: "TENANT", tenantId }, provider),
     });
-    return checkout as unknown as Prisma.InputJsonValue;
+    return { checkoutPayload: checkout as unknown as Prisma.InputJsonValue, paymentRef };
   } catch (error) {
     if (error instanceof AppError) throw error;
     logger.warn({ tenantId, orderCode: order.code, provider, err: error }, "order.checkout: cổng thanh toán không tạo được checkout");
@@ -608,13 +645,13 @@ export async function initiateOrderCheckout(
     });
   }
 
-  const checkoutPayload = await buildTenantCheckoutPayload(tenantId, order, provider);
+  const { checkoutPayload, paymentRef } = await buildTenantCheckoutPayload(tenantId, order, provider);
 
   // ADR-056 bổ sung: chỉ ghi nếu tổng tiền không đổi kể từ lúc đọc (áp/gỡ mã chạy song song) — QR không bao giờ lệch totalVnd.
   const updated = await withTenant(tenantId, async (tx) => {
     const { count } = await tx.order.updateMany({
       where: { id: orderId, status: "PENDING", totalVnd: order.totalVnd, customerDeclaredPaidAt: null, expiresAt: { gt: now } },
-      data: { provider, checkoutPayload, expiresAt },
+      data: { provider, checkoutPayload, paymentRef, expiresAt },
     });
     if (count === 0) throw orderChangedError();
     return tx.order.findUniqueOrThrow({ where: { id: orderId } });
@@ -1289,6 +1326,8 @@ export interface OrderTimelineEvent {
 export interface OrderDetailView {
   id: string;
   code: string;
+  /** ADR-065: mã thanh toán SePay (nội dung chuyển khoản) — chỉ có khi khách đã chọn SePay. */
+  paymentRef: string | null;
   /** Trạng thái hiệu lực (ADR-036). */
   status: OrderStatus;
   createdAt: Date;
@@ -1371,6 +1410,7 @@ export async function getOrderDetailView(tenantId: string, orderId: string, view
       select: {
         id: true,
         code: true,
+        paymentRef: true,
         status: true,
         createdAt: true,
         updatedAt: true,
@@ -1559,6 +1599,7 @@ export async function getOrderDetailView(tenantId: string, orderId: string, view
   return {
     id: order.id,
     code: order.code,
+    paymentRef: order.paymentRef,
     status,
     createdAt: order.createdAt,
     paidAt: order.paidAt,

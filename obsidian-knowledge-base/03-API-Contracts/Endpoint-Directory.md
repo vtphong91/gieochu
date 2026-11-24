@@ -5,7 +5,7 @@ tags:
   - endpoint
   - status/living
 date: 2026-06-15
-updated: 2026-10-27
+updated: 2026-11-24
 author: System Architect
 ---
 
@@ -62,6 +62,9 @@ author: System Architect
 > Đợt ADR-056 (2026-10-25) không thêm `route.ts` (§27). Đợt **ADR-059 B1/B2/B2b** (2026-10-26, đã commit `fa29d99`) **không thêm `route.ts`** — đếm lại 2026-10-26:
 > **23 dưới `/api`, 25 toàn app** ✅; hai route webhook đổi hành vi (400 `invalid_body`, mã ứng viên theo tiền tố, platform ghi giao dịch trước khi áp hoá đơn — §9);
 > trang Studio mới, tab admin mới, Server Action + hàm lib + mã lỗi mới ở §28; §28 cũ (Liên kết) nay là §29.
+> Đợt **ADR-065 + ADR-066 + cấu hình SePay** (2026-11-24, working tree; phần key/API Token/kiểm tra kết nối đã commit `14f08ba`) **không thêm `route.ts`** — đếm lại
+> 2026-11-24: **24 dưới `/api`, 26 toàn app** ✅; hai route webhook đổi hành vi (mã thanh toán 8 chữ số, bỏ qua tài khoản ngân hàng khác — §9); Server Action/hàm lib/
+> subpath mới ở §31; §31 cũ (Liên kết) nay là §32.
 
 ## 1. Quy Ước Chung
 
@@ -271,8 +274,8 @@ origin) thay vì presigned URL storage; client vẫn `PUT` thẳng vào URL đó
 
 | Method | Endpoint | Truy cập | Mô tả |
 | :-- | :-- | :-- | :-- |
-| `POST` | `/api/webhooks/platform/[provider]` | Public + xác thực chữ ký provider (`SEPAY`, `MOMO`) | Webhook thanh toán **phí subscription nền tảng** (Tenant → Gieo Chữ). Xác thực chữ ký trước (`provider.verifyWebhook`), ghi `WebhookEvent` (`scope=PLATFORM`) để idempotent, đối soát `SubscriptionInvoice` theo mã tham chiếu + số tiền, gọi `markInvoicePaid()` nếu khớp, luôn ghi `PlatformPaymentTransaction` (khớp hoặc `UNMATCHED` để admin xử lý tay). **ADR-059 ✅ `git diff` 2026-10-26:** ghi `PlatformPaymentTransaction` **trước** rồi mới `markInvoicePaid` (chỉ khi hoá đơn PENDING, khớp mã + đúng tiền); mã SePay thử tiền tố đã cấu hình rồi `SUB`, đúng 8 ký tự (`sepayInvoiceReferenceCandidates`); body không phải JSON/thiếu trường → **400 `{ error: "invalid_body" }`**. Mã trả: 404 `unsupported_provider`/`not_configured`, 401 `invalid_signature`, 400 `invalid_body`, 200 `{ success: true }` (kể cả sự kiện trùng). |
-| `POST` | `/api/webhooks/tenants/[tenantId]/[provider]` | Public + xác thực chữ ký provider (`SEPAY`, `MOMO` — không nhận `MANUAL_QR`, vì đó không có webhook) | Webhook thanh toán **đơn hàng khách mua sản phẩm của tenant**. Đọc `TenantPaymentConfig` (giải mã `encryptedSecrets` bằng `PAYMENT_ENCRYPTION_KEY`), xác thực chữ ký, ghi `WebhookEvent` (`scope=TENANT`) để idempotent, rồi **trả 200 ngay** và đẩy việc nặng (khớp `Order`, `markOrderPaid()`) vào job `payment.process` qua `enqueuePaymentProcess()` — đúng CLAUDE.md §7.4 "trả 2xx nhanh rồi xử lý nặng trong job". ADR-036 ✅: không có worker thường trực trên Vercel — sau khi enqueue gọi `scheduleQueueDrain([payment.process])`, job được xử lý trong `after()` sau khi `200 { success: true }` đã gửi (hàm không bao giờ ném nên không đổi mã trả về); `export const maxDuration = 60`; cron §17 dọn job sót. **ADR-059 ✅ `git diff` 2026-10-26:** SePay đọc `referenceCandidates` theo `[cfg.paymentPrefix, tenant.orderCodePrefix]`, đúng 6 ký tự, đưa vào job (`PaymentProcessJobData.referenceCandidates?`, `reference` = phần tử đầu); body hỏng/thiếu trường → **400 `invalid_body`**; chữ ký sai 401 `invalid_signature`. |
+| `POST` | `/api/webhooks/platform/[provider]` | Public + xác thực chữ ký provider (`SEPAY`, `MOMO`) | Webhook thanh toán **phí subscription nền tảng** (Tenant → Gieo Chữ). Xác thực chữ ký trước (`provider.verifyWebhook`), ghi `WebhookEvent` (`scope=PLATFORM`) để idempotent, đối soát `SubscriptionInvoice` theo mã tham chiếu + số tiền, gọi `markInvoicePaid()` nếu khớp, luôn ghi `PlatformPaymentTransaction` (khớp hoặc `UNMATCHED` để admin xử lý tay). **ADR-059 ✅ `git diff` 2026-10-26:** ghi `PlatformPaymentTransaction` **trước** rồi mới `markInvoicePaid` (chỉ khi hoá đơn PENDING, khớp mã + đúng tiền); mã SePay thử tiền tố đã cấu hình rồi `SUB`, đúng 8 ký tự (`sepayInvoiceReferenceCandidates`); body không phải JSON/thiếu trường → **400 `{ error: "invalid_body" }`**. Mã trả: 404 `unsupported_provider`/`not_configured`, 401 `invalid_signature`, 400 `invalid_body`, 200 `{ success: true }` (kể cả sự kiện trùng). **ADR-065 ✅ `git diff` 2026-11-24:** mã hoá đơn đọc bằng `extractSepayPaymentCodes` (tiền tố 2–5 chữ cái + **8 chữ số**, thử `paymentPrefix` rồi `SUB`); SePay có `accountNumber` khác số TK đã cấu hình → **200 `{ success: true }`**, **không** ghi `webhook_events`/giao dịch (kiểm sau chữ ký + parse body). |
+| `POST` | `/api/webhooks/tenants/[tenantId]/[provider]` | Public + xác thực chữ ký provider (`SEPAY`, `MOMO` — không nhận `MANUAL_QR`, vì đó không có webhook) | Webhook thanh toán **đơn hàng khách mua sản phẩm của tenant**. Đọc `TenantPaymentConfig` (giải mã `encryptedSecrets` bằng `PAYMENT_ENCRYPTION_KEY`), xác thực chữ ký, ghi `WebhookEvent` (`scope=TENANT`) để idempotent, rồi **trả 200 ngay** và đẩy việc nặng (khớp `Order`, `markOrderPaid()`) vào job `payment.process` qua `enqueuePaymentProcess()` — đúng CLAUDE.md §7.4 "trả 2xx nhanh rồi xử lý nặng trong job". ADR-036 ✅: không có worker thường trực trên Vercel — sau khi enqueue gọi `scheduleQueueDrain([payment.process])`, job được xử lý trong `after()` sau khi `200 { success: true }` đã gửi (hàm không bao giờ ném nên không đổi mã trả về); `export const maxDuration = 60`; cron §17 dọn job sót. **ADR-059 ✅ `git diff` 2026-10-26:** SePay đọc `referenceCandidates` theo `[cfg.paymentPrefix, tenant.orderCodePrefix]`, đúng 6 ký tự, đưa vào job (`PaymentProcessJobData.referenceCandidates?`, `reference` = phần tử đầu); body hỏng/thiếu trường → **400 `invalid_body`**; chữ ký sai 401 `invalid_signature`. **ADR-065 ✅ `git diff` 2026-11-24:** ứng viên = mã thanh toán `extractSepayPaymentCodes(body, [cfg.paymentPrefix, orderCodePrefix])` (8 chữ số) **rồi** mã đơn (`orderCodePrefix` + 6 ký tự), bỏ trùng; job khớp `orders.paymentRef` **hoặc** `orders.code` trong gian hàng; `accountNumber` khác số TK đã cấu hình → **200**, không ghi `webhook_events`. Shape request/response không đổi. |
 
 ---
 
@@ -1379,7 +1382,7 @@ Form lọc là `<form method="get">` (`FilterBar`) — gửi lại bỏ `page` (
 | `ADMIN_INVOICE_STATUSES`, `ADMIN_INVOICE_PROVIDERS`, `ADMIN_SUBSCRIPTION_STATUSES` + kiểu `AdminInvoiceStatus`/`AdminInvoiceProvider`/`AdminSubscriptionStatus` | Mảng `as const` khớp enum DB (`satisfies`) |
 | `parseEnumParam(allowed, value) → T \| undefined` | Không ném lỗi |
 | `listSubscriptionInvoices({ status?, provider?, page, pageSize }) → { items, total, page, pageSize }` | `page ≥ 1`, `pageSize` kẹp 1–100 (mặc định 20); `createdAt desc, id desc`; item `{ id, code, provider, status, amountVnd, createdAt, paidAt, dueAt, tenant { id, name, slug }, plan { code, name } }` |
-| `listSubscriptions({ planCode?, status?, page, pageSize? }) → { items, total, page, pageSize }` | Sắp `plan.isFree asc, currentPeriodEnd asc, id asc`; item `{ id, status, currentPeriodStart, currentPeriodEnd, graceEndsAt, plan { code, name, isFree }, tenant { id, name, slug }, latestInvoice { code, status } \| null }` |
+| `listSubscriptions({ planCode?, status?, page, pageSize? }) → { items, total, page, pageSize }` | Sắp `plan.isFree asc, currentPeriodEnd asc, id asc`; item `{ id, status, currentPeriodStart, currentPeriodEnd, graceEndsAt, plan { code, name, isFree }, tenant { id, name, slug }, latestInvoice { code, status } \| null }` — **từ ADR-066:** `latestInvoice { id, code, status, amountVnd, provider } \| null` (§31.3) |
 | `listPlanFilterOptions() → { code, name }[]` | Mọi gói (kể cả ngừng bán), `priceVnd asc, code asc` |
 
 ### 27.3. Hàm lib khác đổi/thêm
@@ -1421,12 +1424,12 @@ Form lọc là `<form method="get">` (`FilterBar`) — gửi lại bỏ `page` (
 
 | Action | Chữ ký | Ghi chú |
 | :-- | :-- | :-- |
-| `confirmManualInvoiceAction` (`app/admin/billing/invoices/actions.ts`) | không đổi | Nay nhận cả hoá đơn EXPIRED (nhánh trễ); lỗi mới `NEWER_INVOICE_EXISTS`, `INVOICE_NOT_CONFIRMABLE` qua `{ error }` |
+| `confirmManualInvoiceAction` (`app/admin/billing/invoices/actions.ts`) | không đổi | Nay nhận cả hoá đơn EXPIRED (nhánh trễ); lỗi mới `NEWER_INVOICE_EXISTS`, `INVOICE_NOT_CONFIRMABLE` qua `{ error }`. **Từ ADR-066 đổi chữ ký** — §31.3 |
 | `confirmInvoiceFromTransactionAction` (mới, cùng file) | `(transactionId, prevState, formData) → { error?, success? }` | `requireRole("SYSTEM_ADMIN")`; form gửi `invoiceCode`; mọi kiểm tra ở server dưới khoá |
 | `selectProviderAction` (checkout) | không đổi | Truyền `after` cho email `order_pending_manual` |
 | `renewSubscriptionAction` (`studio/[tenantSlug]/billing/actions.ts`) | không đổi | Truyền `after` cho email `invoice_pending_manual` |
 | Lưu SePay platform (`app/admin/billing/payment/actions.ts`) | không đổi | `message` luôn kèm câu nhắc/cảnh báo tiền tố |
-| Lưu SePay Studio (`studio/[tenantSlug]/settings/payments/actions.ts`) | state thêm `warning?: string` | Có `warning` khi `paymentPrefix` khác `orderCodePrefix` (vẫn `success: true`) |
+| Lưu SePay Studio (`studio/[tenantSlug]/settings/payments/actions.ts`) | state thêm `warning?: string` | Có `warning` khi `paymentPrefix` khác `orderCodePrefix` (vẫn `success: true`). **Từ ADR-065: bỏ `warning`, thay bằng `message?: string`** (§31.2) |
 
 ### 28.3. Hàm lib / package — export mới hoặc đổi chữ ký
 
@@ -1590,9 +1593,60 @@ Payload sau serialize **≤ 256 KB** (giới hạn ở extractor, [[02-System-Sp
 
 ---
 
-## 31. Tài Liệu Tham Chiếu & Liên Kết
+## 31. Cấu hình SePay, mã thanh toán SePay, xác nhận tay hoá đơn gói mọi cổng (2026-11-24 — ADR-065, ADR-066) ✅
+
+Đối chiếu 2026-11-24: phần §31.1 đã commit `14f08ba` ✅ `git show --stat`; phần còn lại ở working tree, **chưa commit** ✅ `git status`. **Không thêm `route.ts`** (24 dưới `/api`,
+26 toàn app ✅). Migration `20261124120000_adr065_order_payment_ref` (đã áp DB dev 🟡; production VPS chưa áp ❓ — bắt buộc khi deploy) — [[03-API-Contracts/Database-Schema-Reference|Database-Schema-Reference]] §7. Nghiệp vụ:
+[[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5L–§5N; quyết định [[01-Architecture-Decisions/ADR-049-Sepay-Numeric-Payment-Code-Shared|ADR-049 KB (≙ ADR-065)]],
+[[01-Architecture-Decisions/ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider|ADR-050 KB (≙ ADR-066)]].
+
+### 31.1. Server Action — cấu hình SePay hai phía
+
+| Action | Nơi | Chữ ký → state | Ghi chú |
+| :-- | :-- | :-- | :-- |
+| `saveSepayAction` | `app/admin/billing/payment/actions.ts` | `(prevState, formData) → PlatformPaymentActionState { error?, success?, message?, testResult? }` | `requireRole("SYSTEM_ADMIN")`. Form gửi thêm `apiToken` (trống = giữ). `paymentPrefix` zod trim + in hoa + `^[A-Z]{2,5}$` (ADR-065). `message` = "Đã lưu." / câu tự tắt (ADR-013) + `Mã hoá đơn SePay mới có dạng X + 8 chữ số. <hướng dẫn Cấu trúc mã>` + cảnh báo đổi tiền tố cũ (khác `SUB`) |
+| `testSepayConnectionAction` | như trên | `() → { testResult: { ok, message } }` | `testPlatformProviderConnection("SEPAY", actorId)` — thành công đặt `lastVerifiedAt`, bật cổng, audit |
+| `saveSepayAction` | `studio/[tenantSlug]/settings/payments/actions.ts` | `(tenantSlug, prevState, formData) → PaymentActionState { error?, success?, message?, testResult? }` | `requireTenantMember`. **`warning` đã bỏ** (ADR-065). Thành công: `message` = `Đã lưu. Mã thanh toán SePay của đơn có dạng X + 8 chữ số. <hướng dẫn>` |
+| `testSepayConnectionAction` | như trên | `(tenantSlug) → { testResult }` | `testTenantProviderConnection(tenant.id, "SEPAY", userId)` qua `withTenant` |
+
+Form field: `bankBin`, `accountNo`, `accountName`, `authType` (`API_KEY`\|`HMAC_SHA256`), `paymentPrefix`, `secret` (trống = giữ), `apiToken` (trống = giữ), `isEnabled`.
+Secret không bao giờ trả về client — trang chỉ nhận `maskedSecrets`.
+
+### 31.2. Export lib / package mới hoặc đổi
+
+| Export | Nơi | Ghi chú |
+| :-- | :-- | :-- |
+| `generatePaymentCode(prefix)`, `normalizePaymentCodePrefix(value)`, `isPaymentCode(code, prefix?)`, `PAYMENT_CODE_DIGITS` (8), `PAYMENT_CODE_PREFIX_MIN` (2), `PAYMENT_CODE_PREFIX_MAX` (5) | `@gieochu/core` + **subpath mới `@gieochu/core/payment-code`** (`packages/core/package.json`) | Subpath dùng được ở client (`sepay-setup.ts`) |
+| `generateInvoiceCode(prefix = "SUB")`, `isValidInvoiceCode(code, prefix = "SUB")` | `@gieochu/core` | Nay = định dạng mã thanh toán (trước: 8 ký tự chữ/số) |
+| `extractSepayPaymentCodes(body, prefixes)`, `sepayAccountMatches(body, accountNo)`, `testSepayConnection(cfg, fetchImpl?)`; `SepayReferenceOptions.numeric?`; `SepayWebhookBody.accountNumber?` | `@gieochu/payments` | `testSepayConnection` có sẵn từ `14f08ba`, nay mới được export ở `index.ts` |
+| `SEPAY_BANK_ACCOUNTS_URL` | `packages/payments/src/providers/sepay.ts` (chưa export ở `index.ts`) | `https://my.sepay.vn/userapi/bankaccounts/list` |
+| `testTenantProviderConnection(tenantId, provider, actorId?) → TestResult` | `lib/tenant-payment.ts` | Bản tenant của `testPlatformProviderConnection` |
+| `sepayCodeStructureInstruction(prefix)`, `sepayPrefixHint(prefix)`, `sepaySecretHint(authType)`, `SEPAY_API_TOKEN_HINT` | `apps/web/lib/sepay-setup.ts` (mới, chuỗi thuần) | Dùng ở 2 form + 2 action |
+| `SecretKeyField`, `generateSecretKey(length = 48)` | `app/admin/_ui/secret-key-field.tsx` (client) | Dùng chung System Center + Studio |
+| `tenantSepayPrefix(paymentPrefix, orderCodePrefix)` | `lib/order.ts` (export) | `resolveSepayPaymentRef` nội bộ; `buildTenantCheckoutPayload` trả `{ checkoutPayload, paymentRef }` (nội bộ) |
+| `OrderDetailView.paymentRef: string \| null` | `lib/order.ts` | |
+| `normalizeInvoiceCodePrefix` | `lib/subscription-billing.ts` | Nay = `normalizePaymentCodePrefix` (2–5 chữ cái; trước chữ/số 1–10) |
+| `PaymentProcessJobData.referenceCandidates` | `lib/jobs.ts` | Shape không đổi; nghĩa mở rộng: mỗi mã khớp `paymentRef` hoặc `code` |
+
+### 31.3. ADR-066 — xác nhận tay hoá đơn gói
+
+| Hạng mục | Contract |
+| :-- | :-- |
+| `confirmManualInvoicePayment(invoiceId, actorId = null, note = null)` | Mọi cổng; PENDING → PAID (kỳ đã lưu); EXPIRED → xác nhận trễ (409 `NEWER_INVOICE_EXISTS` nếu có hoá đơn mới hơn); PAID → no-op; khác → 409 `INVOICE_NOT_CONFIRMABLE`. **Không còn ném 400 `NOT_MANUAL_INVOICE`** |
+| `MANUAL_CONFIRM_NOTE_MAX` (500) | Export mới `lib/subscription-billing.ts`; ghi chú trim + cắt, trống → không ghi |
+| `markInvoicePaid(invoiceId, { source, actorId?, note? })` | Thêm `note?` → metadata audit |
+| `confirmManualInvoiceAction(invoiceId, prevState, formData) → { error?, success? }` | **Đổi chữ ký** (trước `(invoiceId)`, bỏ qua tham số còn lại). Đọc `note` từ form; revalidate `/admin/billing/invoices` + `/admin/subscriptions` |
+| `confirmInvoiceFromTransactionAction` | Không đổi chữ ký; revalidate thêm `/admin/subscriptions` |
+| `ManualConfirmButton({ invoiceId, invoiceCode, amountLabel, providerLabel, expired, autoProvider, align? })` | Thay `ConfirmButton` + `ExpiredConfirmButton` (đã xoá) — `app/admin/billing/invoices/confirm-button.tsx` |
+| `/admin/billing/invoices` | Tab "Tất cả": nút ở mọi dòng PENDING/EXPIRED (mọi cổng). Tab "Chờ đối soát": như cũ (cổng xác nhận tay) |
+| `/admin/subscriptions` | Thêm cột "Thao tác"; `listSubscriptions().items[].latestInvoice` = `{ id, code, status, amountVnd, provider } \| null` |
+
+---
+
+## 32. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
+* [[01-Architecture-Decisions/ADR-049-Sepay-Numeric-Payment-Code-Shared|ADR-049 (≙ ADR-065)]] · [[01-Architecture-Decisions/ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider|ADR-050 (≙ ADR-066)]] — mã thanh toán SePay, xác nhận tay hoá đơn gói (§9, §31) · [[04-Operations-Runbooks/SePay-Live-Test-Runbook|SePay-Live-Test-Runbook]]
 * [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay|ADR-044 (≙ ADR-059)]] — chạy thử beta, giao dịch cổng (§28) ([ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md](../01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md))
 * [[01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr|ADR-041 (≙ ADR-056)]] — hoá đơn/Đơn hàng gói, khối chuyển khoản, mã giảm giá tạo lại QR (§27) ([ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr.md](../01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr.md))
 * [[02-System-Specs/System-Cms-Menu-Home-Seo-Specs|System-Cms-Menu-Home-Seo-Specs]] ([System-Cms-Menu-Home-Seo-Specs.md](../02-System-Specs/System-Cms-Menu-Home-Seo-Specs.md)) · [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]] ([Legal-Documents-Specs.md](../02-System-Specs/Legal-Documents-Specs.md)) · [[01-Architecture-Decisions/ADR-035-Menu-Home-Seo-Versioned-Terms|ADR-035 (≙ ADR-050)]]

@@ -118,6 +118,9 @@ export default async function StudioOrderDetailPage({
           <InfoList
             items={[
               { label: "Mã đơn", value: <span className="font-mono">{order.code}</span> },
+              ...(order.paymentRef
+                ? [{ label: "Mã thanh toán SePay", value: <span className="font-mono select-all">{order.paymentRef}</span> }]
+                : []),
               { label: "Ngày tạo", value: <DateTimeValue date={order.createdAt} /> },
               { label: "Ngày thanh toán", value: <DateTimeValue date={order.paidAt} empty="Chưa thanh toán" /> },
               ...(order.paidAt ? [] : [{ label: "Hạn thanh toán", value: <DateTimeValue date={order.expiresAt} /> }]),

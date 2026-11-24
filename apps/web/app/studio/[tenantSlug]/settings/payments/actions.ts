@@ -11,8 +11,8 @@ import { isMissingEnumValueError, MOMO_MANUAL_NOT_READY_MESSAGE } from "../../..
 export interface PaymentActionState {
   error?: string;
   success?: boolean;
-  /** ADR-059 bổ sung lần 2 (c): cảnh báo kèm lưu thành công (vd tiền tố SePay khác tiền tố mã đơn). */
-  warning?: string;
+  /** Thông báo kèm `success` (VD: hướng dẫn cấu hình SePay — ADR-065); không có thì form hiện "Đã lưu.". */
+  message?: string;
   testResult?: { ok: boolean; message?: string };
 }
 
@@ -51,7 +51,11 @@ const sepaySchema = z.object({
   accountNo: z.string().min(4),
   accountName: z.string().min(1),
   authType: z.enum(["API_KEY", "HMAC_SHA256"]),
-  paymentPrefix: z.string().min(1).max(4),
+  // ADR-065: 2–5 chữ cái (giới hạn ô "Tiền tố" của SePay); mã thanh toán của đơn = tiền tố + 8 chữ số.
+  paymentPrefix: z
+    .string()
+    .transform((value) => value.trim().toUpperCase())
+    .pipe(z.string().regex(/^[A-Z]{2,5}$/, "Tiền tố mã thanh toán phải gồm 2–5 chữ cái (không dấu, không số).")),
 });
 
 export async function saveSepayAction(
@@ -87,15 +91,9 @@ export async function saveSepayAction(
     throw error;
   }
   revalidatePath(`/studio/${tenantSlug}/settings/payments`);
-  // ADR-059 bổ sung lần 2 (c): không khoá tiền tố, nhưng cảnh báo rõ khi lệch tiền tố mã đơn. Hệ thống vẫn tự khớp theo mã đơn
-  // trong nội dung chuyển khoản; lệch chỉ ảnh hưởng việc SePay tự nhận diện "mã thanh toán" (vd tuỳ chọn bỏ qua giao dịch không có mã).
-  if (paymentPrefix.trim().toUpperCase() !== tenant.orderCodePrefix.toUpperCase()) {
-    return {
-      success: true,
-      warning: `Tiền tố "${paymentPrefix}" khác tiền tố mã đơn của gian hàng (${tenant.orderCodePrefix}). Mã đơn có dạng ${tenant.orderCodePrefix} + 6 ký tự — hãy đặt cấu trúc mã thanh toán bên SePay theo tiền tố ${tenant.orderCodePrefix}, nếu không SePay có thể không gửi hoặc không nhận diện giao dịch.`,
-    };
-  }
-  return { success: true };
+  // ADR-065: nội dung chuyển khoản SePay là mã thanh toán riêng của đơn (tiền tố này + 8 chữ số) → nhắc khớp cấu hình bên SePay.
+  // Hướng dẫn chi tiết nằm ở khối "Cấu hình bên SePay" của form (`sepaySetupSteps`).
+  return { success: true, message: "Đã lưu. Nếu vừa đổi tiền tố, cập nhật Cấu trúc mã thanh toán bên SePay cho khớp." };
 }
 
 /** Kiểm tra kết nối SePay của gian hàng bằng cấu hình đã lưu — thành công tự bật cổng (chủ dự án chốt 2026-11-24). */

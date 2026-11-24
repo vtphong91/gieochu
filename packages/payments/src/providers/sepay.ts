@@ -1,6 +1,7 @@
 import { timingSafeEqual, createHmac } from "node:crypto";
 import { z } from "zod";
 import QRCode from "qrcode";
+import { normalizePaymentCodePrefix, PAYMENT_CODE_DIGITS } from "@gieochu/core";
 import { buildVietQrPayload } from "../vietqr";
 import type { CreateCheckoutArgs, NormalizedPaymentEvent, PaymentProvider, RawWebhookRequest, SepayConfig, TestResult } from "../types";
 
@@ -10,7 +11,8 @@ const sepayConfigSchema = z.object({
   accountName: z.string().min(1),
   authType: z.enum(["API_KEY", "HMAC_SHA256"]),
   secret: z.string().min(1),
-  paymentPrefix: z.string().min(1),
+  /** ADR-065: tiền tố mã thanh toán — 2–5 chữ cái (giới hạn ô "Tiền tố" của SePay). */
+  paymentPrefix: z.string().regex(/^[A-Z]{2,5}$/, "Tiền tố mã thanh toán phải gồm 2–5 chữ cái in hoa."),
   /** API Token (my.sepay.vn → Cấu hình Công ty → API Access) — chỉ dùng cho "Kiểm tra kết nối", không bắt buộc. */
   apiToken: z.string().optional(),
 });
@@ -133,6 +135,8 @@ export interface SepayWebhookBody {
   id: number | string;
   code?: string | null;
   content?: string;
+  /** Số tài khoản nhận tiền — một tài khoản SePay có thể nối nhiều tài khoản ngân hàng (ADR-065). */
+  accountNumber?: string | null;
   transferType: "in" | "out";
   transferAmount: number;
   transactionDate: string;
@@ -140,15 +144,21 @@ export interface SepayWebhookBody {
 
 export interface SepayReferenceOptions {
   /**
-   * ADR-059 bổ sung lần 2: số ký tự SAU tiền tố của mã sinh ra (mã hoá đơn 8, mã đơn 6). Có giá trị → chỉ bắt đúng ngần ấy ký
-   * tự, nên nội dung bị ngân hàng nối liền ("SUBABCDEFGHNGUYENVANA") vẫn tách đúng mã. Bỏ trống → hành vi cũ (bắt tới hết chuỗi
-   * chữ/số).
+   * ADR-059 bổ sung lần 2: số ký tự SAU tiền tố của mã sinh ra. Có giá trị → chỉ bắt đúng ngần ấy ký tự, nên nội dung bị ngân
+   * hàng nối liền ("SUB40718256NGUYENVANA") vẫn tách đúng mã. Bỏ trống → bắt tới hết chuỗi chữ/số.
    */
   codeLength?: number;
+  /** ADR-065: hậu tố chỉ gồm chữ số và không được theo sau bởi chữ số khác (mã thanh toán SePay). */
+  numeric?: boolean;
 }
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function suffixPattern(options: SepayReferenceOptions): string {
+  const length = options.codeLength && options.codeLength > 0 ? `{${options.codeLength}}` : "*";
+  return options.numeric ? `[0-9]${length}(?![0-9])` : `[A-Z0-9]${length}`;
 }
 
 /**
@@ -156,7 +166,7 @@ function escapeRegExp(value: string): string {
  * rồi `content`. Tiền tố được escape (người dùng tự điền). Không trùng lặp, viết hoa.
  */
 export function extractSepayReferences(body: SepayWebhookBody, prefixes: readonly string[], options: SepayReferenceOptions = {}): string[] {
-  const suffix = options.codeLength && options.codeLength > 0 ? `[A-Z0-9]{${options.codeLength}}` : "[A-Z0-9]*";
+  const suffix = suffixPattern(options);
   const found: string[] = [];
   for (const prefix of prefixes) {
     const trimmed = prefix.trim();
@@ -173,6 +183,32 @@ export function extractSepayReferences(body: SepayWebhookBody, prefixes: readonl
 /** Extracts the reference (order/invoice code) using `code` first, then a prefix search in `content` (§"M7"). */
 export function extractSepayReference(body: SepayWebhookBody, paymentPrefix: string, options: SepayReferenceOptions = {}): string | undefined {
   return extractSepayReferences(body, [paymentPrefix], options)[0];
+}
+
+/**
+ * ADR-065: mã thanh toán (tiền tố + 8 chữ số, `generatePaymentCode` ở @gieochu/core) đọc được từ payload SePay — dùng chung cho
+ * webhook PLATFORM (hoá đơn gói) và TENANT (đơn hàng). Tiền tố không hợp lệ bị bỏ qua.
+ */
+export function extractSepayPaymentCodes(body: SepayWebhookBody, prefixes: readonly unknown[]): string[] {
+  const valid = prefixes.map(normalizePaymentCodePrefix).filter((prefix): prefix is string => prefix !== null);
+  return extractSepayReferences(body, [...new Set(valid)], { codeLength: PAYMENT_CODE_DIGITS, numeric: true });
+}
+
+function digitsOnly(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+/**
+ * ADR-065: giao dịch thuộc đúng tài khoản ngân hàng đã cấu hình (một tài khoản SePay có thể nối nhiều tài khoản). Payload không có
+ * `accountNumber` → không đủ căn cứ để từ chối, coi là khớp.
+ */
+export function sepayAccountMatches(body: unknown, accountNo: string): boolean {
+  if (typeof body !== "object" || body === null) return true;
+  const received = (body as { accountNumber?: unknown }).accountNumber;
+  if (typeof received !== "string" && typeof received !== "number") return true;
+  const receivedDigits = digitsOnly(String(received));
+  if (!receivedDigits) return true;
+  return receivedDigits === digitsOnly(accountNo);
 }
 
 // `parseWebhook` matches the shared PaymentProvider interface (body only —

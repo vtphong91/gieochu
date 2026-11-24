@@ -55,8 +55,8 @@ export interface PaymentProcessJobData {
   providerEventId: string;
   reference: string | undefined;
   /**
-   * ADR-059 bổ sung lần 2: mọi mã đọc được theo thứ tự ưu tiên (tiền tố SePay đã cấu hình, rồi tiền tố mã đơn) — job chọn mã đầu
-   * tiên khớp một đơn. Job cũ trong hàng đợi không có trường này → dùng `reference`.
+   * ADR-059 bổ sung lần 2 + ADR-065: mọi mã đọc được theo thứ tự ưu tiên (mã thanh toán SePay `paymentRef`, rồi mã đơn) — job
+   * chọn mã đầu tiên khớp một đơn (theo `paymentRef` hoặc `code`). Job cũ trong hàng đợi không có trường này → dùng `reference`.
    */
   referenceCandidates?: string[];
   amountVnd: number;

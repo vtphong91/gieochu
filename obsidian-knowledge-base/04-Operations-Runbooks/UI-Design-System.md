@@ -5,7 +5,7 @@ tags:
   - design-system
   - status/living
 date: 2026-05-24
-updated: 2026-10-27
+updated: 2026-11-24
 author: System Architect
 ---
 
@@ -2505,7 +2505,67 @@ Quyết định thiết kế của Phong (brief Quốc 2026-10-27). Trang thanh 
 
 ---
 
-## 27. Tài Liệu Tham Chiếu & Liên Kết
+## 27. Module Thanh Toán — Hộp Xác Nhận Hoá Đơn Gói, Ô Secret SePay, Form SePay, Bảng Đơn Hàng Gói (ADR-065, ADR-066) ✅ đọc code 2026-11-24 (working tree, chưa commit)
+
+Quyết định thiết kế của Phong, Long nhận qua brief Quốc 2026-11-24 và đối chiếu code working tree. Chưa kiểm bằng trình duyệt / trình đọc màn hình ❓. Nghiệp vụ:
+[[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5L–§5N · [[01-Architecture-Decisions/ADR-049-Sepay-Numeric-Payment-Code-Shared|ADR-049 KB (≙ ADR-065)]] ·
+[[01-Architecture-Decisions/ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider|ADR-050 KB (≙ ADR-066)]].
+
+### 27.1. Hộp xác nhận hoá đơn gói — `ManualConfirmButton` (`app/admin/billing/invoices/confirm-button.tsx`, client) ✅ code
+* Dùng ở `/admin/billing/invoices` (tab "Chờ đối soát", "Tất cả") và cột "Thao tác" của `/admin/subscriptions`.
+* Hộp là **`<dialog>` mở bằng `showModal()`, viết ngay trong component** — **không** phải component kit dùng chung (khác `ConfirmDialog` phía khách §26.4). Lý do theo comment
+  code: top layer → không làm dãn ô/bảng; nền phía sau `inert`. Không đặt `flex` trên `<dialog>` (đè `display:none` khi đóng) — bố cục nằm ở `<form>` con, cuộn trong
+  `max-h-[calc(100dvh-2rem)]`; rộng `min(28rem, 100vw − 2rem)`.
+* **Focus:** khi mở → focus vào **tiêu đề** (`h2 tabIndex=-1`; trình đọc màn hình đọc tên + mô tả hộp trước, không bật bàn phím ảo trên mobile). Khi đóng (sự kiện `close`
+  gốc) → trả focus về **nút mở**. Hộp có `aria-labelledby` (tiêu đề) + `aria-describedby` (câu mô tả); nút mở có `aria-haspopup="dialog"`.
+* **Đóng:** Esc, nút "Huỷ", bấm nền mờ — **đang gửi thì không đóng** (Esc bị `preventDefault`, "Huỷ" `disabled`).
+* **Thành công → đóng hộp**; phản hồi chính là **badge "Đã thanh toán" của dòng** sau revalidate (nút mở ẩn đi; vùng `role="status"` "Đã xác nhận thanh toán." vẫn có trong
+  component).
+* **Lỗi** hiện **trong hộp** bằng `FormBanner`; lỗi của lần mở trước không hiện lại khi mở lần sau (so với state lúc mở).
+* Nội dung: câu mô tả số tiền + mã; `dl` Mã hoá đơn / Số tiền / Cổng (+ "Trạng thái: Đã hết hạn"); `Notice tone="warning"` (cổng tự xác nhận nhắc chỉ dùng khi đã đối chiếu
+  sao kê; hoá đơn hết hạn nêu kỳ tính lại; "Không hoàn tác được").
+* **Ô ghi chú không bắt buộc**, `maxLength` 500, gợi ý "Lưu vào nhật ký thao tác (tối đa 500 ký tự)." gắn `aria-describedby`; chữ **16px dưới `lg`** (`text-base lg:text-sm`
+  — tránh iOS tự zoom).
+* Nút trong hộp: "Huỷ" (`GhostButton`) + "Xác nhận đã nhận tiền" (`PrimaryButton`, đang gửi "Đang xác nhận..."); dưới `sm` xếp dọc, nút chính ở trên.
+
+### 27.2. Nút mở trong bảng hoá đơn gói — nhãn theo viewport, Label in Name ✅ code
+* Hoá đơn chờ: dưới `md` chữ gọn **"Xác nhận…"**, từ `md` **"Xác nhận đã nhận tiền…"**. Hoá đơn hết hạn: **"Xác nhận trễ…"** (mọi viewport).
+* Ngữ cảnh mã hoá đơn nằm trong **`sr-only`** sau chữ hiển thị (" hoá đơn [đã hết hạn] {mã}") → tên truy cập **bắt đầu đúng bằng chữ hiển thị**.
+* **Quy tắc Label in Name (áp cho nút/link có chữ hiển thị):** không dùng `aria-label` thay chữ hiển thị; ngữ cảnh bổ sung đặt trong `sr-only` **sau** chữ hiển thị.
+* Vùng bấm `min-h-11` (44px) dưới `lg`, `lg:min-h-8`; viền + chữ primary, nền trắng, `whitespace-nowrap`, focus ring primary.
+
+### 27.3. `SecretKeyField` (`app/admin/_ui/secret-key-field.tsx`, client) ✅ code
+* Nút **"Tạo key ngẫu nhiên"** (icon `IconRefresh`, kiểu link chữ primary) cao **≥ 44px dưới `lg`** (`min-h-11 lg:min-h-9`), `aria-controls` trỏ ô.
+* Prop **`hasSaved`** (form truyền `Boolean(maskedSecret)`): lời nhắc thêm **"và key cũ sẽ ngừng hoạt động"**.
+* Sau khi tạo: khung nhắc sao chép là **`Notice tone="warning"`** ("Sao chép key này và dán vào trang quản trị SePay trước khi lưu. Sau khi lưu, key sẽ không hiển thị
+  lại…") + `CopyValue`; khung có `id` được **gắn vào `aria-describedby` của ô**; focus chuyển về ô **sau** khi khung đã render (để trình đọc màn hình đọc kèm lời nhắc).
+* Form reset (sau lưu) hoặc sửa tay khác key → ẩn khung. Ô vẫn là ô bí mật (`autoComplete="new-password"`, nút mắt `aria-pressed`) — §26.8.
+
+### 27.4. Form SePay (System Center `admin/billing/payment/sepay-form.tsx` + Studio `studio/[tenantSlug]/settings/payments/sepay-form.tsx`) ✅ code
+* **Gợi ý ô tiền tố ngắn** — `sepayPrefixHint(prefix, fallback)` (`apps/web/lib/sepay-setup.ts`): "2–5 chữ cái không dấu. Mã thanh toán = tiền tố + 8 chữ số, VD: {tiền tố}40718256.
+  VietinBank bắt buộc SEVQR." Tiền tố hiển thị lấy theo ô đang gõ; trống/không hợp lệ → `fallback` (System `SUB`; Studio tiền tố đã lưu).
+* Khối **`Notice tone="info"`** tiêu đề **"Cấu hình bên SePay (Công ty → Cấu hình chung)"** + danh sách có thứ tự (`<ol>`) từ **`sepaySetupSteps(prefix, fallback)`** — đặt
+  ngay sau Webhook URL, trước các ô.
+* Nút **"Kiểm tra kết nối"** (`GhostButton`) **khoá** khi: chưa lưu API Token ("Nhập và lưu API Token để kiểm tra kết nối.") / form có thay đổi chưa lưu hoặc chưa cấu hình
+  ("Lưu cấu hình trước khi kiểm tra kết nối."). **Lý do hiển thị cạnh nút** (chữ nhỏ) và gắn `aria-describedby` của nút.
+* **Kết quả kiểm tra cũ bị xoá** khi bấm kiểm tra lại hoặc khi form chuyển sang có thay đổi chưa lưu. Kết quả hiện bằng `FormBanner` dưới hàng nút.
+* Khác nhau giữa hai form: System Center có `Notice tone="warning"` cuối form về tự tắt khi đổi số TK/secret (ADR-013); Studio chỉ nhắc "Kiểm tra kết nối thành công sẽ tự
+  bật phương thức này.".
+
+### 27.5. Bảng `/admin/subscriptions` (Đơn hàng gói dịch vụ) ✅ code / ❓ trình duyệt
+* Cột **"Bắt đầu chu kỳ"** và **"Hạn ân hạn"** chỉ hiện **từ `xl`** (`hidden xl:table-cell`) — comment code: ở `lg` sidebar 288px chiếm chỗ, thêm 2 cột ngày làm bảng cuộn ngang.
+* Cột "Gói", "Hoá đơn gần nhất" ẩn dưới `md`; **dưới `md` lặp mã + badge trạng thái hoá đơn gần nhất** dưới tên gian hàng (kèm `sr-only` "Hoá đơn gần nhất: ") để biết nút
+  "Xác nhận…" áp cho hoá đơn nào.
+* Cột "Thao tác" căn phải; bảng vẫn bọc `overflow-x-auto`.
+* ❓ **Chưa đo trên trình duyệt** — Phong ước lượng có thể **còn cuộn ngang** ở 375 / 1024 / 1280px.
+
+### 27.6. Để lại backlog (ngoài phạm vi payment) 🟡 brief Quốc
+* **Hằng màu dùng chung cho admin** — hiện nhiều file admin tự khai báo hằng màu cục bộ (vd `RED`, `GRAY_LINE`, `INK_SOFT` trong `secret-key-field.tsx`) ✅ code.
+* **Component hộp xác nhận dùng chung cho kit** — `ManualConfirmButton` đang tự viết `<dialog>`; chưa tách thành component kit.
+
+---
+
+## 28. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * `apps/web/app/admin/_ui/kit.tsx`, `apps/web/app/admin/_ui/kit-interactive.tsx`, `apps/web/app/admin/_ui/icons.tsx`
@@ -2535,6 +2595,7 @@ Quyết định thiết kế của Phong (brief Quốc 2026-10-27). Trang thanh 
 * `apps/web/app/_ui/{nav-link,nav-dropdown,mobile-nav,site-header,site-footer}.tsx` (§1.1.1), `apps/web/app/_home-sections.tsx` (§12.9), `apps/web/app/admin/cms/{menu,phap-ly}/*` (§13.7), `apps/web/app/phap-ly/[slug]/{page.tsx,_ui/legal-toc.ts}` (§22) · [[02-System-Specs/System-Cms-Menu-Home-Seo-Specs|System-Cms-Menu-Home-Seo-Specs]] · [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]] · [[01-Architecture-Decisions/ADR-035-Menu-Home-Seo-Versioned-Terms|ADR-035 (≙ ADR-050)]]
 * `apps/web/app/admin/_ui/{kit,billing-labels,icons}.ts(x)`, `apps/web/app/admin/billing/invoices/page.tsx`, `apps/web/app/admin/subscriptions/page.tsx`, `apps/web/app/_ui/bank-transfer-panel.tsx`, `apps/web/app/[tenantSlug]/checkout/[orderCode]/{page,coupon-panel}.tsx`, `apps/web/app/studio/[tenantSlug]/billing/page.tsx` (§24) · [[01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr|ADR-041 (≙ ADR-056)]]
 * `apps/web/app/admin/_ui/{module-tabs,collapsible-section,unsaved-changes,in-page-tabs}.tsx`, `apps/web/app/admin/_ui/{nav-match,use-form-draft}.ts`, `apps/web/app/admin/cms/_ui/cms-tabs.ts`, `apps/web/app/admin/settings/_ui/settings-tabs.ts`, `apps/web/app/admin/_ui/sidebar-nav.tsx` (`match`), `apps/web/app/admin/layout.tsx`, `apps/web/app/studio/[tenantSlug]/layout.tsx` (Provider), `apps/web/app/studio/page.tsx` (Provider onboarding), `apps/web/app/studio/[tenantSlug]/settings/_ui/settings-tabs.ts`, `apps/web/app/studio/[tenantSlug]/{settings,settings/payments,products/_ui,products/[productId]/share-links,posts/_ui,storefront,coupons}/*` (GĐ 2), `docs/ke-hoach-toi-uu-layout-tab-accordion-2026-10-25.md` (§5 quy tắc full width, §11.1, §25) · [[01-Architecture-Decisions/ADR-043-Module-Tabs-Accordion-Unsaved-Guard|ADR-043 (≙ ADR-058)]] · [[01-Architecture-Decisions/ADR-042-Legal-Drafts-Import-Preview-Draft-Release|ADR-042 (≙ ADR-057)]] (§13.7)
+* `apps/web/app/admin/billing/invoices/confirm-button.tsx`, `apps/web/app/admin/_ui/secret-key-field.tsx`, `apps/web/app/admin/billing/payment/sepay-form.tsx`, `apps/web/app/studio/[tenantSlug]/settings/payments/sepay-form.tsx`, `apps/web/lib/sepay-setup.ts`, `apps/web/app/admin/subscriptions/page.tsx` (§27) · [[01-Architecture-Decisions/ADR-049-Sepay-Numeric-Payment-Code-Shared|ADR-049 (≙ ADR-065)]] · [[01-Architecture-Decisions/ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider|ADR-050 (≙ ADR-066)]]
 * [[04-Operations-Runbooks/README|Quay lại danh mục Operations Runbooks]]
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

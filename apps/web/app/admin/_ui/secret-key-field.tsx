@@ -4,14 +4,16 @@ import { useEffect, useRef, useState, type ComponentProps } from "react";
 import { brandColors } from "@gieochu/config/theme";
 import { IconEye, IconEyeOff, IconRefresh } from "./icons";
 import { CopyValue } from "./copy-value";
+import { Notice } from "./kit";
 
 const RED = "#DC2626";
 const GRAY_LINE = "#E5E7EB";
 const INK = brandColors.ink;
 const INK_SOFT = "#6B7280";
 
+/** Viền/ring focus theo màu primary runtime (`--color-primary` → `--brand-primary`), không hex cứng. */
 const inputBase =
-  "w-full rounded-lg border bg-white px-3.5 py-2.5 pr-12 text-[15px] outline-none transition-colors focus:border-[#0F3B82] focus:ring-2 focus:ring-[#0F3B82]/15";
+  "w-full rounded-lg border bg-white px-3.5 py-2.5 pr-12 text-[15px] outline-none transition-colors focus:border-[color:var(--color-primary)] focus:ring-2 focus:ring-[color:var(--color-primary)]/15";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 const KEY_LENGTH = 48;
@@ -45,20 +47,36 @@ function setNativeValue(el: HTMLInputElement, value: string) {
  * Ô secret/API key webhook có nút "Tạo key ngẫu nhiên" (SePay platform + tenant). Ô vẫn KHÔNG kiểm soát và vẫn là ô bí
  * mật của `useFormDraft` (không ghi lại sau lưu lỗi); để trống = giữ secret đã lưu. Key sinh ở trình duyệt, gửi lên như
  * khi admin tự gõ — server mã hoá AES-256-GCM, không bao giờ trả lại. Sau khi tạo: hiện key + khung nhắc sao chép trước
- * khi lưu; form reset (sau khi lưu) hoặc sửa tay khác key đã tạo → ẩn khung.
+ * khi lưu; form reset (sau khi lưu) hoặc sửa tay khác key đã tạo → ẩn khung. Khung nhắc (`Notice` cảnh báo) gắn vào
+ * `aria-describedby` của ô; focus chuyển về ô SAU khi khung đã hiện để trình đọc màn hình đọc kèm lời nhắc.
  */
 export function SecretKeyField({
   id,
   label,
   hint,
   error,
+  hasSaved = false,
   onChange,
   ...rest
-}: Omit<ComponentProps<"input">, "type" | "defaultValue" | "value"> & { id: string; label: string; hint?: string; error?: string }) {
+}: Omit<ComponentProps<"input">, "type" | "defaultValue" | "value"> & {
+  id: string;
+  label: string;
+  hint?: string;
+  error?: string;
+  /** Đã có secret lưu trong DB → lời nhắc nói thêm key cũ sẽ ngừng hoạt động sau khi lưu key mới. */
+  hasSaved?: boolean;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [visible, setVisible] = useState(false);
   const [generated, setGenerated] = useState<string | null>(null);
-  const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
+  const noticeId = `${id}-generated`;
+  const describedBy =
+    [generated ? noticeId : null, error ? `${id}-error` : hint ? `${id}-hint` : null].filter(Boolean).join(" ") || undefined;
+
+  // Focus ô sau khi khung nhắc đã render (focus trong onClick chạy trước commit → mô tả mới chưa có).
+  useEffect(() => {
+    if (generated) inputRef.current?.focus();
+  }, [generated]);
 
   useEffect(() => {
     const form = inputRef.current?.form;
@@ -78,7 +96,6 @@ export function SecretKeyField({
     setNativeValue(el, key);
     setGenerated(key);
     setVisible(true);
-    el.focus();
   }
 
   return (
@@ -91,7 +108,7 @@ export function SecretKeyField({
           type="button"
           onClick={generate}
           aria-controls={id}
-          className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-md px-1.5 text-sm font-medium text-[color:var(--color-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-primary)]"
+          className="inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-1.5 text-sm font-medium lg:min-h-9 text-[color:var(--color-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-primary)]"
         >
           <IconRefresh className="h-4 w-4" />
           Tạo key ngẫu nhiên
@@ -126,9 +143,14 @@ export function SecretKeyField({
         </button>
       </div>
       {generated ? (
-        <div role="status" className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-900">
-          Lưu lại key này (dán vào trang quản trị SePay) rồi mới nhấn lưu cấu hình. Sau khi lưu sẽ không hiển thị lại.
-          <CopyValue value={generated} label={label} />
+        <div id={noticeId} className="mt-2">
+          <Notice tone="warning">
+            <p>
+              <strong className="font-semibold">Sao chép key này</strong> và dán vào trang quản trị SePay trước khi lưu. Sau khi lưu, key sẽ không
+              hiển thị lại{hasSaved ? " và key cũ sẽ ngừng hoạt động" : ""}.
+            </p>
+            <CopyValue value={generated} label={label} />
+          </Notice>
         </div>
       ) : null}
       {error ? (
@@ -142,15 +164,4 @@ export function SecretKeyField({
       ) : null}
     </div>
   );
-}
-
-/** Gợi ý ô API Token SePay (User API) — chỉ dùng cho "Kiểm tra kết nối". */
-export const SEPAY_API_TOKEN_HINT =
-  "Lấy ở my.sepay.vn → Cấu hình Công ty → API Access. Chỉ dùng để kiểm tra kết nối (xác nhận tài khoản đã liên kết SePay), không ảnh hưởng nhận tiền.";
-
-/** Gợi ý theo kiểu xác thực đang chọn — khớp cách `verifySepayWebhook` kiểm tra (packages/payments/src/providers/sepay.ts). */
-export function sepaySecretHint(authType: string): string {
-  return authType === "API_KEY"
-    ? "SePay gửi header Authorization: Apikey <key>. Ở SePay chọn “API Key” và dán đúng key này."
-    : "Dán key này vào ô secret HMAC-SHA256 bên SePay — hai bên phải dùng cùng một secret.";
 }

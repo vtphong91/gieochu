@@ -25,10 +25,15 @@ export async function processPaymentEvent(data: PaymentProcessJobData): Promise<
   // ADR-059 bổ sung lần 2 (d): giao dịch tiền vào khớp mã đơn nhưng sai tiền → email báo chủ gian hàng SAU commit. Gắn với lần
   // ghi giao dịch (unique tenantId+provider+providerTxnId) nên một giao dịch chỉ báo một lần, kể cả khi job chạy lại.
   const outcome = await withTenant(data.tenantId, async (tx): Promise<{ fulfilled: Fulfilled | false; mismatch: Mismatch | null }> => {
-    // ADR-059 bổ sung lần 2: thử các mã theo thứ tự ưu tiên (job cũ chỉ có `reference`).
+    // ADR-059 bổ sung lần 2: thử các mã theo thứ tự ưu tiên (job cũ chỉ có `reference`). ADR-065: mỗi mã khớp mã thanh toán SePay
+    // (`paymentRef`, duy nhất trong gian hàng) hoặc mã đơn.
     const candidates = data.referenceCandidates?.length ? data.referenceCandidates : data.reference ? [data.reference] : [];
-    const found = candidates.length > 0 ? await tx.order.findMany({ where: { code: { in: candidates } } }) : [];
-    const order = candidates.map((code) => found.find((row) => row.code === code)).find((row) => row !== undefined) ?? null;
+    const found =
+      candidates.length > 0
+        ? await tx.order.findMany({ where: { tenantId: data.tenantId, OR: [{ paymentRef: { in: candidates } }, { code: { in: candidates } }] } })
+        : [];
+    const order =
+      candidates.map((ref) => found.find((row) => row.paymentRef === ref || row.code === ref)).find((row) => row !== undefined) ?? null;
 
     if (!order) {
       await tx.tenantPaymentTransaction.create({

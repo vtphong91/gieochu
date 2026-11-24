@@ -202,6 +202,8 @@ describe("M3 subscription and platform billing", () => {
     const invoice = await createRenewalInvoice(tenant.id, { planId: proPlan.id, provider: "SEPAY" });
     expect(invoice.status).toBe("PENDING");
     expect(invoice.amountVnd).toBe(proPlan.priceVnd);
+    // ADR-065: mã hoá đơn = tiền tố SePay đã cấu hình + 8 chữ số (SePay chỉ nhận diện hậu tố toàn số).
+    expect(invoice.code).toMatch(/^SUB[1-9]\d{7}$/);
 
     const rawBody = JSON.stringify({
       id: `evt_${RUN_PREFIX}_paid`,
@@ -230,7 +232,7 @@ describe("M3 subscription and platform billing", () => {
 
     const creatorActive = await listSubscriptions({ planCode: "CREATOR", status: "ACTIVE", page: 1, pageSize: 100 });
     const listedSub = creatorActive.items.find((s) => s.tenant.id === tenant.id);
-    expect(listedSub?.latestInvoice).toEqual({ code: invoice.code, status: "PAID" });
+    expect(listedSub?.latestInvoice).toEqual({ id: invoice.id, code: invoice.code, status: "PAID", amountVnd: proPlan.priceVnd, provider: "SEPAY" });
     expect(creatorActive.items.every((s) => s.plan.code === "CREATOR" && s.status === "ACTIVE")).toBe(true);
   });
 
@@ -315,6 +317,13 @@ describe("M3 subscription and platform billing", () => {
     });
     await expect(confirmInvoiceFromPlatformTransaction(overpaid.id, renewal.code, owner.id)).rejects.toMatchObject({ code: "INVOICE_ALREADY_PAID" });
     await expect(confirmInvoiceFromPlatformTransaction(overpaid.id, invoice.code, owner.id)).rejects.toMatchObject({ code: "TRANSACTION_ALREADY_USED" });
+
+    // ADR-066: tiền đã về nhưng webhook không tới → admin xác nhận tay hoá đơn SePay (mọi cổng), ghi chú không bắt buộc vào audit.
+    const noWebhook = await createRenewalInvoice(tenant.id, { planId: proPlan.id, provider: "SEPAY" });
+    await confirmManualInvoicePayment(noWebhook.id, owner.id, "  GD VietinBank 945T26B14AZ5VN4P  ");
+    expect((await prisma.subscriptionInvoice.findUniqueOrThrow({ where: { id: noWebhook.id } })).status).toBe("PAID");
+    const manualAudit = await prisma.auditLog.findFirstOrThrow({ where: { action: "SUBSCRIPTION_PAID", targetId: noWebhook.id } });
+    expect(manualAudit.metadata).toMatchObject({ source: "ADMIN_MANUAL_CONFIRM", provider: "SEPAY", note: "GD VietinBank 945T26B14AZ5VN4P" });
   });
 
   it("the hourly sweep downgrades an overdue paid subscription back to FREE, keeping the tenant sellable", async () => {
