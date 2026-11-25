@@ -23,7 +23,7 @@ import {
   PLATFORM_TXN_STATE_TONE,
   formatAdminDateTime,
 } from "../../_ui/billing-labels";
-import { InvoiceStatusButton, ManualConfirmButton, TransactionConfirmButton } from "./confirm-button";
+import { InvoiceRowMenu, ManualConfirmButton, TransactionConfirmButton } from "./confirm-button";
 
 type InvoiceTab = "cho-doi-soat" | "tat-ca" | "giao-dich";
 
@@ -235,17 +235,22 @@ async function AllInvoicesTab({ sp }: { sp: { status?: string; provider?: string
                       )}
                     </Td>
                     <Td className="text-right">
-                      {/* ADR-067: "Đổi trạng thái…" theo danh sách trạng thái server cho phép (mọi cổng); không còn → "—". */}
-                      {invoice.statusTargets.length > 0 ? (
-                        <InvoiceStatusButton
-                          invoiceId={invoice.id}
-                          invoiceCode={invoice.code}
-                          amountLabel={formatVndFull(invoice.amountVnd)}
-                          providerLabel={INVOICE_PROVIDER_LABEL[invoice.provider]}
-                          currentStatusLabel={INVOICE_STATUS_LABEL[invoice.status]}
-                          targets={invoice.statusTargets}
-                          expired={invoice.status === "EXPIRED"}
-                          autoProvider={!isManualConfirmProvider(invoice.provider)}
+                      {/* ADR-069: menu "⋯" — "Xem chi tiết" (khi hoá đơn gắn với thuê bao) + "Đổi trạng thái hoá đơn…" (ADR-067).
+                          Không có mục nào (hiếm: không thuê bao + không còn trạng thái để chuyển) → "—". */}
+                      {invoice.subscriptionId || invoice.statusTargets.length > 0 ? (
+                        <InvoiceRowMenu
+                          label={`Thao tác hoá đơn ${invoice.code}`}
+                          detailHref={invoice.subscriptionId ? `/admin/subscriptions/${invoice.subscriptionId}` : null}
+                          status={{
+                            invoiceId: invoice.id,
+                            invoiceCode: invoice.code,
+                            amountLabel: formatVndFull(invoice.amountVnd),
+                            providerLabel: INVOICE_PROVIDER_LABEL[invoice.provider],
+                            currentStatusLabel: INVOICE_STATUS_LABEL[invoice.status],
+                            targets: invoice.statusTargets,
+                            expired: invoice.status === "EXPIRED",
+                            autoProvider: !isManualConfirmProvider(invoice.provider),
+                          }}
                         />
                       ) : (
                         <span className="text-gray-500">

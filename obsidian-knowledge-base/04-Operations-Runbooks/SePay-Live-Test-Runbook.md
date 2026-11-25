@@ -6,7 +6,7 @@ tags:
   - deployment
   - status/living
 date: 2026-10-26
-updated: 2026-11-24
+updated: 2026-11-25
 author: Long
 ---
 
@@ -30,12 +30,17 @@ author: Long
 ---
 
 ## 0. Trước deploy: chạy migrate deploy trên DB production ❓ chưa chạy
-- Code ADR-065 đọc/ghi cột mới `orders.paymentRef` → migration `20261124120000_adr065_order_payment_ref` phải có trên DB production **trước/khi** deploy code. Hiện:
-  **đã áp DB dev (Neon, `.env`)** 🟡 Quốc báo; **production (VPS) chưa áp** ❓.
-- Lệnh: `prisma migrate deploy` (ở repo là `pnpm db:migrate`, dùng `PRISMA_MIGRATE_URL` — role owner, cần quyền DDL ✅ `CLAUDE.md`) với `PRISMA_MIGRATE_URL` trỏ **DB
-  production**. Cách đặt biến/chạy trên VPS chưa có runbook ❓ — hỏi Quốc. Agent không tự chạy khi chưa được Quốc duyệt.
-- Migration loại expand (chỉ thêm cột + unique index) — theo comment SQL, code cũ không đọc cột mới nên áp trước deploy an toàn ✅ đọc SQL.
-- Kiểm sau khi chạy: `prisma migrate status` trên DB production báo không còn migration chờ ❓.
+- Code mới cần **2 migration** có trên DB production **trước/khi** deploy code (cập nhật 2026-11-25, Quốc duyệt):
+  | Migration | Cột | DB dev (`.env`) | Production (VPS) |
+  | :-- | :-- | :-- | :-- |
+  | `20261124120000_adr065_order_payment_ref` (ADR-065) | `orders.paymentRef` + unique `(tenantId, paymentRef)` | đã áp 🟡 Quốc báo | chưa áp / chưa xác minh ❓ |
+  | `20261125120000_adr068_order_hold_started_at` (ADR-068 mục 8) | `orders.holdStartedAt` | đã áp 🟡 Quốc báo | chưa xác minh ❓ |
+- Trình tự (với `PRISMA_MIGRATE_URL` trỏ **DB production** — role owner, cần quyền DDL ✅ `CLAUDE.md`):
+  1. `prisma migrate status` — xem migration nào đang chờ (mong đợi: một hoặc cả hai migration trên).
+  2. `pnpm db:migrate` (= `prisma migrate deploy`) — áp **mọi** migration chờ theo thứ tự, gồm cả hai migration trên trong một lần chạy.
+  3. `prisma migrate status` lần nữa — báo không còn migration chờ ❓.
+- Cách đặt biến/chạy trên VPS chưa có runbook ❓ — hỏi Quốc. Agent không tự chạy khi chưa được Quốc duyệt.
+- Cả hai đều loại expand (chỉ thêm cột NULL / unique index, không DROP/RENAME/UPDATE) — theo comment SQL, code cũ không đọc cột mới nên áp trước deploy an toàn ✅ đọc SQL.
 
 ## 1. Chuẩn bị 🟡
 - VPS có `APP_URL` là **HTTPS** (URL webhook dựng từ `APP_URL` — `buildWebhookNotifyUrl`) ✅ code.
@@ -148,6 +153,7 @@ hàng). Hai form giống nhau; mỗi bên dùng **tài khoản SePay của chín
 | Webhook **200** nhưng không có giao dịch nào; log `… ignored: other bank account` | Giao dịch thuộc tài khoản ngân hàng khác cùng tài khoản SePay | Đúng thiết kế; nếu là tài khoản nhận tiền thật → sửa Số tài khoản trong app |
 | Giao dịch ghi **"Thiếu mã hoá đơn"** / "Không tìm thấy hoá đơn" | Khách gõ sai nội dung, mã dạng cũ, hoặc tiền tố đã đổi | Đối chiếu rồi xác nhận từ giao dịch hoặc xác nhận tay |
 | Sau deploy: lỗi kiểu "column `paymentRef` does not exist" khi khách chọn SePay / mở đơn | Chưa chạy migration ADR-065 trên DB production (suy từ code ❓ chưa gặp thật) | Bước 0 |
+| Sau deploy: lỗi kiểu "column `holdStartedAt` does not exist" ở trang thanh toán / chọn phương thức / người bán mở lại đơn | Chưa chạy migration ADR-068 trên DB production (suy từ code ❓ chưa gặp thật) | Bước 0 |
 | Không lưu được: "Tiền tố mã … phải gồm 2–5 chữ cái…" | Tiền tố có số/dấu, hoặc ngoài 2–5 ký tự (form cũ cho phép platform 2–6 ký tự, Studio 1–4 ký tự, kể cả số) | Đổi tiền tố, đồng thời đổi mẫu trên SePay |
 
 ---

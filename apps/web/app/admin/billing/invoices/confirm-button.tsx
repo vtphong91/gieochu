@@ -1,8 +1,21 @@
 "use client";
 
-import { useActionState, useEffect, useId, useRef, useState, type MouseEvent, type SyntheticEvent } from "react";
+import {
+  useActionState,
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+  type Ref,
+  type SyntheticEvent,
+} from "react";
 import { brandColors } from "@gieochu/config/theme";
 import { FormBanner, GhostButton, Notice, PrimaryButton } from "../../_ui/kit";
+import { MenuItemButton, MenuItemLink } from "../../_ui/row-menu";
+import { IconEye, IconMoreHorizontal, IconRefresh } from "../../_ui/icons";
 // `import type` bị xoá hẳn khi biên dịch → không kéo code server (Prisma, email…) vào bundle client.
 import type { InvoiceStatusTarget } from "../../../../lib/subscription-billing";
 import {
@@ -244,27 +257,8 @@ function statusTargetDescription(
   }
 }
 
-/**
- * ADR-067 — "Đổi trạng thái…" hoá đơn gói (cột "Thao tác" của /admin/subscriptions và tab "Tất cả" của
- * /admin/billing/invoices). Server tính sẵn `targets` (trạng thái được phép chuyển tới) và luôn kiểm lại dưới khoá; nơi gọi
- * chỉ render nút khi `targets` khác rỗng (rỗng → "—").
- *
- * Cùng mẫu `<dialog>` + `showModal()` với `ManualConfirmButton`: focus tiêu đề khi mở, Esc / "Huỷ bỏ" / nền mờ để đóng (đang
- * gửi thì không đóng), đóng xong trả focus về nút mở; thành công → đóng hộp, phản hồi chính là badge trạng thái của dòng
- * (action revalidate cả hai trang) + câu thông báo ẩn cho trình đọc màn hình. Nhóm radio không chọn sẵn, bắt buộc chọn; cả thẻ
- * lựa chọn bấm được (≥ 44px). Nút submit là "Xác nhận", nút đóng là "Huỷ bỏ" — tránh trùng chữ với lựa chọn "Huỷ hoá đơn".
- */
-export function InvoiceStatusButton({
-  invoiceId,
-  invoiceCode,
-  amountLabel,
-  providerLabel,
-  currentStatusLabel,
-  targets,
-  autoProvider,
-  expired,
-  align = "end",
-}: {
+/** Dữ liệu một hoá đơn cho hộp "Đổi trạng thái…" (ADR-067). */
+export interface InvoiceStatusInfo {
   invoiceId: string;
   invoiceCode: string;
   amountLabel: string;
@@ -272,12 +266,36 @@ export function InvoiceStatusButton({
   currentStatusLabel: string;
   /** Trạng thái được phép chuyển tới (server tính, thứ tự hiển thị giữ nguyên). */
   targets: InvoiceStatusTarget[];
-  /** Cổng tự xác nhận qua webhook (SePay/MoMo) — nhắc thêm ở lựa chọn "Đã thanh toán". */
+  /** Cổng tự xác nhận qua webhook (SePay/MoMo) — nhắc thêm ở lựa chọn "Đã thanh toán" / "Huỷ hoá đơn". */
   autoProvider: boolean;
   /** Hoá đơn đã hết hạn — lựa chọn "Đã thanh toán" nêu việc tính lại kỳ. */
   expired: boolean;
-  align?: "start" | "end";
+}
+
+export interface InvoiceStatusDialogHandle {
+  open: () => void;
+}
+
+/**
+ * ADR-067 — hộp "Đổi trạng thái hoá đơn" (không gồm nút mở). Server tính sẵn `targets` và luôn kiểm lại dưới khoá. Nơi dùng giữ
+ * `ref` để gọi `open()` và truyền `onClosed` để trả focus về đúng nút đã mở (nút "Đổi trạng thái…" ở trang chi tiết, hoặc nút
+ * "⋯" của menu dòng — ADR-069; mục menu đã biến mất khi menu đóng).
+ *
+ * Cùng mẫu `<dialog>` + `showModal()` với `ManualConfirmButton`: focus tiêu đề khi mở, Esc / "Huỷ bỏ" / nền mờ để đóng (đang
+ * gửi thì không đóng); thành công → đóng hộp, phản hồi chính là badge trạng thái (action revalidate) + câu thông báo ẩn cho
+ * trình đọc màn hình. Nhóm radio không chọn sẵn, bắt buộc chọn; cả thẻ lựa chọn bấm được (≥ 44px). Nút submit là "Xác nhận",
+ * nút đóng là "Huỷ bỏ" — tránh trùng chữ với lựa chọn "Huỷ hoá đơn".
+ */
+export function InvoiceStatusDialog({
+  ref,
+  info,
+  onClosed,
+}: {
+  ref: Ref<InvoiceStatusDialogHandle>;
+  info: InvoiceStatusInfo;
+  onClosed: () => void;
 }) {
+  const { invoiceId, invoiceCode, amountLabel, providerLabel, currentStatusLabel, targets, autoProvider, expired } = info;
   const action = changeInvoiceStatusAction.bind(null, invoiceId);
   const [state, formAction, isPending] = useActionState(action, initialStatusState);
   const uid = useId();
@@ -287,7 +305,6 @@ export function InvoiceStatusButton({
   const noteHintId = `${uid}-note-hint`;
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   // State của action ở lần mở gần nhất: chỉ kết quả MỚI hơn mốc này mới hiện (lỗi cũ không hiện lại khi mở lần sau).
   const [baseline, setBaseline] = useState<ChangeInvoiceStatusState | null>(null);
@@ -301,15 +318,18 @@ export function InvoiceStatusButton({
     if (state.success) dialogRef.current?.close();
   }, [state]);
 
-  function openDialog() {
-    const dialog = dialogRef.current;
-    if (!dialog || dialog.open) return;
-    setBaseline(state);
-    setOpen(true);
-    formRef.current?.reset();
-    dialog.showModal();
-    titleRef.current?.focus();
-  }
+  useImperativeHandle(ref, () => ({
+    open() {
+      const dialog = dialogRef.current;
+      if (!dialog || dialog.open) return;
+      setBaseline(state);
+      setOpen(true);
+      formRef.current?.reset();
+      dialog.showModal();
+      // Focus tiêu đề: trình đọc màn hình đọc tên + mô tả hộp trước; không bật bàn phím ảo trên mobile.
+      titleRef.current?.focus();
+    },
+  }));
 
   function closeDialog() {
     if (!isPending) dialogRef.current?.close();
@@ -317,7 +337,7 @@ export function InvoiceStatusButton({
 
   function handleClosed() {
     setOpen(false);
-    triggerRef.current?.focus();
+    onClosed();
   }
 
   function handleCancel(event: SyntheticEvent<HTMLDialogElement>) {
@@ -331,12 +351,7 @@ export function InvoiceStatusButton({
   const ctx = { amountLabel, autoProvider, expired };
 
   return (
-    <div className={`inline-flex flex-col ${align === "end" ? "items-end" : "items-start"}`}>
-      <button ref={triggerRef} type="button" aria-haspopup="dialog" onClick={openDialog} disabled={isPending} className={TRIGGER_CLASS}>
-        <span className="md:hidden">Đổi…</span>
-        <span className="hidden md:inline">Đổi trạng thái…</span>
-        <span className="sr-only">{` hoá đơn ${invoiceCode}`}</span>
-      </button>
+    <>
       {/* Vùng thông báo chỉ dành cho trình đọc màn hình (sr-only — không để lại khối trống nào trong ô bảng). */}
       <span role="status" className="sr-only">
         {announced}
@@ -454,6 +469,223 @@ export function InvoiceStatusButton({
           </div>
         </form>
       </dialog>
+    </>
+  );
+}
+
+/**
+ * Nút "Đổi trạng thái…" + hộp (ADR-067) — dùng ở bảng "Lịch sử hoá đơn gói" của trang chi tiết thuê bao (ADR-069). Nhãn gọn
+ * "Đổi…" dưới md; mã hoá đơn nằm trong `sr-only` (tên truy cập bắt đầu đúng bằng chữ hiển thị).
+ */
+export function InvoiceStatusButton({ align = "end", ...info }: InvoiceStatusInfo & { align?: "start" | "end" }) {
+  const dialogRef = useRef<InvoiceStatusDialogHandle>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  return (
+    <div className={`inline-flex flex-col ${align === "end" ? "items-end" : "items-start"}`}>
+      <button ref={triggerRef} type="button" aria-haspopup="dialog" onClick={() => dialogRef.current?.open()} className={TRIGGER_CLASS}>
+        <span className="md:hidden">Đổi…</span>
+        <span className="hidden md:inline">Đổi trạng thái…</span>
+        <span className="sr-only">{` hoá đơn ${info.invoiceCode}`}</span>
+      </button>
+      <InvoiceStatusDialog ref={dialogRef} info={info} onClosed={() => triggerRef.current?.focus()} />
+    </div>
+  );
+}
+
+const MENU_GAP = 4;
+const VIEWPORT_EDGE = 8;
+
+/**
+ * ADR-069 — menu dòng "⋯" ở cột "Thao tác" (/admin/subscriptions, tab "Tất cả" của /admin/billing/invoices): "Xem chi tiết"
+ * (trang chi tiết thuê bao, khi có `detailHref`) + "Đổi trạng thái hoá đơn…" (khi `status.targets` khác rỗng, mở hộp ADR-067).
+ * Không có mục nào → nơi gọi hiện "—".
+ *
+ * KHÔNG dùng `RowMenu` của kit ở đây: hai trang này bọc bảng trong `overflow-x-auto` (bảng nhiều cột) — menu `position:absolute`
+ * của kit bị khung cắt và làm khung hiện thanh cuộn dọc (overflow-x khác `visible` kéo overflow-y thành `auto`). Menu ở đây là
+ * popover (`popover="auto"`, top layer — không bị overflow/transform của tổ tiên cắt), đặt `position:fixed` theo toạ độ nút "⋯":
+ * căn mép phải nút, kẹp trong viewport, thiếu chỗ phía dưới thì mở lên trên. Bấm ra ngoài đóng (light dismiss của popover), Esc
+ * đóng + trả focus về nút, Tab rời menu thì đóng, cuộn/resize thì đóng (không để menu lơ lửng lệch dòng). Mở menu → focus mục
+ * đầu; ↑/↓/Home/End di chuyển giữa các mục. Hộp đổi trạng thái nằm ngoài menu; đóng hộp → focus về nút "⋯".
+ */
+export function InvoiceRowMenu({
+  label,
+  detailHref,
+  status,
+}: {
+  /** Tên truy cập của nút "⋯", vd "Thao tác đơn hàng gói của Gian hàng A". */
+  label: string;
+  detailHref: string | null;
+  status: InvoiceStatusInfo | null;
+}) {
+  const dialogRef = useRef<InvoiceStatusDialogHandle>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const pointerPress = useRef<{ wasOpen: boolean } | null>(null);
+  const lastClosedAt = useRef(0);
+  const menuId = useId();
+  const [open, setOpen] = useState(false);
+  const canChangeStatus = status !== null && status.targets.length > 0;
+
+  function menuItems(): HTMLElement[] {
+    return Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
+  }
+
+  function isMenuOpen(): boolean {
+    const menu = menuRef.current;
+    // Trình duyệt chưa hỗ trợ Popover API: `:popover-open` làm `matches()` ném lỗi.
+    if (!menu || typeof menu.showPopover !== "function") return false;
+    return menu.matches(":popover-open");
+  }
+
+  function placeMenu() {
+    const trigger = triggerRef.current;
+    const menu = menuRef.current;
+    if (!trigger || !menu) return;
+    const anchor = trigger.getBoundingClientRect();
+    const box = menu.getBoundingClientRect();
+    let top = anchor.bottom + MENU_GAP;
+    // Dòng sát đáy viewport: mở lên trên nếu phía trên đủ chỗ.
+    if (top + box.height > window.innerHeight - VIEWPORT_EDGE && anchor.top - MENU_GAP - box.height >= VIEWPORT_EDGE) {
+      top = anchor.top - MENU_GAP - box.height;
+    }
+    const left = Math.min(Math.max(VIEWPORT_EDGE, anchor.right - box.width), window.innerWidth - box.width - VIEWPORT_EDGE);
+    menu.style.top = `${Math.max(VIEWPORT_EDGE, top)}px`;
+    menu.style.left = `${Math.max(VIEWPORT_EDGE, left)}px`;
+  }
+
+  function openMenu(focus: "first" | "last") {
+    const menu = menuRef.current;
+    if (!menu || typeof menu.showPopover !== "function" || isMenuOpen()) return;
+    menu.showPopover();
+    placeMenu();
+    const items = menuItems();
+    (focus === "first" ? items[0] : items[items.length - 1])?.focus();
+  }
+
+  function closeMenu(returnFocus: boolean) {
+    if (isMenuOpen()) menuRef.current?.hidePopover();
+    if (returnFocus) triggerRef.current?.focus();
+  }
+
+  // Đồng bộ `aria-expanded` với trạng thái popover (kể cả khi đóng bằng light dismiss / khi hộp modal mở).
+  useEffect(() => {
+    const menu = menuRef.current;
+    if (!menu) return;
+    function onToggle(event: Event) {
+      const isOpen = (event as ToggleEvent).newState === "open";
+      if (!isOpen) lastClosedAt.current = performance.now();
+      setOpen(isOpen);
+    }
+    menu.addEventListener("toggle", onToggle);
+    return () => menu.removeEventListener("toggle", onToggle);
+  }, []);
+
+  // Đang mở: cuộn (trang hoặc khung bảng) / đổi kích thước → đóng, tránh menu lệch khỏi dòng của nó.
+  useEffect(() => {
+    if (!open) return;
+    function close() {
+      const menu = menuRef.current;
+      if (menu && typeof menu.showPopover === "function" && menu.matches(":popover-open")) menu.hidePopover();
+    }
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [open]);
+
+  function handleTriggerKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      openMenu(event.key === "ArrowDown" ? "first" : "last");
+    }
+  }
+
+  function handleMenuKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const items = menuItems();
+    const index = items.indexOf(document.activeElement as HTMLElement);
+    switch (event.key) {
+      case "Escape":
+        event.preventDefault();
+        closeMenu(true);
+        break;
+      case "Tab":
+        closeMenu(false);
+        break;
+      case "ArrowDown":
+        event.preventDefault();
+        items[(index + 1) % items.length]?.focus();
+        break;
+      case "ArrowUp":
+        event.preventDefault();
+        items[(index - 1 + items.length) % items.length]?.focus();
+        break;
+      case "Home":
+        event.preventDefault();
+        items[0]?.focus();
+        break;
+      case "End":
+        event.preventDefault();
+        items[items.length - 1]?.focus();
+        break;
+    }
+  }
+
+  return (
+    <div className="inline-flex">
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={menuId}
+        aria-label={label}
+        onPointerDown={() => {
+          // Bấm chuột vào chính nút "⋯" khi menu đang mở: light dismiss của popover đóng menu TRƯỚC sự kiện click → nhớ trạng
+          // thái lúc nhấn (và mốc vừa đóng) để click không mở lại ngay menu vừa đóng.
+          pointerPress.current = { wasOpen: isMenuOpen() };
+        }}
+        onClick={() => {
+          const press = pointerPress.current;
+          pointerPress.current = null;
+          const justDismissed = press !== null && performance.now() - lastClosedAt.current < 500;
+          if (isMenuOpen()) closeMenu(false);
+          else if (!(press?.wasOpen || justDismissed)) openMenu("first");
+        }}
+        onKeyDown={handleTriggerKeyDown}
+        className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-md text-gray-500 transition hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500 motion-reduce:transition-none lg:h-8 lg:w-8"
+      >
+        <IconMoreHorizontal className="h-[18px] w-[18px]" />
+      </button>
+      <div
+        ref={menuRef}
+        id={menuId}
+        popover="auto"
+        role="menu"
+        aria-label={label}
+        onKeyDown={handleMenuKeyDown}
+        onClick={(event) => {
+          // Bấm một mục → đóng menu (Link vẫn điều hướng; mục mở hộp đã gọi `open()` trước — hộp tự nhận focus).
+          if ((event.target as HTMLElement).closest('[role="menuitem"]')) closeMenu(false);
+        }}
+        // Ghi đè style mặc định của popover (inset:0 + margin:auto = giữa màn hình); toạ độ đặt bằng `placeMenu()`.
+        className="fixed inset-auto m-0 w-56 overflow-hidden rounded-lg border bg-white px-0 py-1 text-left shadow-lg"
+        style={{ borderColor: "#E5E7EB" }}
+      >
+        {detailHref ? (
+          <MenuItemLink href={detailHref} icon={<IconEye />}>
+            Xem chi tiết
+          </MenuItemLink>
+        ) : null}
+        {canChangeStatus ? (
+          <MenuItemButton type="button" aria-haspopup="dialog" icon={<IconRefresh />} onClick={() => dialogRef.current?.open()}>
+            Đổi trạng thái hoá đơn…
+          </MenuItemButton>
+        ) : null}
+      </div>
+      {canChangeStatus ? <InvoiceStatusDialog ref={dialogRef} info={status} onClosed={() => triggerRef.current?.focus()} /> : null}
     </div>
   );
 }

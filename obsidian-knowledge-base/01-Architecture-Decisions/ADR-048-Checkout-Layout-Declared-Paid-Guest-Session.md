@@ -27,7 +27,8 @@ Mức xác minh: ✅ Long đã đối chiếu code working tree · 🟡 theo `do
 > [!NOTE] Liên quan ADR-052 (KB) — tương ứng ADR-068 docs (2026-11-25)
 > Ngoại lệ "xác nhận sau hạn khi khách báo chuyển trước hạn" (Bổ sung ADR-062 mục 3) nay **chỉ còn áp cho webhook/job và hàm cũ `confirmOrderManually`**; người bán dùng
 > "Đổi trạng thái…" xác nhận được **mọi** đơn đã hết hạn, và mở lại đơn thì mốc "khách báo đã chuyển" bị xoá —
-> [[01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm|ADR-052 KB (≙ ADR-068)]]. Nội dung bên dưới giữ nguyên.
+> [[01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm|ADR-052 KB (≙ ADR-068)]]. **Q3 bị sửa** (ADR-068 mục 8): hạn giữ của phương thức tính
+> từ `holdStartedAt ?? createdAt` (người bán mở lại đơn đặt `holdStartedAt`). Nội dung bên dưới giữ nguyên.
 
 ---
 

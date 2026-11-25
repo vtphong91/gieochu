@@ -1976,7 +1976,7 @@ làm dữ liệu theo brief của Quốc; Long đọc code working tree 2026-10-
   về nút) / "Xoá ghi chú"; lỗi `role="alert"`. Không `window.confirm`.
 * Không có nút sửa ghi chú (ghi chú bất biến).
 
-### 20.9. Hộp "Đổi trạng thái…" đơn hàng — `OrderStatusDialog` / `OrderStatusButton` (ADR-068) ✅ đọc code 2026-11-25 (working tree, chưa commit) / ❓ trình duyệt
+### 20.9. Hộp "Đổi trạng thái…" đơn hàng — `OrderStatusDialog` / `OrderStatusButton` (ADR-068) ✅ đọc code 2026-11-25 (đã commit `2ccc2fc`) / ❓ trình duyệt
 
 Quyết định thiết kế của Phong, Long nhận qua brief Quốc 2026-11-25 và đối chiếu code. File `app/studio/[tenantSlug]/orders/_ui/order-status-dialog.tsx` (client). Cùng chuẩn với
 hộp hoá đơn gói ở System Center (§27.7). Nghiệp vụ: [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]] §2.4, §3.3.
@@ -2599,7 +2599,7 @@ Quyết định thiết kế của Phong, Long nhận qua brief Quốc 2026-11-2
 * **Component hộp xác nhận dùng chung cho kit** — `ManualConfirmButton` đang tự viết `<dialog>`; chưa tách thành component kit. *(2026-11-25: thêm `InvoiceStatusButton`
   §27.7 và `OrderStatusDialog` §20.9 cũng tự viết `<dialog>` cùng mẫu — 3 bản sao.)*
 
-### 27.7. Hộp "Đổi trạng thái…" hoá đơn gói — `InvoiceStatusButton` (ADR-067) ✅ đọc code 2026-11-25 (working tree, chưa commit) / ❓ trình duyệt
+### 27.7. Hộp "Đổi trạng thái…" hoá đơn gói — `InvoiceStatusButton` (ADR-067) ✅ đọc code 2026-11-25 (đã commit `2ccc2fc`) / ❓ trình duyệt
 
 Quyết định thiết kế của Phong qua brief Quốc 2026-11-25. File `app/admin/billing/invoices/confirm-button.tsx` (client). Nghiệp vụ:
 [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5O · [[01-Architecture-Decisions/ADR-051-Subscription-Invoice-Status-Change-Void-Reopen|ADR-051 KB (≙ ADR-067)]].
@@ -2624,6 +2624,30 @@ Quyết định thiết kế của Phong qua brief Quốc 2026-11-25. File `app/
   revalidate + `role="status"` `sr-only` "Đã đổi trạng thái hoá đơn {mã}.".
 * ❓ **Rủi ro focus** như §20.9: sau khi chuyển PAID, `statusTargets` rỗng → nút bị thay bằng "—" → focus không còn chỗ trả về. ❓ **Ô vuông xanh ở cột "Thao tác"** (nêu trong brief
   Quốc 2026-11-25) — **chưa tái hiện được**; chờ kiểm trên bản deploy (KB-Audit §51).
+* *Từ ADR-069 (§27.8):* ở `/admin/subscriptions` và tab "Tất cả", nút này được thay bằng menu "⋯"; `InvoiceStatusButton` chỉ còn ở bảng hoá đơn của trang chi tiết.
+
+### 27.8. Menu "⋯" cột "Thao tác" + trang chi tiết đơn hàng gói (ADR-069) ✅ đọc code 2026-11-25 (working tree, chưa commit) / ❓ trình duyệt
+
+Quyết định thiết kế của Phong qua brief Quốc 2026-11-25. Nghiệp vụ: [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5P ·
+[[01-Architecture-Decisions/ADR-053-Admin-Subscription-Detail-Row-Menu|ADR-053 KB (≙ ADR-069)]].
+
+* **Pattern dùng chung "menu dòng + hộp mở bằng ref"** (System Center `InvoiceRowMenu` ⇄ Studio `OrderRowActions`/`OrderStatusDialog` §20.9):
+  - Cột "Thao tác" là **`RowMenu size="touch"`** (kit `admin/_ui/row-menu`), tên truy cập nút "⋯" theo ngữ cảnh dòng (`label`, vd "Thao tác đơn hàng gói của {gian hàng}",
+    "Thao tác hoá đơn {mã}"). Mục: `MenuItemLink` **"Xem chi tiết"** (`IconEye`) · `MenuItemButton` **"Đổi trạng thái hoá đơn…"** (`IconRefresh`, `aria-haspopup="dialog"`).
+  - Hộp (`InvoiceStatusDialog`) **tách khỏi nút mở**, render **ngoài** `RowMenu` (menu tự đóng khi bấm), mở bằng `ref.open()` (`useImperativeHandle`); đóng xong `onClosed` trả
+    focus về **nút "⋯"** (tìm `button[aria-haspopup="menu"]` trong wrapper). Ở trang chi tiết, `InvoiceStatusButton` = nút "Đổi trạng thái…" + cùng hộp, trả focus về nút đó.
+  - Nội dung/hành vi hộp không đổi so với §27.7 (radio dạng thẻ, "Xác nhận"/"Huỷ bỏ", ghi chú ≤ 500).
+* **`/admin/subscriptions`:** menu luôn có ("Xem chi tiết" luôn hiện) → **bỏ nhánh "—"** ở cột "Thao tác". Tab "Tất cả": "—" chỉ còn khi không thuê bao + không còn trạng thái.
+* **Trang `/admin/subscriptions/[subscriptionId]`** (wrapper `<div>` vì layout admin đã có `<main>`, `px-5 py-8 lg:px-8`):
+  - `AdminPageHeader` "Chi tiết đơn hàng gói dịch vụ" + phụ đề tên gian hàng; nút `GhostLinkButton` "← Đơn hàng gói dịch vụ".
+  - 3 `<section aria-labelledby>`, tiêu đề kèm ô icon `surface` (`IconPackage`, `IconReceipt`, `IconClock`):
+    1. **Thông tin thuê bao** — thẻ `dl` lưới 1/2/3 cột (`sm`/`lg`).
+    2. **Lịch sử hoá đơn gói** — `DataTable` (caption, cột Cổng/Ngày thu ẩn dưới `md`, Ngày tạo/Hạn ẩn dưới `lg`; dưới ngưỡng lặp cổng + ngày tạo dưới mã), dòng kỳ dưới mã hoá
+       đơn, cột "Thao tác" `sr-only`; không lựa chọn → "—" + `sr-only` "Không có thao tác". Rỗng → `EmptyState`.
+    3. **Nhật ký thao tác** — `<ol>` chia dòng: `<time dateTime>` (cột 9rem từ `sm`) · nhãn action đậm + "· {người làm}" · "Hoá đơn {mã}" + "cũ → mới" (mũi tên `aria-hidden`,
+       `sr-only` " chuyển sang ") · ghi chú trong khung viền trái, `whitespace-pre-line` (tiền tố `sr-only` "Ghi chú: "). Rỗng → `EmptyState`.
+  - `loading.tsx`: khung xương cùng bố cục, `aria-busy`, `role="status"` `sr-only`, `motion-reduce:animate-none`.
+* ❓ **Ô vuông xanh ở cột "Thao tác"** — chưa tái hiện được; nhánh "—" ở `/admin/subscriptions` đã bỏ — chờ chủ dự án xác nhận sau deploy (KB-Audit §52).
 
 ---
 
@@ -2657,7 +2681,7 @@ Quyết định thiết kế của Phong qua brief Quốc 2026-11-25. File `app/
 * `apps/web/app/_ui/{nav-link,nav-dropdown,mobile-nav,site-header,site-footer}.tsx` (§1.1.1), `apps/web/app/_home-sections.tsx` (§12.9), `apps/web/app/admin/cms/{menu,phap-ly}/*` (§13.7), `apps/web/app/phap-ly/[slug]/{page.tsx,_ui/legal-toc.ts}` (§22) · [[02-System-Specs/System-Cms-Menu-Home-Seo-Specs|System-Cms-Menu-Home-Seo-Specs]] · [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]] · [[01-Architecture-Decisions/ADR-035-Menu-Home-Seo-Versioned-Terms|ADR-035 (≙ ADR-050)]]
 * `apps/web/app/admin/_ui/{kit,billing-labels,icons}.ts(x)`, `apps/web/app/admin/billing/invoices/page.tsx`, `apps/web/app/admin/subscriptions/page.tsx`, `apps/web/app/_ui/bank-transfer-panel.tsx`, `apps/web/app/[tenantSlug]/checkout/[orderCode]/{page,coupon-panel}.tsx`, `apps/web/app/studio/[tenantSlug]/billing/page.tsx` (§24) · [[01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr|ADR-041 (≙ ADR-056)]]
 * `apps/web/app/admin/_ui/{module-tabs,collapsible-section,unsaved-changes,in-page-tabs}.tsx`, `apps/web/app/admin/_ui/{nav-match,use-form-draft}.ts`, `apps/web/app/admin/cms/_ui/cms-tabs.ts`, `apps/web/app/admin/settings/_ui/settings-tabs.ts`, `apps/web/app/admin/_ui/sidebar-nav.tsx` (`match`), `apps/web/app/admin/layout.tsx`, `apps/web/app/studio/[tenantSlug]/layout.tsx` (Provider), `apps/web/app/studio/page.tsx` (Provider onboarding), `apps/web/app/studio/[tenantSlug]/settings/_ui/settings-tabs.ts`, `apps/web/app/studio/[tenantSlug]/{settings,settings/payments,products/_ui,products/[productId]/share-links,posts/_ui,storefront,coupons}/*` (GĐ 2), `docs/ke-hoach-toi-uu-layout-tab-accordion-2026-10-25.md` (§5 quy tắc full width, §11.1, §25) · [[01-Architecture-Decisions/ADR-043-Module-Tabs-Accordion-Unsaved-Guard|ADR-043 (≙ ADR-058)]] · [[01-Architecture-Decisions/ADR-042-Legal-Drafts-Import-Preview-Draft-Release|ADR-042 (≙ ADR-057)]] (§13.7)
-* `apps/web/app/admin/billing/invoices/confirm-button.tsx`, `apps/web/app/admin/_ui/secret-key-field.tsx`, `apps/web/app/admin/billing/payment/sepay-form.tsx`, `apps/web/app/studio/[tenantSlug]/settings/payments/sepay-form.tsx`, `apps/web/lib/sepay-setup.ts`, `apps/web/app/admin/subscriptions/page.tsx` (§27) · [[01-Architecture-Decisions/ADR-049-Sepay-Numeric-Payment-Code-Shared|ADR-049 (≙ ADR-065)]] · [[01-Architecture-Decisions/ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider|ADR-050 (≙ ADR-066)]] · [[01-Architecture-Decisions/ADR-051-Subscription-Invoice-Status-Change-Void-Reopen|ADR-051 (≙ ADR-067)]] (§27.7)
+* `apps/web/app/admin/billing/invoices/confirm-button.tsx`, `apps/web/app/admin/_ui/secret-key-field.tsx`, `apps/web/app/admin/billing/payment/sepay-form.tsx`, `apps/web/app/studio/[tenantSlug]/settings/payments/sepay-form.tsx`, `apps/web/lib/sepay-setup.ts`, `apps/web/app/admin/subscriptions/page.tsx` (§27) · [[01-Architecture-Decisions/ADR-049-Sepay-Numeric-Payment-Code-Shared|ADR-049 (≙ ADR-065)]] · [[01-Architecture-Decisions/ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider|ADR-050 (≙ ADR-066)]] · [[01-Architecture-Decisions/ADR-051-Subscription-Invoice-Status-Change-Void-Reopen|ADR-051 (≙ ADR-067)]] (§27.7) · `apps/web/app/admin/subscriptions/[subscriptionId]/{page,loading}.tsx` (§27.8) · [[01-Architecture-Decisions/ADR-053-Admin-Subscription-Detail-Row-Menu|ADR-053 (≙ ADR-069)]]
 * `apps/web/app/studio/[tenantSlug]/orders/_ui/{order-status-dialog,order-row-actions,order-list}.tsx`, `apps/web/app/studio/[tenantSlug]/orders/[orderId]/{page,order-status-actions}.tsx` (§20.9) · [[01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm|ADR-052 (≙ ADR-068)]]
 * [[04-Operations-Runbooks/README|Quay lại danh mục Operations Runbooks]]
 

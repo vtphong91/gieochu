@@ -6,7 +6,7 @@ import { IconPackage } from "../_ui/icons";
 import { Pagination } from "../_ui/pagination";
 import { parsePagination } from "../_ui/pagination-utils";
 import { isManualConfirmProvider } from "@gieochu/payments";
-import { InvoiceStatusButton } from "../billing/invoices/confirm-button";
+import { InvoiceRowMenu } from "../billing/invoices/confirm-button";
 import { formatVndFull } from "../_ui/stats-chart";
 import {
   INVOICE_PROVIDER_LABEL,
@@ -33,7 +33,7 @@ function Dash({ srText }: { srText: string }) {
 
 /**
  * ADR-056 mục 2 (+ bổ sung: nhãn "Đơn hàng") — danh sách thuê bao gói dịch vụ (L1: subscriptions/plans/subscription_invoices + tên/slug gian hàng).
- * Không đọc đơn hàng/khách hàng của tenant (§7.9). ADR-067: cột "Thao tác" đổi trạng thái hoá đơn gần nhất (Đã thanh toán / Huỷ / mở lại, mọi cổng).
+ * Không đọc đơn hàng/khách hàng của tenant (§7.9). ADR-069: cột "Thao tác" là menu "⋯" — "Xem chi tiết" (`/admin/subscriptions/[id]`) + đổi trạng thái hoá đơn gần nhất (ADR-067).
  */
 export default async function AdminSubscriptionsPage({
   searchParams,
@@ -108,7 +108,7 @@ export default async function AdminSubscriptionsPage({
                       </Link>
                       <span className="block text-xs text-gray-500">/{sub.tenant.slug}</span>
                       <span className="block text-xs text-gray-500 md:hidden">Gói: {sub.plan.name}</span>
-                      {/* Dưới md cột "Hoá đơn gần nhất" ẩn → lặp mã + trạng thái hoá đơn để biết nút "Đổi…" áp cho hoá đơn nào. */}
+                      {/* Dưới md cột "Hoá đơn gần nhất" ẩn → lặp mã + trạng thái hoá đơn để biết "Đổi trạng thái hoá đơn…" áp cho hoá đơn nào. */}
                       {sub.latestInvoice ? (
                         <span className="mt-1.5 flex flex-wrap items-center gap-1.5 md:hidden">
                           <span className="sr-only">Hoá đơn gần nhất: </span>
@@ -143,23 +143,26 @@ export default async function AdminSubscriptionsPage({
                       )}
                     </Td>
                     <Td className="text-right">
-                      {/* ADR-067: "Đổi trạng thái…" theo danh sách trạng thái server cho phép; không còn trạng thái nào → "—". */}
-                      {sub.latestInvoice && sub.latestInvoice.statusTargets.length > 0 ? (
-                        <InvoiceStatusButton
-                          invoiceId={sub.latestInvoice.id}
-                          invoiceCode={sub.latestInvoice.code}
-                          amountLabel={formatVndFull(sub.latestInvoice.amountVnd)}
-                          providerLabel={INVOICE_PROVIDER_LABEL[sub.latestInvoice.provider]}
-                          currentStatusLabel={INVOICE_STATUS_LABEL[sub.latestInvoice.status]}
-                          targets={sub.latestInvoice.statusTargets}
-                          expired={sub.latestInvoice.status === "EXPIRED"}
-                          autoProvider={!isManualConfirmProvider(sub.latestInvoice.provider)}
-                        />
-                      ) : (
-                        <span className="text-gray-500">
-                          <Dash srText="Không có thao tác" />
-                        </span>
-                      )}
+                      {/* ADR-069: menu "⋯" — "Xem chi tiết" (luôn có) + "Đổi trạng thái hoá đơn…" cho hoá đơn gần nhất (ADR-067). */}
+                      <InvoiceRowMenu
+                        label={`Thao tác đơn hàng gói của ${sub.tenant.name}`}
+                        detailHref={`${BASE_PATH}/${sub.id}`}
+                        status={
+                          sub.latestInvoice
+                            ? {
+                                invoiceId: sub.latestInvoice.id,
+                                invoiceCode: sub.latestInvoice.code,
+                                amountLabel: formatVndFull(sub.latestInvoice.amountVnd),
+                                providerLabel: INVOICE_PROVIDER_LABEL[sub.latestInvoice.provider],
+                                currentStatusLabel: INVOICE_STATUS_LABEL[sub.latestInvoice.status],
+                                targets: sub.latestInvoice.statusTargets,
+                                expired: sub.latestInvoice.status === "EXPIRED",
+                                autoProvider: !isManualConfirmProvider(sub.latestInvoice.provider),
+                              }
+                            : null
+                        }
+                      />
+
                     </Td>
                   </Tr>
                 ))}

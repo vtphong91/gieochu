@@ -13,7 +13,8 @@ author: Long
 
 # 📐 Đặc Tả: Trang Đơn Hàng Studio — danh sách + chi tiết (`/studio/{slug}/orders` — ADR-046, ADR-047, ADR-048)
 
-> **Cập nhật ADR-068 + Bổ sung (2026-11-25, Long đối chiếu code working tree, chưa commit; không migration, không `route.ts`):** thao tác xác nhận thanh toán + huỷ gộp
+> **Cập nhật ADR-068 + Bổ sung (2026-11-25, Long đối chiếu code; đã commit `2ccc2fc`; không `route.ts`; mục 8 thêm migration expand `orders.holdStartedAt` — đã áp DB
+> `.env` 🟡, production chưa xác minh ❓):** thao tác xác nhận thanh toán + huỷ gộp
 > thành **"Đổi trạng thái…"** (Đã thanh toán / Chưa thanh toán (mở lại) / Huỷ đơn) theo `statusTargets` do server tính — người bán xác nhận được đơn **đã hết hạn**, mở lại
 > đơn hết hạn/đã huỷ, ghi chú **không bắt buộc** (thành ghi chú nội bộ). `confirmOrderManuallyAction`, `cancelOrderAction`, `confirm-form.tsx`, `CancelOrderButton` đã xoá ✅
 > `git diff`. Chi tiết §2.4, §3.3; luật trạng thái: [[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.14; quyết định:
@@ -119,8 +120,8 @@ có hồ sơ → UI "Chưa có họ tên"), tên các tài liệu (`titleSnapsho
 Luật khi thực hiện (server kiểm lại): [[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.14. Tóm tắt:
 - **Đã thanh toán** — mọi cổng, **kể cả đơn đã hết hạn**, không cần khách báo chuyển (thay luật ADR-061 cho người bán; webhook không đổi). Dùng `markOrderPaid` (quyền tải,
   mã giảm giá, email cho khách).
-- **Mở lại** — giữ giá, mã giảm giá, phương thức, `checkoutPayload`, `paymentRef`; hạn giữ mới = lúc mở lại + 72/48 giờ theo phương thức; xoá mốc "khách báo đã chuyển" và
-  mốc nhắc khách; **không** gửi email cho khách. Chặn: tài liệu ngừng bán / gian hàng không ACTIVE (`PRODUCT_UNAVAILABLE`), khách đã có quyền tải tài liệu qua đơn khác
+- **Mở lại** — giữ giá, mã giảm giá, phương thức, `checkoutPayload`, `paymentRef`; hạn giữ mới = lúc mở lại + 72/48 giờ theo phương thức và **`holdStartedAt` = lúc mở lại**
+  (ADR-068 mục 8 — khách chọn/đổi được phương thức, hạn mỗi phương thức tính từ mốc này); xoá mốc "khách báo đã chuyển" và mốc nhắc khách; **không** gửi email cho khách. Chặn: tài liệu ngừng bán / gian hàng không ACTIVE (`PRODUCT_UNAVAILABLE`), khách đã có quyền tải tài liệu qua đơn khác
   (`ALREADY_OWNED`), khách là chủ gian hàng (`CANNOT_BUY_OWN_PRODUCT`).
 - **Huỷ đơn** — PENDING hoặc EXPIRED.
 - **Ghi chú không bắt buộc** (≤ 500 ký tự, cắt) → **ghi chú nội bộ** của đơn (`order_notes`, §3.2 — **khách không thấy**) dạng `[Đổi trạng thái: {cũ} → {mới}] {ghi chú}`,
@@ -159,7 +160,7 @@ Luật trạng thái gốc: [[02-System-Specs/Order-State-Machine|Order-State-Ma
 | :-- | :-- |
 | `UNPAID` | `paidAt` null — kèm `provider` khách đã chọn lúc checkout (có thể null) |
 | `PROVIDER` | Có giao dịch tenant `matchStatus = MATCHED` — kèm cổng, mã giao dịch, thời điểm |
-| `MANUAL` | Không có giao dịch MATCHED nhưng `confirmNote` có giá trị (trước ADR-068 ghi chú bắt buộc khi xác nhận tay; **từ ADR-068 ghi chú không bắt buộc** → người bán xác nhận không ghi chú thì đơn rơi xuống `UNKNOWN` — KB-Audit §51) |
+| `MANUAL` ("Xác nhận thủ công") | Không có giao dịch MATCHED (giao dịch cổng luôn ưu tiên) **và** (`confirmNote` có giá trị **hoặc** có audit `ORDER_MANUALLY_CONFIRMED` của đơn — ADR-068 mục 9 ✅ code, dùng lại các dòng audit đã nạp cho dòng thời gian, không cột mới). Giới hạn: audit không ghi được (vd bảng thiếu) **và** không ghi chú → vẫn `UNKNOWN` |
 | `FREE` | Đơn 0đ |
 | `UNKNOWN` | Đã thanh toán nhưng không thuộc các trường hợp trên (dữ liệu cũ) |
 

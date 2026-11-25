@@ -1,5 +1,6 @@
 import {
   AppError,
+  auditActionLabel,
   computeRenewalPeriod,
   DISPLAY_TIME_ZONE,
   generateInvoiceCode,
@@ -28,7 +29,7 @@ import { getEnv } from "@gieochu/config";
 import { renderInvoiceAwaitingReconciliationEmail } from "@gieochu/email";
 import { getSupportEmail, getSystemSettings } from "./system-settings";
 import { sendEmailNow, type ScheduleAfterResponse } from "./email-dispatch";
-import { audit } from "./audit";
+import { audit, isAuditTableMissing } from "./audit";
 import { getPlatformPaymentConfigRow } from "./platform-payment";
 import { isMissingEnumValueError } from "./db-errors";
 
@@ -760,7 +761,8 @@ export async function listSubscriptionInvoices(input: ListSubscriptionInvoicesIn
         createdAt: true,
         paidAt: true,
         dueAt: true,
-        tenant: { select: { id: true, name: true, slug: true } },
+        // ADR-069: id thuê bao của gian hàng — menu "Xem chi tiết" ở tab "Tất cả".
+        tenant: { select: { id: true, name: true, slug: true, subscription: { select: { id: true } } } },
         plan: { select: { code: true, name: true } },
       },
     }),
@@ -770,7 +772,17 @@ export async function listSubscriptionInvoices(input: ListSubscriptionInvoicesIn
     throw error;
   });
   // ADR-067: trạng thái đích hợp lệ tính ở server, truyền xuống hộp "Đổi trạng thái…".
-  return { items: items.map((item) => ({ ...item, statusTargets: invoiceStatusTargets(item.status) })), total, page, pageSize };
+  return {
+    items: items.map(({ tenant: { subscription, ...tenant }, ...item }) => ({
+      ...item,
+      tenant,
+      subscriptionId: subscription?.id ?? null,
+      statusTargets: invoiceStatusTargets(item.status),
+    })),
+    total,
+    page,
+    pageSize,
+  };
 }
 
 export interface ListSubscriptionsInput {
@@ -833,6 +845,140 @@ export async function listSubscriptions(input: ListSubscriptionsInput) {
     };
   });
   return { items, total, page, pageSize };
+}
+
+// ───────────────────────── ADR-069: chi tiết đơn hàng gói (System Center) ─────────────────────────
+
+export interface AdminSubscriptionDetail {
+  id: string; status: DbSubscriptionStatus; currentPeriodStart: Date; currentPeriodEnd: Date; graceEndsAt: Date | null;
+  plan: { code: string; name: string; isFree: boolean; priceVnd: number };
+  tenant: { id: string; name: string; slug: string; status: string };
+  invoices: Array<{ id: string; code: string; status: DbInvoiceStatus; provider: DbPaymentProviderId; amountVnd: number;
+    periodStart: Date; periodEnd: Date; createdAt: Date; dueAt: Date; paidAt: Date | null; statusTargets: InvoiceStatusTarget[] }>;
+  activity: Array<{ id: string; action: string; actionLabel: string; createdAt: Date; actorLabel: string | null;
+    invoiceCode: string | null; fromStatus: string | null; toStatus: string | null; note: string | null }>;
+}
+
+/** Trần số dòng đọc cho trang chi tiết (an toàn hiệu năng — một gian hàng thực tế có vài chục hoá đơn). */
+const ADMIN_DETAIL_INVOICE_LIMIT = 500;
+const ADMIN_DETAIL_ACTIVITY_LIMIT = 100;
+
+function metadataString(meta: Record<string, unknown>, key: string): string | null {
+  const value = meta[key];
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+/**
+ * ADR-069 — dữ liệu trang `/admin/subscriptions/[subscriptionId]`. TIỀN ĐIỀU KIỆN: nơi gọi đã `requireRole("SYSTEM_ADMIN")`.
+ * Chỉ bảng L1 (subscriptions, plans, tenants, subscription_invoices, subscription_refund_requests — chỉ id, users — tên/email
+ * người làm) + `audit_logs` (L1, không RLS — đọc bằng getPrismaClient như `lib/audit-query.ts`) giới hạn ĐÚNG mục tiêu là hoá đơn
+ * gói / yêu cầu hoàn tiền gói của gian hàng này. Không đọc đơn hàng/khách hàng của gian hàng (§7.9).
+ * Nhật ký chỉ lấy các khoá metadata `fromStatus`/`toStatus`/`note` (và `previousInvoiceStatus` của xác nhận trễ) — không trả
+ * metadata thô (giao dịch SePay/MoMo, số tiền chênh…). Bảng audit chưa có → nhật ký rỗng.
+ */
+export async function getAdminSubscriptionDetail(subscriptionId: string): Promise<AdminSubscriptionDetail | null> {
+  const prisma = getPrismaClient();
+  const subscription = await prisma.subscription.findUnique({
+    where: { id: subscriptionId },
+    select: {
+      id: true,
+      status: true,
+      currentPeriodStart: true,
+      currentPeriodEnd: true,
+      graceEndsAt: true,
+      plan: { select: { code: true, name: true, isFree: true, priceVnd: true } },
+      tenant: { select: { id: true, name: true, slug: true, status: true } },
+    },
+  });
+  if (!subscription) return null;
+  const tenantId = subscription.tenant.id;
+
+  const invoiceRows = await prisma.subscriptionInvoice.findMany({
+    where: { tenantId },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: ADMIN_DETAIL_INVOICE_LIMIT,
+    select: {
+      id: true,
+      code: true,
+      status: true,
+      provider: true,
+      amountVnd: true,
+      periodStart: true,
+      periodEnd: true,
+      createdAt: true,
+      dueAt: true,
+      paidAt: true,
+    },
+  });
+  const invoiceIds = invoiceRows.map((row) => row.id);
+  const codeByInvoiceId = new Map(invoiceRows.map((row) => [row.id, row.code]));
+
+  const refundRequests =
+    invoiceIds.length > 0
+      ? await prisma.subscriptionRefundRequest.findMany({ where: { invoiceId: { in: invoiceIds } }, select: { id: true, invoiceId: true } })
+      : [];
+  const invoiceIdByRefundId = new Map(refundRequests.map((row) => [row.id, row.invoiceId]));
+
+  const auditRows =
+    invoiceIds.length > 0
+      ? await prisma.auditLog
+          .findMany({
+            where: {
+              tenantId,
+              OR: [
+                { targetType: "SubscriptionInvoice", targetId: { in: invoiceIds } },
+                ...(refundRequests.length > 0
+                  ? [{ targetType: "SubscriptionRefundRequest", targetId: { in: refundRequests.map((row) => row.id) } }]
+                  : []),
+              ],
+            },
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            take: ADMIN_DETAIL_ACTIVITY_LIMIT,
+            select: { id: true, action: true, actorId: true, targetType: true, targetId: true, metadata: true, createdAt: true },
+          })
+          .catch((error: unknown) => {
+            if (isAuditTableMissing(error)) return [];
+            throw error;
+          })
+      : [];
+
+  const actorIds = [...new Set(auditRows.flatMap((row) => (row.actorId ? [row.actorId] : [])))];
+  const actors =
+    actorIds.length > 0
+      ? await prisma.user.findMany({ where: { id: { in: actorIds } }, select: { id: true, email: true, profile: { select: { fullName: true } } } })
+      : [];
+  const actorLabelById = new Map(actors.map((user) => [user.id, user.profile?.fullName ?? user.email]));
+
+  return {
+    id: subscription.id,
+    status: subscription.status,
+    currentPeriodStart: subscription.currentPeriodStart,
+    currentPeriodEnd: subscription.currentPeriodEnd,
+    graceEndsAt: subscription.graceEndsAt,
+    plan: subscription.plan,
+    tenant: subscription.tenant,
+    invoices: invoiceRows.map((row) => ({ ...row, statusTargets: invoiceStatusTargets(row.status) })),
+    activity: auditRows.map((row) => {
+      const meta = (typeof row.metadata === "object" && row.metadata !== null && !Array.isArray(row.metadata) ? row.metadata : {}) as Record<
+        string,
+        unknown
+      >;
+      const invoiceId =
+        row.targetType === "SubscriptionInvoice" ? row.targetId : row.targetId ? (invoiceIdByRefundId.get(row.targetId) ?? null) : null;
+      return {
+        id: row.id,
+        action: row.action,
+        actionLabel: auditActionLabel(row.action),
+        createdAt: row.createdAt,
+        // null = hệ thống (webhook/cron); tài khoản người làm đã bị xoá → nhãn riêng.
+        actorLabel: row.actorId ? (actorLabelById.get(row.actorId) ?? "Tài khoản đã xoá") : null,
+        invoiceCode: (invoiceId ? codeByInvoiceId.get(invoiceId) : undefined) ?? null,
+        fromStatus: metadataString(meta, "fromStatus") ?? metadataString(meta, "previousInvoiceStatus"),
+        toStatus: metadataString(meta, "toStatus") ?? (row.action === "SUBSCRIPTION_PAID" ? "PAID" : null),
+        note: metadataString(meta, "note"),
+      };
+    }),
+  };
 }
 
 /** Lựa chọn cho bộ lọc gói ở /admin/subscriptions (kể cả gói đã ngừng bán — thuê bao cũ vẫn có thể đang dùng). */

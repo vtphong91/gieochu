@@ -130,7 +130,7 @@ Mọi nguồn tiền vào cho `Order` (webhook SePay, IPN MoMo, xác nhận th�
 [[Order-State-Machine]]. Đây là nguyên tắc kiến trúc quan trọng nhất của Tenant Billing: không có đường tắt
 nào khác ghi `Order.status = PAID`.
 
-**Cập nhật có điều kiện (ADR-068 "Bổ sung" mục 7, 2026-11-25 — working tree, chưa commit) ✅ code:** `markOrderPaid` ghi
+**Cập nhật có điều kiện (ADR-068 "Bổ sung" mục 7, 2026-11-25 — đã commit `2ccc2fc`) ✅ code:** `markOrderPaid` ghi
 `updateMany({ where: { id, status: <trạng thái vừa đọc> } })`. Hai nguồn áp cùng lúc (webhook/job + người bán xác nhận, hai lần bấm…) cùng đọc PENDING → lần sau chờ khoá
 dòng của lần trước, Postgres đánh giá lại `WHERE` trên bản đã commit → **0 dòng → no-op** (`fulfilled: false`), **không** tính lượt mã giảm giá, thống kê khách, email,
 audit lần hai. Người bán xác nhận mà thua cuộc → 409 `ORDER_ALREADY_PAID` (rollback ghi chú) — [[Order-State-Machine]] §3.1, §3.14.
@@ -555,7 +555,7 @@ hoặc qua giao dịch".
 - **Từ ADR-067 (2026-11-25):** ở cột "Thao tác" `/admin/subscriptions` và tab "Tất cả", `ManualConfirmButton` được thay bằng hộp "Đổi trạng thái…" (§5O); tab "Chờ đối soát"
   giữ nguyên ✅ code.
 
-### 5O. "Đổi trạng thái…" hoá đơn gói — huỷ / mở lại / đã thanh toán (ADR-067 + Bổ sung) — working tree, chưa commit, không migration ✅ đọc code 2026-11-25
+### 5O. "Đổi trạng thái…" hoá đơn gói — huỷ / mở lại / đã thanh toán (ADR-067 + Bổ sung) — đã commit `2ccc2fc`, không migration ✅ đọc code 2026-11-25
 
 Quyết định: [[01-Architecture-Decisions/ADR-051-Subscription-Invoice-Status-Change-Void-Reopen|ADR-051 KB (≙ ADR-067)]]. Chỉ System Admin, mọi cổng, chỉ bảng L1 (§7.9).
 
@@ -605,6 +605,23 @@ còn lựa chọn → "—". Contract: [[03-API-Contracts/Endpoint-Directory|End
 Cột "Thao tác" chỉ nhận `statusTargets` theo trạng thái — điều kiện "mới nhất / không có PENDING khác / gói còn bán" của mở lại chỉ biết khi bấm (lỗi hiện trong hộp) ✅ code.
 
 **Test:** không thêm case — mở rộng `subscription-billing.test.ts` (chạy 7/7 🟡 Quốc báo); `pnpm test:count` 105/69 ✅. Trình duyệt / production ❓.
+*Code ADR-067 đã nằm trong commit `2ccc2fc` ✅ `git show --stat` (sau lúc ghi mục này). Từ ADR-069: cột "Thao tác" là menu "⋯" — §5P.*
+
+### 5P. Chi tiết đơn hàng gói `/admin/subscriptions/[subscriptionId]` + menu "⋯" (ADR-069) — working tree, chưa commit, không migration ✅ đọc code 2026-11-25
+
+Quyết định: [[01-Architecture-Decisions/ADR-053-Admin-Subscription-Detail-Row-Menu|ADR-053 KB (≙ ADR-069)]]. Contract: [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §33.
+
+- **Cột "Thao tác"** ở `/admin/subscriptions` và tab "Tất cả" `/admin/billing/invoices` = menu "⋯" (`InvoiceRowMenu`): **"Xem chi tiết"** + **"Đổi trạng thái hoá đơn…"** (khi
+  `statusTargets` khác rỗng, hộp §5O). `/admin/subscriptions` luôn có "Xem chi tiết" → không còn "—"; tab "Tất cả" chỉ "—" khi hoá đơn không gắn thuê bao **và** không còn trạng thái
+  để chuyển. Tab "Chờ đối soát" giữ `ManualConfirmButton` (§5N).
+- **Trang chi tiết** (System Admin, `requireAdminAccess`; không có thuê bao → 404): **Thông tin thuê bao** (gian hàng, gói + giá, trạng thái, bắt đầu kỳ, hết hạn, hạn ân hạn) ·
+  **Lịch sử hoá đơn gói** của gian hàng (mới nhất trước, ≤ 500; kỳ, số tiền, cổng, trạng thái, ngày tạo/hạn/thu; "Đổi trạng thái…" từng dòng khi được) · **Nhật ký thao
+  tác** (≤ 100 dòng audit mới nhất của hoá đơn gói + yêu cầu hoàn tiền gói của gian hàng: action, người làm — "Hệ thống" khi không có actor, "Tài khoản đã xoá" khi user bị xoá —
+  mã hoá đơn, trạng thái cũ → mới, ghi chú).
+- **Ranh giới:** chỉ L1 + `audit_logs` (lọc `tenantId` + đúng đối tượng hoá đơn/yêu cầu hoàn tiền gói), không đọc đơn hàng/khách hàng của gian hàng (§7.9) ✅ code. Metadata chỉ
+  `fromStatus`/`toStatus`/`note` (+ suy luận `previousInvoiceStatus`, `SUBSCRIPTION_PAID` → `PAID`); không lộ metadata thô (giao dịch cổng, chênh tiền).
+- **Revalidate:** 3 action hoá đơn gói gọi `revalidateBillingPages()` — thêm `revalidatePath("/admin/subscriptions/[subscriptionId]", "page")`.
+- **Test:** không thêm case (105/69 ✅); `subscription-billing` 7/7 🟡 Quốc báo. Trình duyệt / deploy ❓.
 
 ---
 
@@ -629,7 +646,8 @@ Cột "Thao tác" chỉ nhận `statusTargets` theo trạng thái — điều ki
   ADR-059 (beta: email báo xác nhận tay, xác nhận trễ hoá đơn EXPIRED, giao dịch cổng, tiền tố SePay), ADR-065 (mã thanh toán SePay tiền tố + 8 chữ số,
   `orders.paymentRef`), ADR-066 (xác nhận tay hoá đơn gói mọi cổng), ADR-067 (đổi trạng thái hoá đơn gói — huỷ/mở lại), ADR-068 mục 7 (`markOrderPaid` có điều kiện)
 * [[01-Architecture-Decisions/ADR-051-Subscription-Invoice-Status-Change-Void-Reopen|ADR-051 KB (≙ ADR-067)]] ([ADR-051-Subscription-Invoice-Status-Change-Void-Reopen.md](../01-Architecture-Decisions/ADR-051-Subscription-Invoice-Status-Change-Void-Reopen.md)) ·
-  [[01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm|ADR-052 KB (≙ ADR-068)]] ([ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm.md](../01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm.md))
+  [[01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm|ADR-052 KB (≙ ADR-068)]] ([ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm.md](../01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm.md)) ·
+  [[01-Architecture-Decisions/ADR-053-Admin-Subscription-Detail-Row-Menu|ADR-053 KB (≙ ADR-069)]] ([ADR-053-Admin-Subscription-Detail-Row-Menu.md](../01-Architecture-Decisions/ADR-053-Admin-Subscription-Detail-Row-Menu.md))
 * [[01-Architecture-Decisions/ADR-049-Sepay-Numeric-Payment-Code-Shared|ADR-049 KB (≙ ADR-065)]] ([ADR-049-Sepay-Numeric-Payment-Code-Shared.md](../01-Architecture-Decisions/ADR-049-Sepay-Numeric-Payment-Code-Shared.md)) ·
   [[01-Architecture-Decisions/ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider|ADR-050 KB (≙ ADR-066)]] ([ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider.md](../01-Architecture-Decisions/ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider.md))
 * [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay|ADR-044 KB (≙ ADR-059)]] ([ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md](../01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md)) ·

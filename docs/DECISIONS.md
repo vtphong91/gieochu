@@ -1744,3 +1744,18 @@
      cột mới `orders.holdStartedAt DateTime?` (migration expand). Hạn giữ của mọi phương thức = `holdStartedAt ?? createdAt` + số
      giờ của phương thức (ADR-062 Q3 đổi mốc). Mở lại đặt `holdStartedAt = thời điểm mở lại`.
   9. Đơn người bán xác nhận không ghi chú vẫn hiện kênh "Xác nhận thủ công" (không phải "không xác định").
+
+## ADR-069 — System Center: "Xem chi tiết" đơn hàng gói + menu Thao tác "⋯"
+
+- **Bối cảnh (2026-11-25):** cột "Thao tác" ở `/admin/subscriptions` (ADR-067) chỉ có "Đổi trạng thái…" → dòng có hoá đơn đã thanh
+  toán không có thao tác nào; System Center chưa có trang chi tiết đơn hàng gói. Chủ dự án yêu cầu tối thiểu "Xem chi tiết".
+- **Chủ dự án chốt:** trang chi tiết gồm **thông tin thuê bao**, **lịch sử hoá đơn gói**, **nhật ký thao tác**; tab "Tất cả" của
+  trang Hoá đơn gói dùng chung menu "⋯".
+- **Quyết định:**
+  1. Cột "Thao tác" ở `/admin/subscriptions` và tab "Tất cả" của `/admin/billing/invoices` là menu dòng "⋯" (kit `row-menu` sẵn có):
+     **Xem chi tiết** (luôn có) + **Đổi trạng thái hoá đơn…** (khi `statusTargets` khác rỗng, mở hộp ADR-067).
+  2. Trang mới `/admin/subscriptions/[subscriptionId]` (System Admin): thông tin thuê bao (gian hàng, gói, trạng thái, kỳ, hết hạn,
+     ân hạn); lịch sử hoá đơn gói của gian hàng (mới nhất trước; mỗi hoá đơn có "Đổi trạng thái…" nếu được); nhật ký thao tác từ
+     audit (xác nhận / huỷ / mở lại / thanh toán, người làm, thời điểm, ghi chú). Chỉ dữ liệu L1 + audit — không đọc đơn hàng/khách
+     của gian hàng (§7.9). Không có thuê bao → 404.
+  3. Không migration.

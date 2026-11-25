@@ -56,7 +56,7 @@ stateDiagram-v2
     REFUNDED --> [*]
 ```
 
-**Trạng thái kết (terminal):** chỉ còn `REFUNDED` (`TRANSITIONS.REFUNDED = {}`). Từ ADR-068 (2026-11-25, working tree) ✅ code
+**Trạng thái kết (terminal):** chỉ còn `REFUNDED` (`TRANSITIONS.REFUNDED = {}`). Từ ADR-068 (2026-11-25, đã commit `2ccc2fc`) ✅ code
 `packages/core/src/order/state.ts`: `CANCELED` **không còn là trạng thái kết** — `TRANSITIONS.CANCELED = { SELLER_REOPEN: "PENDING" }`; `EXPIRED` thêm `SELLER_CANCEL`,
 `SELLER_REOPEN`; `PENDING` thêm `SELLER_CANCEL`. Hai event mới chỉ dùng cho "Đổi trạng thái…" của người bán (§3.14); `CANCEL` (khách) và đường thanh toán tự động giữ nguyên.
 
@@ -104,7 +104,7 @@ Mọi nguồn tiền vào đều gọi đúng một hàm này (`apps/web/lib/ord
 
 ### 3.2. Huỷ đơn
 
-> **Từ ADR-068 (2026-11-25, working tree) ✅ `git diff`:** hàm `cancelOrder` (người bán) và `cancelOrderAction` **đã xoá**. Người bán huỷ qua "Đổi trạng thái…" →
+> **Từ ADR-068 (2026-11-25, đã commit `2ccc2fc`) ✅ `git diff`:** hàm `cancelOrder` (người bán) và `cancelOrderAction` **đã xoá**. Người bán huỷ qua "Đổi trạng thái…" →
 > `changeOrderStatusBySeller(…, "CANCELLED")`, event **`SELLER_CANCEL`**, hợp lệ từ hiệu lực **`PENDING` hoặc `EXPIRED`** (§3.14). Khách tự huỷ vẫn là `cancelOrderByCustomer`
 > (event `CANCEL`, chỉ `PENDING`, §3.12). Mô tả cũ dưới đây giữ để tra lịch sử.
 
@@ -146,7 +146,7 @@ commit/deploy**) ✅.
   | Chưa chọn, hoặc cổng xác nhận tay (`MANUAL_QR`, `MOMO_MANUAL`) | **72** (mặc định) | `orderHoldManualHours` (1–168) |
   | Cổng tự xác nhận (`SEPAY`; `MOMO` API nếu bật) | **48** (mặc định) | `orderHoldAutoHours` (1–168) |
 
-  > **Đổi mốc từ ADR-068 mục 8 (2026-11-25, working tree) ✅ code:** mốc giữ = **`orderHoldStartedAt(order)` = `holdStartedAt ?? createdAt`** (cột mới `orders.holdStartedAt`,
+  > **Đổi mốc từ ADR-068 mục 8 (2026-11-25, đã commit `2ccc2fc`) ✅ code:** mốc giữ = **`orderHoldStartedAt(order)` = `holdStartedAt ?? createdAt`** (cột mới `orders.holdStartedAt`,
   > migration `20261125120000_adr068_order_hold_started_at`). Người bán **mở lại** đơn đặt `holdStartedAt` = lúc mở lại (§3.14); đơn chưa từng mở lại có `holdStartedAt = NULL`
   > → hành vi như cũ. Helper dùng ở `initiateOrderCheckout` (hạn mới + chặn `PROVIDER_HOLD_EXPIRED`) và `checkout-view.ts` (cờ `available` của từng phương thức). Câu chữ:
   > System Settings "…kể từ lúc đặt đơn (hoặc lúc người bán mở lại đơn)"; lý do phương thức bị khoá ở trang thanh toán bỏ "(tính từ lúc đặt đơn)" ✅ code. Mọi chỗ ghi
@@ -281,7 +281,7 @@ Quyết định: [[01-Architecture-Decisions/ADR-046-Customer-Purchase-Flow-Pend
 Phần khách vãng lai (task 12/13): §3.13. Code: `packages/core/src/order/expiry.ts`, `apps/web/lib/order.ts`, `apps/web/lib/order-customer.ts`,
 `apps/web/lib/checkout-view.ts`.
 
-- **Hạn giữ đơn** theo phương thức, tính từ lúc đặt đơn — bảng ở §3.4.
+- **Hạn giữ đơn** theo phương thức, tính từ lúc đặt đơn (từ ADR-068 mục 8: hoặc lúc người bán mở lại đơn — `holdStartedAt`) — bảng ở §3.4.
 - **"Tôi đã chuyển khoản"** (`declareOrderPaid`, ADR-062 Q1): chỉ đơn hiệu lực `PENDING` của cổng xác nhận tay (khác → 400 `NOT_MANUAL_PROVIDER`; không chờ →
   409 `ORDER_NOT_PENDING`). Ghi `orders.customerDeclaredPaidAt = now` (idempotent — đã có thì trả mốc cũ), **không đổi `status`**. Audit
   `ORDER_CUSTOMER_DECLARED_PAID`. Lên lịch email người bán `order_customer_declared_paid` **một lần/đơn** (mốc `ownerDeclaredPaidNotifiedAt`).
@@ -352,7 +352,7 @@ Phiên + guard + kích hoạt: [[02-System-Specs/Auth-Session-Specs|Auth-Session
 - **Tải tài liệu:** khách guest tải ngay trên phiên đó (Thư viện + `POST /api/downloads` qua `requireCheckoutUser`), theo đúng `downloadLimit` của tài liệu (Bổ sung ADR-062
   mục 2 — không có giới hạn riêng). Hết phiên (≤ 24 giờ) → phải kích hoạt rồi đăng nhập.
 
-### 3.14. Người bán "Đổi trạng thái…" đơn — xác nhận trễ, mở lại, huỷ (ADR-068 + Bổ sung) — working tree, chưa commit, không migration ✅ đọc code 2026-11-25
+### 3.14. Người bán "Đổi trạng thái…" đơn — xác nhận trễ, mở lại, huỷ (ADR-068 + Bổ sung) — đã commit `2ccc2fc`; migration expand `holdStartedAt` (mục 8) đã áp DB `.env`, production chưa xác minh ✅ đọc code 2026-11-25
 
 Quyết định: [[01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm|ADR-052 KB (≙ ADR-068)]]. Code: `apps/web/lib/order.ts` (khối "ADR-068"),
 `packages/core/src/order/state.ts`, `app/studio/[tenantSlug]/orders/[orderId]/actions.ts`.

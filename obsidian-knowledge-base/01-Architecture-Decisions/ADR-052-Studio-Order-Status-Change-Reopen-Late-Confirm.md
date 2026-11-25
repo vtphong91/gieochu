@@ -7,17 +7,20 @@ tags:
   - status/accepted
 date: 2026-11-25
 decider: vtphong91
-status: Accepted — đã code, verify đạt (Quốc báo), chưa commit; không migration
+status: Accepted — đã code, verify đạt (Quốc báo), đã commit 2ccc2fc; 1 migration expand (mục 8) đã áp DB .env, production chưa xác minh
 ---
 
 # 🏛️ ADR-052: Studio — "Đổi trạng thái…" đơn hàng: Đã thanh toán / Chưa thanh toán (mở lại) / Huỷ
 
 ## 1. Trạng Thái (Status)
 **ĐÃ PHÊ DUYỆT (Accepted)** — tương ứng **ADR-068** trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md) (chủ dự án chốt 2026-11-25), gồm mục **"Bổ sung"** (mục 6 chặn
-mở lại khi khách đã có quyền tải qua đơn khác; mục 7 sửa lỗi `markOrderPaid` áp hai lần). Bản trích ghi theo duyệt của Quốc (brief 2026-11-25).
+mở lại khi khách đã có quyền tải qua đơn khác; mục 7 sửa lỗi `markOrderPaid` áp hai lần; mục 8 mốc giữ đơn `holdStartedAt`; mục 9 kênh "Xác nhận thủ công" khi không ghi chú).
+Bản trích ghi theo duyệt của Quốc (brief 2026-11-25 + brief bổ sung mục 8–9).
 
-Tiến độ (đối chiếu 2026-11-25): code ở working tree, **chưa commit** ✅ `git status`. **Không migration**, **không thêm `route.ts`** (24 dưới `/api`, 26 toàn app ✅ đếm).
-Không thêm test case — `pnpm test:count` = **105/105 unit, 69/69 integration** ✅ (Long chạy). Integration `order` 10/10, tsc, lint, unit xanh 🟡 (Quốc báo).
+Tiến độ (đối chiếu 2026-11-25): **đã commit `2ccc2fc`** (gồm mục 8–9 và thư mục migration) ✅ `git show --stat`. **Không thêm `route.ts`** (24 dưới `/api`, 26 toàn app ✅ đếm). Mục 8 thêm **1 migration
+expand** `20261125120000_adr068_order_hold_started_at` (cột `orders.holdStartedAt DateTime?`) — **đã áp DB trong `.env` (Vercel/dev)** 🟡 Quốc báo; **production chưa xác
+minh** ❓ (`prisma migrate deploy` khi deploy áp cả migration này lẫn `adr065_order_payment_ref`). Không thêm test case — `pnpm test:count` = **105/105 unit, 69/69
+integration** ✅ (Long chạy). Integration `order` + `subscription-billing` 17/17, tsc, lint, unit xanh 🟡 (Quốc báo).
 
 Mức xác minh: ✅ Long đã đối chiếu code working tree · 🟡 theo `docs/DECISIONS.md`/brief · ❓ chưa thử bằng trình duyệt với phiên OWNER, chưa chạy trên production.
 
@@ -68,7 +71,8 @@ Quyền: action gọi `requireTenantMember(slug)` — mặc định `requiredRol
 - Chặn: gian hàng không `ACTIVE` hoặc tài liệu trong đơn không `PUBLISHED` → 409 `PRODUCT_UNAVAILABLE` (`assertOrderProductsPurchasable`); khách **đã có quyền tải còn hiệu
   lực** với tài liệu của đơn qua **đơn khác** → 409 **`ALREADY_OWNED`**, hoặc khách là chủ gian hàng → 409 `CANNOT_BUY_OWN_PRODUCT` (cùng luật `canPurchaseProduct` với
   tạo đơn — **Bổ sung mục 6**).
-- Hạn giữ mới = **thời điểm mở lại** + `orderHoldHoursFor(provider)` (72 giờ thủ công/chưa chọn, 48 giờ cổng tự xác nhận — mặc định System Settings).
+- Hạn giữ mới = **thời điểm mở lại** + `orderHoldHoursFor(provider)` (72 giờ thủ công/chưa chọn, 48 giờ cổng tự xác nhận — mặc định System Settings); đặt luôn
+  `holdStartedAt` = thời điểm mở lại (mục 8, §3.6a).
 - **Giữ** tổng tiền, mã giảm giá, phương thức, `checkoutPayload`, `paymentRef`. **Xoá** `customerDeclaredPaidAt`, `customerReminderSentAt`. **Không** gửi email cho khách.
 - Cập nhật có điều kiện theo `status` + `expiresAt` đã đọc → thao tác song song đổi trước → 409 `ORDER_CHANGED`.
 
@@ -85,6 +89,16 @@ PENDING hoặc EXPIRED → CANCELED (EXPIRED → CANCELED thêm để đồng nh
 `updateMany({ where: { id, status: <trạng thái đã đọc> } })` → hai nguồn áp song song (webhook/job + người bán, hai lần bấm) thì lần sau 0 dòng → no-op, **không** tính mã
 giảm giá / thống kê khách / email / audit lần hai. Áp cho mọi nguồn gọi.
 
+### 3.6a. Mốc giữ đơn `holdStartedAt` (**Bổ sung mục 8** — sửa lỗi Long phát hiện, KB-Audit §51 mục 5) ✅ code
+- Cột mới `orders.holdStartedAt DateTime?`. Hạn giữ của mọi phương thức = **`holdStartedAt ?? createdAt`** + số giờ của phương thức (helper `orderHoldStartedAt`, dùng ở
+  `initiateOrderCheckout` và cờ `available` của `checkout-view.ts`) — **đổi mốc ADR-062 Q3**. Mở lại đặt `holdStartedAt` = lúc mở lại → đơn tạo > 72 giờ vẫn chọn/đổi được
+  cách trả. Đơn chưa mở lại: NULL → như cũ.
+- Câu chữ: System Settings "…kể từ lúc đặt đơn (hoặc lúc người bán mở lại đơn)"; trang thanh toán bỏ "(tính từ lúc đặt đơn)" ở lý do phương thức bị khoá.
+
+### 3.6b. Kênh "Xác nhận thủ công" khi không ghi chú (**Bổ sung mục 9**) ✅ code
+`paymentChannel` ở chi tiết đơn: giao dịch cổng `MATCHED` vẫn ưu tiên → `PROVIDER`; không có → `MANUAL` khi có `confirmNote` **hoặc** audit `ORDER_MANUALLY_CONFIRMED` của
+đơn (đã nạp cho dòng thời gian). Giới hạn: audit không ghi được **và** không ghi chú → vẫn `UNKNOWN`.
+
 ### 3.7. Giao diện ✅ code / ❓ trình duyệt
 - Server Action **`changeOrderStatusAction(tenantSlug, orderId, prevState, formData)`** thay `confirmOrderManuallyAction` + `cancelOrderAction` (đã xoá); `confirm-form.tsx`
   và `CancelOrderButton` đã xoá.
@@ -96,14 +110,17 @@ giảm giá / thống kê khách / email / audit lần hai. Áp cho mọi nguồ
 ## 4. Hệ Quả (Consequences)
 - `confirmOrderManually` (lib, ghi chú bắt buộc, luật ADR-061/062) **vẫn còn** nhưng không còn UI nào gọi — chỉ test integration + `scripts/demo-reviews.ts` ✅ grep.
   `orderAllowedActions` vẫn trả `confirm`/`cancel` "cho tương thích"; UI chỉ dùng `view`/`refund` ✅ code.
-- Rủi ro/lệch còn mở (hạn giữ đơn mở lại vs đổi phương thức, kênh thanh toán khi không ghi chú, mốc email không reset…): [[00-Index/KB-Audit-2026-09-26|KB-Audit]] §51.
+- **Sửa** [[01-Architecture-Decisions/ADR-048-Checkout-Layout-Declared-Paid-Guest-Session|ADR-048 KB (≙ ADR-062)]] Q3: mốc tính hạn giữ của phương thức không còn luôn là
+  `createdAt` (mục 8).
+- Rủi ro/lệch còn mở (mốc email không reset, focus, payload MoMo cũ…): [[00-Index/KB-Audit-2026-09-26|KB-Audit]] §51 — mục 5 (hạn giữ đơn mở lại) và mục 6 (kênh thanh toán
+  khi không ghi chú) đã đóng bằng mục 8–9.
 
 ---
 
 ## 5. Liên Kết
 * [[02-System-Specs/Order-State-Machine|Order-State-Machine]] §2, §3.1, §3.2, §3.14 · [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]] §2.4, §3
 * [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §4 · [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]] §4
-* [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §32
+* [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §32 · [[03-API-Contracts/Database-Schema-Reference|Database-Schema-Reference]] (bảng `Order`, migration §7)
 * [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §20.9
 * [[00-Index/KB-Audit-2026-09-26|KB-Audit]] §51
 

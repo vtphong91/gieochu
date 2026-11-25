@@ -69,6 +69,11 @@ hạn**, và refactor xong mới deploy 🟡.
    | ~~`orderPendingTtlMinutes`~~ | 60 | 15–1440 phút — **không còn dùng** từ ADR-061/062 (`INACTIVE_SYSTEM_SETTINGS`, UI ẩn; cột giữ lại) |
    | `orderHoldManualHours` (ADR-061/062) | 72 | 1–168 giờ — nhãn form **"Hạn giữ đơn — thủ công"** (chủ dự án chốt 2026-10-27): hạn giữ đơn chuyển khoản thủ công (ngân hàng, MoMo) hoặc chưa chọn phương thức, tính từ lúc đặt đơn |
    | `orderHoldAutoHours` (ADR-061/062) | 48 | 1–168 giờ — nhãn "Hạn giữ đơn — tự xác nhận": cổng tự xác nhận (SePay), tính từ lúc đặt đơn |
+
+   > Bị sửa bởi [[01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm|ADR-052 KB]] (ADR-068 mục 8, 2026-11-25, Quốc duyệt): mốc tính hạn của
+   > `orderHoldManualHours`/`orderHoldAutoHours` = `holdStartedAt ?? createdAt` (người bán mở lại đơn đặt `holdStartedAt`); câu gợi ý form nay "…kể từ lúc đặt đơn (hoặc lúc
+   > người bán mở lại đơn)".
+
    | `invoicePendingTtlHours` | 24 | 1–168 giờ |
    | `defaultDownloadLimit` | 5 | 0–1000 lượt (0 = không giới hạn) |
 

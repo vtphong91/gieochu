@@ -11,6 +11,16 @@ import {
   voidSubscriptionInvoice,
 } from "../../../../lib/subscription-billing";
 
+/**
+ * Trang hiển thị hoá đơn gói: Hoá đơn gói, danh sách thuê bao và (ADR-069) trang chi tiết `/admin/subscriptions/[subscriptionId]`
+ * — route động nên revalidate theo mẫu + `"page"` (Next 16 `revalidatePath`).
+ */
+function revalidateBillingPages(): void {
+  revalidatePath("/admin/billing/invoices");
+  revalidatePath("/admin/subscriptions");
+  revalidatePath("/admin/subscriptions/[subscriptionId]", "page");
+}
+
 export interface ConfirmInvoiceActionState {
   error?: string;
   success?: boolean;
@@ -33,8 +43,7 @@ export async function confirmManualInvoiceAction(
     if (error instanceof AppError) return { error: error.message };
     throw error;
   }
-  revalidatePath("/admin/billing/invoices");
-  revalidatePath("/admin/subscriptions");
+  revalidateBillingPages();
   return { success: true };
 }
 
@@ -74,8 +83,7 @@ export async function changeInvoiceStatusAction(
     if (error instanceof AppError) return { error: error.message };
     throw error;
   }
-  revalidatePath("/admin/billing/invoices");
-  revalidatePath("/admin/subscriptions");
+  revalidateBillingPages();
   return { success: true };
 }
 
@@ -100,7 +108,6 @@ export async function confirmInvoiceFromTransactionAction(
     if (error instanceof AppError) return { error: error.message };
     throw error;
   }
-  revalidatePath("/admin/billing/invoices");
-  revalidatePath("/admin/subscriptions");
+  revalidateBillingPages();
   return { success: true };
 }

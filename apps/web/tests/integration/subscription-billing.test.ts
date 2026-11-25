@@ -8,6 +8,7 @@ import {
   confirmInvoiceFromPlatformTransaction,
   confirmManualInvoicePayment,
   createRenewalInvoice,
+  getAdminSubscriptionDetail,
   getSubscriptionOverview,
   invoiceStatusTargets,
   listSubscriptionInvoices,
@@ -276,6 +277,33 @@ describe("M3 subscription and platform billing", () => {
     });
     await expect(reopenSubscriptionInvoice(inactivePlanInvoice.id, owner.id)).rejects.toMatchObject({ code: "PLAN_INACTIVE", httpStatus: 409 });
     expect((await prisma.subscriptionInvoice.findUniqueOrThrow({ where: { id: inactivePlanInvoice.id } })).status).toBe("VOID");
+
+    // ADR-069 — chi tiết đơn hàng gói: id lạ → null; hoá đơn mới nhất trước kèm statusTargets; nhật ký có huỷ/mở lại (ghi chú,
+    // người làm, mã hoá đơn) và xác nhận trễ, mới nhất trước.
+    expect(await getAdminSubscriptionDetail(`${RUN_PREFIX}_missing`)).toBeNull();
+    const subscriptionRow = await prisma.subscription.findUniqueOrThrow({ where: { tenantId: tenant.id } });
+    const detail = (await getAdminSubscriptionDetail(subscriptionRow.id))!;
+    expect(detail).toMatchObject({ id: subscriptionRow.id, tenant: { id: tenant.id, slug: tenant.slug }, plan: { code: "CREATOR" } });
+    expect(detail.invoices.map((i) => i.id)).toEqual([inactivePlanInvoice.id, latestInvoice.id, newer.id, manualInvoice.id]);
+    expect(detail.invoices[0]!.statusTargets).toEqual(["PENDING"]);
+    expect(detail.invoices.find((i) => i.id === manualInvoice.id)!.statusTargets).toEqual([]);
+    const activityTimes = detail.activity.map((a) => a.createdAt.getTime());
+    expect(activityTimes).toEqual([...activityTimes].sort((a, b) => b - a));
+    expect(detail.activity).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          action: "SUBSCRIPTION_INVOICE_VOIDED",
+          actionLabel: "Huỷ hoá đơn gói dịch vụ",
+          invoiceCode: latestInvoice.code,
+          fromStatus: "PENDING",
+          toStatus: "VOID",
+          note: "Khách đổi ý",
+          actorLabel: owner.email,
+        }),
+        expect.objectContaining({ action: "SUBSCRIPTION_INVOICE_REOPENED", invoiceCode: latestInvoice.code, fromStatus: "VOID", toStatus: "PENDING", note: null }),
+        expect.objectContaining({ action: "SUBSCRIPTION_PAID", invoiceCode: manualInvoice.code, fromStatus: "EXPIRED", toStatus: "PAID" }),
+      ]),
+    );
   });
 
   it("creates a renewal invoice and marks it PAID via a signed platform SePay webhook, activating the subscription", async () => {
@@ -309,7 +337,16 @@ describe("M3 subscription and platform billing", () => {
     // ADR-056: System Center "Tất cả" invoices tab + /admin/subscriptions read the same rows (read-only, L1).
     const paidSepay = await listSubscriptionInvoices({ status: "PAID", provider: "SEPAY", page: 1, pageSize: 100 });
     const listed = paidSepay.items.find((i) => i.id === invoice.id);
-    expect(listed).toMatchObject({ code: invoice.code, status: "PAID", amountVnd: proPlan.priceVnd, tenant: { slug: tenant.slug }, statusTargets: [] });
+    const tenantSubscription = await prisma.subscription.findUniqueOrThrow({ where: { tenantId: tenant.id } });
+    expect(listed).toMatchObject({
+      code: invoice.code,
+      status: "PAID",
+      amountVnd: proPlan.priceVnd,
+      tenant: { slug: tenant.slug },
+      subscriptionId: tenantSubscription.id,
+      statusTargets: [],
+    });
+    expect(listed?.tenant).not.toHaveProperty("subscription");
     expect(listed?.paidAt).toBeInstanceOf(Date);
     expect(paidSepay.items.every((i) => i.status === "PAID" && i.provider === "SEPAY")).toBe(true);
     const manualOnly = await listSubscriptionInvoices({ provider: "MANUAL_QR", page: 1, pageSize: 100 });

@@ -7,7 +7,7 @@ tags:
   - status/accepted
 date: 2026-11-25
 decider: vtphong91
-status: Accepted — đã code, verify đạt (Quốc báo), chưa commit; không migration
+status: Accepted — đã code, verify đạt (Quốc báo), đã commit 2ccc2fc; không migration
 ---
 
 # 🏛️ ADR-051: "Đổi trạng thái" hoá đơn gói — Đã thanh toán / Huỷ / Chưa thanh toán (mở lại)
@@ -16,10 +16,15 @@ status: Accepted — đã code, verify đạt (Quốc báo), chưa commit; khôn
 **ĐÃ PHÊ DUYỆT (Accepted)** — tương ứng **ADR-067** trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md) (chủ dự án chốt 2026-11-24), gồm mục **"Bổ sung"** (chủ dự án
 chốt 2026-11-25: không mở lại hoá đơn của gói ngừng bán; ghi chú admin trong audit tiếp tục hiện ở Studio). Bản trích ghi theo duyệt của Quốc (brief 2026-11-25).
 
-Tiến độ (đối chiếu 2026-11-25): code ở working tree, **chưa commit** ✅ `git status`. **Không migration**, **không thêm `route.ts`** (24 dưới `/api`, 26 toàn app ✅ đếm).
+Tiến độ (đối chiếu 2026-11-25): **đã commit `2ccc2fc`** ✅ `git show --stat` (lúc ghi lần đầu còn ở working tree). **Không migration**, **không thêm `route.ts`** (24 dưới `/api`, 26 toàn app ✅ đếm).
 Không thêm test case — `pnpm test:count` = **105/105 unit, 69/69 integration** ✅ (Long chạy). Integration `subscription-billing` 7/7, tsc, lint, unit xanh 🟡 (Quốc báo).
 
 Mức xác minh: ✅ Long đã đối chiếu code working tree · 🟡 theo `docs/DECISIONS.md`/brief · ❓ chưa thử bằng trình duyệt với phiên SYSTEM_ADMIN, chưa chạy trên production.
+
+> [!NOTE] Cập nhật 2026-11-25 — đã commit; bị sửa bởi ADR-053 (KB) — tương ứng ADR-069 docs (Quốc duyệt)
+> Code ADR-067 nay nằm trong commit `2ccc2fc` ✅ `git show --stat`. [[01-Architecture-Decisions/ADR-053-Admin-Subscription-Detail-Row-Menu|ADR-053 KB (≙ ADR-069)]] đổi
+> §3.6: ở `/admin/subscriptions` + tab "Tất cả", nút `InvoiceStatusButton` thay bằng menu "⋯" ("Xem chi tiết" + "Đổi trạng thái hoá đơn…"; hộp tách thành
+> `InvoiceStatusDialog`); `InvoiceStatusButton` chỉ còn ở trang chi tiết `/admin/subscriptions/[subscriptionId]`. Nội dung bên dưới giữ nguyên.
 
 ---
 
