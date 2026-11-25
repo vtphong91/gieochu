@@ -67,7 +67,8 @@ author: System Architect
 > subpath mới ở §31; §31 cũ (Liên kết) nay là §32.
 > Đợt **ADR-067 + ADR-068** (2026-11-25, đã commit `2ccc2fc`) **không thêm `route.ts`** — đếm lại 2026-11-25: **24 dưới `/api`, 26 toàn app** ✅; Server Action mới
 > `changeInvoiceStatusAction`, `changeOrderStatusAction`, xoá `confirmOrderManuallyAction` + `cancelOrderAction`, hàm lib + mã lỗi mới ở §32; §32 cũ (Liên kết) nay là §33.
-> Đợt **ADR-069** (2026-11-25, working tree) **không thêm `route.ts`** (24 / 26 ✅ đếm) — trang mới `/admin/subscriptions/[subscriptionId]`, loader, component ở §33; Liên kết nay là §34.
+> Đợt **ADR-069** (2026-11-25, đã commit `b18d97a`) **không thêm `route.ts`** (24 / 26 ✅ đếm) — trang mới `/admin/subscriptions/[subscriptionId]`, loader, component ở §33; Liên kết nay là §34.
+> Đợt **ADR-070** (2026-11-25, working tree) **không thêm `route.ts`** — webhook nền tảng + cron gửi email trạng thái thanh toán, lib/package mới ở §34; Liên kết nay là §35.
 
 ## 1. Quy Ước Chung
 
@@ -1716,7 +1717,7 @@ Secret không bao giờ trả về client — trang chỉ nhận `maskedSecrets`
 
 ## 33. Chi tiết đơn hàng gói + menu "⋯" ở System Center (ADR-069) — 2026-11-25 ✅
 
-Đối chiếu code working tree 2026-11-25, **chưa commit** ✅ `git status`. **Không thêm `route.ts`** (24 dưới `/api`, 26 toàn app ✅ đếm), không migration. KB không đếm số
+Đối chiếu code 2026-11-25, **đã commit `b18d97a`** ✅ `git show --stat`. **Không thêm `route.ts`** (24 dưới `/api`, 26 toàn app ✅ đếm), không migration. KB không đếm số
 `page.tsx`. Nghiệp vụ: [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5P; quyết định
 [[01-Architecture-Decisions/ADR-053-Admin-Subscription-Detail-Row-Menu|ADR-053 KB (≙ ADR-069)]].
 
@@ -1745,11 +1746,48 @@ Secret không bao giờ trả về client — trang chỉ nhận `maskedSecrets`
 
 ---
 
-## 34. Tài Liệu Tham Chiếu & Liên Kết
+## 34. Email thông báo trạng thái thanh toán (ADR-070) — 2026-11-25 ✅
+
+Đối chiếu code working tree 2026-11-25, **chưa commit** ✅ `git status`. **Không thêm `route.ts`** (24 / 26 ✅ đếm), không migration, **shape HTTP không đổi**. Nghiệp vụ:
+[[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5Q; quyết định [[01-Architecture-Decisions/ADR-054-Payment-Status-Emails|ADR-054 KB (≙ ADR-070)]].
+
+### 34.1. Route đổi hành vi (không đổi response)
+- **`POST /api/webhooks/platform/[provider]`** — sau khi ghi `webhook_events` lần đầu: A1 (`markInvoicePaid` với `scheduleNotification`), A3 (đúng mã hoá đơn chưa PAID/REFUNDED, sai
+  số tiền), A4 (MoMo thất bại cho hoá đơn PENDING/EXPIRED) — gom vào `runAfterResponseOrNow` → gửi sau response (`after()`); ngoài request thì chạy tại chỗ.
+- **`GET /api/cron/daily`** — bước `subscriptionSweep` / `orderSweep` nay gửi A2 / B2 (khoá kết quả không đổi).
+
+### 34.2. `apps/web/lib/payment-status-notify.ts` (mới)
+
+| Export | Contract |
+| :-- | :-- |
+| `notifyOwnerOfInvoiceStatus(invoiceId, stage: SubscriptionInvoiceEmailStage, extra?: { receivedVnd? }) → Promise<void>` | A1–A5; đọc L1; không ném |
+| `notifyCustomerOfOrderStatus(tenantId, orderId, stage: OrderStatusEmailStage, extra?: { receivedVnd?, provider? }) → Promise<void>` | B2–B5; đọc đơn dưới `withTenant`; không ném |
+| `runAfterResponseOrNow(tasks) → Promise<void>` | `after()` nếu trong request, không thì chạy luôn |
+| `formatEmailVnd(amountVnd) → string` | "150.000 đ" — dùng cả cho `order_paid` |
+| `SUBSCRIPTION_INVOICE_EMAIL_TYPES`, `ORDER_STATUS_EMAIL_TYPES` | Bảng stage → `type` email |
+
+### 34.3. Hàm lib đổi chữ ký / hành vi
+
+| Hàm | Thay đổi |
+| :-- | :-- |
+| `markInvoicePaid(invoiceId, { source, actorId?, note?, scheduleNotification? })` | Thêm `scheduleNotification?: ScheduleAfterResponse` — có thì lên lịch A1, không thì gửi tại chỗ; chỉ khi lần này áp |
+| `runSubscriptionSweep()` | Hết hạn hoá đơn bằng `UPDATE … RETURNING "id"` (SQL thô, bảng L1) + gửi A2 |
+| `runOrderSweep() → Promise<number>` | Chuyển có điều kiện từng đơn; trả số đơn thật sự chuyển; gửi B2 cho đơn có `provider` |
+| `processPaymentEvent` | B3 (`Mismatch.notifyCustomer` khi đơn PENDING/EXPIRED), B4 (MoMo `success = false`) sau commit |
+| `voidSubscriptionInvoice`, `confirmExpiredManualInvoice`, `confirmInvoiceFromPlatformTransaction`, `sellerCancelOrder` (nội bộ) | Gửi A5 / A1 / A1 / B5 sau commit |
+
+### 34.4. `@gieochu/email`
+Export mới `renderSubscriptionInvoiceEmail(stage, data)`, `renderOrderStatusEmail(stage, data)` + kiểu `SubscriptionInvoiceEmailStage` (`PAID`\|`EXPIRED`\|`AMOUNT_MISMATCH`\|
+`PAYMENT_FAILED`\|`VOIDED`), `OrderStatusEmailStage` (`EXPIRED`\|`AMOUNT_MISMATCH`\|`PAYMENT_FAILED`\|`CANCELED_BY_SELLER`), `SubscriptionInvoiceEmailData`, `OrderStatusEmailData`
+(`packages/email/src/templates/payment-status.ts`). Mỗi hàm trả `{ subject, html, text }`.
+
+---
+
+## 35. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * [[01-Architecture-Decisions/ADR-049-Sepay-Numeric-Payment-Code-Shared|ADR-049 (≙ ADR-065)]] · [[01-Architecture-Decisions/ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider|ADR-050 (≙ ADR-066)]] — mã thanh toán SePay, xác nhận tay hoá đơn gói (§9, §31) · [[04-Operations-Runbooks/SePay-Live-Test-Runbook|SePay-Live-Test-Runbook]]
-* [[01-Architecture-Decisions/ADR-051-Subscription-Invoice-Status-Change-Void-Reopen|ADR-051 (≙ ADR-067)]] · [[01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm|ADR-052 (≙ ADR-068)]] — đổi trạng thái hoá đơn gói / đơn hàng Studio (§32) · [[01-Architecture-Decisions/ADR-053-Admin-Subscription-Detail-Row-Menu|ADR-053 (≙ ADR-069)]] — chi tiết đơn hàng gói (§33)
+* [[01-Architecture-Decisions/ADR-051-Subscription-Invoice-Status-Change-Void-Reopen|ADR-051 (≙ ADR-067)]] · [[01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm|ADR-052 (≙ ADR-068)]] — đổi trạng thái hoá đơn gói / đơn hàng Studio (§32) · [[01-Architecture-Decisions/ADR-053-Admin-Subscription-Detail-Row-Menu|ADR-053 (≙ ADR-069)]] — chi tiết đơn hàng gói (§33) · [[01-Architecture-Decisions/ADR-054-Payment-Status-Emails|ADR-054 (≙ ADR-070)]] — email trạng thái thanh toán (§34)
 * [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay|ADR-044 (≙ ADR-059)]] — chạy thử beta, giao dịch cổng (§28) ([ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md](../01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md))
 * [[01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr|ADR-041 (≙ ADR-056)]] — hoá đơn/Đơn hàng gói, khối chuyển khoản, mã giảm giá tạo lại QR (§27) ([ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr.md](../01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr.md))
 * [[02-System-Specs/System-Cms-Menu-Home-Seo-Specs|System-Cms-Menu-Home-Seo-Specs]] ([System-Cms-Menu-Home-Seo-Specs.md](../02-System-Specs/System-Cms-Menu-Home-Seo-Specs.md)) · [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]] ([Legal-Documents-Specs.md](../02-System-Specs/Legal-Documents-Specs.md)) · [[01-Architecture-Decisions/ADR-035-Menu-Home-Seo-Versioned-Terms|ADR-035 (≙ ADR-050)]]

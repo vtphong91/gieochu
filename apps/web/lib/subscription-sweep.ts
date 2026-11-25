@@ -5,6 +5,7 @@ import { getEnv } from "@gieochu/config";
 import { sendEmailNow } from "./email-dispatch";
 import { getEffectiveBrand } from "./branding";
 import { getSystemSettings } from "./system-settings";
+import { notifyOwnerOfInvoiceStatus } from "./payment-status-notify";
 
 const REMINDER_DAYS = { EARLY: 7, LATE: 1 } as const;
 
@@ -129,8 +130,16 @@ export async function runSubscriptionSweep(): Promise<void> {
     await prisma.subscription.update({ where: { id: sub.id }, data: { periodEndReminderStage: stage } });
   }
 
-  await prisma.subscriptionInvoice.updateMany({
-    where: { status: "PENDING", dueAt: { lt: now } },
-    data: { status: "EXPIRED" },
-  });
+  // ADR-070 A2: một lệnh UPDATE … RETURNING (nguyên tử) → biết đúng hoá đơn DO LẦN SWEEP NÀY chuyển PENDING → EXPIRED; hai sweep
+  // chạy chồng nhau thì lần sau không nhận lại dòng đã chuyển → mỗi hoá đơn một email. Bảng L1 (không RLS). `updatedAt` đặt tay
+  // (Prisma chỉ tự đặt khi ghi qua client).
+  const expired = await prisma.$queryRaw<{ id: string }[]>`
+    UPDATE "subscription_invoices"
+    SET "status" = 'EXPIRED'::"SubscriptionInvoiceStatus", "updatedAt" = ${now}
+    WHERE "status" = 'PENDING'::"SubscriptionInvoiceStatus" AND "dueAt" < ${now}
+    RETURNING "id"
+  `;
+  for (const row of expired) {
+    await notifyOwnerOfInvoiceStatus(row.id, "EXPIRED");
+  }
 }

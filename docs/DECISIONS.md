@@ -1759,3 +1759,46 @@
      audit (xác nhận / huỷ / mở lại / thanh toán, người làm, thời điểm, ghi chú). Chỉ dữ liệu L1 + audit — không đọc đơn hàng/khách
      của gian hàng (§7.9). Không có thuê bao → 404.
   3. Không migration.
+
+## ADR-070 — Email thông báo thanh toán: thành công / hết hạn / sai số tiền / thất bại / bị huỷ
+
+- **Bối cảnh (2026-11-25):** chủ dự án trả hoá đơn gói `SEVQR31004800` (SePay tự xác nhận) nhưng không nhận email. Hiện hoá đơn gói chỉ có
+  email nhắc hạn (7 ngày/1 ngày), ân hạn, hạ Free; đơn tài liệu có email thành công cho khách + "có đơn mới"/sai tiền cho người bán.
+- **Chủ dự án chốt:** thứ tự 4 đợt (1. email thanh toán → 2. nhật ký chi tiết + đổi "Tenant" thành "Gian hàng" → 3. chi tiết gian
+  hàng → 4. chi tiết người dùng); đợt 1 gửi email: thành công (hoá đơn gói), hết hạn chưa trả, sai số tiền, thất bại ở mọi phương
+  thức, bị huỷ; email hết hạn đơn tài liệu chỉ cho đơn khách đã chọn cách thanh toán.
+- **"Thất bại" theo phương thức:** chuyển khoản (SePay, QR thủ công, MoMo cá nhân) không có sự kiện thất bại từ ngân hàng — thất bại =
+  hết hạn chưa nhận tiền hoặc sai số tiền; MoMo API có kết quả thất bại/huỷ (`resultCode ≠ 0`).
+- **Quyết định — email (người nhận = email tài khoản thanh toán):**
+  | # | Sự kiện | Người nhận |
+  |---|---|---|
+  | A1 | Hoá đơn gói thanh toán thành công (webhook / admin xác nhận / từ giao dịch / xác nhận trễ) | Chủ gian hàng |
+  | A2 | Hoá đơn gói hết hạn chưa trả (sweep → EXPIRED) | Chủ gian hàng |
+  | A3 | Hoá đơn gói nhận giao dịch đúng mã nhưng sai số tiền | Chủ gian hàng |
+  | A4 | Hoá đơn gói MoMo thất bại/huỷ | Chủ gian hàng |
+  | A5 | Admin huỷ hoá đơn gói (ADR-067) | Chủ gian hàng |
+  | B1 | Đơn tài liệu thành công | Khách (đã có — giữ) |
+  | B2 | Đơn tài liệu hết hạn chưa trả — chỉ đơn khách đã chọn cách thanh toán | Khách |
+  | B3 | Đơn tài liệu sai số tiền | Khách (người bán đã có email riêng) |
+  | B4 | Đơn tài liệu MoMo thất bại/huỷ | Khách |
+  | B5 | Người bán huỷ đơn tài liệu (ADR-068) | Khách |
+  - Gửi **sau khi** commit; lỗi gửi chỉ log, không làm hỏng thanh toán. Mỗi email **một lần** cho mỗi sự kiện (gắn với chuyển trạng thái
+    có điều kiện hoặc idempotency `webhook_events`/giao dịch). Nút hành động: thanh toán lại / tạo hoá đơn mới / đặt lại tài liệu; liên
+    hệ: email hỗ trợ (System Settings) cho hoá đơn gói, người bán (trang gian hàng) cho đơn tài liệu. Thương hiệu qua `getEffectiveBrand()`.
+  - Không migration (nếu cần mốc chống trùng mới → hỏi lại). Mở lại (ADR-067/068) không gửi email.
+
+## ADR-071 — Đợt 2: nhật ký chi tiết đơn hàng gói + chữ hiển thị "Gian hàng" thay "Tenant"
+
+- **Bối cảnh (2026-11-25):** kế hoạch 4 đợt (ADR-070). Nhật ký ở trang Chi tiết đơn hàng gói (ADR-069) chỉ hiện "Thanh toán gói dịch vụ ·
+  Hệ thống", "— → Đã thanh toán"; thiếu nguồn/cổng/số tiền, mốc tạo hoá đơn, email đã gửi. System Center còn ~20 chỗ hiện chữ "Tenant".
+- **Chủ dự án chốt:** mốc "Tạo hoá đơn" = audit mới + suy ra cho hoá đơn cũ; hiện email đã gửi trong nhật ký; chi tiết mới chỉ áp ở trang
+  Chi tiết đơn hàng gói (Nhật ký chung + Studio Hoạt động để đợt sau); trang Vai trò ghi "Gian hàng (tenant)".
+- **Quyết định:**
+  1. **2B (làm trước):** chữ hiển thị trong System Center "Tenant/tenant" → "Gian hàng/gian hàng"; trang Vai trò "Gian hàng (tenant)". Giữ URL
+     `/admin/tenants`, tên trong code/DB, tên bucket kỹ thuật. Chữ "tenant" ngoài System Center chỉ rà và báo cáo, không sửa ở đợt này.
+  2. **2A:** nhật ký trang Chi tiết đơn hàng gói hiện nhãn nguồn thanh toán (từ `metadata.source` + cổng), số tiền / đã nhận / chênh, khối
+     giao dịch ngân hàng (từ `platform_payment_transactions.matchedInvoiceId`), trạng thái cũ suy ra (PENDING; EXPIRED nếu xác nhận trễ);
+     audit mới `SUBSCRIPTION_INVOICE_CREATED` trong `createRenewalInvoice` (actor, gói, cổng, số tiền, mã), hoá đơn cũ hiện mốc suy ra từ
+     `createdAt` "không rõ người tạo"; dòng email đã gửi từ `email_send_log` (email hoá đơn gói + nhắc hạn/ân hạn/hạ gói của gian hàng).
+  3. Không migration; không thêm test case; chỉ dữ liệu L1 + audit + nhật ký email (§7.9).
+- **Kế hoạch chi tiết:** `docs/ke-hoach-dot-2-nhat-ky-chi-tiet-va-ten-gian-hang-2026-11-25.md`.

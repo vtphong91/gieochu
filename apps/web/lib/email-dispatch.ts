@@ -31,6 +31,11 @@ const TENANT_CUSTOMER_FACING_TYPES = new Set([
   "order_payment_customer",
   "order_payment_reminder",
   "order_customer_declared_paid",
+  // ADR-070: email cho khách khi đơn hết hạn / sai số tiền / MoMo thất bại / người bán huỷ — có mã đơn.
+  "order_expired_customer",
+  "order_amount_mismatch_customer",
+  "order_payment_failed_customer",
+  "order_canceled_customer",
 ]);
 
 export const EMAIL_NOT_CONFIGURED = "EMAIL_NOT_CONFIGURED";

@@ -2626,7 +2626,7 @@ Quyết định thiết kế của Phong qua brief Quốc 2026-11-25. File `app/
   Quốc 2026-11-25) — **chưa tái hiện được**; chờ kiểm trên bản deploy (KB-Audit §51).
 * *Từ ADR-069 (§27.8):* ở `/admin/subscriptions` và tab "Tất cả", nút này được thay bằng menu "⋯"; `InvoiceStatusButton` chỉ còn ở bảng hoá đơn của trang chi tiết.
 
-### 27.8. Menu "⋯" cột "Thao tác" + trang chi tiết đơn hàng gói (ADR-069) ✅ đọc code 2026-11-25 (working tree, chưa commit) / ❓ trình duyệt
+### 27.8. Menu "⋯" cột "Thao tác" + trang chi tiết đơn hàng gói (ADR-069) ✅ đọc code 2026-11-25 (đã commit `b18d97a`) / ❓ trình duyệt
 
 Quyết định thiết kế của Phong qua brief Quốc 2026-11-25. Nghiệp vụ: [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5P ·
 [[01-Architecture-Decisions/ADR-053-Admin-Subscription-Detail-Row-Menu|ADR-053 KB (≙ ADR-069)]].

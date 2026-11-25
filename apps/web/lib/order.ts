@@ -46,6 +46,7 @@ import { audit, isAuditTableMissing } from "./audit";
 import { escapeLikePattern } from "./shop";
 import { addOrderNote, listOrderNotes, type OrderNoteView } from "./order-note";
 import { notifyCustomerOfPaymentInstructions } from "./order-customer";
+import { formatEmailVnd, notifyCustomerOfOrderStatus } from "./payment-status-notify";
 
 const ORDER_CODE_RETRIES = 10;
 
@@ -254,7 +255,8 @@ async function sendOrderPaidEmailsInner(orderId: string): Promise<void> {
   const buyerEmail = renderOrderPaidEmail({
     appName: brand.name,
     orderCode: order.code,
-    totalVndDisplay: formatVnd(order.totalVnd),
+    // ADR-070 (soát câu chữ): email khách dùng "150.000 đ" như các email trạng thái thanh toán.
+    totalVndDisplay: formatEmailVnd(order.totalVnd),
     downloadsUrl,
   });
   const buyerSent = await sendEmailNow({ type: "order_paid", to: order.customer.email, subject: buyerEmail.subject, html: buyerEmail.html, text: buyerEmail.text });
@@ -1015,6 +1017,8 @@ async function sellerCancelOrder(tenantId: string, order: OrderRow, fromStatus: 
     targetId: order.id,
     metadata: { fromStatus, toStatus: nextStatus },
   });
+  // ADR-070 B5 — chỉ sau lần huỷ thành công (cập nhật có điều kiện). Email không chứa ghi chú của người bán.
+  await notifyCustomerOfOrderStatus(tenantId, order.id, "CANCELED_BY_SELLER");
 }
 
 /**
@@ -1905,14 +1909,29 @@ export async function getOrderDetailView(tenantId: string, orderId: string, view
  */
 export async function runOrderSweep(): Promise<number> {
   const now = new Date();
-  return withSystemJob(async (tx) => {
-    const expiring = await tx.order.findMany({ where: { status: "PENDING", expiresAt: { lt: now } } });
+  const expired = await withSystemJob(async (tx) => {
+    const expiring = await tx.order.findMany({
+      where: { status: "PENDING", expiresAt: { lt: now } },
+      select: { id: true, tenantId: true, status: true, provider: true },
+    });
+    const transitioned: { id: string; tenantId: string; provider: PaymentProviderId | null }[] = [];
     for (const order of expiring) {
       const nextStatus = transitionOrderStatus(order.status as OrderStatus, "EXPIRE");
-      await tx.order.update({ where: { id: order.id }, data: { status: nextStatus } });
+      // ADR-070 B2: chuyển có điều kiện — chỉ đơn DO LẦN SWEEP NÀY chuyển (không bị webhook/người bán/sweep khác đổi trước) mới
+      // được báo khách → mỗi lần hết hạn một email.
+      const { count } = await tx.order.updateMany({
+        where: { id: order.id, status: "PENDING", expiresAt: { lt: now } },
+        data: { status: nextStatus },
+      });
+      if (count > 0) transitioned.push({ id: order.id, tenantId: order.tenantId, provider: order.provider });
     }
-    return expiring.length;
+    return transitioned;
   });
+  // ADR-070 B2 — SAU commit; chỉ đơn khách đã chọn cách thanh toán (`provider`). Gửi trong luồng tenant (đọc dưới withTenant).
+  for (const order of expired) {
+    if (order.provider) await notifyCustomerOfOrderStatus(order.tenantId, order.id, "EXPIRED");
+  }
+  return expired.length;
 }
 
 export { sendOrderPaidEmails };

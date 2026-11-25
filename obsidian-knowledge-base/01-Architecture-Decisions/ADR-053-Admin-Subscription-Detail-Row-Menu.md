@@ -7,7 +7,7 @@ tags:
   - status/accepted
 date: 2026-11-25
 decider: vtphong91
-status: Accepted — đã code, verify đạt (Quốc báo), chưa commit; không migration
+status: Accepted — đã code, verify đạt (Quốc báo), đã commit b18d97a; không migration
 ---
 
 # 🏛️ ADR-053: System Center — "Xem chi tiết" đơn hàng gói + menu Thao tác "⋯"
@@ -16,7 +16,7 @@ status: Accepted — đã code, verify đạt (Quốc báo), chưa commit; khôn
 **ĐÃ PHÊ DUYỆT (Accepted)** — tương ứng **ADR-069** trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md) (chủ dự án chốt 2026-11-25). Bản trích ghi theo duyệt của Quốc
 (brief 2026-11-25).
 
-Tiến độ (đối chiếu 2026-11-25): code ADR-069 ở working tree, **chưa commit** ✅ `git status` (code ADR-067/068 nền đã nằm trong commit `2ccc2fc` ✅ `git show --stat`).
+Tiến độ (đối chiếu 2026-11-25): code ADR-069 **đã commit `b18d97a`** ✅ `git show --stat` (code ADR-067/068 nền đã nằm trong commit `2ccc2fc` ✅ `git show --stat`).
 **Không migration**, **không thêm `route.ts`** (24 dưới `/api`, 26 toàn app ✅ đếm) — thêm 1 trang App Router. Không thêm test case — `pnpm test:count` = **105/105 unit,
 69/69 integration** ✅ (Long chạy); `subscription-billing.test.ts` mở rộng trong case có sẵn ✅ `git diff --stat`. tsc, lint (chỉ cảnh báo cũ), unit, integration
 `subscription-billing` 7/7 🟡 (Quốc báo).

@@ -5,6 +5,7 @@ import { getEnv } from "@gieochu/config";
 import { getPrismaClient, Prisma, withSystemJob } from "@gieochu/db";
 import { markInvoicePaid, sepayInvoiceReferenceCandidates } from "../../../../../lib/subscription-billing";
 import { getPlatformPaymentConfigRow } from "../../../../../lib/platform-payment";
+import { notifyOwnerOfInvoiceStatus, runAfterResponseOrNow } from "../../../../../lib/payment-status-notify";
 
 const VALID_PROVIDERS = new Set<PaymentProviderId>(["SEPAY", "MOMO"]);
 
@@ -77,6 +78,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
 
   let matchedInvoiceId: string | null = null;
   let applyInvoiceId: string | null = null;
+  // ADR-070 A3/A4 — tới đây chỉ khi `webhook_events` vừa ghi LẦN ĐẦU (lặp lại bị chặn ở trên) → mỗi sự kiện tối đa một email.
+  let mismatchInvoiceId: string | null = null;
+  let failedInvoiceId: string | null = null;
   if (event.success) {
     // ADR-059 bổ sung lần 2: thử tiền tố đã cấu hình rồi `SUB` (hoá đơn cũ), đúng độ dài mã hoá đơn; lấy mã đầu tiên có hoá đơn.
     const candidates =
@@ -88,8 +92,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
       if (invoice && invoice.amountVnd === event.amountVnd) {
         matchedInvoiceId = invoice.id;
         if (invoice.status === "PENDING") applyInvoiceId = invoice.id;
+      } else if (invoice && invoice.status !== "PAID" && invoice.status !== "REFUNDED") {
+        // A3: đúng mã hoá đơn chưa trả nhưng sai số tiền → báo chủ gian hàng (hoá đơn đã trả/hoàn: không báo).
+        mismatchInvoiceId = invoice.id;
       }
     }
+  } else if (providerId === "MOMO" && event.reference) {
+    // A4: MoMo báo thất bại/huỷ (`resultCode ≠ 0`) cho hoá đơn còn chưa trả → báo chủ gian hàng thanh toán lại.
+    const invoice = await prisma.subscriptionInvoice.findUnique({ where: { code: event.reference }, select: { id: true, status: true } });
+    if (invoice && (invoice.status === "PENDING" || invoice.status === "EXPIRED")) failedInvoiceId = invoice.id;
   }
 
   // ADR-059 (B2): ghi giao dịch TRƯỚC khi áp hoá đơn — webhook_events đã ghi nên lần thử lại của cổng bị bỏ qua; nếu áp hoá đơn
@@ -97,7 +108,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
   await prisma.platformPaymentTransaction.create({
     data: { provider: providerId, amountVnd: event.amountVnd, rawPayload: parsedBody as Prisma.InputJsonValue, matchedInvoiceId },
   });
-  if (applyInvoiceId) await markInvoicePaid(applyInvoiceId);
+  // ADR-070: email gửi SAU response (không chờ SMTP trong webhook). A1 chỉ lên lịch khi `markInvoicePaid` thật sự áp hoá đơn.
+  const deferred: Array<() => Promise<void>> = [];
+  if (applyInvoiceId) {
+    await markInvoicePaid(applyInvoiceId, { source: "PLATFORM_WEBHOOK", scheduleNotification: (task) => void deferred.push(task) });
+  }
+  if (mismatchInvoiceId) {
+    const invoiceId = mismatchInvoiceId;
+    deferred.push(() => notifyOwnerOfInvoiceStatus(invoiceId, "AMOUNT_MISMATCH", { receivedVnd: event.amountVnd }));
+  }
+  if (failedInvoiceId) {
+    const invoiceId = failedInvoiceId;
+    deferred.push(() => notifyOwnerOfInvoiceStatus(invoiceId, "PAYMENT_FAILED"));
+  }
+  await runAfterResponseOrNow(deferred);
 
   logger.info({ provider: providerId, providerEventId: event.providerEventId, matchedInvoiceId }, "platform payment webhook processed");
 

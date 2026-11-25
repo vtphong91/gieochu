@@ -1292,6 +1292,27 @@ Checklist pháp lý: `docs/legal/LEGAL_REVIEW_CHECKLIST.md`.
   `/admin/billing/invoices` và cột "Thao tác" `/admin/subscriptions`; cột "Hoá đơn gần nhất" mã trên / trạng thái dưới.
 - Verify: typecheck, lint (trừ cảnh báo có sẵn ở `huong-dan-su-dung`), integration `subscription-billing` 7/7, `test:count` 105/69.
 
+## Kế hoạch 4 đợt System Center / thanh toán (chủ dự án chốt 2026-11-25)
+
+1. **Đợt 1 — Email thông báo thanh toán (ADR-070):** thành công (hoá đơn gói), hết hạn chưa trả, sai số tiền, MoMo thất bại, bị huỷ —
+   cho hoá đơn gói (chủ gian hàng) và đơn tài liệu (khách). Đang làm.
+2. **Đợt 2 — Nhật ký thao tác chi tiết** (nguồn/cổng thanh toán, số tiền, mã giao dịch, mốc tạo hoá đơn) + **đổi chữ "Tenant" → "Gian hàng"**
+   trong System Center (chỉ chữ hiển thị; code/DB giữ `tenant`). **Kế hoạch chi tiết đã chốt 2026-11-25 (ADR-071), chưa code — file đầy đủ:
+   [`docs/ke-hoach-dot-2-nhat-ky-chi-tiet-va-ten-gian-hang-2026-11-25.md`](ke-hoach-dot-2-nhat-ky-chi-tiet-va-ten-gian-hang-2026-11-25.md):**
+   - **2B trước (quy trình rút gọn — Phong → Quốc):** ~20 chuỗi hiển thị trong System Center → "Gian hàng" (menu, `/admin/tenants`, Tổng
+     quan, form gói, Danh mục, Cấu hình thanh toán, Báo cáo vi phạm, SMTP); trang Vai trò ghi "Gian hàng (tenant)". Giữ URL `/admin/tenants`,
+     code/DB, tên bucket `gc-tenant-…`. Phong rà và **chỉ báo cáo** chữ "tenant" còn hiển thị ở Studio/công khai/email. Long thêm thuật ngữ
+     "Gian hàng = tenant".
+   - **2A sau (quy trình đầy đủ — Phong chốt bố cục + contract → Hiếu → Phong → Quốc → Long), chỉ trang Chi tiết đơn hàng gói:** nhãn nguồn
+     thanh toán (Tự động qua SePay/MoMo, Admin xác nhận tay, Admin xác nhận từ giao dịch, Xác nhận trễ); số tiền, cổng, đã nhận/chênh lệch;
+     khối giao dịch ngân hàng (mã GD SePay, thời điểm, nội dung CK) từ `platform_payment_transactions` gắn hoá đơn; trạng thái cũ thay "—";
+     mốc **"Tạo hoá đơn"** = audit mới `SUBSCRIPTION_INVOICE_CREATED` (ai tạo, gói, cổng, số tiền) + suy ra từ `createdAt` cho hoá đơn cũ
+     ("không rõ người tạo"); dòng **email đã gửi** (từ `email_send_log`, chỉ email hoá đơn gói/nhắc hạn). Không migration, không thêm test
+     case, chỉ dữ liệu L1 (§7.9).
+3. **Đợt 3 — Trang chi tiết gian hàng** `/admin/tenants/[id]` (thông tin, chủ, gói hiện tại → chi tiết đơn hàng gói, dung lượng, số tài
+   liệu, số liệu tổng hợp, báo cáo vi phạm, nhật ký admin; không đơn/khách của gian hàng — §7.9).
+4. **Đợt 4 — Trang chi tiết người dùng** `/admin/users/[id]` (hồ sơ, bảo mật/phiên, gian hàng sở hữu, điều khoản đã đồng ý, nhật ký; không
+   đơn mua/thư viện — §7.9).
 ## Kế hoạch SEO tổng thể — hoãn (chủ dự án chốt 2026-10-24)
 
 - Không làm thêm chức năng SEO lẻ trong các phiên hiện tại; gom thành **một kế hoạch tổng thể cho toàn hệ thống** sau:

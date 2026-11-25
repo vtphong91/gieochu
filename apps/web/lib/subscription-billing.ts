@@ -32,6 +32,7 @@ import { sendEmailNow, type ScheduleAfterResponse } from "./email-dispatch";
 import { audit, isAuditTableMissing } from "./audit";
 import { getPlatformPaymentConfigRow } from "./platform-payment";
 import { isMissingEnumValueError } from "./db-errors";
+import { notifyOwnerOfInvoiceStatus } from "./payment-status-notify";
 
 const INVOICE_CODE_RETRIES = 10;
 
@@ -252,7 +253,16 @@ export type InvoicePaidSource = "PLATFORM_WEBHOOK" | "ADMIN_MANUAL_CONFIRM";
 
 export async function markInvoicePaid(
   invoiceId: string,
-  options: { source: InvoicePaidSource; actorId?: string | null; note?: string | null } = { source: "PLATFORM_WEBHOOK" },
+  options: {
+    source: InvoicePaidSource;
+    actorId?: string | null;
+    note?: string | null;
+    /**
+     * ADR-070 A1: lên lịch email "thanh toán thành công" sau response (webhook truyền vào để trả 2xx nhanh). Bỏ trống → gửi ngay
+     * tại chỗ (Server Action của admin). Chỉ gọi khi lần này thật sự áp hoá đơn.
+     */
+    scheduleNotification?: ScheduleAfterResponse;
+  } = { source: "PLATFORM_WEBHOOK" },
 ): Promise<void> {
   const prisma = getPrismaClient();
   const applied = await prisma.$transaction(async (tx) => {
@@ -285,6 +295,10 @@ export async function markInvoicePaid(
       ...(options.note ? { note: options.note } : {}),
     },
   });
+  // ADR-070 A1 — chỉ tới đây khi lần này áp hoá đơn (cập nhật có điều kiện PENDING → PAID) → một email mỗi hoá đơn.
+  const notifyPaid = () => notifyOwnerOfInvoiceStatus(invoice.id, "PAID");
+  if (options.scheduleNotification) options.scheduleNotification(notifyPaid);
+  else await notifyPaid();
 }
 
 type InvoiceWithPlan = Prisma.SubscriptionInvoiceGetPayload<{ include: { plan: true } }>;
@@ -456,6 +470,8 @@ async function confirmExpiredManualInvoice(invoiceId: string, actorId: string | 
       ...(note ? { note } : {}),
     },
   });
+  // ADR-070 A1 — chỉ khi lần này áp (hai lần bấm song song: lần sau return null ở trên, không gửi lại).
+  await notifyOwnerOfInvoiceStatus(result.invoice.id, "PAID");
 }
 
 /**
@@ -543,6 +559,8 @@ export async function confirmInvoiceFromPlatformTransaction(
       ...(result.late ? lateConfirmationMetadata(result.invoice, result.applied) : { periodEnd: result.invoice.periodEnd }),
     },
   });
+  // ADR-070 A1 — giao dịch chỉ gắn/áp một lần (dưới khoá); lần sau ném lỗi trước khi tới đây.
+  await notifyOwnerOfInvoiceStatus(result.invoice.id, "PAID");
 }
 
 // ADR-067 — "Đổi trạng thái" hoá đơn gói (System Admin, mọi cổng). Bảng L1 (subscription_invoices, subscriptions) — mọi thao
@@ -617,6 +635,8 @@ export async function voidSubscriptionInvoice(invoiceId: string, actorId: string
       ...(voidNote ? { note: voidNote } : {}),
     },
   });
+  // ADR-070 A5 — chỉ sau lần huỷ thành công (cập nhật có điều kiện). Email KHÔNG chứa ghi chú của admin.
+  await notifyOwnerOfInvoiceStatus(invoice.id, "VOIDED");
 }
 
 const invoiceNotVoidableError = () =>

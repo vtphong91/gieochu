@@ -48,6 +48,16 @@ vi.mock("../../lib/email-dispatch", async (importOriginal) => {
       "order_payment_reminder",
       "order_customer_declared_paid",
       "guest_activation",
+      // ADR-070: runOrderSweep quét TOÀN DB dùng chung — email hết hạn/sai tiền/thất bại/huỷ KHÔNG BAO GIỜ gửi thật từ test.
+      "order_expired_customer",
+      "order_amount_mismatch_customer",
+      "order_payment_failed_customer",
+      "order_canceled_customer",
+      // ADR-070: email của sweep thuê bao (`subscription_${stage}`) — không bao giờ gửi thật từ test.
+      "subscription_reminder_7d",
+      "subscription_reminder_1d",
+      "subscription_grace",
+      "subscription_downgraded_to_free",
     ].includes(message.type)
       ? { ok: true }
       : actual.sendEmailNow(message as never),
@@ -355,6 +365,13 @@ describe("M8 checkout and orders", () => {
     const cancelAudit = await prisma.auditLog.findFirstOrThrow({ where: { action: "ORDER_CANCELED_BY_SELLER", targetId: order2.id } });
     expect(cancelAudit).toMatchObject({ scope: "TENANT", tenantId: tenant.id, actorId: owner.id });
     expect(cancelAudit.metadata).toEqual({ fromStatus: "PENDING", toStatus: "CANCELED" });
+    // ADR-070 B5: khách nhận đúng 1 email "người bán huỷ đơn" — không chứa ghi chú nội bộ của người bán.
+    const canceledEmails = sendEmailNowSpy.mock.calls
+      .map(([message]) => message)
+      .filter((message) => message.type === "order_canceled_customer" && message.subject.includes(order2.code));
+    expect(canceledEmails).toHaveLength(1);
+    expect(canceledEmails[0]).toMatchObject({ to: buyer2.email });
+    expect(canceledEmails[0].text).not.toContain("Khách nhờ huỷ");
 
     await withTenant(tenant.id, (tx) => tx.product.update({ where: { id: product.id }, data: { status: "ARCHIVED" } }));
     await expect(changeOrderStatusBySeller(tenant.id, order2.id, "PENDING", null, owner.id)).rejects.toMatchObject({ code: "PRODUCT_UNAVAILABLE" });
@@ -602,6 +619,25 @@ describe("M8 checkout and orders", () => {
     const buyer = await createActiveUser(nextEmail());
     const order = await createOrder(buyer.id, tenant.slug, product.id);
 
+    // ADR-070 B4: MoMo báo thất bại/huỷ cho đơn chưa trả → đúng 1 email cho khách (thanh toán lại → trang checkout của đơn).
+    await processPaymentEvent({
+      tenantId: tenant.id,
+      provider: "MOMO",
+      providerEventId: `evt_${RUN_PREFIX}_momo_failed`,
+      reference: order.code,
+      amountVnd: order.totalVnd,
+      success: false,
+      rawPayload: { test: true },
+    });
+    const failedEmails = sendEmailNowSpy.mock.calls
+      .map(([message]) => message)
+      .filter((message) => message.type === "order_payment_failed_customer" && message.subject.includes(order.code));
+    expect(failedEmails).toHaveLength(1);
+    expect(failedEmails[0]).toMatchObject({ to: buyer.email });
+    expect(failedEmails[0].text).toContain(`/${tenant.slug}/checkout/${order.code}`);
+    expect(failedEmails[0].text).toMatch(/thanh toán lại trước \d{2}:\d{2} \d{2}\/\d{2}\/\d{4}/);
+    expect((await getOrderDetailView(tenant.id, order.id)).status).toBe("PENDING");
+
     await processPaymentEvent({
       tenantId: tenant.id,
       provider: "MOMO",
@@ -656,6 +692,15 @@ describe("M8 checkout and orders", () => {
       }),
     ).rejects.toThrow();
     expect(mismatchEmails()).toHaveLength(1);
+    // ADR-070 B3: khách của đơn cũng nhận đúng 1 email sai số tiền (job chạy lại cùng giao dịch không gửi lại).
+    const customerMismatch = sendEmailNowSpy.mock.calls
+      .map(([message]) => message)
+      .filter((message) => message.type === "order_amount_mismatch_customer" && message.subject.includes(order.code));
+    expect(customerMismatch).toHaveLength(1);
+    expect(customerMismatch[0]).toMatchObject({ to: buyer.email });
+    expect(customerMismatch[0].text).toContain("thiếu 10.000 đ");
+    expect(customerMismatch[0].subject).toBe(`Đơn hàng ${order.code}: số tiền nhận được không khớp`);
+    expect(customerMismatch[0].text).toContain("không chuyển bù"); // nhánh THIẾU
     const needingAction = await listTenantTransactionsNeedingAction(tenant.id, 1);
     expect(needingAction.items).toHaveLength(1);
     expect(needingAction.items[0]).toMatchObject({ matchStatus: "MISMATCH_AMOUNT", amountVnd: 90_000, order: { id: order.id, code: order.code } });
@@ -684,8 +729,22 @@ describe("M8 checkout and orders", () => {
     const order = await createOrder(buyer.id, tenant.slug, product.id);
     await applyCouponToOrder(tenant.id, order.id, buyer.id, "SWEEP10");
     await withTenant(tenant.id, (tx) => tx.order.update({ where: { id: order.id }, data: { expiresAt: new Date(Date.now() - 60_000) } }));
+    // ADR-070 B2: đơn khách ĐÃ chọn cách thanh toán (provider) → email hết hạn; đơn chưa chọn (order) → không.
+    const methodBuyer = await createActiveUser(nextEmail());
+    const withMethod = await createOrder(methodBuyer.id, tenant.slug, product.id);
+    await withTenant(tenant.id, (tx) =>
+      tx.order.update({ where: { id: withMethod.id }, data: { provider: "MANUAL_QR", expiresAt: new Date(Date.now() - 60_000) } }),
+    );
+    const expiredEmails = (code: string) =>
+      sendEmailNowSpy.mock.calls.map(([message]) => message).filter((message) => message.type === "order_expired_customer" && message.subject.includes(code));
 
     await runOrderSweep();
+    await runOrderSweep(); // lần quét sau không chuyển lại → không gửi lại.
+    expect(expiredEmails(order.code)).toHaveLength(0);
+    expect(expiredEmails(withMethod.code)).toHaveLength(1);
+    expect(expiredEmails(withMethod.code)[0]).toMatchObject({ to: methodBuyer.email, subject: `Đơn hàng ${withMethod.code} đã hết hạn thanh toán` });
+    expect(expiredEmails(withMethod.code)[0].text).toContain("Mua lại tài liệu:");
+    expect(expiredEmails(withMethod.code)[0].text).toContain(`/${tenant.slug}/${product.slug}`);
 
     const expired = await getOrderDetailView(tenant.id, order.id);
     expect(expired.status).toBe("EXPIRED");

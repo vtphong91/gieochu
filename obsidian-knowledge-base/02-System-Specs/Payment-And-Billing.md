@@ -383,7 +383,8 @@ Quyết định: [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confir
 | `payment_mismatch` | Chủ gian hàng | Giao dịch cổng tiền vào khớp mã đơn, sai số tiền | `notifyOwnerOfPaymentMismatch` (`lib/payment-process.ts`), sau commit trong job | Không |
 
 Chi tiết phía đơn hàng: [[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.10–§3.11. **Chưa có** email cho giao dịch `UNMATCHED` và cho giao dịch khớp tiền nhưng
-về sau hạn giữ đơn ✅ code. Gửi tới hộp thư thật ❓. Email luồng mua của khách (ADR-061/062): §5K.
+về sau hạn giữ đơn ✅ code. Gửi tới hộp thư thật ❓. Email luồng mua của khách (ADR-061/062): §5K. Email trạng thái thanh toán (ADR-070 — thành công gói, hết hạn, sai số tiền
+cho khách, MoMo thất bại, bị huỷ): §5Q.
 
 ### 5K. Email luồng mua của khách + mốc chống gửi trùng (ADR-061 Q7/Q9/Q10/Q12, ADR-062 Q1 + bổ sung mục 6) — working tree, chưa commit ✅ đọc code 2026-10-27
 
@@ -607,7 +608,7 @@ Cột "Thao tác" chỉ nhận `statusTargets` theo trạng thái — điều ki
 **Test:** không thêm case — mở rộng `subscription-billing.test.ts` (chạy 7/7 🟡 Quốc báo); `pnpm test:count` 105/69 ✅. Trình duyệt / production ❓.
 *Code ADR-067 đã nằm trong commit `2ccc2fc` ✅ `git show --stat` (sau lúc ghi mục này). Từ ADR-069: cột "Thao tác" là menu "⋯" — §5P.*
 
-### 5P. Chi tiết đơn hàng gói `/admin/subscriptions/[subscriptionId]` + menu "⋯" (ADR-069) — working tree, chưa commit, không migration ✅ đọc code 2026-11-25
+### 5P. Chi tiết đơn hàng gói `/admin/subscriptions/[subscriptionId]` + menu "⋯" (ADR-069) — đã commit `b18d97a`, không migration ✅ đọc code 2026-11-25
 
 Quyết định: [[01-Architecture-Decisions/ADR-053-Admin-Subscription-Detail-Row-Menu|ADR-053 KB (≙ ADR-069)]]. Contract: [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §33.
 
@@ -622,6 +623,46 @@ Quyết định: [[01-Architecture-Decisions/ADR-053-Admin-Subscription-Detail-R
   `fromStatus`/`toStatus`/`note` (+ suy luận `previousInvoiceStatus`, `SUBSCRIPTION_PAID` → `PAID`); không lộ metadata thô (giao dịch cổng, chênh tiền).
 - **Revalidate:** 3 action hoá đơn gói gọi `revalidateBillingPages()` — thêm `revalidatePath("/admin/subscriptions/[subscriptionId]", "page")`.
 - **Test:** không thêm case (105/69 ✅); `subscription-billing` 7/7 🟡 Quốc báo. Trình duyệt / deploy ❓.
+
+### 5Q. Email thông báo trạng thái thanh toán — hoá đơn gói (A1–A5) + đơn tài liệu (B2–B5) (ADR-070, đợt 1/4) — working tree, chưa commit, không migration ✅ đọc code 2026-11-25
+
+Quyết định: [[01-Architecture-Decisions/ADR-054-Payment-Status-Emails|ADR-054 KB (≙ ADR-070)]]. Code: `apps/web/lib/payment-status-notify.ts` (mới), mẫu
+`packages/email/src/templates/payment-status.ts` (mới — `renderSubscriptionInvoiceEmail`, `renderOrderStatusEmail`). Gửi **sau khi commit**, hàm gửi **không bao giờ ném**
+(lỗi chỉ `logger.warn`) → không làm hỏng thanh toán/sweep. Thương hiệu qua `getEffectiveBrand()`. Người nhận = email tài khoản: chủ gian hàng (`tenant.owner.email`) / khách
+của đơn (`order.customer.email`). Gửi hộp thư thật / production ❓ **chưa thử**.
+
+| # | `type` | Sự kiện | Người nhận | Chỗ gửi (✅ code) | Một lần nhờ | `email_send_log` |
+| :-: | :-- | :-- | :-- | :-- | :-- | :-: |
+| A1 | `subscription_invoice_paid` | Hoá đơn gói thanh toán thành công | Chủ gian hàng | `markInvoicePaid` (webhook truyền `scheduleNotification` → `after()`; admin xác nhận PENDING → gửi tại chỗ); `confirmExpiredManualInvoice` (xác nhận trễ); `confirmInvoiceFromPlatformTransaction` (từ giao dịch) | Chỉ khi lần đó thật sự áp (cập nhật có điều kiện PENDING/EXPIRED → PAID; giao dịch chỉ gắn một lần) | Có |
+| A2 | `subscription_invoice_expired` | Sweep chuyển PENDING quá `dueAt` → EXPIRED | Chủ gian hàng | `runSubscriptionSweep` (`lib/subscription-sweep.ts`) — một lệnh `UPDATE … RETURNING "id"` rồi gửi lần lượt | Chỉ dòng do **lần sweep này** chuyển (sweep chồng nhau không nhận lại dòng) | Có |
+| A3 | `subscription_invoice_amount_mismatch` | Webhook nền tảng: đúng mã hoá đơn chưa trả nhưng sai số tiền | Chủ gian hàng | route `POST /api/webhooks/platform/[provider]`, `runAfterResponseOrNow` | `webhook_events` ghi **lần đầu** (lặp lại bị chặn trước) | Có |
+| A4 | `subscription_invoice_payment_failed` | MoMo nền tảng báo thất bại/huỷ (`resultCode ≠ 0`) cho hoá đơn PENDING/EXPIRED | Chủ gian hàng | như A3 | như A3 | Có |
+| A5 | `subscription_invoice_voided` | Admin huỷ hoá đơn (ADR-067) | Chủ gian hàng | `voidSubscriptionInvoice`, sau commit — **không** chứa ghi chú admin | Cập nhật có điều kiện → VOID | Có |
+| B1 | `order_paid` (có sẵn, M8) | Đơn tài liệu thành công | Khách | `sendOrderPaidEmails` (`lib/order.ts`) — giữ; tiền nay "150.000 đ" | `markOrderPaid` có điều kiện (ADR-068 mục 7) | Không |
+| B2 | `order_expired_customer` | Sweep chuyển đơn PENDING quá hạn → EXPIRED, **chỉ đơn đã có `provider`** (khách đã chọn cách trả) | Khách | `runOrderSweep` — `updateMany` có điều kiện từng đơn, gửi sau commit dưới `withTenant` | Chỉ đơn do lần sweep này chuyển | Không |
+| B3 | `order_amount_mismatch_customer` | Giao dịch cổng gian hàng khớp mã, sai số tiền, đơn còn PENDING/EXPIRED | Khách (người bán vẫn nhận `payment_mismatch`) | `processPaymentEvent` (`lib/payment-process.ts`) sau commit | Gắn với lần ghi giao dịch (unique giao dịch) | Không |
+| B4 | `order_payment_failed_customer` | MoMo gian hàng báo thất bại/huỷ cho đơn PENDING/EXPIRED | Khách | như B3 | như B3 | Không |
+| B5 | `order_canceled_customer` | Người bán huỷ đơn (ADR-068) | Khách | `sellerCancelOrder` sau cập nhật có điều kiện — **không** chứa ghi chú người bán | Cập nhật có điều kiện | Không |
+
+- **Không ghi `email_send_log`:** 4 loại B2–B5 thêm vào `TENANT_CUSTOMER_FACING_TYPES` (`lib/email-dispatch.ts`) — email luồng tenant↔khách, §7.9. 5 loại A1–A5 (L1, tiêu đề chỉ mã
+  hoá đơn + tên gói) **có** ghi ✅ code.
+- **Nội dung chung** ✅ code:
+  - Tiền **"150.000 đ"** (có khoảng trắng, `formatEmailVnd`) — áp cả `order_paid`; ngày **dd/mm/yyyy** giờ VN; hạn thanh toán lại (B4) "HH:mm dd/mm/yyyy".
+  - Cổng trong câu: "chuyển khoản ngân hàng (QR)" (MANUAL_QR), "chuyển khoản ngân hàng" (SEPAY), "ví MoMo" (MOMO), "chuyển tiền MoMo" (MOMO_MANUAL) — `PROVIDER_LABELS` (soát câu chữ: Phong 🟡).
+  - **Sai số tiền tách THIẾU/THỪA** ("thiếu 10.000 đ" / "thừa …"): THIẾU → "Vui lòng **không chuyển bù** phần thiếu — liên hệ…"; THỪA → "chưa ghi nhận tự động… liên hệ để
+    xử lý phần chênh lệch". Kèm câu an toàn ở email hết hạn/thất bại: "Nếu bạn đã chuyển tiền… đừng chuyển lại / đừng thanh toán lại — hãy liên hệ…".
+  - **Nút hành động:** hoá đơn gói — "Xem gói dịch vụ" (A1, A5), "Gia hạn gói dịch vụ" (A2), "Liên hệ hỗ trợ" `mailto:` kèm tiêu đề "Đối soát hoá đơn {mã}" (A3; chưa cấu hình
+    Email hỗ trợ → "Xem gói dịch vụ"), "Thanh toán lại" (A4) — đều trỏ `/studio/{slug}/billing`. Đơn tài liệu — "Mua lại tài liệu" (B2, trang tài liệu nếu còn PUBLISHED; không
+    thì "Xem trang gian hàng"), "Liên hệ người bán" (B3, B5 → trang gian hàng), "Thanh toán lại" (B4 → `/{slug}/checkout/{mã}`).
+  - **Liên hệ:** hoá đơn gói → "Email hỗ trợ" (System Settings, `mailto:`; trống → "bộ phận hỗ trợ của {brand}"); đơn tài liệu → trang gian hàng. Chữ ký đơn tài liệu "{brand} —
+    thay mặt «gian hàng»".
+- **Mở lại** (ADR-067/068) **không** gửi email ✅ code (không gọi).
+- **Test:** không thêm case (105/69 ✅). Assert thêm trong case có sẵn ✅ đọc `git diff`: `order.test.ts` — B5 (1 email, không chứa ghi chú), B4 (1 email, link checkout, định
+  dạng hạn), B3 (1 email, "thiếu 10.000 đ", "không chuyển bù", job chạy lại không gửi lại), B2 (đơn có `provider` nhận 1 email, đơn chưa chọn không nhận, sweep lần sau không gửi
+  lại); `subscription-billing.test.ts` — A1 (xác nhận trễ 2 lần bấm song song → 1 email; webhook áp → 1 email, nút về Gói dịch vụ), A5 (1 email, không chứa ghi chú admin).
+**Mock chặn gửi thật:** `subscription-billing.test.ts` chặn mọi email `subscription_*`; `order.test.ts` chặn 4 loại B2–B5 và 4 loại email sweep thuê bao
+  (`subscription_reminder_7d`, `subscription_reminder_1d`, `subscription_grace`, `subscription_downgraded_to_free`) — **trước đây email GRACE/DOWNGRADED do sweep chạy trong test
+  gửi thật** 🟡 (theo brief/comment test). Integration `order` + `subscription-billing` 17/17 🟡 Quốc báo. A4 chưa có test integration ❓.
 
 ---
 
@@ -647,7 +688,8 @@ Quyết định: [[01-Architecture-Decisions/ADR-053-Admin-Subscription-Detail-R
   `orders.paymentRef`), ADR-066 (xác nhận tay hoá đơn gói mọi cổng), ADR-067 (đổi trạng thái hoá đơn gói — huỷ/mở lại), ADR-068 mục 7 (`markOrderPaid` có điều kiện)
 * [[01-Architecture-Decisions/ADR-051-Subscription-Invoice-Status-Change-Void-Reopen|ADR-051 KB (≙ ADR-067)]] ([ADR-051-Subscription-Invoice-Status-Change-Void-Reopen.md](../01-Architecture-Decisions/ADR-051-Subscription-Invoice-Status-Change-Void-Reopen.md)) ·
   [[01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm|ADR-052 KB (≙ ADR-068)]] ([ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm.md](../01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm.md)) ·
-  [[01-Architecture-Decisions/ADR-053-Admin-Subscription-Detail-Row-Menu|ADR-053 KB (≙ ADR-069)]] ([ADR-053-Admin-Subscription-Detail-Row-Menu.md](../01-Architecture-Decisions/ADR-053-Admin-Subscription-Detail-Row-Menu.md))
+  [[01-Architecture-Decisions/ADR-053-Admin-Subscription-Detail-Row-Menu|ADR-053 KB (≙ ADR-069)]] ([ADR-053-Admin-Subscription-Detail-Row-Menu.md](../01-Architecture-Decisions/ADR-053-Admin-Subscription-Detail-Row-Menu.md)) ·
+  [[01-Architecture-Decisions/ADR-054-Payment-Status-Emails|ADR-054 KB (≙ ADR-070)]] ([ADR-054-Payment-Status-Emails.md](../01-Architecture-Decisions/ADR-054-Payment-Status-Emails.md))
 * [[01-Architecture-Decisions/ADR-049-Sepay-Numeric-Payment-Code-Shared|ADR-049 KB (≙ ADR-065)]] ([ADR-049-Sepay-Numeric-Payment-Code-Shared.md](../01-Architecture-Decisions/ADR-049-Sepay-Numeric-Payment-Code-Shared.md)) ·
   [[01-Architecture-Decisions/ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider|ADR-050 KB (≙ ADR-066)]] ([ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider.md](../01-Architecture-Decisions/ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider.md))
 * [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay|ADR-044 KB (≙ ADR-059)]] ([ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md](../01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md)) ·

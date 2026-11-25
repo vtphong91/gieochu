@@ -389,6 +389,14 @@ Quyết định: [[01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-
   `customerPaymentEmailed*` không reset — xem [[00-Index/KB-Audit-2026-09-26|KB-Audit]] §51.
 - **Test:** không thêm case — mở rộng `order.test.ts` (10/10 🟡 Quốc báo) và `state.test.ts`; `pnpm test:count` 105/69 ✅.
 
+### 3.15. Email cho khách khi đơn hết hạn / sai số tiền / MoMo thất bại / người bán huỷ (ADR-070) — working tree, chưa commit ✅ đọc code 2026-11-25
+
+Bảng đầy đủ + nội dung: [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5Q (B1–B5). Điểm gắn với máy trạng thái ✅ code:
+- **B2 hết hạn:** `runOrderSweep` nay chuyển **có điều kiện từng đơn** (`updateMany where status = PENDING AND expiresAt < now`), trả số đơn thật sự chuyển; sau commit gửi
+  `order_expired_customer` **chỉ cho đơn có `provider`** (khách đã chọn cách trả). Hết hạn "hiệu lực" (§3.4) không gửi email — chỉ khi sweep ghi DB.
+- **B3/B4:** `processPaymentEvent` — sai số tiền / MoMo `success = false` cho đơn còn PENDING/EXPIRED → email khách sau commit; đơn đã trả/hoàn nhận giao dịch lệch chỉ báo người bán.
+- **B5:** sau `sellerCancelOrder` thành công (§3.14); khách tự huỷ (§3.12) **không** có email; mở lại không có email.
+
 > **Hiển thị ở Studio (ADR-046, 2026-10-18 — working tree, chưa commit ✅ `git status`):** trang `/studio/{slug}/orders` lọc/đếm theo trạng thái
 > **hiệu lực** (`effectiveOrderStatus`) và chỉ hiện thao tác hợp lệ theo `orderAllowedActions` — `confirm` = `canManuallyConfirmOrder`, `cancel` =
 > hiệu lực PENDING, `refund` = FULFILLED ✅ đọc code. Đây chỉ là lớp hiển thị; các action vẫn tự kiểm luật ở §3 (không đổi). Xem

@@ -72,6 +72,15 @@ export type {
 export { renderCustomerDeclaredPaidEmail, renderOrderPaymentInstructionsEmail } from "./templates/order-payment";
 export type { CustomerDeclaredPaidTemplateData, OrderPaymentInstructionsTemplateData } from "./templates/order-payment";
 
+// ADR-070 — email trạng thái thanh toán (hoá đơn gói: chủ gian hàng; đơn tài liệu: khách)
+export { renderOrderStatusEmail, renderSubscriptionInvoiceEmail } from "./templates/payment-status";
+export type {
+  OrderStatusEmailData,
+  OrderStatusEmailStage,
+  SubscriptionInvoiceEmailData,
+  SubscriptionInvoiceEmailStage,
+} from "./templates/payment-status";
+
 // ADR-061 Q1 — kích hoạt tài khoản khách vãng lai + đặt mật khẩu
 export { renderGuestActivationEmail } from "./templates/guest-activation";
 export type { GuestActivationTemplateData } from "./templates/guest-activation";

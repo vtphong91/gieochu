@@ -5,6 +5,7 @@ import { renderPaymentAmountMismatchEmail } from "@gieochu/email";
 import { sendEmailNow } from "./email-dispatch";
 import { auditMarkOrderPaid, markOrderPaid, sendOrderPaidEmails, type MarkOrderPaidResult, type MarkOrderPaidSource } from "./order";
 import { recomputeProductSoldCounts } from "./product-sold-count";
+import { notifyCustomerOfOrderStatus } from "./payment-status-notify";
 import type { PaymentProcessJobData } from "./jobs";
 
 /**
@@ -21,10 +22,13 @@ import type { PaymentProcessJobData } from "./jobs";
  */
 export async function processPaymentEvent(data: PaymentProcessJobData): Promise<void> {
   type Fulfilled = { orderId: string; result: MarkOrderPaidResult; source: MarkOrderPaidSource };
-  type Mismatch = { orderId: string; orderCode: string; expectedVnd: number };
+  /** `notifyCustomer`: ADR-070 B3 — chỉ báo khách khi đơn còn chưa trả (đơn đã trả/hoàn nhận thêm giao dịch lệch: chỉ người bán). */
+  type Mismatch = { orderId: string; orderCode: string; expectedVnd: number; notifyCustomer: boolean };
   // ADR-059 bổ sung lần 2 (d): giao dịch tiền vào khớp mã đơn nhưng sai tiền → email báo chủ gian hàng SAU commit. Gắn với lần
   // ghi giao dịch (unique tenantId+provider+providerTxnId) nên một giao dịch chỉ báo một lần, kể cả khi job chạy lại.
-  const outcome = await withTenant(data.tenantId, async (tx): Promise<{ fulfilled: Fulfilled | false; mismatch: Mismatch | null }> => {
+  // ADR-070 B3/B4: email cho KHÁCH (sai tiền / MoMo thất bại) gắn với cùng lần ghi giao dịch đó → cũng một lần mỗi giao dịch.
+  type Outcome = { fulfilled: Fulfilled | false; mismatch: Mismatch | null; failedOrderId: string | null };
+  const outcome = await withTenant(data.tenantId, async (tx): Promise<Outcome> => {
     // ADR-059 bổ sung lần 2: thử các mã theo thứ tự ưu tiên (job cũ chỉ có `reference`). ADR-065: mỗi mã khớp mã thanh toán SePay
     // (`paymentRef`, duy nhất trong gian hàng) hoặc mã đơn.
     const candidates = data.referenceCandidates?.length ? data.referenceCandidates : data.reference ? [data.reference] : [];
@@ -46,10 +50,11 @@ export async function processPaymentEvent(data: PaymentProcessJobData): Promise<
           rawPayload: data.rawPayload as Prisma.InputJsonValue,
         },
       });
-      return { fulfilled: false, mismatch: null };
+      return { fulfilled: false, mismatch: null, failedOrderId: null };
     }
 
     const matchStatus = matchPaymentAmount(order.totalVnd, data.amountVnd);
+    const unpaid = order.status === "PENDING" || order.status === "EXPIRED";
     await tx.tenantPaymentTransaction.create({
       data: {
         tenantId: data.tenantId,
@@ -62,18 +67,38 @@ export async function processPaymentEvent(data: PaymentProcessJobData): Promise<
       },
     });
 
-    if (!data.success) return { fulfilled: false, mismatch: null };
-    if (matchStatus !== "MATCHED") {
-      return { fulfilled: false, mismatch: { orderId: order.id, orderCode: order.code, expectedVnd: order.totalVnd } };
+    if (!data.success) {
+      // ADR-070 B4: MoMo báo thất bại/huỷ cho đơn còn chưa trả → báo khách thanh toán lại (chuyển khoản không có sự kiện thất bại).
+      return { fulfilled: false, mismatch: null, failedOrderId: data.provider === "MOMO" && unpaid ? order.id : null };
     }
-    if (!canManuallyConfirmOrder(order.status as OrderStatus, order.expiresAt, new Date())) return { fulfilled: false, mismatch: null };
+    if (matchStatus !== "MATCHED") {
+      return {
+        fulfilled: false,
+        mismatch: { orderId: order.id, orderCode: order.code, expectedVnd: order.totalVnd, notifyCustomer: unpaid },
+        failedOrderId: null,
+      };
+    }
+    if (!canManuallyConfirmOrder(order.status as OrderStatus, order.expiresAt, new Date())) {
+      return { fulfilled: false, mismatch: null, failedOrderId: null };
+    }
 
     const source = data.provider === "SEPAY" ? "SEPAY_WEBHOOK" : "MOMO_IPN";
     const result = await markOrderPaid(tx, order.id, source);
-    return { fulfilled: result.fulfilled ? { orderId: order.id, result, source } : false, mismatch: null };
+    return { fulfilled: result.fulfilled ? { orderId: order.id, result, source } : false, mismatch: null, failedOrderId: null };
   });
   const { fulfilled } = outcome;
-  if (outcome.mismatch) await notifyOwnerOfPaymentMismatch(data, outcome.mismatch);
+  if (outcome.mismatch) {
+    await notifyOwnerOfPaymentMismatch(data, outcome.mismatch);
+    if (outcome.mismatch.notifyCustomer) {
+      await notifyCustomerOfOrderStatus(data.tenantId, outcome.mismatch.orderId, "AMOUNT_MISMATCH", {
+        receivedVnd: data.amountVnd,
+        provider: data.provider,
+      });
+    }
+  }
+  if (outcome.failedOrderId) {
+    await notifyCustomerOfOrderStatus(data.tenantId, outcome.failedOrderId, "PAYMENT_FAILED", { provider: data.provider });
+  }
 
   if (fulfilled) {
     // ADR-037: audit (COUPON_OVERUSED) sau commit, ngoài transaction nghiệp vụ.

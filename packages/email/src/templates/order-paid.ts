@@ -3,7 +3,7 @@ import type { RenderedEmail } from "./verify-email";
 export interface OrderPaidTemplateData {
   appName: string;
   orderCode: string;
-  /** Already formatted VND by the caller (e.g. "150.000đ") — templates don't own currency formatting. */
+  /** Already formatted VND by the caller (e.g. "150.000 đ" — ADR-070) — templates don't own currency formatting. */
   totalVndDisplay: string;
   downloadsUrl: string;
 }
