@@ -5,7 +5,7 @@ tags:
   - billing
   - status/living
 date: 2026-09-26
-updated: 2026-11-24
+updated: 2026-11-25
 author: System Architect
 ---
 
@@ -129,6 +129,11 @@ Mọi nguồn tiền vào cho `Order` (webhook SePay, IPN MoMo, xác nhận th�
 **đúng một hàm** `markOrderPaid(tx, orderId, source)` — xem chi tiết máy trạng thái tại
 [[Order-State-Machine]]. Đây là nguyên tắc kiến trúc quan trọng nhất của Tenant Billing: không có đường tắt
 nào khác ghi `Order.status = PAID`.
+
+**Cập nhật có điều kiện (ADR-068 "Bổ sung" mục 7, 2026-11-25 — working tree, chưa commit) ✅ code:** `markOrderPaid` ghi
+`updateMany({ where: { id, status: <trạng thái vừa đọc> } })`. Hai nguồn áp cùng lúc (webhook/job + người bán xác nhận, hai lần bấm…) cùng đọc PENDING → lần sau chờ khoá
+dòng của lần trước, Postgres đánh giá lại `WHERE` trên bản đã commit → **0 dòng → no-op** (`fulfilled: false`), **không** tính lượt mã giảm giá, thống kê khách, email,
+audit lần hai. Người bán xác nhận mà thua cuộc → 409 `ORDER_ALREADY_PAID` (rollback ghi chú) — [[Order-State-Machine]] §3.1, §3.14.
 
 ---
 
@@ -547,6 +552,59 @@ hoặc qua giao dịch".
   - Action revalidate cả hai trang; `confirmInvoiceFromTransactionAction` cũng revalidate thêm `/admin/subscriptions`.
 - **Ranh giới:** chỉ bảng L1 (`subscription_invoices`, `subscriptions`, `plans`, tên/slug gian hàng), không đọc đơn/khách tenant (§7.9) ✅.
 - **Test:** không thêm case — assert thêm trong `subscription-billing.test.ts` (xác nhận tay hoá đơn SePay kèm ghi chú → PAID + audit có `note`) ✅ đọc `git diff`; xem UI thật ❓.
+- **Từ ADR-067 (2026-11-25):** ở cột "Thao tác" `/admin/subscriptions` và tab "Tất cả", `ManualConfirmButton` được thay bằng hộp "Đổi trạng thái…" (§5O); tab "Chờ đối soát"
+  giữ nguyên ✅ code.
+
+### 5O. "Đổi trạng thái…" hoá đơn gói — huỷ / mở lại / đã thanh toán (ADR-067 + Bổ sung) — working tree, chưa commit, không migration ✅ đọc code 2026-11-25
+
+Quyết định: [[01-Architecture-Decisions/ADR-051-Subscription-Invoice-Status-Change-Void-Reopen|ADR-051 KB (≙ ADR-067)]]. Chỉ System Admin, mọi cổng, chỉ bảng L1 (§7.9).
+
+**Bảng chuyển** (`invoiceStatusTargets(status)`, `lib/subscription-billing.ts` — xét trạng thái **lưu trong DB**; UI chỉ hiện lựa chọn trong bảng, server kiểm lại dưới khoá):
+
+| Từ | → `PAID` | → `PENDING` (mở lại) | → `VOID` (huỷ) |
+| :-- | :-: | :-: | :-: |
+| `PENDING` | ✅ `markInvoicePaid` (kỳ đã lưu) | — | ✅ |
+| `EXPIRED` | ✅ xác nhận trễ (§5F, tính lại kỳ) | ✅ | ✅ |
+| `VOID` | — | ✅ | — |
+| `PAID`, `REFUNDED` | — | — | — (luồng hoàn tiền §5B) |
+
+Hoá đơn DB còn `PENDING` nhưng đã quá `dueAt` (sweep chưa chạy) vẫn coi là `PENDING` → chỉ có PAID/VOID ✅ code.
+
+**Huỷ — `voidSubscriptionInvoice(invoiceId, actorId, note?)`** ✅: transaction khoá dòng `subscriptions` → đọc lại → cập nhật có điều kiện `status IN (PENDING, EXPIRED)` → `VOID`.
+Không đổi thuê bao/gói; hoá đơn `VOID` không chặn `createRenewalInvoice` (chỉ dùng lại `PENDING` còn hạn). Webhook về sau cho hoá đơn `VOID` → `markInvoicePaid` no-op (chỉ áp
+`PENDING`); giao dịch vẫn ghi ở "Giao dịch cổng" (§5G).
+
+**Mở lại — `reopenSubscriptionInvoice(invoiceId, actorId, note?)`** ✅ — dưới khoá, theo thứ tự:
+1. Hoá đơn đang `EXPIRED`/`VOID` — không thì `INVOICE_NOT_REOPENABLE`.
+2. Gói của hoá đơn còn bán (`plan.isActive`) — không thì `PLAN_INACTIVE` (Bổ sung 2026-11-25; **409** ở đây, còn `createRenewalInvoice` ném cùng mã với **400**).
+3. Hoá đơn **mới nhất** của gian hàng (`createdAt desc, id desc`) — không thì `INVOICE_NOT_LATEST`.
+4. Không có hoá đơn `PENDING` **khác** (kể cả quá hạn chưa sweep) — không thì `PENDING_INVOICE_EXISTS`.
+5. `dueAt` = bây giờ + `invoicePendingTtlHours` (đọc trước transaction); kỳ = `computeRenewalPeriod(now, subscription.currentPeriodEnd, plan)` ghi đè `periodStart/End`.
+6. Cập nhật có điều kiện theo trạng thái đã đọc; giữ **mã, số tiền, cổng, `checkoutPayload`** (số tiền là giá lúc tạo hoá đơn, không lấy lại giá gói hiện tại ✅ code).
+   Mã cũ dạng chữ + số (trước ADR-065) SePay không nhận diện → admin xác nhận tay 🟡 ADR. Không gửi lại email `invoice_pending_manual` ✅ code.
+
+**Đã thanh toán:** `confirmManualInvoicePayment` (§5N) không đổi.
+
+**Ghi chú:** không bắt buộc, trim, cắt 500 ký tự, trống → bỏ; chỉ vào metadata audit (`note`). Audit mới `SUBSCRIPTION_INVOICE_VOIDED` / `SUBSCRIPTION_INVOICE_REOPENED`
+(scope `SYSTEM` + `tenantId`) — [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]] §4; chủ gian hàng thấy cả ghi chú ở Studio → Hoạt động (chủ dự án xác nhận giữ).
+
+**Mã lỗi (`AppError`, Server Action trả `{ error: message }`):**
+
+| Mã | HTTP | Khi |
+| :-- | :-: | :-- |
+| `INVOICE_NOT_FOUND` | 404 | Hoá đơn không tồn tại (huỷ/mở lại) |
+| `INVOICE_NOT_VOIDABLE` | 409 | Huỷ hoá đơn không phải PENDING/EXPIRED, hoặc đã đổi trạng thái song song |
+| `INVOICE_NOT_REOPENABLE` | 409 | Mở lại hoá đơn không phải EXPIRED/VOID, hoặc đã đổi song song |
+| `PLAN_INACTIVE` | 409 | Mở lại hoá đơn của gói đã ngừng bán |
+| `INVOICE_NOT_LATEST` | 409 | Mở lại hoá đơn không phải mới nhất |
+| `PENDING_INVOICE_EXISTS` | 409 | Gian hàng đang có hoá đơn PENDING khác |
+| `INVOICE_NOT_CONFIRMABLE`, `NEWER_INVOICE_EXISTS` | 409 | Nhánh PAID (§5F/§5N, không đổi) |
+
+**UI:** `changeInvoiceStatusAction` + `InvoiceStatusButton` ở cột "Thao tác" `/admin/subscriptions` (hoá đơn gần nhất) và tab "Tất cả" `/admin/billing/invoices` (mọi dòng); không
+còn lựa chọn → "—". Contract: [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §32; trình bày: [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §27.7.
+Cột "Thao tác" chỉ nhận `statusTargets` theo trạng thái — điều kiện "mới nhất / không có PENDING khác / gói còn bán" của mở lại chỉ biết khi bấm (lỗi hiện trong hộp) ✅ code.
+
+**Test:** không thêm case — mở rộng `subscription-billing.test.ts` (chạy 7/7 🟡 Quốc báo); `pnpm test:count` 105/69 ✅. Trình duyệt / production ❓.
 
 ---
 
@@ -569,7 +627,9 @@ hoặc qua giao dịch".
   ADR-013 (dedupe/tự tắt config), ADR-019 (webhook Tenant qua job, khoảng lệch với Platform), ADR-021 (Hybrid
   Monetization), ADR-041 (Bảng giá CMS, hạn mức -1/0, hoàn tiền gói 7 ngày), ADR-056 (lịch sử hoá đơn gói, Đơn hàng gói dịch vụ, khối chuyển khoản, mã giảm giá tạo lại QR),
   ADR-059 (beta: email báo xác nhận tay, xác nhận trễ hoá đơn EXPIRED, giao dịch cổng, tiền tố SePay), ADR-065 (mã thanh toán SePay tiền tố + 8 chữ số,
-  `orders.paymentRef`), ADR-066 (xác nhận tay hoá đơn gói mọi cổng)
+  `orders.paymentRef`), ADR-066 (xác nhận tay hoá đơn gói mọi cổng), ADR-067 (đổi trạng thái hoá đơn gói — huỷ/mở lại), ADR-068 mục 7 (`markOrderPaid` có điều kiện)
+* [[01-Architecture-Decisions/ADR-051-Subscription-Invoice-Status-Change-Void-Reopen|ADR-051 KB (≙ ADR-067)]] ([ADR-051-Subscription-Invoice-Status-Change-Void-Reopen.md](../01-Architecture-Decisions/ADR-051-Subscription-Invoice-Status-Change-Void-Reopen.md)) ·
+  [[01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm|ADR-052 KB (≙ ADR-068)]] ([ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm.md](../01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm.md))
 * [[01-Architecture-Decisions/ADR-049-Sepay-Numeric-Payment-Code-Shared|ADR-049 KB (≙ ADR-065)]] ([ADR-049-Sepay-Numeric-Payment-Code-Shared.md](../01-Architecture-Decisions/ADR-049-Sepay-Numeric-Payment-Code-Shared.md)) ·
   [[01-Architecture-Decisions/ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider|ADR-050 KB (≙ ADR-066)]] ([ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider.md](../01-Architecture-Decisions/ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider.md))
 * [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay|ADR-044 KB (≙ ADR-059)]] ([ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md](../01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md)) ·

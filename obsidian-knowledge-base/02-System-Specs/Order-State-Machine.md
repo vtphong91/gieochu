@@ -4,7 +4,7 @@ tags:
   - order
   - status/living
 date: 2026-09-26
-updated: 2026-11-24
+updated: 2026-11-25
 author: System Architect
 ---
 
@@ -21,7 +21,7 @@ Gieo Chữ bán tài liệu số — đơn hàng **không có** giao hàng vật
 | `PAID` | `markOrderPaid()` — webhook/IPN khớp, xác nhận thủ công, hoặc đơn 0đ | Đã nhận đủ tiền, đúng số tiền |
 | `FULFILLED` | Ngay sau `PAID`, cùng trong `markOrderPaid()` | Đã tạo `Entitlement` cho từng `OrderItem` — khách tải được ngay |
 | `EXPIRED` | `runOrderSweep()` (từ ADR-036: cron hằng ngày `/api/cron/daily`) ghi DB — nhưng mọi luồng đọc/thanh toán đã coi `PENDING` quá `expiresAt` là `EXPIRED` ngay (`effectiveOrderStatus`, §3.4) | Hết hạn thanh toán, chưa nhận được tiền |
-| `CANCELED` | Owner bấm "Huỷ đơn" (`cancelOrder`) | Chỉ hợp lệ từ `PENDING` |
+| `CANCELED` | Khách tự huỷ (`cancelOrderByCustomer`, event `CANCEL`, từ `PENDING`) hoặc người bán "Đổi trạng thái…" → Huỷ đơn (event `SELLER_CANCEL`, từ `PENDING`/`EXPIRED` — ADR-068) | Người bán mở lại được (`SELLER_REOPEN` → `PENDING`, ADR-068) |
 | `REFUNDED` | Owner bấm "Hoàn tiền" (`markOrderRefunded`) | Chỉ hợp lệ từ `FULFILLED` — thu hồi mọi `Entitlement` |
 
 **Khác biệt quan trọng so với đơn hàng vật lý:** `PAID` và `FULFILLED` xảy ra **trong cùng một hàm, cùng một
@@ -42,20 +42,23 @@ stateDiagram-v2
 
     PENDING --> PAID: MARK_PAID (markOrderPaid — webhook khớp/xác nhận thủ công/0đ)
     PENDING --> EXPIRED: EXPIRE (runOrderSweep — cron hằng ngày ADR-036, quá expiresAt)
-    PENDING --> CANCELED: CANCEL (owner huỷ đơn — chỉ từ PENDING)
+    PENDING --> CANCELED: CANCEL (khách tự huỷ) / SELLER_CANCEL (người bán, ADR-068)
 
     PAID --> FULFILLED: FULFILL (cùng transaction với MARK_PAID — tạo Entitlement)
 
-    EXPIRED --> PAID: MARK_PAID (thanh toán muộn được nhận diện trong cửa sổ xác nhận)
+    EXPIRED --> PAID: MARK_PAID (người bán xác nhận trễ — ADR-068; ngoại lệ khách báo chuyển trước hạn — ADR-062)
+    EXPIRED --> CANCELED: SELLER_CANCEL (người bán, ADR-068)
+    EXPIRED --> PENDING: SELLER_REOPEN (người bán mở lại, ADR-068)
+    CANCELED --> PENDING: SELLER_REOPEN (người bán mở lại, ADR-068)
 
     FULFILLED --> REFUNDED: REFUND (owner hoàn tiền — thu hồi Entitlement)
 
-    CANCELED --> [*]
     REFUNDED --> [*]
 ```
 
-**Trạng thái kết (terminal):** `CANCELED` và `REFUNDED` không có transition đi ra (`TRANSITIONS.CANCELED = {}`,
-`TRANSITIONS.REFUNDED = {}`).
+**Trạng thái kết (terminal):** chỉ còn `REFUNDED` (`TRANSITIONS.REFUNDED = {}`). Từ ADR-068 (2026-11-25, working tree) ✅ code
+`packages/core/src/order/state.ts`: `CANCELED` **không còn là trạng thái kết** — `TRANSITIONS.CANCELED = { SELLER_REOPEN: "PENDING" }`; `EXPIRED` thêm `SELLER_CANCEL`,
+`SELLER_REOPEN`; `PENDING` thêm `SELLER_CANCEL`. Hai event mới chỉ dùng cho "Đổi trạng thái…" của người bán (§3.14); `CANCEL` (khách) và đường thanh toán tự động giữ nguyên.
 
 ---
 
@@ -68,6 +71,9 @@ Mọi nguồn tiền vào đều gọi đúng một hàm này (`apps/web/lib/ord
 
 - **Nguồn gọi (`MarkOrderPaidSource`):** `SEPAY_WEBHOOK`, `MOMO_IPN`, `MANUAL_CONFIRM`, `ZERO_AMOUNT`.
 - **Idempotent:** đơn đã `PAID` hoặc `FULFILLED` → trả `{ fulfilled: false }` ngay, không làm lại.
+- **Cập nhật có điều kiện (ADR-068 "Bổ sung" mục 7, 2026-11-25 — sửa lỗi có từ trước) ✅ code:** bước chuyển sang `PAID` là
+  `updateMany({ where: { id, status: <trạng thái vừa đọc> } })`; 0 dòng → trả `{ fulfilled: false }` (no-op). Trước đây hai nguồn cùng đọc `PENDING` (webhook/job + người
+  bán, hai lần bấm) đều đi tiếp → mã giảm giá có thể bị tính hai lượt. Người bán gọi qua "Đổi trạng thái…" còn khoá dòng đơn `FOR UPDATE` trước khi đọc (§3.14).
 - **Trong 1 lần chạy:** chuyển `PENDING`/`EXPIRED` → `PAID` → `FULFILLED`; cộng dồn `TenantCustomer`
   (`ordersCount`/`totalSpentVnd`); nếu có `couponCode`, tăng `Coupon.usedCount` bằng
   `UPDATE ... WHERE "usedCount" < "usageLimit"` (raw SQL, atomic — 2 đơn thanh toán đồng thời không thể vượt
@@ -81,7 +87,9 @@ Mọi nguồn tiền vào đều gọi đúng một hàm này (`apps/web/lib/ord
 - **Kết quả (`MarkOrderPaidResult`):** `{ fulfilled, productIds, couponOverused }` — caller dùng `fulfilled` để quyết định gửi email
   (§3.7), `productIds` để tính lại `soldCount`, `couponOverused` để ghi audit sau commit (`auditMarkOrderPaid`).
 - **`EXPIRED → PAID`:** máy trạng thái vẫn cho phép (`markOrderPaid` nhận `PENDING`/`EXPIRED`), nhưng từ ADR-061 chỉ còn **một** đường tới đó:
-  ngoại lệ "khách đã báo chuyển trước hạn" (§3.12). Cửa sổ xác nhận muộn 24 giờ của đặc tả M8 **đã bỏ**.
+  ngoại lệ "khách đã báo chuyển trước hạn" (§3.12). Cửa sổ xác nhận muộn 24 giờ của đặc tả M8 **đã bỏ**. **Từ ADR-068 (2026-11-25):** thêm đường thứ hai — **người bán**
+  chọn "Đã thanh toán" trong "Đổi trạng thái…" xác nhận được **mọi** đơn hiệu lực `EXPIRED` (§3.14). Webhook/job **không đổi**: vẫn qua `canManuallyConfirmOrder` không
+  truyền `declaredPaidAt` → **không tự áp đơn `EXPIRED`** ✅ code (`payment-process.ts`).
 - **Luật xác nhận hiện hành (ADR-061 + Bổ sung ADR-062 mục 3 — đợt 1 luồng mua, working tree chưa commit, 2026-10-27) ✅ code:**
   `canManuallyConfirmOrder(status, expiresAt, now, { declaredPaidAt })`: hiệu lực `PENDING` → được; hiệu lực `EXPIRED` → **chỉ** khi `declaredPaidAt` có và
   `declaredPaidAt < expiresAt`. Webhook (`processPaymentEvent`) gọi **không** truyền `declaredPaidAt` → tiền SePay/MoMo về sau hạn: giao dịch ghi `MATCHED` nhưng
@@ -94,11 +102,15 @@ Mọi nguồn tiền vào đều gọi đúng một hàm này (`apps/web/lib/ord
   Từ ADR-036 hàm này xét theo `effectiveOrderStatus`, nên đơn DB còn `PENDING` nhưng đã quá hạn cũng chỉ có 24h (trước đây
   xác nhận được vô thời hạn nếu sweep không chạy).
 
-### 3.2. Huỷ đơn (`cancelOrder`)
+### 3.2. Huỷ đơn
 
-Chỉ hợp lệ khi đơn đang `PENDING` (`transitionOrderStatus(status, "CANCEL")` ném lỗi 409 nếu không). Không có
-đường huỷ cho đơn đã `PAID`/`FULFILLED` — phải dùng hoàn tiền. Từ ADR-036 ✅: `cancelOrder` truyền **trạng thái hiệu lực** vào máy
-trạng thái — đơn `PENDING` đã quá `expiresAt` bị coi là `EXPIRED` nên **không huỷ được** (giống sau khi sweep chạy).
+> **Từ ADR-068 (2026-11-25, working tree) ✅ `git diff`:** hàm `cancelOrder` (người bán) và `cancelOrderAction` **đã xoá**. Người bán huỷ qua "Đổi trạng thái…" →
+> `changeOrderStatusBySeller(…, "CANCELLED")`, event **`SELLER_CANCEL`**, hợp lệ từ hiệu lực **`PENDING` hoặc `EXPIRED`** (§3.14). Khách tự huỷ vẫn là `cancelOrderByCustomer`
+> (event `CANCEL`, chỉ `PENDING`, §3.12). Mô tả cũ dưới đây giữ để tra lịch sử.
+
+~~Chỉ hợp lệ khi đơn đang `PENDING` (`transitionOrderStatus(status, "CANCEL")` ném lỗi 409 nếu không).~~ Không có
+đường huỷ cho đơn đã `PAID`/`FULFILLED` — phải dùng hoàn tiền (vẫn đúng). ~~Từ ADR-036: `cancelOrder` truyền **trạng thái hiệu lực** vào máy
+trạng thái — đơn `PENDING` đã quá `expiresAt` bị coi là `EXPIRED` nên **không huỷ được**.~~ (ADR-068 cho người bán huỷ đơn `EXPIRED`.)
 
 ### 3.3. Hoàn tiền (`markOrderRefunded`)
 
@@ -120,7 +132,8 @@ commit/deploy**) ✅.
   `@gieochu/core`) trả `EXPIRED` khi `status = PENDING` và `expiresAt < now` (cùng ranh giới với `runOrderSweep`), ngược lại trả
   nguyên `status`. Không ghi DB. Áp vào ✅:
   - `applyCouponToOrder`, `removeCouponFromOrder`, `initiateOrderCheckout` — đơn quá hạn → `409 ORDER_NOT_PENDING`;
-  - `cancelOrder` (§3.2); `canManuallyConfirmOrder` (§3.1 — webhook + xác nhận tay);
+  - ~~`cancelOrder` (§3.2)~~ (đã xoá — ADR-068); `canManuallyConfirmOrder` (§3.1 — webhook + `confirmOrderManually`); `orderStatusTargets` / `changeOrderStatusBySeller`
+    (§3.14 — ADR-068);
   - đọc: `getOrderForCustomer` (trang checkout), `getOrderDetailView`, `listOrdersPage` trả `status` hiệu lực; bộ lọc trạng thái của
     `listOrdersPage` (SQL `effectiveStatusSql`): `PENDING` loại đơn quá hạn, `EXPIRED` gồm cả đơn `PENDING` quá hạn ✅ code
     (`getOrderDetail`/`listOrders` cũ đã xoá ở ADR-047 — [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]]);
@@ -132,6 +145,12 @@ commit/deploy**) ✅.
   | :-- | :-- | :-- |
   | Chưa chọn, hoặc cổng xác nhận tay (`MANUAL_QR`, `MOMO_MANUAL`) | **72** (mặc định) | `orderHoldManualHours` (1–168) |
   | Cổng tự xác nhận (`SEPAY`; `MOMO` API nếu bật) | **48** (mặc định) | `orderHoldAutoHours` (1–168) |
+
+  > **Đổi mốc từ ADR-068 mục 8 (2026-11-25, working tree) ✅ code:** mốc giữ = **`orderHoldStartedAt(order)` = `holdStartedAt ?? createdAt`** (cột mới `orders.holdStartedAt`,
+  > migration `20261125120000_adr068_order_hold_started_at`). Người bán **mở lại** đơn đặt `holdStartedAt` = lúc mở lại (§3.14); đơn chưa từng mở lại có `holdStartedAt = NULL`
+  > → hành vi như cũ. Helper dùng ở `initiateOrderCheckout` (hạn mới + chặn `PROVIDER_HOLD_EXPIRED`) và `checkout-view.ts` (cờ `available` của từng phương thức). Câu chữ:
+  > System Settings "…kể từ lúc đặt đơn (hoặc lúc người bán mở lại đơn)"; lý do phương thức bị khoá ở trang thanh toán bỏ "(tính từ lúc đặt đơn)" ✅ code. Mọi chỗ ghi
+  > "`createdAt`" dưới đây đọc là "mốc giữ".
 
   `createOrder` đặt hạn thủ công; `initiateOrderCheckout` tính lại `createdAt + giờ của phương thức mới` (`orderHoldHoursFor`) — **đổi phương thức không gia hạn**
   (luôn neo `createdAt`, không cộng dồn — đổi SePay → chuyển tay thì hạn = `createdAt + 72 giờ`, Quốc xác nhận đúng công thức Q3 ngày 2026-10-27); hạn mới đã qua →
@@ -250,7 +269,7 @@ Quyết định: [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confir
   giao dịch `matchStatus ∈ {UNMATCHED, MISMATCH_AMOUNT}` **và** (từ đợt 1 ADR-061) `MATCHED` mà đơn **chưa** `PAID`/`FULFILLED`/`REFUNDED` — nhãn **"Về sau hạn giữ
   đơn"** (tiền đúng đơn, đúng số nhưng về khi đơn đã hết hạn; người bán hoàn tiền hoặc liên hệ khách); **bỏ** giao dịch SePay tiền ra (`rawPayload->>'transferType' = 'out'`, lọc bằng SQL thô + `COALESCE` để giữ
   dòng MoMo/payload cũ thiếu khoá). Mới nhất trước, 20/trang. Cột: thời điểm nhận + mã giao dịch cổng, cổng, số tiền, tình trạng, đơn (nếu có, kèm chênh lệch), nội dung
-  CK (≤ 160 ký tự). Chỉ xem — chủ gian hàng xác nhận tay ở trang chi tiết đơn (nếu đơn còn xác nhận được — §3.1). Markup tối thiểu, Phong rà sau 🟡.
+  CK (≤ 160 ký tự). Chỉ xem — chủ gian hàng xác nhận tay ở trang chi tiết đơn (nếu đơn còn xác nhận được — §3.1; từ ADR-068 qua "Đổi trạng thái…", kể cả đơn đã hết hạn — §3.14). Markup tối thiểu, Phong rà sau 🟡.
 - **Trang Đơn hàng** `/studio/{slug}/orders` hiện dòng cảnh báo "Có N giao dịch thanh toán cần xử lý…" + link khi `countTenantTransactionsNeedingAction > 0`.
 - ~~**Không có trên trang này:** giao dịch `MATCHED` đến sau hạn~~ — **đã có** từ đợt 1 ADR-061 (nhãn "Về sau hạn giữ đơn"; KB-Audit §41 mục 7 đã đóng). Vẫn **không**
   có email cho trường hợp này ✅ code.
@@ -271,6 +290,8 @@ Phần khách vãng lai (task 12/13): §3.13. Code: `packages/core/src/order/exp
   `customerDeclaredPaidAt IS NULL`.
 - **Ngoại lệ xác nhận sau hạn** (Bổ sung ADR-062 mục 3): đơn cổng xác nhận tay đã `EXPIRED` mà `customerDeclaredPaidAt < expiresAt` → người bán vẫn xác nhận được
   (`confirmOrderManually`, `orderAllowedActions`). Audit `ORDER_MANUALLY_CONFIRMED` thêm `lateDeclaredPaid` (xác nhận khi đã hết hạn) và `customerDeclaredPaid`.
+  *Từ ADR-068:* UI Studio không còn gọi `confirmOrderManually` — người bán xác nhận được mọi đơn `EXPIRED` qua "Đổi trạng thái…" (§3.14); ngoại lệ này còn tác dụng ở
+  `displayStatus` phía khách ("Chờ người bán xác nhận") và hàm cũ.
 - **Khách tự huỷ** (`cancelOrderByCustomer`, ADR-062 Q4): đơn hiệu lực `PENDING`, chưa báo chuyển → `PENDING → CANCELED` theo FSM (`transitionOrderStatus`). Audit
   `ORDER_CANCELED_BY_CUSTOMER`. UI có hộp xác nhận.
 - **`displayStatus` trang khách** (`CheckoutDisplayStatus`, `lib/checkout-view.ts`) — server tính, UI không tự suy:
@@ -284,7 +305,7 @@ Phần khách vãng lai (task 12/13): §3.13. Code: `packages/core/src/order/exp
   | `CANCELED` / `REFUNDED` | như trạng thái | Đã huỷ / Đã hoàn tiền |
 
   Kèm quyền `can.{changeProvider, applyCoupon, declarePaid, undoDeclarePaid, cancel}` (đổi phương thức/mã chỉ khi còn chờ, chưa báo chuyển, tài liệu còn bán + gian
-  hàng ACTIVE). Mỗi phương thức có `available` = hạn của phương thức đó (tính từ `createdAt`) chưa qua.
+  hàng ACTIVE). Mỗi phương thức có `available` = hạn của phương thức đó (tính từ ~~`createdAt`~~ mốc giữ `holdStartedAt ?? createdAt` — ADR-068 mục 8) chưa qua.
 - **Giới hạn mã giảm giá "mỗi khách"** (ADR-061 Q6): số lượt đã dùng + số **đơn chờ còn hiệu lực khác** của chính khách có cùng mã. Giới hạn tổng không giữ chỗ.
 - **Email cho khách** (L3, không ghi `email_send_log`): hướng dẫn thanh toán khi chọn/đổi phương thức, nhắc 1 lần khi còn ≤ 24 giờ (cron) —
   [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5K.
@@ -331,10 +352,48 @@ Phiên + guard + kích hoạt: [[02-System-Specs/Auth-Session-Specs|Auth-Session
 - **Tải tài liệu:** khách guest tải ngay trên phiên đó (Thư viện + `POST /api/downloads` qua `requireCheckoutUser`), theo đúng `downloadLimit` của tài liệu (Bổ sung ADR-062
   mục 2 — không có giới hạn riêng). Hết phiên (≤ 24 giờ) → phải kích hoạt rồi đăng nhập.
 
+### 3.14. Người bán "Đổi trạng thái…" đơn — xác nhận trễ, mở lại, huỷ (ADR-068 + Bổ sung) — working tree, chưa commit, không migration ✅ đọc code 2026-11-25
+
+Quyết định: [[01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm|ADR-052 KB (≙ ADR-068)]]. Code: `apps/web/lib/order.ts` (khối "ADR-068"),
+`packages/core/src/order/state.ts`, `app/studio/[tenantSlug]/orders/[orderId]/actions.ts`.
+
+- **Bảng chuyển** — `orderStatusTargets(order, now)` theo **trạng thái hiệu lực** (thứ tự PAID → PENDING → CANCELLED):
+
+  | Từ (hiệu lực) | → `PAID` | → `PENDING` (mở lại) | → `CANCELLED` |
+  | :-- | :-: | :-: | :-: |
+  | `PENDING` | ✅ | — | ✅ `SELLER_CANCEL` |
+  | `EXPIRED` | ✅ `MARK_PAID` (xác nhận trễ) | ✅ `SELLER_REOPEN` | ✅ `SELLER_CANCEL` |
+  | `CANCELED` | — | ✅ `SELLER_REOPEN` | — |
+  | `PAID` / `FULFILLED` / `REFUNDED` | — | — | — (hoàn tiền: §3.3) |
+
+- **`changeOrderStatusBySeller(tenantId, orderId, target, note, actorId)`** — nơi gọi đã `requireTenantMember(slug)` (mặc định OWNER) và truyền `tenant.id` từ guard; mọi
+  đọc/ghi `orders` dưới `withTenant`. Đơn không thuộc gian hàng → 404; `target` không nằm trong bảng → 409 **`ORDER_STATUS_NOT_CHANGEABLE`**.
+- **→ PAID:** transaction `withTenant` khoá dòng đơn `FOR UPDATE` → đọc lại → hiệu lực phải `PENDING`/`EXPIRED` (khác → `ORDER_STATUS_NOT_CHANGEABLE`) → ghi `confirmNote`
+  (nếu có) → `markOrderPaid(tx, id, "MANUAL_CONFIRM")`; no-op (nguồn khác vừa áp) → 409 **`ORDER_ALREADY_PAID`**, rollback. Sau commit: audit, `COUPON_OVERUSED` nếu có,
+  tính lại `soldCount`, email đã thanh toán. Không kiểm "khách báo chuyển", không kiểm tài liệu còn bán.
+- **→ PENDING (mở lại):** chặn `PRODUCT_UNAVAILABLE` (gian hàng không ACTIVE / tài liệu không PUBLISHED — §3.8), `ALREADY_OWNED` (khách có entitlement chưa thu hồi với tài liệu
+  của đơn qua **đơn khác**) / `CANNOT_BUY_OWN_PRODUCT` (khách là chủ gian hàng) — cùng `canPurchaseProduct` với tạo đơn. `expiresAt` = `computeOrderHoldExpiresAt(lúc mở lại,
+  orderHoldHoursFor(provider))` (luôn ở tương lai vì số giờ ≥ 1 → sweep không hết hạn lại ngay) và **`holdStartedAt` = lúc mở lại** (mục 8) → khách đổi/chọn phương thức
+  được, hạn mới tính từ lúc mở lại. Giữ `totalVnd`, `couponCode`, `provider`, `checkoutPayload`, `paymentRef`; xoá `customerDeclaredPaidAt`, `customerReminderSentAt`. Không
+  gửi email. Audit `ORDER_REOPENED_BY_SELLER` ghi thêm `holdStartedAt`.
+- **→ CANCELLED:** `PENDING`/`EXPIRED` → `CANCELED`.
+- **Chống ghi đè song song (mở lại, huỷ):** `updateMany` có điều kiện `status` (DB) + `expiresAt` đã đọc → 0 dòng → 409 `ORDER_CHANGED`. Đơn hiệu lực `EXPIRED` mà DB còn
+  `PENDING` (sweep chưa chạy) vẫn khớp điều kiện ✅ code.
+- **Ghi chú** (không bắt buộc, NFC + trim, cắt 500) → ghi chú nội bộ `[Đổi trạng thái: {cũ} → {mới}] …` sau commit + `confirmNote` khi PAID. Audit chỉ id + trạng thái —
+  [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]] §4.
+- **Không đổi:** webhook/job (`processPaymentEvent`) — đơn hết hạn vẫn không tự giao; giao dịch về sau hạn ghi `MATCHED` và hiện ở "Giao dịch cần xử lý" (§3.11). Người
+  bán xác nhận tay đơn đó qua "Đổi trạng thái…" thì `paymentChannel` hiện `PROVIDER` (có giao dịch MATCHED) ✅ code; không có giao dịch MATCHED → `MANUAL` nhờ `confirmNote`
+  **hoặc** audit `ORDER_MANUALLY_CONFIRMED` (mục 9 — [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]] §3).
+- **Lệch/rủi ro đã thấy khi đọc code** (chưa thử thật ❓): ~~đơn mở lại có `createdAt` cũ → mọi phương thức `available = false`, đổi phương thức bị 409
+  `PROVIDER_HOLD_EXPIRED`~~ — **đã sửa bằng mục 8** (`holdStartedAt`, KB-Audit §51 mục 5 đóng); mốc email `ownerManualNotifiedAt`, `ownerDeclaredPaidNotifiedAt`,
+  `customerPaymentEmailed*` không reset — xem [[00-Index/KB-Audit-2026-09-26|KB-Audit]] §51.
+- **Test:** không thêm case — mở rộng `order.test.ts` (10/10 🟡 Quốc báo) và `state.test.ts`; `pnpm test:count` 105/69 ✅.
+
 > **Hiển thị ở Studio (ADR-046, 2026-10-18 — working tree, chưa commit ✅ `git status`):** trang `/studio/{slug}/orders` lọc/đếm theo trạng thái
 > **hiệu lực** (`effectiveOrderStatus`) và chỉ hiện thao tác hợp lệ theo `orderAllowedActions` — `confirm` = `canManuallyConfirmOrder`, `cancel` =
 > hiệu lực PENDING, `refund` = FULFILLED ✅ đọc code. Đây chỉ là lớp hiển thị; các action vẫn tự kiểm luật ở §3 (không đổi). Xem
-> [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]] §2.4 ([Studio-Orders-Specs.md](./Studio-Orders-Specs.md)).
+> [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]] §2.4 ([Studio-Orders-Specs.md](./Studio-Orders-Specs.md)). *Từ ADR-068: UI dùng `statusTargets` (§3.14) cho
+> xác nhận/mở lại/huỷ; `orderAllowedActions` chỉ còn quyết định "Xem" và "Đánh dấu đã hoàn tiền".*
 
 ---
 
@@ -363,8 +422,9 @@ transaction — xem [[02-System-Specs/Reviews-Specs|Reviews-Specs]] §5. Xem th�
 * [[01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr|ADR-041 KB (≙ ADR-056)]] — mã giảm giá sau khi đã có QR (§3.9) ([ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr.md](../01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr.md))
 * [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay|ADR-044 KB (≙ ADR-059)]] — email báo xác nhận tay, giao dịch cần xử lý (§3.10–§3.11) ([ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md](../01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md))
 * [[01-Architecture-Decisions/ADR-048-Checkout-Layout-Declared-Paid-Guest-Session|ADR-048 KB (≙ ADR-062)]] — "Tôi đã chuyển khoản", hạn theo phương thức, khách tự huỷ (§3.12)
+* [[01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm|ADR-052 KB (≙ ADR-068)]] — người bán đổi trạng thái đơn, `SELLER_CANCEL`/`SELLER_REOPEN` (§2, §3.14) ([ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm.md](../01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm.md))
 * Mã nguồn: `packages/core/src/order/state.ts` (máy trạng thái), `packages/core/src/order/expiry.ts` (`effectiveOrderStatus`,
-  `canManuallyConfirmOrder`, `manualConfirmDeadline`, `computeOrderHoldExpiresAt`), `apps/web/lib/tenant-payment-transactions.ts`, `apps/web/lib/order-customer.ts`, `apps/web/lib/checkout-view.ts`, `apps/web/lib/order.ts` (`markOrderPaid`, `cancelOrder`, `markOrderRefunded`, `runOrderSweep`),
+  `canManuallyConfirmOrder`, `manualConfirmDeadline`, `computeOrderHoldExpiresAt`), `apps/web/lib/tenant-payment-transactions.ts`, `apps/web/lib/order-customer.ts`, `apps/web/lib/checkout-view.ts`, `apps/web/lib/order.ts` (`markOrderPaid`, `changeOrderStatusBySeller`, `orderStatusTargets`, `markOrderRefunded`, `runOrderSweep`),
   `apps/web/lib/payment-process.ts`, enum: `packages/db/prisma/schema.prisma`
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

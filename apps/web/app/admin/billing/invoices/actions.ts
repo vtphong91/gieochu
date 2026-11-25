@@ -1,9 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { AppError } from "@gieochu/core";
 import { requireRole } from "../../../../lib/session";
-import { confirmInvoiceFromPlatformTransaction, confirmManualInvoicePayment } from "../../../../lib/subscription-billing";
+import {
+  confirmInvoiceFromPlatformTransaction,
+  confirmManualInvoicePayment,
+  reopenSubscriptionInvoice,
+  voidSubscriptionInvoice,
+} from "../../../../lib/subscription-billing";
 
 export interface ConfirmInvoiceActionState {
   error?: string;
@@ -23,6 +29,47 @@ export async function confirmManualInvoiceAction(
   const actor = await requireRole("SYSTEM_ADMIN");
   try {
     await confirmManualInvoicePayment(invoiceId, actor.userId, String(formData.get("note") ?? ""));
+  } catch (error) {
+    if (error instanceof AppError) return { error: error.message };
+    throw error;
+  }
+  revalidatePath("/admin/billing/invoices");
+  revalidatePath("/admin/subscriptions");
+  return { success: true };
+}
+
+export interface ChangeInvoiceStatusState {
+  error?: string;
+  success?: boolean;
+}
+
+const invoiceStatusTargetSchema = z.enum(["PAID", "PENDING", "VOID"]);
+
+/**
+ * ADR-067 — "Đổi trạng thái…" hoá đơn gói (System Admin, mọi cổng): PAID → xác nhận đã nhận tiền (ADR-066), VOID → huỷ,
+ * PENDING → mở lại. Trạng thái hiện tại và điều kiện chuyển đều kiểm lại ở server dưới khoá — không tin lựa chọn từ client.
+ */
+export async function changeInvoiceStatusAction(
+  invoiceId: string,
+  _prevState: ChangeInvoiceStatusState,
+  formData: FormData,
+): Promise<ChangeInvoiceStatusState> {
+  const actor = await requireRole("SYSTEM_ADMIN");
+  const target = invoiceStatusTargetSchema.safeParse(formData.get("target"));
+  if (!target.success) return { error: "Vui lòng chọn trạng thái hợp lệ." };
+  const note = String(formData.get("note") ?? "");
+  try {
+    switch (target.data) {
+      case "PAID":
+        await confirmManualInvoicePayment(invoiceId, actor.userId, note);
+        break;
+      case "VOID":
+        await voidSubscriptionInvoice(invoiceId, actor.userId, note);
+        break;
+      case "PENDING":
+        await reopenSubscriptionInvoice(invoiceId, actor.userId, note);
+        break;
+    }
   } catch (error) {
     if (error instanceof AppError) return { error: error.message };
     throw error;

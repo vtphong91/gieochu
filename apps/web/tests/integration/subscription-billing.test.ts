@@ -9,10 +9,14 @@ import {
   confirmManualInvoicePayment,
   createRenewalInvoice,
   getSubscriptionOverview,
+  invoiceStatusTargets,
   listSubscriptionInvoices,
   listSubscriptions,
   markInvoicePaid,
+  reopenSubscriptionInvoice,
+  voidSubscriptionInvoice,
 } from "../../lib/subscription-billing";
+import { getSystemSettings } from "../../lib/system-settings";
 import { listPlatformTransactions } from "../../lib/platform-transactions";
 import { runSubscriptionSweep } from "../../lib/subscription-sweep";
 import { assertPlanLimit } from "../../lib/plan-limits";
@@ -126,6 +130,8 @@ describe("M3 subscription and platform billing", () => {
       });
     }
     await prisma.tenant.deleteMany({ where: { slug: { startsWith: RUN_PREFIX } } });
+    // ADR-067 bổ sung: gói tạm (đã ngừng bán) của lần chạy này — hoá đơn tham chiếu đã xoá ở trên.
+    await prisma.plan.deleteMany({ where: { code: { startsWith: RUN_PREFIX } } });
     await prisma.user.deleteMany({ where: { email: { startsWith: RUN_PREFIX } } });
   });
 
@@ -191,6 +197,85 @@ describe("M3 subscription and platform billing", () => {
     const lateAudits = await prisma.auditLog.findMany({ where: { action: "SUBSCRIPTION_PAID", targetId: manualInvoice.id } });
     expect(lateAudits).toHaveLength(1);
     expect(lateAudits[0]!.metadata).toMatchObject({ previousInvoiceStatus: "EXPIRED", lateConfirmation: true, periodRecomputed: true });
+
+    // ADR-067 — "Đổi trạng thái" hoá đơn gói: bảng chuyển trạng thái; hoá đơn đã trả không huỷ/mở lại được; huỷ PENDING → VOID;
+    // mở lại chỉ cho hoá đơn mới nhất và khi không có hoá đơn PENDING khác; mở lại đặt hạn mới + tính lại kỳ, giữ mã/số tiền.
+    expect(invoiceStatusTargets("PENDING")).toEqual(["PAID", "VOID"]);
+    expect(invoiceStatusTargets("EXPIRED")).toEqual(["PAID", "PENDING", "VOID"]);
+    expect(invoiceStatusTargets("VOID")).toEqual(["PENDING"]);
+    expect([invoiceStatusTargets("PAID"), invoiceStatusTargets("REFUNDED")]).toEqual([[], []]);
+    await expect(voidSubscriptionInvoice(manualInvoice.id, owner.id)).rejects.toMatchObject({ code: "INVOICE_NOT_VOIDABLE", httpStatus: 409 });
+    await expect(reopenSubscriptionInvoice(manualInvoice.id, owner.id)).rejects.toMatchObject({ code: "INVOICE_NOT_REOPENABLE", httpStatus: 409 });
+    expect((await prisma.subscriptionInvoice.findUniqueOrThrow({ where: { id: manualInvoice.id } })).status).toBe("PAID");
+
+    const latestInvoice = await createRenewalInvoice(tenant.id, { planId: creatorPlan.id, provider: "MANUAL_QR" });
+    expect(latestInvoice.status).toBe("PENDING");
+    await expect(reopenSubscriptionInvoice(newer.id, owner.id)).rejects.toMatchObject({ code: "INVOICE_NOT_LATEST", httpStatus: 409 });
+    await voidSubscriptionInvoice(latestInvoice.id, owner.id, "  Khách đổi ý  ");
+    expect((await prisma.subscriptionInvoice.findUniqueOrThrow({ where: { id: latestInvoice.id } })).status).toBe("VOID");
+    const voidAudit = await prisma.auditLog.findFirstOrThrow({ where: { action: "SUBSCRIPTION_INVOICE_VOIDED", targetId: latestInvoice.id } });
+    expect(voidAudit).toMatchObject({ scope: "SYSTEM", tenantId: tenant.id, actorId: owner.id, targetType: "SubscriptionInvoice" });
+    expect(voidAudit.metadata).toMatchObject({ fromStatus: "PENDING", toStatus: "VOID", note: "Khách đổi ý" });
+
+    // Hoá đơn cũ hơn còn PENDING (đã quá hạn, chưa sweep) → chặn mở lại hoá đơn mới nhất.
+    await prisma.subscriptionInvoice.update({ where: { id: newer.id }, data: { status: "PENDING", dueAt: new Date(Date.now() - 60_000) } });
+    await expect(reopenSubscriptionInvoice(latestInvoice.id, owner.id)).rejects.toMatchObject({ code: "PENDING_INVOICE_EXISTS", httpStatus: 409 });
+    await voidSubscriptionInvoice(newer.id, owner.id);
+    expect((await prisma.subscriptionInvoice.findUniqueOrThrow({ where: { id: newer.id } })).status).toBe("VOID");
+
+    const { invoicePendingTtlHours } = await getSystemSettings();
+    const ttlMs = invoicePendingTtlHours * 60 * 60 * 1000;
+    const reopenStartedAt = Date.now();
+    await reopenSubscriptionInvoice(latestInvoice.id, owner.id);
+    const reopenFinishedAt = Date.now();
+    const reopened = await prisma.subscriptionInvoice.findUniqueOrThrow({ where: { id: latestInvoice.id } });
+    expect(reopened).toMatchObject({ status: "PENDING", code: latestInvoice.code, amountVnd: latestInvoice.amountVnd, provider: "MANUAL_QR" });
+    expect(reopened.dueAt.getTime()).toBeGreaterThanOrEqual(reopenStartedAt + ttlMs - 1_000);
+    expect(reopened.dueAt.getTime()).toBeLessThanOrEqual(reopenFinishedAt + ttlMs + 1_000);
+    // Thuê bao đang còn hạn (vừa xác nhận trễ) → kỳ mới nối tiếp currentPeriodEnd.
+    expect(reopened.periodStart.getTime()).toBe(lateSubscription.currentPeriodEnd.getTime());
+    expect(reopened.periodEnd.getTime()).toBeGreaterThan(reopened.periodStart.getTime());
+    const reopenAudit = await prisma.auditLog.findFirstOrThrow({ where: { action: "SUBSCRIPTION_INVOICE_REOPENED", targetId: latestInvoice.id } });
+    expect(reopenAudit.metadata).toMatchObject({
+      fromStatus: "VOID",
+      toStatus: "PENDING",
+      dueAt: reopened.dueAt.toISOString(),
+      periodStart: reopened.periodStart.toISOString(),
+      periodEnd: reopened.periodEnd.toISOString(),
+    });
+    expect(reopenAudit.metadata).not.toHaveProperty("note");
+
+    // ADR-067 bổ sung: hoá đơn (mới nhất, đã huỷ) của gói đã ngừng bán không mở lại được. Gói tạm của lần chạy này — không
+    // sửa gói thật dùng chung; dọn trong afterAll.
+    await voidSubscriptionInvoice(latestInvoice.id, owner.id);
+    const inactivePlan = await prisma.plan.create({
+      data: {
+        code: `${RUN_PREFIX}_INACTIVE`,
+        name: "Gói tạm ngừng bán (test)",
+        priceVnd: creatorPlan.priceVnd,
+        interval: creatorPlan.interval,
+        intervalCount: creatorPlan.intervalCount,
+        maxProducts: creatorPlan.maxProducts,
+        storageMb: creatorPlan.storageMb,
+        maxFileMb: creatorPlan.maxFileMb,
+        isActive: false,
+      },
+    });
+    const inactivePlanInvoice = await prisma.subscriptionInvoice.create({
+      data: {
+        tenantId: tenant.id,
+        planId: inactivePlan.id,
+        code: `${RUN_PREFIX}_INACTIVE`,
+        provider: "MANUAL_QR",
+        status: "VOID",
+        amountVnd: inactivePlan.priceVnd,
+        periodStart: new Date(),
+        periodEnd: new Date(Date.now() + 30 * dayMs),
+        dueAt: new Date(Date.now() - 60_000),
+      },
+    });
+    await expect(reopenSubscriptionInvoice(inactivePlanInvoice.id, owner.id)).rejects.toMatchObject({ code: "PLAN_INACTIVE", httpStatus: 409 });
+    expect((await prisma.subscriptionInvoice.findUniqueOrThrow({ where: { id: inactivePlanInvoice.id } })).status).toBe("VOID");
   });
 
   it("creates a renewal invoice and marks it PAID via a signed platform SePay webhook, activating the subscription", async () => {
@@ -224,7 +309,7 @@ describe("M3 subscription and platform billing", () => {
     // ADR-056: System Center "Tất cả" invoices tab + /admin/subscriptions read the same rows (read-only, L1).
     const paidSepay = await listSubscriptionInvoices({ status: "PAID", provider: "SEPAY", page: 1, pageSize: 100 });
     const listed = paidSepay.items.find((i) => i.id === invoice.id);
-    expect(listed).toMatchObject({ code: invoice.code, status: "PAID", amountVnd: proPlan.priceVnd, tenant: { slug: tenant.slug } });
+    expect(listed).toMatchObject({ code: invoice.code, status: "PAID", amountVnd: proPlan.priceVnd, tenant: { slug: tenant.slug }, statusTargets: [] });
     expect(listed?.paidAt).toBeInstanceOf(Date);
     expect(paidSepay.items.every((i) => i.status === "PAID" && i.provider === "SEPAY")).toBe(true);
     const manualOnly = await listSubscriptionInvoices({ provider: "MANUAL_QR", page: 1, pageSize: 100 });
@@ -232,7 +317,14 @@ describe("M3 subscription and platform billing", () => {
 
     const creatorActive = await listSubscriptions({ planCode: "CREATOR", status: "ACTIVE", page: 1, pageSize: 100 });
     const listedSub = creatorActive.items.find((s) => s.tenant.id === tenant.id);
-    expect(listedSub?.latestInvoice).toEqual({ id: invoice.id, code: invoice.code, status: "PAID", amountVnd: proPlan.priceVnd, provider: "SEPAY" });
+    expect(listedSub?.latestInvoice).toEqual({
+      id: invoice.id,
+      code: invoice.code,
+      status: "PAID",
+      amountVnd: proPlan.priceVnd,
+      provider: "SEPAY",
+      statusTargets: [],
+    });
     expect(creatorActive.items.every((s) => s.plan.code === "CREATOR" && s.status === "ACTIVE")).toBe(true);
   });
 

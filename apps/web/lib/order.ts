@@ -44,7 +44,7 @@ import { hideReviewsForRevokedItems, recomputeProductRatings } from "./review";
 import { recomputeProductSoldCounts } from "./product-sold-count";
 import { audit, isAuditTableMissing } from "./audit";
 import { escapeLikePattern } from "./shop";
-import { listOrderNotes, type OrderNoteView } from "./order-note";
+import { addOrderNote, listOrderNotes, type OrderNoteView } from "./order-note";
 import { notifyCustomerOfPaymentInstructions } from "./order-customer";
 
 const ORDER_CODE_RETRIES = 10;
@@ -79,7 +79,8 @@ function formatVnd(amountVnd: number): string {
  * through (SePay webhook, MoMo IPN, manual confirm, đơn 0 đồng). Runs inside
  * the caller's RLS transaction (`withTenant`/`withSystemJob`) — never opens
  * its own, so it composes with whichever scope the caller already set up.
- * Already-PAID/FULFILLED is a no-op (idempotent).
+ * Already-PAID/FULFILLED is a no-op (idempotent). ADR-068 mục 7: cập nhật trạng thái có điều kiện — lần áp song song thua cuộc
+ * cũng là no-op (`fulfilled: false`); caller chỉ ghi audit/gửi email/tính lại số đã bán khi `fulfilled`.
  * ADR-033: trả về `productIds` của đơn vừa FULFILLED (rỗng khi no-op) — caller gọi `recomputeProductSoldCounts`
  * SAU khi transaction commit (hàm này chạy trong transaction của caller nên không tự tính được).
  */
@@ -127,7 +128,11 @@ export async function markOrderPaid(tx: Tx, orderId: string, source: MarkOrderPa
 
   const now = new Date();
   const paidStatus = transitionOrderStatus(order.status as OrderStatus, "MARK_PAID");
-  await tx.order.update({ where: { id: orderId }, data: { status: paidStatus, paidAt: now } });
+  // ADR-068 mục 7: chỉ áp khi đơn VẪN ở trạng thái đã đọc. Hai nguồn áp song song (webhook/job + người bán, hai lần bấm…) cùng đọc
+  // PENDING → lần sau chờ khoá dòng của lần trước, Postgres đánh giá lại WHERE trên bản đã commit (FULFILLED) → 0 dòng → no-op,
+  // không tính mã giảm giá / thống kê khách / email / audit lần hai.
+  const { count } = await tx.order.updateMany({ where: { id: orderId, status: order.status }, data: { status: paidStatus, paidAt: now } });
+  if (count === 0) return { fulfilled: false, productIds: [], couponOverused: null };
 
   if (order.couponCode) {
     const coupon = await tx.coupon.findUnique({ where: { tenantId_code: { tenantId: order.tenantId, code: order.couponCode } } });
@@ -595,6 +600,9 @@ async function buildTenantCheckoutPayload(
 const orderChangedError = () =>
   new AppError({ code: "ORDER_CHANGED", message: "Đơn hàng vừa được cập nhật, vui lòng tải lại trang và thử lại.", httpStatus: 409 });
 
+const orderAlreadyPaidError = () =>
+  new AppError({ code: "ORDER_ALREADY_PAID", message: "Đơn hàng vừa được thanh toán — vui lòng tải lại trang.", httpStatus: 409 });
+
 export interface InitiateOrderCheckoutOptions {
   /**
    * Lên lịch email sau response (Server Action truyền `after` của next/server): ADR-059 báo chủ gian hàng (đơn chờ xác nhận tay)
@@ -612,9 +620,18 @@ export function orderHoldHoursFor(
 }
 
 /**
+ * ADR-068 mục 8 — mốc tính hạn giữ của phương thức (ADR-062 Q3 đổi mốc): `holdStartedAt` (đặt khi người bán mở lại đơn), chưa có
+ * thì `createdAt`. Dùng ở MỌI chỗ tính hạn phương thức (chọn/đổi phương thức, trang thanh toán đánh dấu phương thức khả dụng).
+ */
+export function orderHoldStartedAt(order: { holdStartedAt: Date | null; createdAt: Date }): Date {
+  return order.holdStartedAt ?? order.createdAt;
+}
+
+/**
  * Stores the checkout payload for the checkout page to read back. Gọi được cả khi đơn ĐÃ có phương thức (ADR-061 Q10 — khách
  * đổi phương thức).
- * - ADR-062 Q3: hạn giữ đơn = `createdAt` + hạn của phương thức mới (đổi phương thức không gia hạn); hạn mới đã qua → chặn.
+ * - ADR-062 Q3 + ADR-068 mục 8: hạn giữ đơn = mốc giữ (`holdStartedAt ?? createdAt`) + hạn của phương thức mới (đổi phương thức
+ *   không gia hạn); hạn mới đã qua → chặn.
  * - ADR-062 Q1: khách đã báo "Tôi đã chuyển khoản" → không đổi được (phải hoàn tác trước).
  * - Email: luôn LÊN LỊCH; mỗi hàm gửi tự "nhận" mốc trên `orders` nguyên tử (`UPDATE … WHERE … IS NULL`) nên không gửi trùng:
  *   người bán 1 lần/đơn (`ownerManualNotifiedAt`), khách khi phương thức khác lần đã gửi, tối đa 3 lần/đơn (ADR-062 bổ sung 6).
@@ -636,7 +653,7 @@ export async function initiateOrderCheckout(
 
   const settings = await getSystemSettings();
   const now = new Date();
-  const expiresAt = computeOrderHoldExpiresAt(order.createdAt, orderHoldHoursFor(provider, settings));
+  const expiresAt = computeOrderHoldExpiresAt(orderHoldStartedAt(order), orderHoldHoursFor(provider, settings));
   if (expiresAt.getTime() <= now.getTime()) {
     throw new AppError({
       code: "PROVIDER_HOLD_EXPIRED",
@@ -749,7 +766,10 @@ export async function confirmOrderManually(tenantId: string, orderId: string, no
 
   const paid = await withTenant(tenantId, async (tx) => {
     await tx.order.update({ where: { id: orderId }, data: { confirmNote: note.trim() } });
-    return markOrderPaid(tx, orderId, "MANUAL_CONFIRM");
+    const result = await markOrderPaid(tx, orderId, "MANUAL_CONFIRM");
+    // ADR-068 mục 7: nguồn khác (webhook/job) vừa áp đơn → rollback ghi chú, không audit/email lần hai.
+    if (!result.fulfilled) throw orderAlreadyPaidError();
+    return result;
   });
   // ADR-037 / §7.9: chỉ id + trạng thái — KHÔNG ghi ghi chú xác nhận (văn bản tự do, có thể chứa thông tin khách).
   await audit.log({
@@ -771,13 +791,230 @@ export async function confirmOrderManually(tenantId: string, orderId: string, no
   if (paid.fulfilled) await sendOrderPaidEmails(orderId);
 }
 
-/** Only valid from PENDING (§`transitionOrderStatus`) — throws AppError otherwise. */
-export async function cancelOrder(tenantId: string, orderId: string): Promise<void> {
-  const order = await withTenant(tenantId, (tx) => tx.order.findUnique({ where: { id: orderId } }));
+// ───────────────────────── ADR-068: "Đổi trạng thái…" đơn hàng (người bán) ─────────────────────────
+
+/** Trạng thái đích người bán chọn trong hộp "Đổi trạng thái…". `CANCELLED` ứng với trạng thái DB `CANCELED`. */
+export type OrderStatusTarget = "PAID" | "PENDING" | "CANCELLED";
+
+/** ADR-068 — bảng chuyển theo trạng thái HIỆU LỰC (thứ tự PAID, PENDING, CANCELLED); trạng thái khác → không chuyển được. */
+const ORDER_STATUS_TARGETS: Partial<Record<OrderStatus, readonly OrderStatusTarget[]>> = {
+  PENDING: ["PAID", "CANCELLED"],
+  EXPIRED: ["PAID", "PENDING", "CANCELLED"],
+  CANCELED: ["PENDING"],
+};
+
+/** Hàm thuần — chỉ để UI biết hiện lựa chọn nào; `changeOrderStatusBySeller` luôn kiểm lại khi thực hiện. */
+export function orderStatusTargets(order: { status: OrderStatus; expiresAt: Date }, now: Date = new Date()): OrderStatusTarget[] {
+  return [...(ORDER_STATUS_TARGETS[effectiveOrderStatus(order.status, order.expiresAt, now)] ?? [])];
+}
+
+/** Ghi chú khi đổi trạng thái (không bắt buộc): trim, tối đa 500 ký tự, trống → null. */
+export const ORDER_STATUS_CHANGE_NOTE_MAX = 500;
+
+function normalizeStatusChangeNote(note: string | null): string | null {
+  const trimmed = (note ?? "").normalize("NFC").trim();
+  return trimmed ? trimmed.slice(0, ORDER_STATUS_CHANGE_NOTE_MAX) : null;
+}
+
+/** Nhãn trạng thái trong ghi chú nội bộ "[Đổi trạng thái: … → …]" (khớp nhãn trang Đơn hàng Studio). */
+const ORDER_NOTE_STATUS_LABEL: Record<OrderStatus, string> = {
+  PENDING: "Chờ thanh toán",
+  PAID: "Đã thanh toán",
+  FULFILLED: "Hoàn tất",
+  EXPIRED: "Đã hết hạn",
+  CANCELED: "Đã huỷ",
+  REFUNDED: "Đã hoàn tiền",
+};
+
+const orderStatusNotChangeableError = () =>
+  new AppError({
+    code: "ORDER_STATUS_NOT_CHANGEABLE",
+    message: "Đơn hàng không thể chuyển sang trạng thái đã chọn — vui lòng tải lại trang để xem trạng thái mới nhất.",
+    httpStatus: 409,
+  });
+
+const SELLER_PAYABLE_STATUSES: readonly OrderStatus[] = ["PENDING", "EXPIRED"];
+
+/**
+ * ADR-068 — người bán đổi trạng thái đơn (mọi cổng). TIỀN ĐIỀU KIỆN: nơi gọi đã `requireTenantMember(slug)` và truyền `tenant.id`
+ * lấy từ guard. Bảng L2 → mọi đọc/ghi dưới `withTenant`.
+ * - PAID: xác nhận tay đơn PENDING hoặc EXPIRED (tiền về trễ), không cần "khách báo chuyển" — luật này CHỈ cho người bán;
+ *   webhook/job vẫn dùng `canManuallyConfirmOrder` (không áp đơn hết hạn). Cùng luồng `markOrderPaid` (quyền tải, mã giảm giá,
+ *   email, số đã bán); ghi chú (nếu có) lưu vào `confirmNote`.
+ * - PENDING (mở lại): từ EXPIRED/CANCELED; chặn khi gian hàng không ACTIVE hoặc tài liệu không còn bán. Hạn giữ mới = lúc mở lại +
+ *   `orderHoldHoursFor(provider)` (luôn ở tương lai → sweep không hoàn tác); giữ tổng tiền, mã giảm giá, cổng, payload, paymentRef;
+ *   xoá mốc "khách báo đã chuyển" và mốc nhắc khách. Không gửi email cho khách.
+ * - CANCELLED: từ PENDING/EXPIRED.
+ * Cập nhật có điều kiện theo trạng thái đã đọc → thao tác song song (webhook, khách huỷ…) đổi trước thì báo lỗi, không ghi đè.
+ * Ghi chú (không bắt buộc) → ghi chú nội bộ của đơn (ADR-047); audit chỉ id + trạng thái cũ/mới (§7.9).
+ */
+export async function changeOrderStatusBySeller(
+  tenantId: string,
+  orderId: string,
+  target: OrderStatusTarget,
+  note: string | null,
+  actorId: string | null,
+): Promise<void> {
+  const order = await withTenant(tenantId, (tx) => tx.order.findFirst({ where: { id: orderId, tenantId } }));
   if (!order) throw notFound("Không tìm thấy đơn hàng.");
-  // ADR-036: an overdue PENDING order is EXPIRED — CANCEL is not a valid transition from there (same as after the sweep).
-  const nextStatus = transitionOrderStatus(effectiveOrderStatus(order.status, order.expiresAt, new Date()), "CANCEL");
-  await withTenant(tenantId, (tx) => tx.order.update({ where: { id: orderId }, data: { status: nextStatus } }));
+  const now = new Date();
+  const fromStatus = effectiveOrderStatus(order.status as OrderStatus, order.expiresAt, now);
+  if (!orderStatusTargets(order, now).includes(target)) throw orderStatusNotChangeableError();
+  const statusNote = normalizeStatusChangeNote(note);
+
+  let toStatus: OrderStatus;
+  switch (target) {
+    case "PAID":
+      await sellerMarkOrderPaid(tenantId, order, fromStatus, statusNote, actorId);
+      toStatus = "PAID";
+      break;
+    case "PENDING":
+      await sellerReopenOrder(tenantId, order, fromStatus, actorId);
+      toStatus = "PENDING";
+      break;
+    case "CANCELLED":
+      await sellerCancelOrder(tenantId, order, fromStatus, actorId);
+      toStatus = "CANCELED";
+      break;
+  }
+
+  // Ghi chú nội bộ SAU khi đổi trạng thái đã commit — lỗi ghi chú (vd bảng chưa có) không làm hỏng thao tác chính.
+  if (statusNote && actorId) {
+    try {
+      await addOrderNote(
+        tenantId,
+        orderId,
+        actorId,
+        `[Đổi trạng thái: ${ORDER_NOTE_STATUS_LABEL[fromStatus]} → ${ORDER_NOTE_STATUS_LABEL[toStatus]}] ${statusNote}`,
+      );
+    } catch (error) {
+      logger.warn({ tenantId, orderId, err: error }, "order.status_change: không ghi được ghi chú nội bộ");
+    }
+  }
+}
+
+type OrderRow = Prisma.OrderGetPayload<object>;
+
+async function sellerMarkOrderPaid(
+  tenantId: string,
+  order: OrderRow,
+  fromStatus: OrderStatus,
+  confirmNote: string | null,
+  actorId: string | null,
+): Promise<void> {
+  const paid = await withTenant(tenantId, async (tx) => {
+    // Khoá dòng đơn: hai lần bấm song song của người bán xếp hàng, lần sau thấy đơn đã trả → báo lỗi, không áp hai lần.
+    await tx.$queryRaw`SELECT "id" FROM "orders" WHERE "id" = ${order.id} AND "tenantId" = ${tenantId} FOR UPDATE`;
+    const locked = await tx.order.findUniqueOrThrow({ where: { id: order.id } });
+    if (!SELLER_PAYABLE_STATUSES.includes(effectiveOrderStatus(locked.status as OrderStatus, locked.expiresAt, new Date()))) {
+      throw orderStatusNotChangeableError();
+    }
+    if (confirmNote) await tx.order.update({ where: { id: order.id }, data: { confirmNote } });
+    const result = await markOrderPaid(tx, order.id, "MANUAL_CONFIRM");
+    // ADR-068 mục 7: nguồn khác vừa áp đơn (lần áp này no-op) → rollback ghi chú, không audit/email lần hai.
+    if (!result.fulfilled) throw orderAlreadyPaidError();
+    return result;
+  });
+  // ADR-037 / §7.9: chỉ id + trạng thái — KHÔNG ghi ghi chú (văn bản tự do).
+  await audit.log({
+    actorId,
+    scope: "TENANT",
+    tenantId,
+    action: "ORDER_MANUALLY_CONFIRMED",
+    targetType: "Order",
+    targetId: order.id,
+    metadata: {
+      source: "SELLER_STATUS_CHANGE",
+      previousStatus: fromStatus,
+      fromStatus,
+      toStatus: "PAID",
+      fulfilled: paid.fulfilled,
+      lateConfirmation: fromStatus === "EXPIRED",
+      customerDeclaredPaid: order.customerDeclaredPaidAt !== null,
+    },
+  });
+  await auditMarkOrderPaid(tenantId, order.id, paid, "MANUAL_CONFIRM");
+  await recomputeProductSoldCounts(paid.productIds);
+  if (paid.fulfilled) await sendOrderPaidEmails(order.id);
+}
+
+/**
+ * ADR-068 mục 6: mở lại bị chặn khi khách của đơn đã có quyền tải còn hiệu lực với tài liệu của đơn qua ĐƠN KHÁC — cùng luật
+ * `canPurchaseProduct` mà `createOrder` dùng chặn mua lại (kèm "không mua tài liệu của chính mình"). Bảng L2 → dưới withTenant.
+ */
+async function assertCustomerCanRebuyOrderProducts(tenantId: string, order: OrderRow): Promise<void> {
+  const tenant = await getPrismaClient().tenant.findUniqueOrThrow({ where: { id: tenantId }, select: { ownerId: true } });
+  const activeEntitlement = await withTenant(tenantId, async (tx) => {
+    const items = await tx.orderItem.findMany({ where: { orderId: order.id }, select: { productId: true } });
+    return tx.entitlement.findFirst({
+      where: {
+        tenantId,
+        userId: order.customerId,
+        productId: { in: items.map((item) => item.productId) },
+        revokedAt: null,
+        orderItem: { orderId: { not: order.id } },
+      },
+      select: { id: true },
+    });
+  });
+  const guard = canPurchaseProduct({ isOwner: tenant.ownerId === order.customerId, hasActiveEntitlement: Boolean(activeEntitlement) });
+  if (!guard.allowed) {
+    const isOwnProduct = guard.reason === "OWN_PRODUCT";
+    throw new AppError({
+      code: isOwnProduct ? "CANNOT_BUY_OWN_PRODUCT" : "ALREADY_OWNED",
+      message: isOwnProduct
+        ? "Khách là chủ gian hàng — không mở lại được đơn mua tài liệu của chính mình."
+        : "Khách đã có quyền tải tài liệu này qua đơn khác — không mở lại được.",
+      httpStatus: 409,
+    });
+  }
+}
+
+async function sellerReopenOrder(tenantId: string, order: OrderRow, fromStatus: OrderStatus, actorId: string | null): Promise<void> {
+  await assertOrderProductsPurchasable(tenantId, order.id);
+  await assertCustomerCanRebuyOrderProducts(tenantId, order);
+  const settings = await getSystemSettings();
+  const nextStatus = transitionOrderStatus(fromStatus, "SELLER_REOPEN");
+  const reopenedAt = new Date();
+  // orderHold*Hours ≥ 1 (System Settings) → hạn mới luôn ở tương lai, sweep không hết hạn lại ngay.
+  const expiresAt = computeOrderHoldExpiresAt(reopenedAt, orderHoldHoursFor(order.provider, settings));
+  const { count } = await withTenant(tenantId, (tx) =>
+    tx.order.updateMany({
+      where: { id: order.id, tenantId, status: order.status, expiresAt: order.expiresAt },
+      // ADR-068 mục 8: mốc giữ mới = lúc mở lại → chọn/đổi phương thức sau đó tính hạn từ đây, không từ `createdAt`.
+      data: { status: nextStatus, holdStartedAt: reopenedAt, expiresAt, customerDeclaredPaidAt: null, customerReminderSentAt: null },
+    }),
+  );
+  if (count === 0) throw orderChangedError();
+  await audit.log({
+    actorId,
+    scope: "TENANT",
+    tenantId,
+    action: "ORDER_REOPENED_BY_SELLER",
+    targetType: "Order",
+    targetId: order.id,
+    metadata: { fromStatus, toStatus: nextStatus, holdStartedAt: reopenedAt, expiresAt },
+  });
+}
+
+async function sellerCancelOrder(tenantId: string, order: OrderRow, fromStatus: OrderStatus, actorId: string | null): Promise<void> {
+  const nextStatus = transitionOrderStatus(fromStatus, "SELLER_CANCEL");
+  const { count } = await withTenant(tenantId, (tx) =>
+    tx.order.updateMany({
+      where: { id: order.id, tenantId, status: order.status, expiresAt: order.expiresAt },
+      data: { status: nextStatus },
+    }),
+  );
+  if (count === 0) throw orderChangedError();
+  await audit.log({
+    actorId,
+    scope: "TENANT",
+    tenantId,
+    action: "ORDER_CANCELED_BY_SELLER",
+    targetType: "Order",
+    targetId: order.id,
+    metadata: { fromStatus, toStatus: nextStatus },
+  });
 }
 
 /**
@@ -896,6 +1133,10 @@ export interface OrderListItem {
   refundOverdue: boolean;
   /** Luôn có "view". Thứ tự cố định: view, confirm, cancel, refund. */
   allowedActions: OrderRowAction[];
+  /** ADR-068: trạng thái đích hợp lệ cho "Đổi trạng thái…" (rỗng → không hiện mục này). */
+  statusTargets: OrderStatusTarget[];
+  /** ADR-068: cổng khách đã chọn (null = chưa chọn) — UI cảnh báo khi huỷ đơn cổng tự xác nhận. */
+  provider: PaymentProviderId | null;
   /** ADR-062 Q1: khách đã báo "Tôi đã chuyển khoản" (null = chưa) — badge + ưu tiên đối soát. */
   customerDeclaredPaidAt: Date | null;
 }
@@ -1080,8 +1321,9 @@ export function unaccentLikeSql(column: Prisma.Sql, escapedQuery: string): Prism
 
 /**
  * ADR-046 — luật thao tác của MỘT đơn, đúng như trang chi tiết và các action hiện có (không đặt luật mới):
- * confirm = `canManuallyConfirmOrder` (PENDING, hoặc EXPIRED khi khách đã báo chuyển trước hạn); cancel = trạng thái hiệu lực PENDING
- * (`cancelOrder` → `transitionOrderStatus(..., "CANCEL")`); refund = FULFILLED (`markOrderRefunded`).
+ * confirm = `canManuallyConfirmOrder` (PENDING, hoặc EXPIRED khi khách đã báo chuyển trước hạn); cancel = trạng thái hiệu lực PENDING;
+ * refund = FULFILLED (`markOrderRefunded`). ADR-068: UI xác nhận/huỷ chuyển sang "Đổi trạng thái…" (`statusTargets`) — "confirm"/
+ * "cancel" giữ cho tương thích.
  */
 export function orderAllowedActions(
   order: { status: OrderStatus; expiresAt: Date; provider?: PaymentProviderId | null; customerDeclaredPaidAt?: Date | null },
@@ -1245,6 +1487,8 @@ export async function listOrdersPage(tenantId: string, sp: OrderListSearchParams
         refundRequestedAt,
         refundOverdue: refundRequestedAt !== null && refundRequestedAt.getTime() < overdueBefore.getTime(),
         allowedActions: orderAllowedActions(order, now),
+        statusTargets: orderStatusTargets(order, now),
+        provider: order.provider,
         customerDeclaredPaidAt: order.customerDeclaredPaidAt,
       };
     });
@@ -1270,7 +1514,7 @@ export async function listOrdersPage(tenantId: string, sp: OrderListSearchParams
 export type OrderPaymentChannel =
   /** Đã trả qua cổng (giao dịch tenant MATCHED mới nhất). */
   | { kind: "PROVIDER"; provider: PaymentProviderId; providerTxnId: string; at: Date }
-  /** Chủ gian hàng xác nhận thủ công (`confirmNote` có giá trị — bắt buộc khi xác nhận tay). */
+  /** Chủ gian hàng xác nhận thủ công — có `confirmNote` hoặc audit ORDER_MANUALLY_CONFIRMED của đơn (ADR-068 mục 9). */
   | { kind: "MANUAL"; provider: PaymentProviderId | null }
   /** Đơn 0đ (tài liệu miễn phí / mã giảm 100%) — tự thanh toán. */
   | { kind: "FREE" }
@@ -1359,6 +1603,8 @@ export interface OrderDetailView {
   /** Cũ → mới. */
   timeline: OrderTimelineEvent[];
   allowedActions: OrderRowAction[];
+  /** ADR-068: trạng thái đích hợp lệ cho "Đổi trạng thái…" (rỗng → không hiện mục này). */
+  statusTargets: OrderStatusTarget[];
   /**
    * ADR-047: ghi chú nội bộ (cũ → mới, tối đa 200). Khách không bao giờ thấy. Rỗng khi `notesAvailable = false`
    * (migration `order_notes` chưa áp — UI ẩn form thêm ghi chú / báo "chưa sẵn sàng").
@@ -1380,6 +1626,9 @@ const ORDER_TIMELINE_AUDIT_ACTIONS = [
   "ORDER_CUSTOMER_DECLARED_PAID",
   "ORDER_CUSTOMER_DECLARED_PAID_UNDONE",
   "ORDER_CANCELED_BY_CUSTOMER",
+  // ADR-068
+  "ORDER_CANCELED_BY_SELLER",
+  "ORDER_REOPENED_BY_SELLER",
 ];
 /** Email gửi qua `sendEmailNow` có mã đơn trong tiêu đề — lọc được đúng đơn (mã đơn unique toàn hệ thống). */
 const ORDER_EMAIL_TYPES: Record<string, string> = {
@@ -1584,10 +1833,15 @@ export async function getOrderDetailView(tenantId: string, orderId: string, view
   timeline.sort((a, b) => a.at.getTime() - b.at.getTime());
 
   const matched = order.transactions.find((txn) => txn.matchStatus === "MATCHED");
+  // ADR-068 mục 9: xác nhận tay không còn bắt buộc ghi chú → nhận diện thêm qua audit ORDER_MANUALLY_CONFIRMED của chính đơn này
+  // (đã nạp ở trên, ghi bởi cả `confirmOrderManually` lẫn "Đổi trạng thái…"). Không cần cột mới.
+  const manuallyConfirmed =
+    Boolean(order.confirmNote) ||
+    auditRows.some((row) => row.action === "ORDER_MANUALLY_CONFIRMED" && row.targetType === "Order" && row.targetId === order.id);
   let paymentChannel: OrderPaymentChannel;
   if (!order.paidAt) paymentChannel = { kind: "UNPAID", provider: order.provider };
   else if (matched) paymentChannel = { kind: "PROVIDER", provider: matched.provider, providerTxnId: matched.providerTxnId, at: matched.createdAt };
-  else if (order.confirmNote) paymentChannel = { kind: "MANUAL", provider: order.provider };
+  else if (manuallyConfirmed) paymentChannel = { kind: "MANUAL", provider: order.provider };
   else if (order.totalVnd === 0) paymentChannel = { kind: "FREE" };
   else paymentChannel = { kind: "UNKNOWN", provider: order.provider };
 
@@ -1637,6 +1891,7 @@ export async function getOrderDetailView(tenantId: string, orderId: string, view
     refundOverdue: refundRequestedAt !== null && refundRequestedAt.getTime() < refundOverdueBefore(now).getTime(),
     timeline,
     allowedActions: orderAllowedActions(order, now),
+    statusTargets: orderStatusTargets(order, now),
     notes: noteData.notes,
     notesAvailable: noteData.available,
   };

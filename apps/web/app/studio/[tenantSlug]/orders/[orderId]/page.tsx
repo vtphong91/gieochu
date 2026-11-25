@@ -4,8 +4,9 @@ import { AppError } from "@gieochu/core";
 import { brandColors } from "@gieochu/config/theme";
 import { requireTenantMemberPage } from "../../../../../lib/page-guards";
 import { getOrderDetailView, type OrderDetailLine } from "../../../../../lib/order";
-import { ConfirmForm } from "./confirm-form";
-import { CancelOrderButton, MarkRefundedButton } from "./order-status-actions";
+import { isManualConfirmProvider } from "@gieochu/payments";
+import { MarkRefundedButton } from "./order-status-actions";
+import { OrderStatusButton } from "../_ui/order-status-dialog";
 import { GrantExtraDownloadsForm, RevokeEntitlementButton } from "./entitlement-actions";
 import { AddOrderNoteForm, DeleteOrderNoteButton } from "./order-note-actions";
 import { Badge, MainAsideGrid } from "../../../../admin/_ui/kit";
@@ -18,7 +19,7 @@ import { formatOrderDateTime, formatOrderPrice, formatOrderVnd, orderListBackHre
 /*
  * ADR-046 mục 2 — chi tiết đơn Studio, bố cục 2 cột kiểu "Sửa đơn hàng" (từ xl; dưới xl cột phụ xếp xuống dưới).
  * Cột chính: Thông tin chung + Khách hàng (họ tên, email — ADR-041), dòng tài liệu + tổng + quyền tải (ADR-039), giao dịch.
- * Cột phụ: Thao tác đơn (chỉ thao tác hợp lệ theo `allowedActions`, huỷ/hoàn 2 bước), Lịch sử khách hàng, Ghi chú nội bộ
+ * Cột phụ: Thao tác đơn ("Đổi trạng thái…" theo `statusTargets` — ADR-068; hoàn tiền 2 bước theo `allowedActions`), Lịch sử khách hàng, Ghi chú nội bộ
  * (ADR-047 — form thêm; ghi chú hiện trong Lịch sử đơn, tác giả xoá được), Lịch sử đơn.
  * `?back=` giữ bộ lọc danh sách cho nút quay lại.
  */
@@ -59,10 +60,12 @@ export default async function StudioOrderDetailPage({
   const now = new Date();
   const listPath = `/studio/${tenantSlug}/orders`;
   const backHref = orderListBackHref(listPath, back);
-  const canConfirm = order.allowedActions.includes("confirm");
-  const canCancel = order.allowedActions.includes("cancel");
+  // ADR-068: đổi trạng thái (Đã thanh toán / mở lại / huỷ) theo `statusTargets` do server tính; hoàn tiền giữ mục riêng (ADR-046).
+  const canChangeStatus = order.statusTargets.length > 0;
   const canRefund = order.allowedActions.includes("refund");
-  const hasActions = canConfirm || canCancel || canRefund;
+  const hasActions = canChangeStatus || canRefund;
+  // Cổng khách đã chọn (đơn chưa trả: kênh UNPAID mang `provider`) — để hộp đổi trạng thái nhắc khi huỷ đơn cổng tự xác nhận.
+  const orderProvider = order.paymentChannel.kind === "FREE" ? null : order.paymentChannel.provider;
 
   function entitlementBlock(line: OrderDetailLine) {
     const ent = line.entitlement;
@@ -212,22 +215,32 @@ export default async function StudioOrderDetailPage({
       <DetailCard id={ORDER_ACTIONS_ID} title="Thao tác đơn" icon={<IconBolt className="h-4 w-4" />}>
         {hasActions ? (
           <div className="space-y-4">
-            {canConfirm ? (
+            {canChangeStatus ? (
               <div>
                 <h3 className="text-sm font-semibold" style={{ color: INK }}>
-                  Xác nhận thanh toán thủ công
+                  Trạng thái đơn
                 </h3>
                 <p className="mt-1 mb-3 text-xs leading-relaxed" style={{ color: INK_SOFT }}>
-                  Dùng khi khách đã chuyển khoản nhưng hệ thống chưa tự ghi nhận. Đối chiếu sao kê trước khi xác nhận.
+                  Xác nhận đã nhận tiền, mở lại hoặc huỷ đơn. Đối chiếu sao kê trước khi xác nhận thanh toán.
                 </p>
                 <DeclaredPaidNotice order={order} />
-                <ConfirmForm tenantSlug={tenantSlug} orderId={orderId} />
+                <OrderStatusButton
+                  tenantSlug={tenantSlug}
+                  info={{
+                    orderId,
+                    code: order.code,
+                    totalLabel: formatOrderVnd(order.totalVnd),
+                    currentStatusLabel: orderStatusLabel(order.status),
+                    targets: order.statusTargets,
+                    expired: order.status === "EXPIRED",
+                    autoProvider: orderProvider ? !isManualConfirmProvider(orderProvider) : null,
+                  }}
+                />
               </div>
             ) : null}
-            {canRefund ? <MarkRefundedButton tenantSlug={tenantSlug} orderId={orderId} /> : null}
-            {canCancel ? (
-              <div className={canConfirm ? "border-t pt-4" : undefined} style={{ borderColor: LINE }}>
-                <CancelOrderButton tenantSlug={tenantSlug} orderId={orderId} />
+            {canRefund ? (
+              <div className={canChangeStatus ? "border-t pt-4" : undefined} style={{ borderColor: LINE }}>
+                <MarkRefundedButton tenantSlug={tenantSlug} orderId={orderId} />
               </div>
             ) : null}
           </div>

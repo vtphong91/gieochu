@@ -8,7 +8,7 @@ tags:
   - database
   - status/living
 date: 2026-10-16
-updated: 2026-11-24
+updated: 2026-11-25
 author: Long
 ---
 
@@ -112,8 +112,9 @@ Từ M12c (ADR-038, 2026-10-17) ✅: **`publishProduct(tenantId, productId, acto
 
 ## 4. Action và nơi ghi ✅ (grep `audit.log(` 2026-10-16; cập nhật M12c 2026-10-17; cập nhật ADR-041 2026-10-17; cập nhật ADR-047 2026-10-18; cập nhật ADR-048 2026-10-23; cập nhật ADR-050 2026-10-23; cập nhật ADR-051 + ADR-054 2026-10-24)
 
-**58** action trong `AUDIT_ACTIONS` ✅ (đếm working tree 2026-10-27: +2 ở khách vãng lai — `AUTH_GUEST_ACCOUNT_CREATED`, `AUTH_GUEST_ACTIVATED`; +4 ở ADR-061/062 — `ORDER_PAYMENT_EMAIL_SENT`, `ORDER_CUSTOMER_DECLARED_PAID`, `ORDER_CUSTOMER_DECLARED_PAID_UNDONE`, `ORDER_CANCELED_BY_CUSTOMER`; trước đó **52** đếm 2026-10-24, sau ADR-051 của vuong + ADR-054; 50 ở 2026-10-23 sau ADR-050): 21 theo đặc tả §"M12" + 6 bổ sung ở M12a (trước đây chỉ ghi `logger`) + 5 ở
-M12c/ADR-039 + 8 ở ADR-041 (Hồ sơ, Bảng giá CMS, hoàn tiền gói) + 2 ở ADR-047 (ghi chú nội bộ đơn) + 1 ở ADR-048 (ghi chú khách) + 7 ở ADR-050 (CMS trang chủ, menu, văn bản pháp lý) + 1 ở ADR-051 (`PRODUCT_DELETED` — vuong, commit `c63b72b`) + 1 ở ADR-054 (`LEGAL_DOCUMENT_META_UPDATED`). Thêm action không
+**62** action trong `AUDIT_ACTIONS` ✅ (đếm working tree 2026-11-25: +2 ở ADR-067 — `SUBSCRIPTION_INVOICE_VOIDED`, `SUBSCRIPTION_INVOICE_REOPENED`; +2 ở ADR-068 —
+`ORDER_CANCELED_BY_SELLER`, `ORDER_REOPENED_BY_SELLER`; trước đó **58** đếm 2026-10-27 (HEAD `c7891f0` vẫn 58 ✅): +2 ở khách vãng lai — `AUTH_GUEST_ACCOUNT_CREATED`, `AUTH_GUEST_ACTIVATED`; +4 ở ADR-061/062 — `ORDER_PAYMENT_EMAIL_SENT`, `ORDER_CUSTOMER_DECLARED_PAID`, `ORDER_CUSTOMER_DECLARED_PAID_UNDONE`, `ORDER_CANCELED_BY_CUSTOMER`; trước đó **52** đếm 2026-10-24, sau ADR-051 của vuong + ADR-054; 50 ở 2026-10-23 sau ADR-050): 21 theo đặc tả §"M12" + 6 bổ sung ở M12a (trước đây chỉ ghi `logger`) + 5 ở
+M12c/ADR-039 + 8 ở ADR-041 (Hồ sơ, Bảng giá CMS, hoàn tiền gói) + 2 ở ADR-047 (ghi chú nội bộ đơn) + 1 ở ADR-048 (ghi chú khách) + 7 ở ADR-050 (CMS trang chủ, menu, văn bản pháp lý) + 1 ở ADR-051 (`PRODUCT_DELETED` — vuong, commit `c63b72b`) + 1 ở ADR-054 (`LEGAL_DOCUMENT_META_UPDATED`) + 6 ở ADR-061/062 + 2 ở ADR-067 + 2 ở ADR-068. Thêm action không
 cần DDL (`action` là chuỗi).
 
 | Action | Scope | Nơi ghi | Actor |
@@ -128,12 +129,16 @@ cần DDL (`action` là chuỗi).
 | `TENANT_LOCKED` / `TENANT_UNLOCKED` | SYSTEM (+`tenantId`) | `lib/tenant-lock.ts` — gọi từ `app/admin/tenants/actions.ts`; `TENANT_LOCKED` còn ghi khi xử lý báo cáo `LOCK_TENANT` (metadata `source: "ABUSE_REPORT"`, chỉ khi tenant chưa khoá) | admin |
 | `TENANT_SLUG_CHANGED` | TENANT | `app/studio/[tenantSlug]/settings/actions.ts` — `{ from, to }` | thành viên |
 | `PLAN_CREATED` / `PLAN_UPDATED` | SYSTEM | `app/admin/plans/actions.ts` (tạo, sửa, bật/tắt) | admin |
-| `SUBSCRIPTION_PAID` | SYSTEM (+`tenantId`) | `lib/subscription-billing.ts` — 3 nơi ghi, phân biệt bằng `metadata.source` (ADR-059, ✅ đọc code 2026-10-26, đã commit `fa29d99`): `markInvoicePaid` (`PLATFORM_WEBHOOK` hoặc `ADMIN_MANUAL_CONFIRM`; metadata `provider`, `planId`, `previousPlanId`, `amountVnd`, `periodEnd`, `reactivated`); `confirmExpiredManualInvoice` (`ADMIN_MANUAL_CONFIRM` + `previousInvoiceStatus: "EXPIRED"`, `lateConfirmation: true`, `dueAt`, `storedPeriodStart/End`, `periodRecomputed: true`, `periodStart/End`); `confirmInvoiceFromPlatformTransaction` (**`ADMIN_TRANSACTION_CONFIRM`** + `transactionId`, `transactionProvider`, `receivedAmountVnd`, `differenceVnd`, kèm metadata trễ nếu hoá đơn EXPIRED, không thì `periodEnd`). Không thêm action mới. Từ ADR-066 (2026-11-24, working tree ✅ code): `ADMIN_MANUAL_CONFIRM` áp cho **mọi cổng** (cả SePay/MoMo) và có thêm khoá **`note`** khi admin nhập ghi chú (trim, ≤ 500 ký tự; trống → không có khoá) | null (webhook) hoặc admin (xác nhận tay / từ giao dịch) |
+| `SUBSCRIPTION_PAID` | SYSTEM (+`tenantId`) | `lib/subscription-billing.ts` — 3 nơi ghi, phân biệt bằng `metadata.source` (ADR-059, ✅ đọc code 2026-10-26, đã commit `fa29d99`): `markInvoicePaid` (`PLATFORM_WEBHOOK` hoặc `ADMIN_MANUAL_CONFIRM`; metadata `provider`, `planId`, `previousPlanId`, `amountVnd`, `periodEnd`, `reactivated`); `confirmExpiredManualInvoice` (`ADMIN_MANUAL_CONFIRM` + `previousInvoiceStatus: "EXPIRED"`, `lateConfirmation: true`, `dueAt`, `storedPeriodStart/End`, `periodRecomputed: true`, `periodStart/End`); `confirmInvoiceFromPlatformTransaction` (**`ADMIN_TRANSACTION_CONFIRM`** + `transactionId`, `transactionProvider`, `receivedAmountVnd`, `differenceVnd`, kèm metadata trễ nếu hoá đơn EXPIRED, không thì `periodEnd`). Không thêm action mới. Từ ADR-066 (2026-11-24, working tree ✅ code): `ADMIN_MANUAL_CONFIRM` áp cho **mọi cổng** (cả SePay/MoMo) và có thêm khoá **`note`** khi admin nhập ghi chú (trim, ≤ 500 ký tự; trống → không có khoá). Từ ADR-067: lựa chọn "Đã thanh toán" trong hộp "Đổi trạng thái…" ghi đúng action này (cùng `confirmManualInvoicePayment`) | null (webhook) hoặc admin (xác nhận tay / từ giao dịch) |
+| `SUBSCRIPTION_INVOICE_VOIDED` | SYSTEM (+`tenantId`) | `lib/subscription-billing.ts` `voidSubscriptionInvoice` (ADR-067, 2026-11-25 working tree ✅ code) — `targetType: "SubscriptionInvoice"`, metadata `{ code, provider, amountVnd, fromStatus, toStatus: "VOID", note? }`. Nhãn "Huỷ hoá đơn gói dịch vụ" | admin |
+| `SUBSCRIPTION_INVOICE_REOPENED` | SYSTEM (+`tenantId`) | `lib/subscription-billing.ts` `reopenSubscriptionInvoice` (ADR-067) — metadata `{ code, provider, amountVnd, fromStatus, toStatus: "PENDING", dueAt, periodStart, periodEnd, note? }`. Nhãn "Mở lại hoá đơn gói dịch vụ" | admin |
 | `PAYMENT_CONFIG_UPDATED` | SYSTEM | `lib/platform-payment.ts` (lưu cấu hình; kiểm tra kết nối thành công tự bật) — chỉ cờ thay đổi, không secret | admin |
 | `PAYMENT_CONFIG_UPDATED` | TENANT | `lib/tenant-payment.ts` (lưu cấu hình; từ 2026-11-24 cả "Kiểm tra kết nối" SePay thành công tự bật — `testTenantProviderConnection`, metadata `verified: true`, `wasEnabled`) | thành viên |
 | `PRODUCT_PUBLISHED` / `PRODUCT_ARCHIVED` | TENANT | `lib/product.ts` | thành viên |
 | `PRODUCT_DELETED` | TENANT | `lib/product.ts` `deleteProduct` (sau transaction xoá) — `targetType: "Product"`, `targetId` = id tài liệu, metadata `{ title, slug, deletedFilesCount, freedStorageBytes }`. Nhãn "Xoá tài liệu" (ADR-051 — vuong; nghiệp vụ ở [[01-Architecture-Decisions/ADR-037-Product-Archive-Deletion-Storage-Cleanup|ADR-037 KB]]) ✅ code | thành viên |
-| `ORDER_MANUALLY_CONFIRMED` / `ORDER_REFUNDED` | TENANT | `lib/order.ts` — từ đợt 1 ADR-061/062 (2026-10-27, chưa commit) metadata xác nhận tay thêm **`lateDeclaredPaid`** (xác nhận khi đơn đã hết hạn — chỉ được nhờ ngoại lệ "khách báo chuyển trước hạn") và **`customerDeclaredPaid`** (khách đã bấm "Tôi đã chuyển khoản") | thành viên |
+| `ORDER_MANUALLY_CONFIRMED` / `ORDER_REFUNDED` | TENANT | `lib/order.ts` — từ đợt 1 ADR-061/062 (2026-10-27, chưa commit) metadata xác nhận tay thêm **`lateDeclaredPaid`** (xác nhận khi đơn đã hết hạn — chỉ được nhờ ngoại lệ "khách báo chuyển trước hạn") và **`customerDeclaredPaid`** (khách đã bấm "Tôi đã chuyển khoản"). Từ ADR-068 (2026-11-25 ✅ code), xác nhận qua "Đổi trạng thái…" ghi `ORDER_MANUALLY_CONFIRMED` với metadata `{ source: "SELLER_STATUS_CHANGE", previousStatus, fromStatus, toStatus: "PAID", fulfilled, lateConfirmation, customerDeclaredPaid }` — **không** chứa ghi chú (hàm cũ `confirmOrderManually` vẫn ghi metadata kiểu ADR-061/062, không có `source`) | thành viên |
+| `ORDER_CANCELED_BY_SELLER` | TENANT | `lib/order.ts` `sellerCancelOrder` (qua `changeOrderStatusBySeller`, ADR-068) — `targetType: "Order"`, metadata **chỉ** `{ fromStatus, toStatus }` (không ghi chú — §7.9). Nhãn "Người bán huỷ đơn". Có trong dòng thời gian đơn Studio | thành viên |
+| `ORDER_REOPENED_BY_SELLER` | TENANT | `lib/order.ts` `sellerReopenOrder` (ADR-068) — metadata `{ fromStatus, toStatus, expiresAt }` (hạn giữ mới), không ghi chú. Nhãn "Người bán mở lại đơn". Có trong dòng thời gian đơn Studio | thành viên |
 | `ORDER_PAYMENT_EMAIL_SENT` | SYSTEM (+`tenantId`) | `lib/order-customer.ts` `notifyCustomerOfPaymentInstructions` — ghi **trước** khi gửi email hướng dẫn thanh toán cho khách; metadata `{ provider, kind: "INSTRUCTIONS" }`; **số dòng của đơn = bộ đếm giới hạn 3 email/đơn**. Nhãn "Gửi email hướng dẫn thanh toán cho khách" (ADR-061/062) | null |
 | `ORDER_CUSTOMER_DECLARED_PAID` / `ORDER_CUSTOMER_DECLARED_PAID_UNDONE` | CUSTOMER (+`tenantId`) | `lib/order-customer.ts` `declareOrderPaid` / `undoDeclareOrderPaid` — `targetType: "Order"`, metadata `{ provider }`. Nhãn "Khách báo đã chuyển khoản" / "Khách huỷ báo đã chuyển khoản" (ADR-062 Q1). Có trong dòng thời gian đơn Studio | khách |
 | `ORDER_CANCELED_BY_CUSTOMER` | CUSTOMER (+`tenantId`) | `lib/order-customer.ts` `cancelOrderByCustomer` — metadata `{ provider }`. Nhãn "Khách huỷ đơn" (ADR-062 Q4). Có trong dòng thời gian đơn Studio | khách |
@@ -197,6 +202,9 @@ Bảng chưa tồn tại → `{ status: "unavailable" }` (trang hiện thông b�
 - Truy vấn **luôn** `where: { tenantId }`; bỏ qua bộ lọc `actor`/`tenant`.
 - Che actor: thành viên tenant → email + họ tên + IP/User-Agent; admin hệ thống hoặc dòng scope `SYSTEM` → "Quản trị hệ thống" (không
   lộ admin cụ thể); người khác (khách, cựu thành viên) → email đã che; IP/User-Agent chỉ hiện khi actor là thành viên.
+- **Metadata hiện nguyên** (`<details>` key–value, `admin/_ui/audit-log.tsx`) → ghi chú admin (`note`) của `SUBSCRIPTION_PAID` / `SUBSCRIPTION_INVOICE_VOIDED` /
+  `SUBSCRIPTION_INVOICE_REOPENED` **hiện ở Studio → Hoạt động** của gian hàng đó ✅ code. Chủ dự án xác nhận **giữ** hành vi này (ADR-067 "Bổ sung", 2026-11-25) 🟡 —
+  admin cần tránh ghi thông tin không muốn chủ gian hàng đọc.
 
 `audit_logs` không có RLS — **mọi đường đọc mới phải đi qua loader này** (BACKLOG).
 

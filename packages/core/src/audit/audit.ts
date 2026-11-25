@@ -82,6 +82,12 @@ export const AUDIT_ACTIONS = [
   // ADR-061 Q1 — khách vãng lai (metadata không chứa email/họ tên)
   "AUTH_GUEST_ACCOUNT_CREATED",
   "AUTH_GUEST_ACTIVATED",
+  // ADR-067 — đổi trạng thái hoá đơn gói (System Admin; metadata: trạng thái cũ/mới, ghi chú không bắt buộc)
+  "SUBSCRIPTION_INVOICE_VOIDED",
+  "SUBSCRIPTION_INVOICE_REOPENED",
+  // ADR-068 — người bán "Đổi trạng thái…" đơn (metadata chỉ trạng thái cũ/mới, không văn bản tự do — §7.9)
+  "ORDER_CANCELED_BY_SELLER",
+  "ORDER_REOPENED_BY_SELLER",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -155,6 +161,10 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   ORDER_CANCELED_BY_CUSTOMER: "Khách huỷ đơn",
   AUTH_GUEST_ACCOUNT_CREATED: "Tạo tài khoản khi mua (khách vãng lai)",
   AUTH_GUEST_ACTIVATED: "Kích hoạt tài khoản và đặt mật khẩu",
+  SUBSCRIPTION_INVOICE_VOIDED: "Huỷ hoá đơn gói dịch vụ",
+  SUBSCRIPTION_INVOICE_REOPENED: "Mở lại hoá đơn gói dịch vụ",
+  ORDER_CANCELED_BY_SELLER: "Người bán huỷ đơn",
+  ORDER_REOPENED_BY_SELLER: "Người bán mở lại đơn",
 };
 
 export const AUDIT_SCOPE_LABELS: Record<AuditScopeValue, string> = {

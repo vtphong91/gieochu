@@ -544,6 +544,173 @@ export async function confirmInvoiceFromPlatformTransaction(
   });
 }
 
+// ADR-067 — "Đổi trạng thái" hoá đơn gói (System Admin, mọi cổng). Bảng L1 (subscription_invoices, subscriptions) — mọi thao
+// tác ghi chạy trong transaction khoá dòng `subscriptions` của gian hàng (cùng khoá với tạo/áp/xác nhận hoá đơn).
+
+/** Trạng thái đích admin chọn được trong hộp "Đổi trạng thái…". */
+export type InvoiceStatusTarget = "PAID" | "PENDING" | "VOID";
+
+/**
+ * ADR-067 — bảng chuyển trạng thái (thứ tự hiển thị PAID, PENDING, VOID). PAID/REFUNDED không chuyển được (hoá đơn đã trả đi
+ * luồng hoàn tiền ADR-041). Chỉ dùng để quyết định UI hiện lựa chọn nào — server luôn kiểm lại dưới khoá khi thực hiện.
+ */
+const INVOICE_STATUS_TRANSITIONS: Record<DbInvoiceStatus, readonly InvoiceStatusTarget[]> = {
+  PENDING: ["PAID", "VOID"],
+  EXPIRED: ["PAID", "PENDING", "VOID"],
+  VOID: ["PENDING"],
+  PAID: [],
+  REFUNDED: [],
+};
+
+export function invoiceStatusTargets(status: DbInvoiceStatus): InvoiceStatusTarget[] {
+  return [...(INVOICE_STATUS_TRANSITIONS[status] ?? [])];
+}
+
+const invoiceNotFoundError = () =>
+  new AppError({ code: "INVOICE_NOT_FOUND", message: "Không tìm thấy hoá đơn.", httpStatus: 404 });
+
+/** Đọc `tenantId` của hoá đơn (trước khi khoá) — hoá đơn không tồn tại → 404 rõ ràng thay vì lỗi Prisma. */
+async function invoiceTenantIdOrThrow(tx: Prisma.TransactionClient, invoiceId: string): Promise<string> {
+  const head = await tx.subscriptionInvoice.findUnique({ where: { id: invoiceId }, select: { tenantId: true } });
+  if (!head) throw invoiceNotFoundError();
+  return head.tenantId;
+}
+
+/**
+ * ADR-067 mục 1 — huỷ hoá đơn chưa trả (PENDING/EXPIRED → VOID). Không đổi thuê bao/gói; gian hàng tạo được hoá đơn mới ngay
+ * (hoá đơn VOID không chặn dedupe của `createRenewalInvoice`). Cập nhật có điều kiện dưới khoá → webhook/xác nhận chạy song song
+ * đã đổi trạng thái trước thì báo 409, không ghi đè. Ghi chú (không bắt buộc) chỉ vào audit.
+ */
+export async function voidSubscriptionInvoice(invoiceId: string, actorId: string | null, note?: string | null): Promise<void> {
+  const prisma = getPrismaClient();
+  const voidNote = normalizeConfirmNote(note);
+  const invoice = await prisma.$transaction(async (tx) => {
+    const tenantId = await invoiceTenantIdOrThrow(tx, invoiceId);
+    await lockSubscriptionRow(tx, tenantId);
+    const locked = await tx.subscriptionInvoice.findUniqueOrThrow({
+      where: { id: invoiceId },
+      select: { id: true, tenantId: true, code: true, provider: true, status: true, amountVnd: true },
+    });
+    if (locked.status !== "PENDING" && locked.status !== "EXPIRED") throw invoiceNotVoidableError();
+    const { count } = await tx.subscriptionInvoice.updateMany({
+      where: { id: invoiceId, status: { in: ["PENDING", "EXPIRED"] } },
+      data: { status: "VOID" },
+    });
+    if (count === 0) throw invoiceNotVoidableError();
+    return locked;
+  });
+
+  await audit.log({
+    actorId,
+    scope: "SYSTEM",
+    tenantId: invoice.tenantId,
+    action: "SUBSCRIPTION_INVOICE_VOIDED",
+    targetType: "SubscriptionInvoice",
+    targetId: invoice.id,
+    metadata: {
+      code: invoice.code,
+      provider: invoice.provider,
+      amountVnd: invoice.amountVnd,
+      fromStatus: invoice.status,
+      toStatus: "VOID",
+      ...(voidNote ? { note: voidNote } : {}),
+    },
+  });
+}
+
+const invoiceNotVoidableError = () =>
+  new AppError({
+    code: "INVOICE_NOT_VOIDABLE",
+    message: "Hoá đơn đã đổi trạng thái — chỉ huỷ được hoá đơn đang chờ thanh toán hoặc đã hết hạn.",
+    httpStatus: 409,
+  });
+
+const invoiceNotReopenableError = () =>
+  new AppError({
+    code: "INVOICE_NOT_REOPENABLE",
+    message: "Hoá đơn đã đổi trạng thái — chỉ mở lại được hoá đơn đã huỷ hoặc đã hết hạn.",
+    httpStatus: 409,
+  });
+
+/**
+ * ADR-067 mục 2 — mở lại hoá đơn đã huỷ/hết hạn (EXPIRED/VOID → PENDING). Dưới khoá dòng `subscriptions` của gian hàng:
+ * - gói của hoá đơn phải đang bán (`plan.isActive`) — ADR-067 bổ sung;
+ * - hoá đơn phải là hoá đơn MỚI NHẤT của gian hàng (createdAt desc, id desc);
+ * - gian hàng không có hoá đơn PENDING khác (kể cả PENDING đã quá hạn chưa sweep);
+ * - `dueAt` = bây giờ + `invoicePendingTtlHours`; kỳ tính lại `computeRenewalPeriod(now, currentPeriodEnd, plan)` (ghi đè kỳ đã
+ *   lưu) để lần thanh toán sau (`markInvoicePaid`, dùng kỳ đã lưu) áp đúng kỳ.
+ * Giữ nguyên mã, số tiền, cổng, `checkoutPayload`. Cập nhật có điều kiện theo trạng thái đã đọc dưới khoá.
+ */
+export async function reopenSubscriptionInvoice(invoiceId: string, actorId: string | null, note?: string | null): Promise<void> {
+  const prisma = getPrismaClient();
+  const reopenNote = normalizeConfirmNote(note);
+  // Đọc cấu hình TRƯỚC transaction — không giữ khoá dòng qua truy vấn không liên quan.
+  const { invoicePendingTtlHours } = await getSystemSettings();
+
+  const result = await prisma.$transaction(async (tx) => {
+    const tenantId = await invoiceTenantIdOrThrow(tx, invoiceId);
+    await lockSubscriptionRow(tx, tenantId);
+    const invoice = await tx.subscriptionInvoice.findUniqueOrThrow({ where: { id: invoiceId }, include: { plan: true } });
+    if (invoice.status !== "EXPIRED" && invoice.status !== "VOID") throw invoiceNotReopenableError();
+    // ADR-067 bổ sung (2026-11-25): không mở lại hoá đơn của gói đã ngừng bán — cùng ý với chặn ở createRenewalInvoice.
+    if (!invoice.plan.isActive) {
+      throw new AppError({
+        code: "PLAN_INACTIVE",
+        message: "Gói dịch vụ của hoá đơn này đã ngừng bán — không mở lại được; tạo hoá đơn mới cho gói đang bán.",
+        httpStatus: 409,
+      });
+    }
+
+    const latest = await tx.subscriptionInvoice.findFirst({
+      where: { tenantId },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      select: { id: true },
+    });
+    if (latest?.id !== invoice.id) {
+      throw new AppError({ code: "INVOICE_NOT_LATEST", message: "Chỉ mở lại được hoá đơn mới nhất của gian hàng", httpStatus: 409 });
+    }
+    const otherPending = await tx.subscriptionInvoice.count({ where: { tenantId, status: "PENDING", id: { not: invoice.id } } });
+    if (otherPending > 0) {
+      throw new AppError({
+        code: "PENDING_INVOICE_EXISTS",
+        message: "Gian hàng đang có hoá đơn chờ thanh toán khác — huỷ hoá đơn đó trước khi mở lại.",
+        httpStatus: 409,
+      });
+    }
+
+    const subscription = await tx.subscription.findUniqueOrThrow({ where: { tenantId } });
+    const now = new Date();
+    const dueAt = new Date(now.getTime() + invoicePendingTtlHours * 60 * 60 * 1000);
+    const { periodStart, periodEnd } = computeRenewalPeriod(now, subscription.currentPeriodEnd, invoice.plan);
+    const { count } = await tx.subscriptionInvoice.updateMany({
+      where: { id: invoice.id, status: invoice.status },
+      data: { status: "PENDING", dueAt, periodStart, periodEnd },
+    });
+    if (count === 0) throw invoiceNotReopenableError();
+    return { invoice, dueAt, periodStart, periodEnd };
+  });
+
+  await audit.log({
+    actorId,
+    scope: "SYSTEM",
+    tenantId: result.invoice.tenantId,
+    action: "SUBSCRIPTION_INVOICE_REOPENED",
+    targetType: "SubscriptionInvoice",
+    targetId: result.invoice.id,
+    metadata: {
+      code: result.invoice.code,
+      provider: result.invoice.provider,
+      amountVnd: result.invoice.amountVnd,
+      fromStatus: result.invoice.status,
+      toStatus: "PENDING",
+      dueAt: result.dueAt,
+      periodStart: result.periodStart,
+      periodEnd: result.periodEnd,
+      ...(reopenNote ? { note: reopenNote } : {}),
+    },
+  });
+}
+
 // ADR-056 — System Center: lịch sử hoá đơn gói (tab "Tất cả") và trang Thuê bao. Chỉ đọc bảng L1
 // (subscription_invoices, subscriptions, plans) + tên/slug gian hàng — không đơn hàng/khách hàng của tenant (§7.9).
 
@@ -602,7 +769,8 @@ export async function listSubscriptionInvoices(input: ListSubscriptionInvoicesIn
     if (input.provider && isMissingEnumValueError(error)) return [[], 0] as const;
     throw error;
   });
-  return { items: [...items], total, page, pageSize };
+  // ADR-067: trạng thái đích hợp lệ tính ở server, truyền xuống hộp "Đổi trạng thái…".
+  return { items: items.map((item) => ({ ...item, statusTargets: invoiceStatusTargets(item.status) })), total, page, pageSize };
 }
 
 export interface ListSubscriptionsInput {
@@ -654,11 +822,16 @@ export async function listSubscriptions(input: ListSubscriptionsInput) {
     }),
     prisma.subscription.count({ where }),
   ]);
-  const items = rows.map(({ tenant: { subscriptionInvoices, ...tenant }, ...row }) => ({
-    ...row,
-    tenant,
-    latestInvoice: subscriptionInvoices[0] ?? null,
-  }));
+  const items = rows.map(({ tenant: { subscriptionInvoices, ...tenant }, ...row }) => {
+    const latest = subscriptionInvoices[0];
+    return {
+      ...row,
+      tenant,
+      // ADR-067: kèm trạng thái đích hợp lệ cho nút "Đổi trạng thái…" (điều kiện "mới nhất / không có PENDING khác" của mở lại
+      // chỉ kiểm ở server lúc thực hiện).
+      latestInvoice: latest ? { ...latest, statusTargets: invoiceStatusTargets(latest.status) } : null,
+    };
+  });
   return { items, total, page, pageSize };
 }
 

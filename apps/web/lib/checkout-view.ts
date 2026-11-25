@@ -13,7 +13,7 @@ import { isManualConfirmProvider, type CheckoutResult, type PaymentProviderId } 
 import { getSystemSettings } from "./system-settings";
 import { getBankByBin, getEnabledProviders } from "./tenant-payment";
 import { getProductCoverUrl } from "./product-cover";
-import { orderHoldHoursFor } from "./order";
+import { orderHoldHoursFor, orderHoldStartedAt } from "./order";
 import { CUSTOMER_PROVIDER_LABELS } from "./order-customer";
 import type { CurrentUser } from "./session";
 
@@ -146,6 +146,7 @@ export async function getCheckoutView(user: CurrentUser, orderCode: string, opti
         provider: true,
         checkoutPayload: true,
         createdAt: true,
+        holdStartedAt: true,
         expiresAt: true,
         paidAt: true,
         customerDeclaredPaidAt: true,
@@ -224,7 +225,8 @@ export async function getCheckoutView(user: CurrentUser, orderCode: string, opti
       id,
       confirmMode: confirmModeOf(id),
       label: CUSTOMER_PROVIDER_LABELS[id],
-      available: computeOrderHoldExpiresAt(order.createdAt, orderHoldHoursFor(id, settings)).getTime() > now.getTime(),
+      // ADR-068 mục 8: cùng mốc giữ với initiateOrderCheckout (`holdStartedAt ?? createdAt`).
+      available: computeOrderHoldExpiresAt(orderHoldStartedAt(order), orderHoldHoursFor(id, settings)).getTime() > now.getTime(),
     })),
     links: {
       library: `/account/library?tai-lieu=${encodeURIComponent(line.productId)}`,

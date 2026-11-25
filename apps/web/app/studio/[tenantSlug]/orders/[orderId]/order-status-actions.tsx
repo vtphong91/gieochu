@@ -2,10 +2,11 @@
 
 import { useActionState, useEffect, useId, useRef, useState } from "react";
 import { brandColors } from "@gieochu/config/theme";
-import { cancelOrderAction, markOrderRefundedAction, type OrderActionState } from "./actions";
+import { markOrderRefundedAction, type OrderActionState } from "./actions";
 
 /*
- * Thao tác đổi trạng thái đơn (huỷ / đánh dấu đã hoàn tiền) — ADR-046: hai bước. Bấm nút → mở khung xác nhận ngay dưới
+ * Thao tác "Đánh dấu đã hoàn tiền" — ADR-046: hai bước (huỷ / xác nhận / mở lại đã chuyển sang hộp "Đổi trạng thái…" — ADR-068,
+ * `../_ui/order-status-dialog.tsx`). Bấm nút → mở khung xác nhận ngay dưới
  * (progressive disclosure, không `window.confirm`), focus vào nút "Thôi"; "Thôi"/Esc đóng và trả focus về nút ban đầu.
  * Action giữ nguyên (`./actions.ts` tự kiểm quyền + revalidate).
  */
@@ -98,19 +99,6 @@ function TwoStepAction({
         </p>
       ) : null}
     </div>
-  );
-}
-
-export function CancelOrderButton({ tenantSlug, orderId }: { tenantSlug: string; orderId: string }) {
-  return (
-    <TwoStepAction
-      action={cancelOrderAction.bind(null, tenantSlug, orderId)}
-      label="Huỷ đơn"
-      pendingLabel="Đang huỷ..."
-      confirmText="Huỷ đơn này? Khách không thanh toán tiếp được. Thao tác không hoàn tác được."
-      confirmLabel="Huỷ đơn"
-      danger
-    />
   );
 }
 

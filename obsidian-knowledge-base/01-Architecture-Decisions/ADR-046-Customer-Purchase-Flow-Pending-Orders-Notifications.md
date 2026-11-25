@@ -24,6 +24,11 @@ tích gốc: `docs/phan-tich-gio-hang-don-cho-48h-2026-10-26.md` (Hiếu). Bản
 > [[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.13, Endpoint-Directory §29.5. Chưa ai thử luồng trên trình duyệt/hộp thư thật ❓. Mục §2 dưới: 🟡 theo
 > `docs/DECISIONS.md`; tiến độ từng mục ở §3. Chi tiết layout và "Tôi đã chuyển khoản": [[01-Architecture-Decisions/ADR-048-Checkout-Layout-Declared-Paid-Guest-Session|ADR-048 KB (≙ ADR-062)]].
 
+> [!NOTE] Bị sửa bởi ADR-052 (KB) — tương ứng ADR-068 docs (2026-11-25, Quốc duyệt ghi chú)
+> [[01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm|ADR-052 KB (≙ ADR-068)]] thay quy tắc "không cửa sổ xác nhận trễ" **cho thao tác của
+> người bán**: chủ gian hàng xác nhận được đơn đã hết hạn và mở lại đơn hết hạn/đã huỷ (hạn giữ mới tính từ lúc mở lại). Webhook/job tự khớp **không đổi** — tiền về sau
+> hạn vẫn không tự giao. Nội dung bên dưới giữ nguyên như lúc ghi ADR-061.
+
 ---
 
 ## 2. Quyết Định (Decision) 🟡

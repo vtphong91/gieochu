@@ -7,11 +7,17 @@ tags:
   - ui-ux
   - status/living
 date: 2026-10-18
-updated: 2026-11-24
+updated: 2026-11-25
 author: Long
 ---
 
 # 📐 Đặc Tả: Trang Đơn Hàng Studio — danh sách + chi tiết (`/studio/{slug}/orders` — ADR-046, ADR-047, ADR-048)
+
+> **Cập nhật ADR-068 + Bổ sung (2026-11-25, Long đối chiếu code working tree, chưa commit; không migration, không `route.ts`):** thao tác xác nhận thanh toán + huỷ gộp
+> thành **"Đổi trạng thái…"** (Đã thanh toán / Chưa thanh toán (mở lại) / Huỷ đơn) theo `statusTargets` do server tính — người bán xác nhận được đơn **đã hết hạn**, mở lại
+> đơn hết hạn/đã huỷ, ghi chú **không bắt buộc** (thành ghi chú nội bộ). `confirmOrderManuallyAction`, `cancelOrderAction`, `confirm-form.tsx`, `CancelOrderButton` đã xoá ✅
+> `git diff`. Chi tiết §2.4, §3.3; luật trạng thái: [[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.14; quyết định:
+> [[01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm|ADR-052 KB (≙ ADR-068)]].
 
 > **Cập nhật ADR-059 bổ sung lần 2 (2026-10-26, Long đối chiếu code; đã commit `fa29d99`):** trang danh sách gọi thêm `countTenantTransactionsNeedingAction(tenant.id)`
 > và hiện dòng cảnh báo + link tới trang mới **`/studio/{slug}/orders/giao-dich` "Giao dịch cần xử lý"** (giao dịch `UNMATCHED` / `MISMATCH_AMOUNT`, L2 qua
@@ -42,7 +48,8 @@ author: Long
   `requiredRole = "OWNER"`; không đủ quyền → 404 ✅ (`lib/page-guards.ts`, `lib/tenant.ts`).
 - Loader nhận `tenant.id` từ guard, **không** lấy tenantId từ URL ✅ (JSDoc `listOrdersPage`/`getOrderDetailView`).
 - Luật nghiệp vụ của các thao tác tiền (xác nhận thanh toán, huỷ, đánh dấu đã hoàn, cấp thêm lượt, thu hồi) **giữ nguyên**: UI chỉ quyết định
-  *hiện* nút nào; mỗi action vẫn tự kiểm lại ✅ (ADR-046 mục 4; `orderAllowedActions` ghi rõ "không đặt luật mới").
+  *hiện* nút nào; mỗi action vẫn tự kiểm lại ✅ (ADR-046 mục 4; `orderAllowedActions` ghi rõ "không đặt luật mới"). **Từ ADR-068** luật xác nhận/huỷ **đổi** (xác nhận trễ,
+  mở lại, huỷ đơn hết hạn — §2.4); danh sách lựa chọn vẫn do server tính và server kiểm lại khi thực hiện.
 - **Không làm:** **thao tác hàng loạt** và **xuất CSV** đơn hàng/khách hàng ra khỏi hệ thống — chủ dự án chốt tạm thời không làm (ADR-047 mục 3);
   huỷ đơn chỉ từng đơn. (ADR-046 mục 3 từng để "ghi chú nội bộ" sau — ADR-047 đã làm, §3.2.)
 
@@ -87,18 +94,42 @@ hiệu lực) + đếm + lấy id của trang chạy bằng `$queryRaw` (tham s�
 ### 2.3. Mỗi dòng (`OrderListItem`)
 
 Mã, `createdAt`, `paidAt`, trạng thái hiệu lực, `totalVnd`, **khách = họ tên + email** (không SĐT/địa chỉ — ADR-041; `fullName` null khi chưa
-có hồ sơ → UI "Chưa có họ tên"), tên các tài liệu (`titleSnapshot`), cờ yêu cầu hoàn tiền + quá hạn, `allowedActions` ✅.
+có hồ sơ → UI "Chưa có họ tên"), tên các tài liệu (`titleSnapshot`), cờ yêu cầu hoàn tiền + quá hạn, `allowedActions` ✅. Từ ADR-068 thêm **`statusTargets`**
+(`OrderStatusTarget[]`) và **`provider`** (cổng khách đã chọn — để hộp đổi trạng thái biết có nhắc cảnh báo khi huỷ) ✅ code.
 
-### 2.4. Thao tác hợp lệ — `orderAllowedActions(order, now)` ✅
+### 2.4. Thao tác hợp lệ — `orderStatusTargets` (ADR-068) + `orderAllowedActions` ✅ code 2026-11-25
 
-Thứ tự cố định `view`, `confirm`, `cancel`, `refund` — dùng chung cho dòng danh sách và trang chi tiết:
+**Menu "Thao tác" của dòng** (và khối "Thao tác đơn" ở chi tiết) từ ADR-068:
 
-| Thao tác | Điều kiện | Action gọi (không đổi) |
+| Mục | Hiện khi | Gọi |
 | :-- | :-- | :-- |
-| `view` | Luôn có | — |
-| `confirm` | `canManuallyConfirmOrder`: hiệu lực PENDING; hoặc (từ đợt 1 ADR-061/062, 2026-10-27) EXPIRED **chỉ khi** cổng xác nhận tay và khách đã bấm "Tôi đã chuyển khoản" trước hạn (`customerDeclaredPaidAt < expiresAt`). Cửa sổ 24 giờ của ADR-036 **đã bỏ** | Form xác nhận (cần ghi chú) ở trang chi tiết — menu dòng chỉ là link tới `#order-actions` |
-| `cancel` | Trạng thái hiệu lực **PENDING** | `cancelOrderAction` |
-| `refund` | Trạng thái hiệu lực **FULFILLED** | `markOrderRefundedAction` |
+| **Xem chi tiết** | Luôn có | link chi tiết (giữ `?back=`) |
+| **Đổi trạng thái…** | `statusTargets` khác rỗng | hộp `OrderStatusDialog` → `changeOrderStatusAction` |
+| **Đánh dấu đã hoàn tiền…** | `allowedActions` có `refund` (hiệu lực **FULFILLED**) | hộp xác nhận → `markOrderRefundedAction` (không đổi) |
+
+`statusTargets` = `orderStatusTargets(order, now)` theo **trạng thái hiệu lực**:
+
+| Trạng thái hiệu lực | Lựa chọn trong hộp (thứ tự) |
+| :-- | :-- |
+| PENDING | Đã thanh toán · Huỷ đơn |
+| EXPIRED | Đã thanh toán (xác nhận trễ) · Chưa thanh toán (mở lại) · Huỷ đơn |
+| CANCELED | Chưa thanh toán (mở lại) |
+| PAID / FULFILLED / REFUNDED | — (không có mục "Đổi trạng thái…") |
+
+Luật khi thực hiện (server kiểm lại): [[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.14. Tóm tắt:
+- **Đã thanh toán** — mọi cổng, **kể cả đơn đã hết hạn**, không cần khách báo chuyển (thay luật ADR-061 cho người bán; webhook không đổi). Dùng `markOrderPaid` (quyền tải,
+  mã giảm giá, email cho khách).
+- **Mở lại** — giữ giá, mã giảm giá, phương thức, `checkoutPayload`, `paymentRef`; hạn giữ mới = lúc mở lại + 72/48 giờ theo phương thức; xoá mốc "khách báo đã chuyển" và
+  mốc nhắc khách; **không** gửi email cho khách. Chặn: tài liệu ngừng bán / gian hàng không ACTIVE (`PRODUCT_UNAVAILABLE`), khách đã có quyền tải tài liệu qua đơn khác
+  (`ALREADY_OWNED`), khách là chủ gian hàng (`CANNOT_BUY_OWN_PRODUCT`).
+- **Huỷ đơn** — PENDING hoặc EXPIRED.
+- **Ghi chú không bắt buộc** (≤ 500 ký tự, cắt) → **ghi chú nội bộ** của đơn (`order_notes`, §3.2 — **khách không thấy**) dạng `[Đổi trạng thái: {cũ} → {mới}] {ghi chú}`,
+  và `confirmNote` khi chọn Đã thanh toán. Audit **không** chứa văn bản ghi chú.
+- Lỗi khác: `ORDER_STATUS_NOT_CHANGEABLE` (lựa chọn không còn hợp lệ), `ORDER_ALREADY_PAID` (nguồn khác vừa áp đơn), `ORDER_CHANGED` (đơn vừa đổi song song) — đều 409, hiện
+  trong hộp.
+
+**`orderAllowedActions`** vẫn trả thứ tự `view`, `confirm`, `cancel`, `refund` (luật cũ: `confirm` = `canManuallyConfirmOrder`, `cancel` = hiệu lực PENDING) — giữ "cho tương
+thích"; UI chỉ còn dùng `view` + `refund` ✅ code. ~~`confirm` → link `#order-actions` (form ghi chú bắt buộc); `cancel` → `cancelOrderAction`~~ (đã bỏ — ADR-068).
 
 Luật trạng thái gốc: [[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.
 
@@ -128,7 +159,7 @@ Luật trạng thái gốc: [[02-System-Specs/Order-State-Machine|Order-State-Ma
 | :-- | :-- |
 | `UNPAID` | `paidAt` null — kèm `provider` khách đã chọn lúc checkout (có thể null) |
 | `PROVIDER` | Có giao dịch tenant `matchStatus = MATCHED` — kèm cổng, mã giao dịch, thời điểm |
-| `MANUAL` | Không có giao dịch MATCHED nhưng `confirmNote` có giá trị (ghi chú bắt buộc khi xác nhận tay) |
+| `MANUAL` | Không có giao dịch MATCHED nhưng `confirmNote` có giá trị (trước ADR-068 ghi chú bắt buộc khi xác nhận tay; **từ ADR-068 ghi chú không bắt buộc** → người bán xác nhận không ghi chú thì đơn rơi xuống `UNKNOWN` — KB-Audit §51) |
 | `FREE` | Đơn 0đ |
 | `UNKNOWN` | Đã thanh toán nhưng không thuộc các trường hợp trên (dữ liệu cũ) |
 
@@ -138,9 +169,9 @@ Luật trạng thái gốc: [[02-System-Specs/Order-State-Machine|Order-State-Ma
 - **Giao dịch:** giao dịch cổng thanh toán **tenant** của đơn, mới nhất trước, **không trả `rawPayload`**.
 - **Lịch sử khách tại gian hàng** `customerHistory` — chỉ đơn **> 0đ có `paidAt`**, mọi trạng thái (theo định nghĩa ADR-043): `orders`,
   `spentVnd` (doanh thu **gộp**, gồm đơn sau này hoàn), `refundedVnd` (phần đã hoàn — tách riêng), `avgOrderVnd = floor(spent / orders)` hoặc null.
-- **Cờ hoàn tiền** `refundRequested/At/Overdue` như danh sách; `allowedActions` như §2.4.
+- **Cờ hoàn tiền** `refundRequested/At/Overdue` như danh sách; `allowedActions` và **`statusTargets`** (ADR-068) như §2.4.
 - **Hiển thị tiền:** giá/tổng của một đơn hoặc một dòng dùng `formatOrderPrice` (0 → "Miễn phí"); số tổng hợp (Lịch sử khách, giảm giá, giao dịch) dùng `formatOrderVnd` (0 → "0 đ") ✅ `orders/_ui/order-format.ts`.
-- **Bố cục thao tác** ("Bổ sung ADR-046"): cấp thêm lượt / thu hồi quyền tải đặt theo từng dòng tài liệu ở cột chính; hộp "Thao tác đơn" chỉ gồm xác nhận / đánh dấu đã hoàn / huỷ ✅ code.
+- **Bố cục thao tác** ("Bổ sung ADR-046"): cấp thêm lượt / thu hồi quyền tải đặt theo từng dòng tài liệu ở cột chính; hộp "Thao tác đơn" ~~chỉ gồm xác nhận / đánh dấu đã hoàn / huỷ~~ — từ ADR-068 gồm khối "Trạng thái đơn" + "Đánh dấu đã hoàn tiền" (§3.3) ✅ code.
 
 ### 3.1. Lịch sử đơn (timeline) — chỉ dựng từ dữ liệu có sẵn ✅
 
@@ -152,9 +183,9 @@ Loader trả **cũ → mới**; UI đảo ngược (**mới nhất trên**). Ngu
 | Nhận giao dịch | `tenant_payment_transactions` của đơn (cổng, số tiền, trạng thái khớp, mã GD) |
 | Đã thanh toán / nhận miễn phí | `orders.paidAt` |
 | Hết hạn | `expiresAt` khi trạng thái hiệu lực EXPIRED và chưa thanh toán |
-| Huỷ | `orders.updatedAt` khi CANCELED — **không có cột `canceledAt`**; CANCELED là trạng thái cuối nên lần cập nhật cuối = lúc huỷ (suy luận trong code) |
+| Huỷ | `orders.updatedAt` khi CANCELED — **không có cột `canceledAt`**; CANCELED là trạng thái cuối nên lần cập nhật cuối = lúc huỷ (suy luận trong code). **Từ ADR-068** CANCELED không còn là trạng thái cuối (mở lại được) — comment code chưa sửa; sau khi mở lại, mốc "Huỷ" và "Hết hạn" suy ra **biến mất** khỏi dòng thời gian, chỉ còn dòng audit (`ORDER_CANCELED_BY_SELLER`/`_BY_CUSTOMER`, `ORDER_REOPENED_BY_SELLER`); đơn bị người bán huỷ **trước** ADR-068 (hàm `cancelOrder` cũ không ghi audit) thì mất dấu lần huỷ ✅ code (KB-Audit §51) |
 | Tài liệu bị gỡ (mở remedy) | `entitlements.remedyRequestedAt` |
-| Audit | `audit_logs` (L1): `tenantId` = gian hàng **và** target là đơn này hoặc entitlement của đơn; 7 action `ORDER_MANUALLY_CONFIRMED`, `ORDER_REFUNDED`, `COUPON_OVERUSED`, `ENTITLEMENT_EXTRA_GRANTED`, `ENTITLEMENT_REVOKED`, `REMEDY_FINAL_DOWNLOAD_CHOSEN`, `REMEDY_REFUND_REQUESTED`; tối đa 200 dòng; **không IP/User-Agent**. Người thực hiện: thành viên gian hàng → họ tên/email; scope CUSTOMER → "Khách hàng"; không actor → "Hệ thống"; còn lại → "Quản trị hệ thống" |
+| Audit | `audit_logs` (L1): `tenantId` = gian hàng **và** target là đơn này hoặc entitlement của đơn; **12** action (`ORDER_TIMELINE_AUDIT_ACTIONS`, ✅ code 2026-11-25): `ORDER_MANUALLY_CONFIRMED`, `ORDER_REFUNDED`, `COUPON_OVERUSED`, `ENTITLEMENT_EXTRA_GRANTED`, `ENTITLEMENT_REVOKED`, `REMEDY_FINAL_DOWNLOAD_CHOSEN`, `REMEDY_REFUND_REQUESTED`, 3 action ADR-061/062 (§2.5) và 2 action ADR-068 `ORDER_CANCELED_BY_SELLER` ("Người bán huỷ đơn"), `ORDER_REOPENED_BY_SELLER` ("Người bán mở lại đơn"); nhãn lấy từ `AUDIT_ACTION_LABELS`; tối đa 200 dòng; **không IP/User-Agent**. Người thực hiện: thành viên gian hàng → họ tên/email; scope CUSTOMER → "Khách hàng"; không actor → "Hệ thống"; còn lại → "Quản trị hệ thống" |
 | Ghi chú nội bộ (ADR-047) | `order_notes` (L2, `withTenant` riêng): kind `note` (+`noteId`), nhãn "Ghi chú nội bộ · {họ tên ?? email tác giả}" — tác giả null → "Tài khoản đã xoá"; `detail` = nội dung (§3.2) |
 | Email | `email_send_log` (L1): chỉ `order_paid` ("Email xác nhận thanh toán gửi khách") và `remedy_refund_requested` ("… gửi chủ gian hàng"), tiêu đề chứa mã đơn, người nhận ∈ {email khách, email chủ gian hàng}, sau `createdAt`; tối đa 50; **không trả địa chỉ người nhận**, chỉ "Đã gửi"/"Gửi thất bại" |
 
@@ -176,6 +207,19 @@ Email `new_sale` và email remedy gửi khách **không** lọc được theo đ
 | Code lên trước migration | Đọc → `notesAvailable: false` (UI hiện Notice "tạm chưa sẵn sàng", ẩn form); thêm/xoá → `ORDER_NOTES_UNAVAILABLE` 503 |
 
 Contract hàm/action: [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §23.5. Bảng + RLS: [[03-API-Contracts/Database-Schema-Reference|Database-Schema-Reference]] §3.2/§7.
+
+Từ ADR-068: ghi chú nhập trong hộp "Đổi trạng thái…" cũng thành một ghi chú nội bộ (tác giả = người đổi), tiền tố `[Đổi trạng thái: {cũ} → {mới}]`; nhãn trạng thái tiếng Việt
+("Chờ thanh toán", "Đã hết hạn", "Đã huỷ"…). Ghi **sau** khi đổi trạng thái đã commit — lỗi ghi chú (vd `order_notes` chưa có) chỉ log, thao tác chính vẫn thành công ✅ code.
+Vì nội dung tổng = tiền tố + ghi chú ≤ 500, luôn dưới giới hạn 1000 ký tự của bảng ✅ (suy từ code).
+
+### 3.3. Khối "Thao tác đơn" trên trang chi tiết (ADR-068) ✅ code / ❓ trình duyệt
+
+- Hiện khi có `statusTargets` hoặc `refund`; không có gì → câu "Không còn thao tác nào cho đơn ở trạng thái “{nhãn}”." (như trước).
+- **"Trạng thái đơn"** (khi `statusTargets` khác rỗng): mô tả "Xác nhận đã nhận tiền, mở lại hoặc huỷ đơn. Đối chiếu sao kê trước khi xác nhận thanh toán.", khối nhắc
+  `DeclaredPaidNotice` (nếu khách đã báo chuyển), rồi nút **"Đổi trạng thái…"** (`OrderStatusButton`, full-width) mở hộp chung với danh sách. Dữ liệu hộp: mã đơn, tổng tiền,
+  nhãn trạng thái hiện tại, `targets`, `expired`, `autoProvider` (từ `paymentChannel.provider`; chưa chọn cổng → `null` → vẫn nhắc cảnh báo khi huỷ).
+- **"Đánh dấu đã hoàn tiền"** (đơn FULFILLED) giữ nút 2 bước cũ (`MarkRefundedButton`), ngăn cách bằng viền trên khi đứng sau khối trạng thái.
+- Trình bày hộp: [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §20.9.
 
 ---
 
@@ -211,8 +255,10 @@ Contract hàm/action: [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]]
   Sắp xếp (dưới `xl`), Số dòng; "Xoá lọc". Khi lọc theo khách (ADR-048): dòng "Đang xem đơn của khách {họ tên ?? email}" + ô ẩn `khach` (giữ khi lọc tiếp)
   + link "Bỏ lọc khách"; `?back=` của chi tiết giữ cả `khach`. Notice yêu cầu hoàn tiền. Bảng từ `xl`, thẻ dưới `xl`; sắp xếp bằng tiêu đề cột; menu Thao tác
   từng dòng; phân trang `?trang=`.
-- **Chi tiết:** `MainAsideGrid` — cột chính Thông tin chung + Khách, Tài liệu trong đơn, Giao dịch; cột phụ Thao tác đơn (chỉ thao tác hợp lệ,
-  2 bước), Lịch sử khách hàng, **Ghi chú nội bộ** (ADR-047 — `OrderNotesCard` + `AddOrderNoteForm`), Lịch sử đơn (ghi chú hiện ở đây, nút
+- **Từ ADR-068:** menu dòng "Xem chi tiết" · "Đổi trạng thái…" · "Đánh dấu đã hoàn tiền…" (§2.4); hộp `OrderStatusDialog` dùng chung danh sách + chi tiết
+  (UI-Design-System §20.9).
+- **Chi tiết:** `MainAsideGrid` — cột chính Thông tin chung + Khách, Tài liệu trong đơn, Giao dịch; cột phụ Thao tác đơn ("Đổi trạng thái…" + hoàn tiền 2 bước — §3.3),
+  Lịch sử khách hàng, **Ghi chú nội bộ** (ADR-047 — `OrderNotesCard` + `AddOrderNoteForm`), Lịch sử đơn (ghi chú hiện ở đây, nút
   `DeleteOrderNoteButton` chỉ với tác giả). Nút quay lại giữ bộ lọc qua `?back=` (whitelist khoá, không open redirect).
 - `loading.tsx` (danh sách + chi tiết), `error.tsx` (chung cho cả nhánh `orders/`).
 
@@ -230,6 +276,8 @@ Contract hàm/action: [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]]
   404, không phải tác giả xoá → 403, tác giả xoá được. Chạy thật sau migration **9/9** 🟡 (Quốc báo 2026-10-18).
 - Kiểm (🟡 báo cáo): lint/typecheck/build đạt (Quốc chạy 2026-10-18); Hiếu đọc-only dữ liệu thật tenant `phongweb` đúng.
 - **Chưa kiểm** ❓: UI thật với phiên OWNER, thử tenant chéo trên trình duyệt, nhánh timeline audit/email (chưa có dữ liệu), trình đọc màn hình.
+- **ADR-068 (2026-11-25):** không thêm case — assert thêm trong `order.test.ts` (chạy 10/10 🟡 Quốc báo) + `state.test.ts`; `pnpm test:count` = **105/105, 69/69** ✅ (Long
+  chạy). Hộp "Đổi trạng thái…" trên trình duyệt, production ❓.
 
 ---
 
@@ -253,6 +301,7 @@ Contract hàm/action: [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]]
 * [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §23 — contract loader ([Endpoint-Directory.md](../03-API-Contracts/Endpoint-Directory.md))
 * [[04-Operations-Runbooks/UI-Design-System|UI-Design-System]] §20 ([UI-Design-System.md](../04-Operations-Runbooks/UI-Design-System.md))
 * [[01-Architecture-Decisions/ADR-032-Studio-Orders-Unaccent-Search-Internal-Notes|ADR-032 KB (≙ ADR-047)]] ([ADR-032-Studio-Orders-Unaccent-Search-Internal-Notes.md](../01-Architecture-Decisions/ADR-032-Studio-Orders-Unaccent-Search-Internal-Notes.md))
+* [[01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm|ADR-052 KB (≙ ADR-068)]] — "Đổi trạng thái…" đơn ([ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm.md](../01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm.md))
 * Mã nguồn: `apps/web/lib/order.ts` (khối "ADR-046"/"ADR-047"), `apps/web/lib/order-note.ts`, `apps/web/lib/prisma-contains.ts`, `apps/web/app/studio/[tenantSlug]/orders/**`,
   `packages/db/prisma/migrations/20261018090000_adr045_order_notes/migration.sql`
 

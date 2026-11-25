@@ -666,6 +666,7 @@ export const OrderScalarFieldEnum = {
   customerPaymentEmailedAt: 'customerPaymentEmailedAt',
   customerPaymentEmailedProvider: 'customerPaymentEmailedProvider',
   customerReminderSentAt: 'customerReminderSentAt',
+  holdStartedAt: 'holdStartedAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

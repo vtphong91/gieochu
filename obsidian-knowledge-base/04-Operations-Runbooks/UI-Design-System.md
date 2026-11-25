@@ -5,7 +5,7 @@ tags:
   - design-system
   - status/living
 date: 2026-05-24
-updated: 2026-11-24
+updated: 2026-11-25
 author: System Architect
 ---
 
@@ -1908,6 +1908,9 @@ làm dữ liệu theo brief của Quốc; Long đọc code working tree 2026-10-
 
 ### 20.3. Menu "Thao tác" của dòng (`OrderRowActions`)
 
+> **Từ ADR-068 (2026-11-25):** menu đổi thành "Xem chi tiết" · "Đổi trạng thái…" · "Đánh dấu đã hoàn tiền…" — xem §20.9. Mô tả dưới là bản ADR-046 (giữ để tra cứu; phần
+> hộp hoàn tiền vẫn đúng).
+
 * Dùng `RowMenu` + `MenuItemLink`/`MenuItemButton` có sẵn (`admin/_ui/row-menu`). Mục theo `allowedActions`: **Xem chi tiết** (luôn có) ·
   **Xác nhận thanh toán** → link tới chi tiết `#order-actions` (cần ghi chú nên không làm tại danh sách) · **Đánh dấu đã hoàn tiền** · **Huỷ đơn**
   (tone `danger`, sau separator).
@@ -1942,7 +1945,8 @@ làm dữ liệu theo brief của Quốc; Long đọc code working tree 2026-10-
     (`OrderItemsTable`: đơn giá, giảm giá/mã, thành tiền; khối quyền tải **theo từng dòng** — lượt đã dùng/giới hạn, **Cấp thêm lượt** (ô "Số lượt" có
     nhãn thật; ẩn khi có remedy), **Thu hồi quyền tải** 2 bước (focus "Thôi"), remedy ADR-039 `OrderItemRemedy`)
     · **Giao dịch thanh toán** (khi có; badge khớp/không khớp/sai số tiền).
-  - Cột phụ: **Thao tác đơn** (`id="order-actions"`, `scroll-mt-6`) — chỉ thao tác trong `allowedActions`: xác nhận thanh toán (form ghi chú), đánh dấu
+  - Cột phụ: **Thao tác đơn** (`id="order-actions"`, `scroll-mt-6`) — *từ ADR-068: khối "Trạng thái đơn" + nút "Đổi trạng thái…" (§20.9) và "Đánh dấu đã hoàn tiền" 2 bước;
+    mô tả cũ:* chỉ thao tác trong `allowedActions`: xác nhận thanh toán (form ghi chú), đánh dấu
     đã hoàn, huỷ; huỷ/hoàn là **2 bước** (`TwoStepAction`: bấm → khung xác nhận mở ngay dưới, focus vào "Thôi", "Thôi"/Esc đóng và trả focus; không
     `window.confirm`) · **Lịch sử khách hàng** (Đơn đã thanh toán, Tổng chi tiêu, "Đã hoàn −x đ" khi > 0, Giá trị đơn trung bình; chú thích "Chỉ tính
     đơn trả phí (> 0 đ) … Tổng chi tiêu gồm cả đơn đã hoàn tiền sau đó") · **Ghi chú nội bộ** (ADR-047, §20.8) · **Lịch sử đơn** (`<ol aria-label="Sự kiện của đơn, mới nhất trước">`, mốc
@@ -1971,6 +1975,36 @@ làm dữ liệu theo brief của Quốc; Long đọc code working tree 2026-10-
   `min-h-11` dưới `lg`) → khung xác nhận ngay dưới "Xoá ghi chú lúc …? Thao tác không hoàn tác được." với "Thôi" (focus mặc định, Esc đóng, trả focus
   về nút) / "Xoá ghi chú"; lỗi `role="alert"`. Không `window.confirm`.
 * Không có nút sửa ghi chú (ghi chú bất biến).
+
+### 20.9. Hộp "Đổi trạng thái…" đơn hàng — `OrderStatusDialog` / `OrderStatusButton` (ADR-068) ✅ đọc code 2026-11-25 (working tree, chưa commit) / ❓ trình duyệt
+
+Quyết định thiết kế của Phong, Long nhận qua brief Quốc 2026-11-25 và đối chiếu code. File `app/studio/[tenantSlug]/orders/_ui/order-status-dialog.tsx` (client). Cùng chuẩn với
+hộp hoá đơn gói ở System Center (§27.7). Nghiệp vụ: [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]] §2.4, §3.3.
+
+* **Thay §20.3/§20.6 cũ:** menu dòng nay là **"Xem chi tiết"** (`IconEye`) · separator · **"Đổi trạng thái…"** (`IconRefresh`, khi `statusTargets` khác rỗng) · **"Đánh dấu
+  đã hoàn tiền…"** (`IconReceipt`, đơn FULFILLED). Mục "Xác nhận thanh toán" (link `#order-actions`) và "Huỷ đơn" (dialog riêng) đã bỏ; hằng `ACTIONS_ANCHOR` đã xoá ✅ `git diff`.
+  Trang chi tiết: khối **"Trạng thái đơn"** + nút `OrderStatusButton` (full-width, viền + chữ primary, `min-h-11 lg:min-h-10`, `sr-only` " đơn {mã}" sau chữ — Label in Name
+  §27.2) thay form ghi chú bắt buộc (`confirm-form.tsx` đã xoá) và nút "Huỷ đơn" 2 bước.
+* **Tách hộp khỏi nút mở:** `OrderStatusDialog` (nhận `ref` có `open()` qua `useImperativeHandle` + `onClosed`) nằm **ngoài** `RowMenu` (menu tự đóng khi bấm); đóng xong trả
+  focus về **nút "…" mở menu** (danh sách) hoặc **nút "Đổi trạng thái…"** (chi tiết).
+* **`<dialog>` + `showModal()`** (top layer, nền `inert`): mở → focus **tiêu đề** (`h2 tabIndex=-1` "Đổi trạng thái đơn hàng"); `aria-labelledby` + `aria-describedby`
+  ("Chọn trạng thái mới cho đơn {mã}."); Esc / "Huỷ bỏ" / bấm nền để đóng — **đang gửi thì không đóng**. Không đặt `flex`/`block` trên `<dialog>`; bố cục ở `<form>` con, cuộn
+  trong `max-h-[calc(100dvh-2rem)]`; rộng `min(30rem, 100vw − 2rem)`.
+* **Thông tin đơn:** `dl` Mã đơn (mono, `select-all`) / Tổng tiền / Trạng thái hiện tại.
+* **Nhóm radio dạng thẻ** (`fieldset` + `legend` "Chuyển sang (bắt buộc chọn)"): chỉ các `targets` server tính, **không chọn sẵn**, `required`. Mỗi thẻ `relative`, viền xám;
+  **bấm cả thẻ** nhờ `label` có `after:absolute after:inset-0 after:rounded-xl` (vùng bấm ≥ 44px); thẻ đang chọn `has-[:checked]` viền primary + nền primary/5; focus bàn phím
+  vẽ ở **thẻ** bằng `has-[:focus-visible]:outline-2` (radio tự `focus-visible:outline-none`). Mỗi lựa chọn có mô tả hệ quả gắn `aria-describedby` của radio:
+  - "Đã thanh toán": "Chỉ chọn khi đã nhận đủ {tổng}. Khách nhận quyền tải tài liệu và email xác nhận." (+ "Đơn đã hết hạn — chỉ xác nhận khi tiền thực sự đã về." khi hết hạn).
+  - "Chưa thanh toán (mở lại)": "Đơn chờ thanh toán lại với hạn giữ mới; giữ giá và mã giảm giá cũ. Khách không nhận email báo mở lại."
+  - "Huỷ đơn": "Khách không thanh toán tiếp được." + **cảnh báo** "Nếu khách đã chuyển tiền, giao dịch về sau sẽ không tự áp vào đơn đã huỷ." khi cổng tự xác nhận (SePay/MoMo)
+    **hoặc chưa biết cổng** (`autoProvider !== false` — an toàn hơn bỏ sót).
+* Có lựa chọn "Đã thanh toán" → `Notice tone="warning"` "**Không hoàn tác được với Đã thanh toán.**"
+* **Ghi chú** "(không bắt buộc)", `maxLength` 500, gợi ý gắn `aria-describedby`: "Ghi chú lưu vào ghi chú nội bộ của đơn — khách không thấy. Tối đa 500 ký tự."; chữ 16px dưới `lg`.
+* **Nút:** "Huỷ bỏ" (`GhostButton`) + "**Xác nhận**" (`PrimaryButton`, đang gửi "Đang lưu...") — chữ "Huỷ bỏ" cố ý khác lựa chọn "Huỷ đơn". Dưới `sm` xếp dọc, nút chính ở trên.
+* **Kết quả:** lỗi `FormBanner` **trong hộp** (chỉ lỗi mới hơn lần mở — so `state` lúc mở); thành công → đóng hộp, phản hồi chính là badge trạng thái sau revalidate + câu
+  `role="status"` **`sr-only`** "Đã đổi trạng thái đơn {mã}." (không để khối trống trên giao diện). Đóng theo **object state** nên lần đổi thứ hai trong cùng dòng vẫn đóng.
+* ❓ **Rủi ro focus:** khi chuyển sang PAID (hoặc trạng thái không còn lựa chọn), sau revalidate `statusTargets` rỗng → mục menu / nút "Đổi trạng thái…" và chính hộp bị gỡ khỏi
+  DOM → focus có thể rơi về `body` thay vì nút mở (KB-Audit §51). Chưa kiểm bằng bàn phím / trình đọc màn hình.
 
 ---
 
@@ -2512,7 +2546,8 @@ Quyết định thiết kế của Phong, Long nhận qua brief Quốc 2026-11-2
 [[01-Architecture-Decisions/ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider|ADR-050 KB (≙ ADR-066)]].
 
 ### 27.1. Hộp xác nhận hoá đơn gói — `ManualConfirmButton` (`app/admin/billing/invoices/confirm-button.tsx`, client) ✅ code
-* Dùng ở `/admin/billing/invoices` (tab "Chờ đối soát", "Tất cả") và cột "Thao tác" của `/admin/subscriptions`.
+* Dùng ở `/admin/billing/invoices` (tab "Chờ đối soát", "Tất cả") và cột "Thao tác" của `/admin/subscriptions`. **Từ ADR-067 (2026-11-25):** chỉ còn ở tab "Chờ đối soát";
+  hai chỗ còn lại dùng `InvoiceStatusButton` (§27.7).
 * Hộp là **`<dialog>` mở bằng `showModal()`, viết ngay trong component** — **không** phải component kit dùng chung (khác `ConfirmDialog` phía khách §26.4). Lý do theo comment
   code: top layer → không làm dãn ô/bảng; nền phía sau `inert`. Không đặt `flex` trên `<dialog>` (đè `display:none` khi đóng) — bố cục nằm ở `<form>` con, cuộn trong
   `max-h-[calc(100dvh-2rem)]`; rộng `min(28rem, 100vw − 2rem)`.
@@ -2555,13 +2590,40 @@ Quyết định thiết kế của Phong, Long nhận qua brief Quốc 2026-11-2
 ### 27.5. Bảng `/admin/subscriptions` (Đơn hàng gói dịch vụ) ✅ code / ❓ trình duyệt
 * Cột **"Bắt đầu chu kỳ"** và **"Hạn ân hạn"** chỉ hiện **từ `xl`** (`hidden xl:table-cell`) — comment code: ở `lg` sidebar 288px chiếm chỗ, thêm 2 cột ngày làm bảng cuộn ngang.
 * Cột "Gói", "Hoá đơn gần nhất" ẩn dưới `md`; **dưới `md` lặp mã + badge trạng thái hoá đơn gần nhất** dưới tên gian hàng (kèm `sr-only` "Hoá đơn gần nhất: ") để biết nút
-  "Xác nhận…" áp cho hoá đơn nào.
+  "Xác nhận…" (từ ADR-067: "Đổi…") áp cho hoá đơn nào.
 * Cột "Thao tác" căn phải; bảng vẫn bọc `overflow-x-auto`.
 * ❓ **Chưa đo trên trình duyệt** — Phong ước lượng có thể **còn cuộn ngang** ở 375 / 1024 / 1280px.
 
 ### 27.6. Để lại backlog (ngoài phạm vi payment) 🟡 brief Quốc
 * **Hằng màu dùng chung cho admin** — hiện nhiều file admin tự khai báo hằng màu cục bộ (vd `RED`, `GRAY_LINE`, `INK_SOFT` trong `secret-key-field.tsx`) ✅ code.
-* **Component hộp xác nhận dùng chung cho kit** — `ManualConfirmButton` đang tự viết `<dialog>`; chưa tách thành component kit.
+* **Component hộp xác nhận dùng chung cho kit** — `ManualConfirmButton` đang tự viết `<dialog>`; chưa tách thành component kit. *(2026-11-25: thêm `InvoiceStatusButton`
+  §27.7 và `OrderStatusDialog` §20.9 cũng tự viết `<dialog>` cùng mẫu — 3 bản sao.)*
+
+### 27.7. Hộp "Đổi trạng thái…" hoá đơn gói — `InvoiceStatusButton` (ADR-067) ✅ đọc code 2026-11-25 (working tree, chưa commit) / ❓ trình duyệt
+
+Quyết định thiết kế của Phong qua brief Quốc 2026-11-25. File `app/admin/billing/invoices/confirm-button.tsx` (client). Nghiệp vụ:
+[[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5O · [[01-Architecture-Decisions/ADR-051-Subscription-Invoice-Status-Change-Void-Reopen|ADR-051 KB (≙ ADR-067)]].
+
+* **Thay `ManualConfirmButton`** ở cột "Thao tác" của `/admin/subscriptions` (hoá đơn gần nhất) và tab **"Tất cả"** của `/admin/billing/invoices` (mọi dòng). Tab "Chờ đối
+  soát" vẫn dùng `ManualConfirmButton` (§27.1). Nơi gọi chỉ render nút khi `targets` khác rỗng; **không còn lựa chọn → "—"** (`aria-hidden`) + `sr-only` "Không có thao tác"
+  (`/admin/subscriptions` dùng `Dash srText`; tab "Tất cả" viết tay cùng ý) ✅ code.
+* **Nút mở:** dùng chung hằng `TRIGGER_CLASS` với `ManualConfirmButton` (viền + chữ primary, nền trắng, `min-h-11 lg:min-h-8`, `whitespace-nowrap`). Nhãn theo viewport: dưới `md`
+  **"Đổi…"**, từ `md` **"Đổi trạng thái…"**; `sr-only` " hoá đơn {mã}" sau chữ (Label in Name §27.2); `aria-haspopup="dialog"`.
+* **Hộp:** cùng mẫu `<dialog>` + `showModal()` như §27.1 (focus tiêu đề "Đổi trạng thái hoá đơn" khi mở, Esc / "Huỷ bỏ" / nền mờ để đóng, đang gửi không đóng, đóng xong trả focus
+  về nút mở); rộng `min(30rem, 100vw − 2rem)`. `dl` Mã hoá đơn / Số tiền / Cổng / **Trạng thái hiện tại**.
+* **Nhóm radio dạng thẻ** giống §20.9 (bấm cả thẻ qua `after:absolute after:inset-0`, `has-[:checked]`, focus ở thẻ qua `has-[:focus-visible]`, không chọn sẵn, `required`).
+  Nhãn: "Đã thanh toán" · "Chưa thanh toán (mở lại)" · "Huỷ hoá đơn". Mô tả:
+  - Đã thanh toán: "Chỉ chọn khi tài khoản đã nhận đủ {số tiền}." + (cổng tự xác nhận) "Cổng này bình thường tự xác nhận qua webhook — chỉ xác nhận tay khi đã đối chiếu sao kê."
+    + (hết hạn) "Kỳ gói được tính lại từ thời điểm xác nhận."
+  - Mở lại: "Hoá đơn chờ thanh toán lại với hạn mới; kỳ gói tính lại. Chỉ mở lại được hoá đơn mới nhất của gian hàng."
+  - Huỷ: "Hoá đơn không còn hiệu lực; gói hiện tại không đổi, gian hàng tạo được hoá đơn mới." + (cổng tự xác nhận SePay/MoMo) cảnh báo "Nếu khách đã chuyển tiền qua cổng này,
+    giao dịch về sau sẽ không tự áp vào hoá đơn đã huỷ — chỉ huỷ khi chắc chắn khách chưa trả."
+* Có "Đã thanh toán" → `Notice tone="warning"` "Không hoàn tác được với Đã thanh toán." Ghi chú "(không bắt buộc)", `maxLength` 500, gợi ý "Lưu vào nhật ký thao tác (tối đa 500
+  ký tự)." — **lưu ý:** ghi chú này hiện cho chủ gian hàng ở Studio → Hoạt động (Audit-Log-Specs §5.2); câu gợi ý chưa nói điều đó.
+* **Nút:** "Huỷ bỏ" + "**Xác nhận**" (đang gửi "Đang lưu...") — tránh trùng chữ với "Huỷ hoá đơn". Lỗi `FormBanner` trong hộp; thành công → đóng hộp, badge dòng đổi sau
+  revalidate + `role="status"` `sr-only` "Đã đổi trạng thái hoá đơn {mã}.".
+* ❓ **Rủi ro focus** như §20.9: sau khi chuyển PAID, `statusTargets` rỗng → nút bị thay bằng "—" → focus không còn chỗ trả về. ❓ **Ô vuông xanh ở cột "Thao tác"** (nêu trong brief
+  Quốc 2026-11-25) — **chưa tái hiện được**; chờ kiểm trên bản deploy (KB-Audit §51).
 
 ---
 
@@ -2595,7 +2657,8 @@ Quyết định thiết kế của Phong, Long nhận qua brief Quốc 2026-11-2
 * `apps/web/app/_ui/{nav-link,nav-dropdown,mobile-nav,site-header,site-footer}.tsx` (§1.1.1), `apps/web/app/_home-sections.tsx` (§12.9), `apps/web/app/admin/cms/{menu,phap-ly}/*` (§13.7), `apps/web/app/phap-ly/[slug]/{page.tsx,_ui/legal-toc.ts}` (§22) · [[02-System-Specs/System-Cms-Menu-Home-Seo-Specs|System-Cms-Menu-Home-Seo-Specs]] · [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]] · [[01-Architecture-Decisions/ADR-035-Menu-Home-Seo-Versioned-Terms|ADR-035 (≙ ADR-050)]]
 * `apps/web/app/admin/_ui/{kit,billing-labels,icons}.ts(x)`, `apps/web/app/admin/billing/invoices/page.tsx`, `apps/web/app/admin/subscriptions/page.tsx`, `apps/web/app/_ui/bank-transfer-panel.tsx`, `apps/web/app/[tenantSlug]/checkout/[orderCode]/{page,coupon-panel}.tsx`, `apps/web/app/studio/[tenantSlug]/billing/page.tsx` (§24) · [[01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr|ADR-041 (≙ ADR-056)]]
 * `apps/web/app/admin/_ui/{module-tabs,collapsible-section,unsaved-changes,in-page-tabs}.tsx`, `apps/web/app/admin/_ui/{nav-match,use-form-draft}.ts`, `apps/web/app/admin/cms/_ui/cms-tabs.ts`, `apps/web/app/admin/settings/_ui/settings-tabs.ts`, `apps/web/app/admin/_ui/sidebar-nav.tsx` (`match`), `apps/web/app/admin/layout.tsx`, `apps/web/app/studio/[tenantSlug]/layout.tsx` (Provider), `apps/web/app/studio/page.tsx` (Provider onboarding), `apps/web/app/studio/[tenantSlug]/settings/_ui/settings-tabs.ts`, `apps/web/app/studio/[tenantSlug]/{settings,settings/payments,products/_ui,products/[productId]/share-links,posts/_ui,storefront,coupons}/*` (GĐ 2), `docs/ke-hoach-toi-uu-layout-tab-accordion-2026-10-25.md` (§5 quy tắc full width, §11.1, §25) · [[01-Architecture-Decisions/ADR-043-Module-Tabs-Accordion-Unsaved-Guard|ADR-043 (≙ ADR-058)]] · [[01-Architecture-Decisions/ADR-042-Legal-Drafts-Import-Preview-Draft-Release|ADR-042 (≙ ADR-057)]] (§13.7)
-* `apps/web/app/admin/billing/invoices/confirm-button.tsx`, `apps/web/app/admin/_ui/secret-key-field.tsx`, `apps/web/app/admin/billing/payment/sepay-form.tsx`, `apps/web/app/studio/[tenantSlug]/settings/payments/sepay-form.tsx`, `apps/web/lib/sepay-setup.ts`, `apps/web/app/admin/subscriptions/page.tsx` (§27) · [[01-Architecture-Decisions/ADR-049-Sepay-Numeric-Payment-Code-Shared|ADR-049 (≙ ADR-065)]] · [[01-Architecture-Decisions/ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider|ADR-050 (≙ ADR-066)]]
+* `apps/web/app/admin/billing/invoices/confirm-button.tsx`, `apps/web/app/admin/_ui/secret-key-field.tsx`, `apps/web/app/admin/billing/payment/sepay-form.tsx`, `apps/web/app/studio/[tenantSlug]/settings/payments/sepay-form.tsx`, `apps/web/lib/sepay-setup.ts`, `apps/web/app/admin/subscriptions/page.tsx` (§27) · [[01-Architecture-Decisions/ADR-049-Sepay-Numeric-Payment-Code-Shared|ADR-049 (≙ ADR-065)]] · [[01-Architecture-Decisions/ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider|ADR-050 (≙ ADR-066)]] · [[01-Architecture-Decisions/ADR-051-Subscription-Invoice-Status-Change-Void-Reopen|ADR-051 (≙ ADR-067)]] (§27.7)
+* `apps/web/app/studio/[tenantSlug]/orders/_ui/{order-status-dialog,order-row-actions,order-list}.tsx`, `apps/web/app/studio/[tenantSlug]/orders/[orderId]/{page,order-status-actions}.tsx` (§20.9) · [[01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm|ADR-052 (≙ ADR-068)]]
 * [[04-Operations-Runbooks/README|Quay lại danh mục Operations Runbooks]]
 
 *Quay lại: [[MOC-Home]] (../00-Index/MOC-Home.md)*

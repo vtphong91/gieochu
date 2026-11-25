@@ -62,8 +62,8 @@ const DESCRIPTIONS: Partial<Record<SystemSettingKey, string>> = {
   presignUploadTtlSeconds: "URL tải tệp lên kho lưu trữ.",
   presignDownloadTtlSeconds: "URL tải tài liệu của khách — tối đa 10 phút.",
   graceDays: "Gói hết hạn vẫn dùng được trong số ngày này.",
-  orderHoldManualHours: "Đơn chuyển khoản ngân hàng / MoMo (xác nhận thủ công) hoặc chưa chọn phương thức: hết hạn sau khoảng này kể từ lúc đặt đơn.",
-  orderHoldAutoHours: "Đơn chọn chuyển khoản xác nhận tự động (SePay): hết hạn sau khoảng này kể từ lúc đặt đơn.",
+  orderHoldManualHours: "Đơn chuyển khoản ngân hàng / MoMo (xác nhận thủ công) hoặc chưa chọn phương thức: hết hạn sau khoảng này kể từ lúc đặt đơn (hoặc lúc người bán mở lại đơn).",
+  orderHoldAutoHours: "Đơn chọn chuyển khoản xác nhận tự động (SePay): hết hạn sau khoảng này kể từ lúc đặt đơn (hoặc lúc người bán mở lại đơn).",
   invoicePendingTtlHours: "Hoá đơn gói chưa thanh toán tự huỷ sau khoảng này.",
   defaultDownloadLimit: "Điền sẵn khi người bán tạo tài liệu mới. 0 = không giới hạn.",
 };

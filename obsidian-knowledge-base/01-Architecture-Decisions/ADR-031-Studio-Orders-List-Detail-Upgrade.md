@@ -24,6 +24,11 @@ Tiến độ (2026-10-18): dữ liệu (Hiếu) + UI (Phong) xong code ở worki
 
 Mức xác minh: ✅ Long đã đối chiếu code working tree (2026-10-18) · 🟡 theo `docs/DECISIONS.md`/báo cáo của Quốc · ❓ cần môi trường thật.
 
+> [!NOTE] Bị sửa bởi ADR-052 (KB) — tương ứng ADR-068 docs (2026-11-25, Quốc duyệt ghi chú)
+> [[01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm|ADR-052 KB (≙ ADR-068)]] đổi menu "Thao tác" (danh sách + chi tiết): mục "Xác nhận
+> thanh toán" (form ghi chú bắt buộc ở chi tiết) và "Huỷ đơn" gộp thành **"Đổi trạng thái…"** (hộp chọn Đã thanh toán / Chưa thanh toán (mở lại) / Huỷ đơn, ghi chú không bắt
+> buộc); "Đánh dấu đã hoàn tiền…" giữ riêng. `confirmOrderManuallyAction`, `cancelOrderAction` đã xoá. Nội dung bên dưới giữ nguyên như lúc ghi ADR-046.
+
 ---
 
 ## 2. Bối Cảnh (Context)

@@ -21,6 +21,11 @@ Tiến độ (đối chiếu 2026-11-24): code ở working tree, **chưa commit*
 
 Mức xác minh: ✅ Long đã đối chiếu code working tree · 🟡 theo `docs/DECISIONS.md`/brief · ❓ chưa xem giao diện bằng trình duyệt với phiên SYSTEM_ADMIN.
 
+> [!NOTE] Bị sửa bởi ADR-051 (KB) — tương ứng ADR-067 docs (2026-11-25, Quốc duyệt ghi chú)
+> [[01-Architecture-Decisions/ADR-051-Subscription-Invoice-Status-Change-Void-Reopen|ADR-051 KB (≙ ADR-067)]] thay `ManualConfirmButton` bằng nút **"Đổi trạng thái…"**
+> (`InvoiceStatusButton`: Đã thanh toán / Chưa thanh toán (mở lại) / Huỷ hoá đơn) ở cột "Thao tác" của `/admin/subscriptions` và tab "Tất cả" của `/admin/billing/invoices`;
+> tab "Chờ đối soát" vẫn dùng `ManualConfirmButton`. Luật `confirmManualInvoicePayment` (§3.1) không đổi. Nội dung bên dưới giữ nguyên như lúc ghi ADR-066.
+
 ---
 
 ## 2. Bối Cảnh (Context) 🟡

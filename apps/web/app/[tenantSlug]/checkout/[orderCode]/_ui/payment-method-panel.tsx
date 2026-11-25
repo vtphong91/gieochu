@@ -103,7 +103,7 @@ type Props = {
 
 /**
  * Chọn / đổi cách thanh toán (ADR-062 §4.3, Q3/Q10). Radio gốc trong `fieldset/legend`, cả thẻ là `label` (≥56px). Phương
- * thức `available=false` (đã quá hạn giữ đơn của cách đó, tính từ lúc đặt đơn) bị vô hiệu và ghi lý do bằng chữ.
+ * thức `available=false` (đã quá hạn giữ đơn của cách đó, tính từ lúc đặt đơn hoặc lúc người bán mở lại đơn — ADR-068) bị vô hiệu và ghi lý do bằng chữ.
  * - Chưa chọn: nút "Tiếp tục thanh toán" ở cuối form (từ lg) và trên thanh dính đáy (mobile) — cùng một state.
  * - Đã chọn: thanh "Đang dùng … [Đổi]"; "Đổi" là nút disclosure (`aria-expanded`/`aria-controls`). Đổi xong → thu gọn, focus
  *   về tiêu đề khối thanh toán; câu thông báo đọc qua `CheckoutStatusAnnouncer` (đổi phương thức = đổi khoá trạng thái).
@@ -152,7 +152,7 @@ export function PaymentMethodPanel({ tenantSlug, orderCode, current, options, ca
             isCurrent={isCurrent}
             unavailableReason={
               !option.available
-                ? { id: `${uid}-${option.id}-reason`, text: "Không dùng được: đơn đã quá thời hạn giữ của cách này (tính từ lúc đặt đơn)." }
+                ? { id: `${uid}-${option.id}-reason`, text: "Không dùng được: đơn đã quá thời hạn giữ của cách này." }
                 : undefined
             }
           />

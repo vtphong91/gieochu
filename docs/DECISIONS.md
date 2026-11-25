@@ -1683,3 +1683,64 @@
   không có route nào đọc đơn hàng/khách hàng của tenant (§7.9).
 - **Test:** không thêm test case (trần 105/69) — mở rộng test integration hoá đơn SePay sẵn có: xác nhận tay hoá đơn SePay kèm
   ghi chú → PAID + audit có `note`; định dạng mã hoá đơn ADR-065.
+
+## ADR-067 — "Đổi trạng thái" hoá đơn gói: Đã thanh toán / Huỷ / Chưa thanh toán (mở lại)
+
+- **Bối cảnh (2026-11-24):** chủ dự án yêu cầu cột "Thao tác" ở `/admin/subscriptions` cho phép chuyển trạng thái hoá đơn gói
+  "Chưa thanh toán", "Đã thanh toán", "Huỷ" (ADR-066 mới có "Xác nhận đã nhận tiền").
+- **Chủ dự án chốt:** Huỷ chỉ cho hoá đơn chưa trả; "Chưa thanh toán" = mở lại hoá đơn đã huỷ/hết hạn (không hoàn tác hoá đơn
+  đã trả); UI một nút "Đổi trạng thái…" mở hộp chọn.
+- **Quyết định — bảng chuyển trạng thái (chỉ System Admin, mọi cổng):**
+  | Từ | Được chuyển tới |
+  |---|---|
+  | PENDING (Chờ thanh toán) | PAID (ADR-066), VOID |
+  | EXPIRED (Hết hạn) | PAID (xác nhận trễ ADR-059/066), VOID, PENDING (mở lại) |
+  | VOID (Đã huỷ) | PENDING (mở lại) |
+  | PAID, REFUNDED | — (hoá đơn đã trả đi luồng hoàn tiền ADR-041) |
+  1. **Huỷ (→ VOID):** cập nhật có điều kiện `status IN (PENDING, EXPIRED)` dưới khoá dòng `subscriptions` của gian hàng; không đổi
+     thuê bao/gói. Gian hàng tạo được hoá đơn mới ngay (hoá đơn VOID không chặn dedupe).
+  2. **Mở lại (→ PENDING):** chỉ khi hoá đơn là hoá đơn **mới nhất** của gian hàng và gian hàng **không có hoá đơn PENDING khác**;
+     dưới khoá: đặt `dueAt` mới = bây giờ + `invoicePendingTtlHours`, **tính lại kỳ** (`computeRenewalPeriod(now, currentPeriodEnd,
+     plan)`) để lần thanh toán sau áp đúng kỳ. Giữ mã, số tiền, cổng, `checkoutPayload` (mã cũ dạng chữ+số SePay không nhận diện —
+     admin xác nhận tay).
+  3. **Đã thanh toán:** giữ nguyên `confirmManualInvoicePayment` (ADR-066).
+  4. Mọi chuyển trạng thái ghi audit (actor, trạng thái cũ → mới, ghi chú không bắt buộc ≤ 500 ký tự). Danh sách trạng thái được
+     phép tính ở server và truyền xuống UI; server luôn kiểm lại dưới khoá.
+  5. UI: một nút "Đổi trạng thái…" (hộp `<dialog>`) thay `ManualConfirmButton` ở `/admin/subscriptions` (cột "Thao tác") và tab
+     "Tất cả" của `/admin/billing/invoices`; không còn trạng thái nào để chuyển → hiện "—".
+- **Bổ sung (chủ dự án chốt 2026-11-25):** không mở lại hoá đơn của gói đã ngừng bán (`plan.isActive = false` → 409
+  `PLAN_INACTIVE`). Ghi chú admin trong audit tiếp tục hiển thị ở Studio của gian hàng.
+
+## ADR-068 — Studio: "Đổi trạng thái…" đơn hàng — Đã thanh toán / Chưa thanh toán (mở lại) / Huỷ
+
+- **Bối cảnh (2026-11-25):** chủ dự án yêu cầu Studio có chức năng đổi trạng thái đơn hàng tương tự System Center (ADR-067). Studio
+  đã có menu "Thao tác" (ADR-046): xác nhận thanh toán (ghi chú bắt buộc, chỉ PENDING hoặc EXPIRED đã báo chuyển — ADR-061/062), huỷ
+  (PENDING), đánh dấu đã hoàn tiền (FULFILLED).
+- **Chủ dự án chốt:** cho xác nhận đơn **đã hết hạn** (tiền về trễ) — thay quy tắc ADR-061 "không xác nhận trễ" cho thao tác của
+  người bán; cho **mở lại** đơn hết hạn/đã huỷ, **giữ giá cũ**; ghi chú **không bắt buộc** (thay §M8 "bắt buộc ghi chú"); UI một mục
+  "Đổi trạng thái…" trong menu Thao tác (danh sách + trang chi tiết), giữ riêng "Đánh dấu đã hoàn tiền".
+- **Quyết định — bảng chuyển (trạng thái hiệu lực, chủ gian hàng — theo guard `requireTenantMember` hiện chỉ OWNER; mọi cổng):**
+  | Từ | Được chuyển tới |
+  |---|---|
+  | PENDING | PAID (xác nhận tay), CANCELLED |
+  | EXPIRED | PAID (xác nhận trễ), PENDING (mở lại), CANCELLED |
+  | CANCELLED | PENDING (mở lại) |
+  | PAID / FULFILLED / REFUNDED / khác | — (hoàn tiền giữ mục riêng ADR-046) |
+  1. **Đã thanh toán:** dùng luồng `markOrderPaid` sẵn có (quyền tải, mã giảm giá tính lượt lúc PAID, email). EXPIRED → PAID chỉ là
+     thao tác của người bán; **webhook/job tự khớp KHÔNG đổi** (giao dịch về sau hạn vẫn vào "Giao dịch cần xử lý").
+  2. **Mở lại (→ PENDING):** chặn nếu gian hàng không ACTIVE hoặc tài liệu trong đơn không còn bán (`assertOrderProductsPurchasable`);
+     hạn giữ mới = **thời điểm mở lại** + số giờ của phương thức đã chọn (`orderHoldHoursFor`); giữ tổng tiền, mã giảm giá, phương
+     thức, `checkoutPayload`, `paymentRef`; xoá mốc "khách báo đã chuyển" và mốc nhắc khách. Không gửi email cho khách (ngoài phạm vi).
+  3. **Huỷ:** PENDING hoặc EXPIRED → CANCELLED (EXPIRED → CANCELLED thêm để đồng nhất với ADR-067).
+  4. **Ghi chú (không bắt buộc):** lưu thành ghi chú nội bộ của đơn (OrderNote, ADR-047 — chỉ người bán thấy) và `confirmNote` khi xác
+     nhận; audit chỉ ghi id + trạng thái cũ → mới (không ghi văn bản tự do — §7.9).
+  5. Danh sách trạng thái được phép tính ở server (`statusTargets`), server kiểm lại khi thực hiện.
+- **Bổ sung (chủ dự án chốt 2026-11-25):**
+  6. Mở lại bị chặn nếu khách **đã có quyền tải còn hiệu lực** với tài liệu của đơn qua đơn khác (cùng luật với tạo đơn mới) — tránh
+     trả tiền hai lần.
+  7. Sửa lỗi có từ trước: `markOrderPaid` chỉ áp khi đơn còn ở trạng thái được phép (cập nhật có điều kiện) — webhook/job và người
+     bán xác nhận cùng lúc thì lần sau là no-op, mã giảm giá không bị tính hai lượt.
+  8. **Mốc giữ đơn** (sửa lỗi Long phát hiện: hạn phương thức tính từ `createdAt` nên đơn mở lại > 72 giờ không chọn được cách trả):
+     cột mới `orders.holdStartedAt DateTime?` (migration expand). Hạn giữ của mọi phương thức = `holdStartedAt ?? createdAt` + số
+     giờ của phương thức (ADR-062 Q3 đổi mốc). Mở lại đặt `holdStartedAt = thời điểm mở lại`.
+  9. Đơn người bán xác nhận không ghi chú vẫn hiện kênh "Xác nhận thủ công" (không phải "không xác định").

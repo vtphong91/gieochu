@@ -3,15 +3,24 @@
 import { useActionState, useEffect, useId, useRef, useState, type MouseEvent, type SyntheticEvent } from "react";
 import { brandColors } from "@gieochu/config/theme";
 import { FormBanner, GhostButton, Notice, PrimaryButton } from "../../_ui/kit";
+// `import type` bị xoá hẳn khi biên dịch → không kéo code server (Prisma, email…) vào bundle client.
+import type { InvoiceStatusTarget } from "../../../../lib/subscription-billing";
 import {
+  changeInvoiceStatusAction,
   confirmInvoiceFromTransactionAction,
   confirmManualInvoiceAction,
+  type ChangeInvoiceStatusState,
   type ConfirmFromTransactionActionState,
   type ConfirmInvoiceActionState,
 } from "./actions";
 
 const initialState: ConfirmInvoiceActionState = {};
 const initialTxnState: ConfirmFromTransactionActionState = {};
+const initialStatusState: ChangeInvoiceStatusState = {};
+
+/** Lớp nút mở hộp ở ô "Thao tác" (viền màu chính, 44px dưới lg) — dùng chung cho các nút mở `<dialog>` trong file này. */
+const TRIGGER_CLASS =
+  "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-lg border border-[color:var(--color-primary)] bg-white px-3 text-xs font-semibold whitespace-nowrap text-[color:var(--color-primary)] transition hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none lg:min-h-8";
 
 /**
  * ADR-066 — "Xác nhận đã nhận tiền" cho hoá đơn gói đang chờ hoặc đã hết hạn, MỌI cổng (dùng ở /admin/billing/invoices và cột
@@ -101,7 +110,7 @@ export function ManualConfirmButton({
           aria-haspopup="dialog"
           onClick={openDialog}
           disabled={isPending}
-          className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-lg border border-[color:var(--color-primary)] bg-white px-3 text-xs font-semibold whitespace-nowrap text-[color:var(--color-primary)] transition hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none lg:min-h-8"
+          className={TRIGGER_CLASS}
         >
           {expired ? (
             "Xác nhận trễ…"
@@ -198,6 +207,250 @@ export function ManualConfirmButton({
               Huỷ
             </GhostButton>
             <PrimaryButton loading={isPending}>{isPending ? "Đang xác nhận..." : "Xác nhận đã nhận tiền"}</PrimaryButton>
+          </div>
+        </form>
+      </dialog>
+    </div>
+  );
+}
+
+const STATUS_TARGET_LABEL: Record<InvoiceStatusTarget, string> = {
+  PAID: "Đã thanh toán",
+  PENDING: "Chưa thanh toán (mở lại)",
+  VOID: "Huỷ hoá đơn",
+};
+
+/** Mô tả hệ quả của từng lựa chọn (đọc kèm qua `aria-describedby` của radio). */
+function statusTargetDescription(
+  target: InvoiceStatusTarget,
+  ctx: { amountLabel: string; autoProvider: boolean; expired: boolean },
+): string[] {
+  switch (target) {
+    case "PAID": {
+      const lines = [`Chỉ chọn khi tài khoản đã nhận đủ ${ctx.amountLabel}.`];
+      if (ctx.autoProvider) lines.push("Cổng này bình thường tự xác nhận qua webhook — chỉ xác nhận tay khi đã đối chiếu sao kê.");
+      if (ctx.expired) lines.push("Kỳ gói được tính lại từ thời điểm xác nhận.");
+      return lines;
+    }
+    case "PENDING":
+      return ["Hoá đơn chờ thanh toán lại với hạn mới; kỳ gói tính lại. Chỉ mở lại được hoá đơn mới nhất của gian hàng."];
+    case "VOID": {
+      const lines = ["Hoá đơn không còn hiệu lực; gói hiện tại không đổi, gian hàng tạo được hoá đơn mới."];
+      if (ctx.autoProvider) {
+        lines.push("Nếu khách đã chuyển tiền qua cổng này, giao dịch về sau sẽ không tự áp vào hoá đơn đã huỷ — chỉ huỷ khi chắc chắn khách chưa trả.");
+      }
+      return lines;
+    }
+  }
+}
+
+/**
+ * ADR-067 — "Đổi trạng thái…" hoá đơn gói (cột "Thao tác" của /admin/subscriptions và tab "Tất cả" của
+ * /admin/billing/invoices). Server tính sẵn `targets` (trạng thái được phép chuyển tới) và luôn kiểm lại dưới khoá; nơi gọi
+ * chỉ render nút khi `targets` khác rỗng (rỗng → "—").
+ *
+ * Cùng mẫu `<dialog>` + `showModal()` với `ManualConfirmButton`: focus tiêu đề khi mở, Esc / "Huỷ bỏ" / nền mờ để đóng (đang
+ * gửi thì không đóng), đóng xong trả focus về nút mở; thành công → đóng hộp, phản hồi chính là badge trạng thái của dòng
+ * (action revalidate cả hai trang) + câu thông báo ẩn cho trình đọc màn hình. Nhóm radio không chọn sẵn, bắt buộc chọn; cả thẻ
+ * lựa chọn bấm được (≥ 44px). Nút submit là "Xác nhận", nút đóng là "Huỷ bỏ" — tránh trùng chữ với lựa chọn "Huỷ hoá đơn".
+ */
+export function InvoiceStatusButton({
+  invoiceId,
+  invoiceCode,
+  amountLabel,
+  providerLabel,
+  currentStatusLabel,
+  targets,
+  autoProvider,
+  expired,
+  align = "end",
+}: {
+  invoiceId: string;
+  invoiceCode: string;
+  amountLabel: string;
+  providerLabel: string;
+  currentStatusLabel: string;
+  /** Trạng thái được phép chuyển tới (server tính, thứ tự hiển thị giữ nguyên). */
+  targets: InvoiceStatusTarget[];
+  /** Cổng tự xác nhận qua webhook (SePay/MoMo) — nhắc thêm ở lựa chọn "Đã thanh toán". */
+  autoProvider: boolean;
+  /** Hoá đơn đã hết hạn — lựa chọn "Đã thanh toán" nêu việc tính lại kỳ. */
+  expired: boolean;
+  align?: "start" | "end";
+}) {
+  const action = changeInvoiceStatusAction.bind(null, invoiceId);
+  const [state, formAction, isPending] = useActionState(action, initialStatusState);
+  const uid = useId();
+  const titleId = `${uid}-title`;
+  const descId = `${uid}-desc`;
+  const noteId = `${uid}-note`;
+  const noteHintId = `${uid}-note-hint`;
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  // State của action ở lần mở gần nhất: chỉ kết quả MỚI hơn mốc này mới hiện (lỗi cũ không hiện lại khi mở lần sau).
+  const [baseline, setBaseline] = useState<ChangeInvoiceStatusState | null>(null);
+  const [open, setOpen] = useState(false);
+  const fresh = baseline !== null && state !== baseline;
+  const error = open && fresh ? state.error : undefined;
+  const announced = fresh && state.success ? `Đã đổi trạng thái hoá đơn ${invoiceCode}.` : "";
+
+  // Mỗi kết quả thành công mới → đóng hộp (deps theo object state để lần đổi thứ hai trong cùng dòng vẫn đóng).
+  useEffect(() => {
+    if (state.success) dialogRef.current?.close();
+  }, [state]);
+
+  function openDialog() {
+    const dialog = dialogRef.current;
+    if (!dialog || dialog.open) return;
+    setBaseline(state);
+    setOpen(true);
+    formRef.current?.reset();
+    dialog.showModal();
+    titleRef.current?.focus();
+  }
+
+  function closeDialog() {
+    if (!isPending) dialogRef.current?.close();
+  }
+
+  function handleClosed() {
+    setOpen(false);
+    triggerRef.current?.focus();
+  }
+
+  function handleCancel(event: SyntheticEvent<HTMLDialogElement>) {
+    if (isPending) event.preventDefault();
+  }
+
+  function handleBackdropClick(event: MouseEvent<HTMLDialogElement>) {
+    if (event.target === dialogRef.current) closeDialog();
+  }
+
+  const ctx = { amountLabel, autoProvider, expired };
+
+  return (
+    <div className={`inline-flex flex-col ${align === "end" ? "items-end" : "items-start"}`}>
+      <button ref={triggerRef} type="button" aria-haspopup="dialog" onClick={openDialog} disabled={isPending} className={TRIGGER_CLASS}>
+        <span className="md:hidden">Đổi…</span>
+        <span className="hidden md:inline">Đổi trạng thái…</span>
+        <span className="sr-only">{` hoá đơn ${invoiceCode}`}</span>
+      </button>
+      {/* Vùng thông báo chỉ dành cho trình đọc màn hình (sr-only — không để lại khối trống nào trong ô bảng). */}
+      <span role="status" className="sr-only">
+        {announced}
+      </span>
+
+      <dialog
+        ref={dialogRef}
+        aria-labelledby={titleId}
+        aria-describedby={descId}
+        onClose={handleClosed}
+        onCancel={handleCancel}
+        onClick={handleBackdropClick}
+        // Không đặt `flex`/`block` trên <dialog> (đè display:none khi đóng) — bố cục nằm ở <form> con.
+        className="m-auto w-[min(30rem,calc(100vw-2rem))] rounded-2xl border border-gray-200 bg-white p-0 text-left shadow-xl backdrop:bg-[rgba(18,33,58,0.45)]"
+        style={{ color: brandColors.ink }}
+      >
+        <form ref={formRef} action={formAction} className="max-h-[calc(100dvh-2rem)] overflow-y-auto p-5 sm:p-6">
+          <h2
+            ref={titleRef}
+            id={titleId}
+            tabIndex={-1}
+            className="font-[family-name:var(--font-heading)] text-lg leading-snug font-semibold outline-none"
+          >
+            Đổi trạng thái hoá đơn
+          </h2>
+          <p id={descId} className="mt-2 text-sm leading-relaxed" style={{ color: brandColors.inkSoft }}>
+            Chọn trạng thái mới cho hoá đơn <span className="font-mono [overflow-wrap:anywhere]">{invoiceCode}</span>.
+          </p>
+
+          <dl className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm">
+            <dt className="text-gray-600">Mã hoá đơn</dt>
+            <dd className="font-mono font-semibold select-all [overflow-wrap:anywhere]">{invoiceCode}</dd>
+            <dt className="text-gray-600">Số tiền</dt>
+            <dd className="font-semibold tabular-nums">{amountLabel}</dd>
+            <dt className="text-gray-600">Cổng</dt>
+            <dd>{providerLabel}</dd>
+            <dt className="text-gray-600">Trạng thái hiện tại</dt>
+            <dd>{currentStatusLabel}</dd>
+          </dl>
+
+          <fieldset className="mt-4">
+            <legend className="text-sm font-medium">
+              Chuyển sang <span className="font-normal text-gray-600">(bắt buộc chọn)</span>
+            </legend>
+            <div className="mt-2 space-y-2">
+              {targets.map((target) => {
+                const optionId = `${uid}-target-${target}`;
+                const optionDescId = `${optionId}-desc`;
+                return (
+                  <div
+                    key={target}
+                    className="relative flex items-start gap-3 rounded-xl border border-gray-200 bg-white px-3.5 py-3 transition-colors hover:bg-gray-50 has-[:checked]:border-[color:var(--color-primary)] has-[:checked]:bg-[color:var(--color-primary)]/5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[color:var(--color-primary)] motion-reduce:transition-none"
+                  >
+                    <input
+                      id={optionId}
+                      type="radio"
+                      name="target"
+                      value={target}
+                      required
+                      aria-describedby={optionDescId}
+                      className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-[color:var(--color-primary)] focus-visible:outline-none"
+                    />
+                    <div className="min-w-0">
+                      {/* `after:inset-0` phủ cả thẻ → bấm vào bất kỳ đâu trên thẻ cũng chọn radio (vùng bấm ≥ 44px). */}
+                      <label htmlFor={optionId} className="cursor-pointer text-sm font-semibold after:absolute after:inset-0 after:rounded-xl">
+                        {STATUS_TARGET_LABEL[target]}
+                      </label>
+                      <p id={optionDescId} className="mt-0.5 text-xs leading-relaxed text-gray-600">
+                        {statusTargetDescription(target, ctx).join(" ")}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </fieldset>
+
+          {targets.includes("PAID") ? (
+            <div className="mt-3">
+              <Notice tone="warning">
+                <p>
+                  <strong className="font-semibold">Không hoàn tác được với Đã thanh toán.</strong>
+                </p>
+              </Notice>
+            </div>
+          ) : null}
+
+          <label htmlFor={noteId} className="mt-4 block text-sm font-medium">
+            Ghi chú <span className="font-normal text-gray-600">(không bắt buộc)</span>
+          </label>
+          <textarea
+            id={noteId}
+            name="note"
+            rows={3}
+            maxLength={500}
+            aria-describedby={noteHintId}
+            placeholder="VD: lý do đổi, mã GD ngân hàng"
+            className="mt-1.5 w-full resize-y rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-base outline-none transition-colors focus:border-[color:var(--color-primary)] focus:ring-2 focus:ring-[color:var(--color-primary)]/15 motion-reduce:transition-none lg:text-sm"
+          />
+          <p id={noteHintId} className="mt-1.5 text-xs text-gray-600">
+            Lưu vào nhật ký thao tác (tối đa 500 ký tự).
+          </p>
+
+          {error ? (
+            <div className="mt-3">
+              <FormBanner ok={false} message={error} />
+            </div>
+          ) : null}
+
+          <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <GhostButton disabled={isPending} onClick={closeDialog}>
+              Huỷ bỏ
+            </GhostButton>
+            <PrimaryButton loading={isPending}>{isPending ? "Đang lưu..." : "Xác nhận"}</PrimaryButton>
           </div>
         </form>
       </dialog>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { brandColors } from "@gieochu/config/theme";
 import { REMEDY_REFUND_SLA_DAYS } from "@gieochu/core/entitlement-remedy";
+import { isManualConfirmProvider } from "@gieochu/payments";
 import {
   ORDER_LIST_DEFAULT_PAGE_SIZE,
   ORDER_LIST_DEFAULT_SORT,
@@ -27,6 +28,7 @@ import {
   formatOrderDate,
   formatOrderPrice,
   formatOrderTime,
+  formatOrderVnd,
   hrefWithSearch,
   orderDetailHref,
   orderStatusLabel,
@@ -53,7 +55,6 @@ const BTN = `inline-flex min-h-11 items-center justify-center gap-2 rounded-lg p
 const CONTROL =
   "block min-h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-[15px] outline-none transition-colors focus:border-[var(--brand-primary,#0F3B82)] focus:ring-2 focus:ring-[var(--brand-primary,#0F3B82)]/15 lg:min-h-10 lg:text-sm";
 const FIELD_LABEL = "mb-1.5 block text-sm font-medium";
-const ACTIONS_ANCHOR = "order-actions";
 
 const vnInt = new Intl.NumberFormat("vi-VN");
 
@@ -391,8 +392,17 @@ export function OrderList({ basePath, tenantSlug, data }: { basePath: string; te
     orderId: row.id,
     code: row.code,
     detailHref: orderDetailHref(basePath, row.id, listSearch),
-    actionsHref: orderDetailHref(basePath, row.id, listSearch, ACTIONS_ANCHOR),
     actions: row.allowedActions,
+    // ADR-068: hộp "Đổi trạng thái…". Đơn chưa chọn cổng → `autoProvider: null` (hộp vẫn nhắc cảnh báo khi huỷ — an toàn hơn bỏ sót).
+    status: {
+      orderId: row.id,
+      code: row.code,
+      totalLabel: formatOrderVnd(row.totalVnd),
+      currentStatusLabel: orderStatusLabel(row.status),
+      targets: row.statusTargets,
+      expired: row.status === "EXPIRED",
+      autoProvider: row.provider ? !isManualConfirmProvider(row.provider) : null,
+    },
   });
 
   return (

@@ -2,15 +2,19 @@ import { AppError } from "../errors";
 
 export type OrderStatus = "PENDING" | "PAID" | "FULFILLED" | "EXPIRED" | "CANCELED" | "REFUNDED";
 
-export type OrderEvent = "MARK_PAID" | "FULFILL" | "EXPIRE" | "CANCEL" | "REFUND";
+/**
+ * ADR-068: `SELLER_CANCEL` / `SELLER_REOPEN` chỉ dùng cho thao tác "Đổi trạng thái…" của người bán (Studio) — huỷ cả đơn đã hết
+ * hạn, mở lại đơn hết hạn/đã huỷ. `CANCEL` (khách/luồng cũ) và đường thanh toán tự động giữ nguyên.
+ */
+export type OrderEvent = "MARK_PAID" | "FULFILL" | "EXPIRE" | "CANCEL" | "REFUND" | "SELLER_CANCEL" | "SELLER_REOPEN";
 
 /** §"M8" state diagram, encoded as an explicit transition table (same pattern as billing/subscription-state.ts). */
 const TRANSITIONS: Record<OrderStatus, Partial<Record<OrderEvent, OrderStatus>>> = {
-  PENDING: { MARK_PAID: "PAID", EXPIRE: "EXPIRED", CANCEL: "CANCELED" },
+  PENDING: { MARK_PAID: "PAID", EXPIRE: "EXPIRED", CANCEL: "CANCELED", SELLER_CANCEL: "CANCELED" },
   PAID: { FULFILL: "FULFILLED" },
   FULFILLED: { REFUND: "REFUNDED" },
-  EXPIRED: { MARK_PAID: "PAID" },
-  CANCELED: {},
+  EXPIRED: { MARK_PAID: "PAID", SELLER_CANCEL: "CANCELED", SELLER_REOPEN: "PENDING" },
+  CANCELED: { SELLER_REOPEN: "PENDING" },
   REFUNDED: {},
 };
 

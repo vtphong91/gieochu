@@ -23,7 +23,7 @@ import {
   PLATFORM_TXN_STATE_TONE,
   formatAdminDateTime,
 } from "../../_ui/billing-labels";
-import { ManualConfirmButton, TransactionConfirmButton } from "./confirm-button";
+import { InvoiceStatusButton, ManualConfirmButton, TransactionConfirmButton } from "./confirm-button";
 
 type InvoiceTab = "cho-doi-soat" | "tat-ca" | "giao-dich";
 
@@ -235,17 +235,24 @@ async function AllInvoicesTab({ sp }: { sp: { status?: string; provider?: string
                       )}
                     </Td>
                     <Td className="text-right">
-                      {/* ADR-066: xác nhận tay mọi cổng — hoá đơn chờ hoặc đã hết hạn. */}
-                      {invoice.status === "PENDING" || invoice.status === "EXPIRED" ? (
-                        <ManualConfirmButton
+                      {/* ADR-067: "Đổi trạng thái…" theo danh sách trạng thái server cho phép (mọi cổng); không còn → "—". */}
+                      {invoice.statusTargets.length > 0 ? (
+                        <InvoiceStatusButton
                           invoiceId={invoice.id}
                           invoiceCode={invoice.code}
                           amountLabel={formatVndFull(invoice.amountVnd)}
                           providerLabel={INVOICE_PROVIDER_LABEL[invoice.provider]}
+                          currentStatusLabel={INVOICE_STATUS_LABEL[invoice.status]}
+                          targets={invoice.statusTargets}
                           expired={invoice.status === "EXPIRED"}
                           autoProvider={!isManualConfirmProvider(invoice.provider)}
                         />
-                      ) : null}
+                      ) : (
+                        <span className="text-gray-500">
+                          <span aria-hidden="true">—</span>
+                          <span className="sr-only">Không có thao tác</span>
+                        </span>
+                      )}
                     </Td>
                   </Tr>
                 ))}

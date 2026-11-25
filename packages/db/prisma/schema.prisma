@@ -1015,6 +1015,9 @@ model Order {
   customerPaymentEmailedProvider PaymentProviderId?
   /// email nhắc khách khi còn ≤ 24 giờ (Q7, cron hằng ngày) — một lần/đơn.
   customerReminderSentAt         DateTime?
+  /// ADR-068 mục 8 — mốc tính hạn giữ của phương thức thanh toán (ADR-062 Q3 đổi mốc): hạn = `holdStartedAt ?? createdAt` + số giờ
+  /// của phương thức. Người bán mở lại đơn → đặt bằng thời điểm mở lại. NULL = đơn chưa từng mở lại (dùng `createdAt`).
+  holdStartedAt                  DateTime?
   createdAt                      DateTime           @default(now())
   updatedAt                      DateTime           @updatedAt
 

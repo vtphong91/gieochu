@@ -5,7 +5,7 @@ tags:
   - endpoint
   - status/living
 date: 2026-06-15
-updated: 2026-11-24
+updated: 2026-11-25
 author: System Architect
 ---
 
@@ -65,6 +65,8 @@ author: System Architect
 > Đợt **ADR-065 + ADR-066 + cấu hình SePay** (2026-11-24, working tree; phần key/API Token/kiểm tra kết nối đã commit `14f08ba`) **không thêm `route.ts`** — đếm lại
 > 2026-11-24: **24 dưới `/api`, 26 toàn app** ✅; hai route webhook đổi hành vi (mã thanh toán 8 chữ số, bỏ qua tài khoản ngân hàng khác — §9); Server Action/hàm lib/
 > subpath mới ở §31; §31 cũ (Liên kết) nay là §32.
+> Đợt **ADR-067 + ADR-068** (2026-11-25, working tree, chưa commit) **không thêm `route.ts`** — đếm lại 2026-11-25: **24 dưới `/api`, 26 toàn app** ✅; Server Action mới
+> `changeInvoiceStatusAction`, `changeOrderStatusAction`, xoá `confirmOrderManuallyAction` + `cancelOrderAction`, hàm lib + mã lỗi mới ở §32; §32 cũ (Liên kết) nay là §33.
 
 ## 1. Quy Ước Chung
 
@@ -1051,7 +1053,8 @@ Tiền là `number` nguyên VND (khác `admin-stats.ts` trả chuỗi BIGINT). H
 Đối chiếu code working tree 2026-10-18 (nay **đã commit** `dd349b9` (deploy ❓) ✅ `git log`). **Không có `route.ts` mới** — hai trang là Server Component gọi
 loader trực tiếp; thao tác tiền dùng lại action cũ ở `studio/[tenantSlug]/orders/[orderId]/actions.ts` (`confirmOrderManuallyAction`,
 `cancelOrderAction`, `markOrderRefundedAction`, `grantExtraDownloadsAction`, `revokeEntitlementAction` — không đổi). **ADR-047** thêm đúng 2 Server
-Action ghi chú (§23.5). Nghiệp vụ: [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]].
+Action ghi chú (§23.5). Nghiệp vụ: [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]]. **Từ ADR-068 (2026-11-25):** `confirmOrderManuallyAction` và
+`cancelOrderAction` **đã xoá**, thay bằng `changeOrderStatusAction` (§32.2); `OrderListItem`/`OrderDetailView` thêm `statusTargets` (§32.3).
 
 ### 23.1. `apps/web/lib/order.ts` — export mới
 
@@ -1641,12 +1644,75 @@ Secret không bao giờ trả về client — trang chỉ nhận `maskedSecrets`
 | `/admin/billing/invoices` | Tab "Tất cả": nút ở mọi dòng PENDING/EXPIRED (mọi cổng). Tab "Chờ đối soát": như cũ (cổng xác nhận tay) |
 | `/admin/subscriptions` | Thêm cột "Thao tác"; `listSubscriptions().items[].latestInvoice` = `{ id, code, status, amountVnd, provider } \| null` |
 
+*Từ ADR-067 (§32.1): ở `/admin/subscriptions` và tab "Tất cả", `ManualConfirmButton` được thay bằng `InvoiceStatusButton`; `latestInvoice` thêm `statusTargets`.*
+
 ---
 
-## 32. Tài Liệu Tham Chiếu & Liên Kết
+## 32. Đổi trạng thái hoá đơn gói (ADR-067) và đơn hàng Studio (ADR-068) — 2026-11-25 ✅
+
+Đối chiếu code working tree 2026-11-25, **chưa commit** ✅ `git status`. **Không thêm `route.ts`** (24 dưới `/api`, 26 toàn app ✅ đếm), **không migration**. Nghiệp vụ:
+[[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5O, [[02-System-Specs/Order-State-Machine|Order-State-Machine]] §3.14,
+[[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]] §2.4; quyết định [[01-Architecture-Decisions/ADR-051-Subscription-Invoice-Status-Change-Void-Reopen|ADR-051 KB (≙ ADR-067)]],
+[[01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm|ADR-052 KB (≙ ADR-068)]].
+
+### 32.1. Hoá đơn gói — System Center (`app/admin/billing/invoices/actions.ts`, `lib/subscription-billing.ts`)
+
+| Hạng mục | Contract |
+| :-- | :-- |
+| **`changeInvoiceStatusAction(invoiceId, prevState, formData) → ChangeInvoiceStatusState { error?, success? }`** (Server Action mới) | `requireRole("SYSTEM_ADMIN")`. Form: `target` ∈ `PAID`\|`PENDING`\|`VOID` (zod; sai → `{ error: "Vui lòng chọn trạng thái hợp lệ." }`), `note` (chuỗi, không bắt buộc). `PAID` → `confirmManualInvoicePayment`; `VOID` → `voidSubscriptionInvoice`; `PENDING` → `reopenSubscriptionInvoice`. `AppError` → `{ error: message }`; lỗi khác ném. Thành công: revalidate `/admin/billing/invoices` + `/admin/subscriptions`, `{ success: true }` |
+| `confirmManualInvoiceAction` | **Giữ** — chỉ còn dùng ở tab "Chờ đối soát" (`ManualConfirmButton`) |
+| `type InvoiceStatusTarget = "PAID" \| "PENDING" \| "VOID"` | Export mới (client chỉ `import type`) |
+| `invoiceStatusTargets(status: InvoiceStatus) → InvoiceStatusTarget[]` | Hàm thuần — bảng chuyển ADR-067 (thứ tự PAID, PENDING, VOID) |
+| `voidSubscriptionInvoice(invoiceId, actorId, note?) → Promise<void>` | Mới. 404 `INVOICE_NOT_FOUND`, 409 `INVOICE_NOT_VOIDABLE`. Audit `SUBSCRIPTION_INVOICE_VOIDED` |
+| `reopenSubscriptionInvoice(invoiceId, actorId, note?) → Promise<void>` | Mới. 404 `INVOICE_NOT_FOUND`; 409 `INVOICE_NOT_REOPENABLE`, `PLAN_INACTIVE`, `INVOICE_NOT_LATEST`, `PENDING_INVOICE_EXISTS`. Audit `SUBSCRIPTION_INVOICE_REOPENED` |
+| `listSubscriptionInvoices(...)` | `items[]` thêm **`statusTargets: InvoiceStatusTarget[]`** |
+| `listSubscriptions(...)` | `latestInvoice` thêm **`statusTargets`** (null khi chưa có hoá đơn) |
+| `InvoiceStatusButton({ invoiceId, invoiceCode, amountLabel, providerLabel, currentStatusLabel, targets, autoProvider, expired, align? })` | Component client mới (`confirm-button.tsx`); nơi gọi chỉ render khi `targets` khác rỗng |
+
+### 32.2. Đơn hàng Studio (`app/studio/[tenantSlug]/orders/[orderId]/actions.ts`)
+
+| Hạng mục | Contract |
+| :-- | :-- |
+| **`changeOrderStatusAction(tenantSlug, orderId, prevState, formData) → ChangeOrderStatusState { error?, success? }`** (Server Action mới) | `requireTenantMember(tenantSlug)` (mặc định OWNER) — `tenantId` từ guard, không từ form. Form: `target` ∈ `PAID`\|`PENDING`\|`CANCELLED` (zod), `note` (không bắt buộc). Gọi `changeOrderStatusBySeller`. `AppError` → `{ error }`. Thành công: revalidate chi tiết + danh sách, `{ success: true }` |
+| ~~`confirmOrderManuallyAction(tenantSlug, orderId, prevState, formData)`~~ | **Đã xoá** (cùng `confirm-form.tsx`) |
+| ~~`cancelOrderAction(tenantSlug, orderId)`~~ | **Đã xoá** (cùng `CancelOrderButton`) |
+| `markOrderRefundedAction`, `grantExtraDownloadsAction`, `revokeEntitlementAction`, 2 action ghi chú | Không đổi |
+
+### 32.3. `apps/web/lib/order.ts` + `@gieochu/core`
+
+| Export | Ghi chú |
+| :-- | :-- |
+| `type OrderStatusTarget = "PAID" \| "PENDING" \| "CANCELLED"` | `CANCELLED` ↔ DB `CANCELED` |
+| `orderStatusTargets(order: { status, expiresAt }, now?) → OrderStatusTarget[]` | Hàm thuần theo trạng thái hiệu lực |
+| `ORDER_STATUS_CHANGE_NOTE_MAX` (500) | Ghi chú cắt, không báo lỗi |
+| `changeOrderStatusBySeller(tenantId, orderId, target, note, actorId) → Promise<void>` | **Tiền điều kiện:** nơi gọi đã `requireTenantMember`. Lỗi: 404 (không thuộc gian hàng), 409 `ORDER_STATUS_NOT_CHANGEABLE`, `ORDER_ALREADY_PAID`, `ORDER_CHANGED`, `PRODUCT_UNAVAILABLE`, `ALREADY_OWNED`, `CANNOT_BUY_OWN_PRODUCT` |
+| `OrderListItem.statusTargets`, `OrderListItem.provider`, `OrderDetailView.statusTargets` | Mới |
+| ~~`cancelOrder(tenantId, orderId)`~~ | **Đã xoá** |
+| `confirmOrderManually(tenantId, orderId, note, actorId?)` | **Giữ** (ghi chú bắt buộc, luật ADR-061/062) — không còn UI gọi; dùng ở test + `scripts/demo-reviews.ts` |
+| `markOrderPaid(tx, orderId, source)` | Chữ ký không đổi; hành vi: cập nhật có điều kiện, thua cuộc → `{ fulfilled: false }` |
+| `OrderEvent` (`@gieochu/core`) | Thêm `"SELLER_CANCEL"`, `"SELLER_REOPEN"` |
+| `AUDIT_ACTIONS` (`@gieochu/core`) | +4: `SUBSCRIPTION_INVOICE_VOIDED`, `SUBSCRIPTION_INVOICE_REOPENED`, `ORDER_CANCELED_BY_SELLER`, `ORDER_REOPENED_BY_SELLER` (62 action) |
+| `OrderStatusDialog`, `OrderStatusButton`, `type OrderStatusInfo`, `type OrderStatusDialogHandle` | Component client mới `app/studio/[tenantSlug]/orders/_ui/order-status-dialog.tsx` |
+
+### 32.4. Mã lỗi mới (`AppError`)
+
+| Mã | HTTP | Nơi |
+| :-- | :-: | :-- |
+| `INVOICE_NOT_VOIDABLE` | 409 | `voidSubscriptionInvoice` |
+| `INVOICE_NOT_REOPENABLE`, `INVOICE_NOT_LATEST`, `PENDING_INVOICE_EXISTS` | 409 | `reopenSubscriptionInvoice` |
+| `PLAN_INACTIVE` | 409 | `reopenSubscriptionInvoice` (mã đã có ở `createRenewalInvoice` với **400**) |
+| `ORDER_STATUS_NOT_CHANGEABLE` | 409 | `changeOrderStatusBySeller` |
+| `ORDER_ALREADY_PAID` | 409 | `changeOrderStatusBySeller` (→ PAID) và `confirmOrderManually` — `markOrderPaid` no-op vì nguồn khác vừa áp |
+
+`INVOICE_NOT_FOUND`, `ORDER_CHANGED`, `PRODUCT_UNAVAILABLE`, `ALREADY_OWNED`, `CANNOT_BUY_OWN_PRODUCT` là mã có sẵn, nay thêm nơi ném.
+
+---
+
+## 33. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * [[01-Architecture-Decisions/ADR-049-Sepay-Numeric-Payment-Code-Shared|ADR-049 (≙ ADR-065)]] · [[01-Architecture-Decisions/ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider|ADR-050 (≙ ADR-066)]] — mã thanh toán SePay, xác nhận tay hoá đơn gói (§9, §31) · [[04-Operations-Runbooks/SePay-Live-Test-Runbook|SePay-Live-Test-Runbook]]
+* [[01-Architecture-Decisions/ADR-051-Subscription-Invoice-Status-Change-Void-Reopen|ADR-051 (≙ ADR-067)]] · [[01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm|ADR-052 (≙ ADR-068)]] — đổi trạng thái hoá đơn gói / đơn hàng Studio (§32)
 * [[01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay|ADR-044 (≙ ADR-059)]] — chạy thử beta, giao dịch cổng (§28) ([ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md](../01-Architecture-Decisions/ADR-044-Beta-Payments-Manual-Confirm-Emails-Sepay.md))
 * [[01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr|ADR-041 (≙ ADR-056)]] — hoá đơn/Đơn hàng gói, khối chuyển khoản, mã giảm giá tạo lại QR (§27) ([ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr.md](../01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr.md))
 * [[02-System-Specs/System-Cms-Menu-Home-Seo-Specs|System-Cms-Menu-Home-Seo-Specs]] ([System-Cms-Menu-Home-Seo-Specs.md](../02-System-Specs/System-Cms-Menu-Home-Seo-Specs.md)) · [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]] ([Legal-Documents-Specs.md](../02-System-Specs/Legal-Documents-Specs.md)) · [[01-Architecture-Decisions/ADR-035-Menu-Home-Seo-Versioned-Terms|ADR-035 (≙ ADR-050)]]

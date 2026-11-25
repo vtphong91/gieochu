@@ -2,17 +2,17 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { brandColors } from "@gieochu/config/theme";
-import { cancelOrderAction, markOrderRefundedAction, type OrderActionState } from "../[orderId]/actions";
+import { markOrderRefundedAction, type OrderActionState } from "../[orderId]/actions";
 import type { OrderRowAction } from "../../../../../lib/order";
 import { MenuItemButton, MenuItemLink, MenuSeparator, RowMenu } from "../../../../admin/_ui/row-menu";
-import { IconCheckCircle, IconEye, IconReceipt, IconXCircle } from "../../../../admin/_ui/icons";
+import { IconEye, IconReceipt, IconRefresh } from "../../../../admin/_ui/icons";
+import { OrderStatusDialog, type OrderStatusDialogHandle, type OrderStatusInfo } from "./order-status-dialog";
 
 /*
- * ADR-046 — menu "Thao tác" của 1 dòng đơn hàng. "Xác nhận thanh toán" cần ghi chú → link sang khối Thao tác của trang
- * chi tiết. "Huỷ đơn" / "Đánh dấu đã hoàn tiền" mở hộp xác nhận (bước 2) ngay tại danh sách rồi gọi thẳng action có sẵn
- * (`cancelOrderAction` / `markOrderRefundedAction` — tự kiểm quyền, revalidate danh sách). Hộp xác nhận nằm NGOÀI menu
- * (menu tự đóng khi bấm): `<dialog>` + `showModal()` — bẫy focus, Esc đóng, focus mặc định vào nút an toàn, đóng xong
- * trả focus về nút mở menu.
+ * ADR-046 + ADR-068 — menu "Thao tác" của 1 dòng đơn hàng: "Xem chi tiết", "Đổi trạng thái…" (khi server cho phép chuyển — Đã
+ * thanh toán / mở lại / huỷ, hộp chung `OrderStatusDialog`), "Đánh dấu đã hoàn tiền…" (đơn hoàn tất, hộp xác nhận riêng gọi
+ * `markOrderRefundedAction`). Các hộp nằm NGOÀI menu (menu tự đóng khi bấm): `<dialog>` + `showModal()` — bẫy focus, Esc đóng,
+ * đóng xong trả focus về nút "…" mở menu.
  */
 
 const INK = brandColors.ink;
@@ -23,74 +23,55 @@ const BTN = `inline-flex min-h-11 cursor-pointer items-center justify-center rou
 
 const initialState: OrderActionState = {};
 
-type Mode = "cancel" | "refund";
-
-const COPY: Record<Mode, { title: (code: string) => string; text: string; keep: string; confirm: string; pending: string; danger: boolean }> = {
-  cancel: {
-    title: (code) => `Huỷ đơn ${code}?`,
-    text: "Đơn chuyển sang “Đã huỷ” và khách không thanh toán tiếp được. Thao tác này không hoàn tác được.",
-    keep: "Giữ đơn",
-    confirm: "Huỷ đơn",
-    pending: "Đang huỷ...",
-    danger: true,
-  },
-  refund: {
-    title: (code) => `Đánh dấu đơn ${code} đã hoàn tiền?`,
-    text: "Chỉ xác nhận khi bạn đã chuyển trả tiền cho khách qua kênh đã nhận thanh toán. Hệ thống không tự chuyển tiền; quyền tải tài liệu của khách sẽ bị thu hồi.",
-    keep: "Thôi",
-    confirm: "Đã hoàn tiền",
-    pending: "Đang xử lý...",
-    danger: false,
-  },
-};
-
 export function OrderRowActions({
   tenantSlug,
   orderId,
   code,
   detailHref,
-  actionsHref,
   actions,
+  status,
 }: {
   tenantSlug: string;
   orderId: string;
   code: string;
   detailHref: string;
-  /** Link chi tiết neo tới khối Thao tác đơn (`#order-actions`). */
-  actionsHref: string;
-  /** Thao tác hợp lệ do loader tính (`orderAllowedActions`). */
+  /** Thao tác hợp lệ do loader tính (`orderAllowedActions`) — ở đây chỉ còn dùng "refund". */
   actions: OrderRowAction[];
+  /** Dữ liệu hộp "Đổi trạng thái…" (ADR-068); `targets` rỗng → không có mục này. */
+  status: OrderStatusInfo;
 }) {
-  const [mode, setMode] = useState<Mode | null>(null);
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [refundOpen, setRefundOpen] = useState(false);
+  const refundDialogRef = useRef<HTMLDialogElement>(null);
+  const statusDialogRef = useRef<OrderStatusDialogHandle>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const [cancelState, cancelAction, canceling] = useActionState(cancelOrderAction.bind(null, tenantSlug, orderId), initialState);
   const [refundState, refundAction, refunding] = useActionState(markOrderRefundedAction.bind(null, tenantSlug, orderId), initialState);
-  const state = mode === "refund" ? refundState : cancelState;
-  const isPending = mode === "refund" ? refunding : canceling;
-  const lastState = useRef<{ cancel: OrderActionState; refund: OrderActionState }>({ cancel: cancelState, refund: refundState });
+  const lastRefundState = useRef<OrderActionState>(refundState);
 
   useEffect(() => {
-    const dialog = dialogRef.current;
-    if (mode && dialog && !dialog.open) dialog.showModal();
-  }, [mode]);
+    const dialog = refundDialogRef.current;
+    if (refundOpen && dialog && !dialog.open) dialog.showModal();
+  }, [refundOpen]);
 
   // Action trả state mới (object khác) mỗi lần chạy xong: không lỗi → đóng hộp (danh sách đã revalidate).
   useEffect(() => {
-    const prev = lastState.current;
-    lastState.current = { cancel: cancelState, refund: refundState };
-    const changed = (mode === "cancel" && cancelState !== prev.cancel) || (mode === "refund" && refundState !== prev.refund);
-    if (changed && !(mode === "refund" ? refundState : cancelState).error) dialogRef.current?.close();
-  }, [cancelState, refundState, mode]);
+    const prev = lastRefundState.current;
+    lastRefundState.current = refundState;
+    if (refundOpen && refundState !== prev && !refundState.error) refundDialogRef.current?.close();
+  }, [refundState, refundOpen]);
 
-  function onClose() {
-    setMode(null);
-    wrapRef.current?.querySelector<HTMLButtonElement>("button[aria-haspopup]")?.focus();
+  function focusMenuTrigger() {
+    wrapRef.current?.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]')?.focus();
   }
 
-  const copy = mode ? COPY[mode] : null;
-  const titleId = `row-confirm-title-${orderId}`;
-  const descId = `row-confirm-desc-${orderId}`;
+  function onRefundClose() {
+    setRefundOpen(false);
+    focusMenuTrigger();
+  }
+
+  const titleId = `row-refund-title-${orderId}`;
+  const descId = `row-refund-desc-${orderId}`;
+  const canChangeStatus = status.targets.length > 0;
+  const canRefund = actions.includes("refund");
 
   return (
     <div ref={wrapRef} className="inline-flex">
@@ -98,63 +79,54 @@ export function OrderRowActions({
         <MenuItemLink href={detailHref} icon={<IconEye />}>
           Xem chi tiết
         </MenuItemLink>
-        {actions.includes("confirm") ? (
-          <MenuItemLink href={actionsHref} icon={<IconCheckCircle />}>
-            Xác nhận thanh toán
-          </MenuItemLink>
+        {canChangeStatus || canRefund ? <MenuSeparator /> : null}
+        {canChangeStatus ? (
+          <MenuItemButton type="button" aria-haspopup="dialog" icon={<IconRefresh />} onClick={() => statusDialogRef.current?.open()}>
+            Đổi trạng thái…
+          </MenuItemButton>
         ) : null}
-        {actions.includes("refund") ? (
-          <MenuItemButton type="button" icon={<IconReceipt />} onClick={() => setMode("refund")}>
+        {canRefund ? (
+          <MenuItemButton type="button" aria-haspopup="dialog" icon={<IconReceipt />} onClick={() => setRefundOpen(true)}>
             Đánh dấu đã hoàn tiền…
           </MenuItemButton>
         ) : null}
-        {actions.includes("cancel") ? (
-          <>
-            <MenuSeparator />
-            <MenuItemButton type="button" tone="danger" icon={<IconXCircle />} onClick={() => setMode("cancel")}>
-              Huỷ đơn…
-            </MenuItemButton>
-          </>
-        ) : null}
       </RowMenu>
 
-      {mode && copy ? (
+      {canChangeStatus ? <OrderStatusDialog ref={statusDialogRef} tenantSlug={tenantSlug} info={status} onClosed={focusMenuTrigger} /> : null}
+
+      {refundOpen ? (
         <dialog
-          ref={dialogRef}
+          ref={refundDialogRef}
           aria-labelledby={titleId}
           aria-describedby={descId}
-          onClose={onClose}
+          onClose={onRefundClose}
           className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-2xl border border-gray-200 bg-white p-0 text-left shadow-xl backdrop:bg-[rgba(18,33,58,0.45)]"
         >
-          <form action={mode === "refund" ? refundAction : cancelAction} className="p-5 sm:p-6">
+          <form action={refundAction} className="p-5 sm:p-6">
             <h2 id={titleId} className="font-[family-name:var(--font-heading)] text-lg font-semibold [overflow-wrap:anywhere]" style={{ color: INK }}>
-              {copy.title(code)}
+              Đánh dấu đơn {code} đã hoàn tiền?
             </h2>
             <p id={descId} className="mt-2 text-sm leading-relaxed" style={{ color: INK_SOFT }}>
-              {copy.text}
+              Chỉ xác nhận khi bạn đã chuyển trả tiền cho khách qua kênh đã nhận thanh toán. Hệ thống không tự chuyển tiền; quyền tải tài
+              liệu của khách sẽ bị thu hồi.
             </p>
-            {state.error ? (
+            {refundState.error ? (
               <p role="alert" className="mt-3 text-sm" style={{ color: RED }}>
-                {state.error}
+                {refundState.error}
               </p>
             ) : null}
             <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
                 autoFocus
-                onClick={() => dialogRef.current?.close()}
+                onClick={() => refundDialogRef.current?.close()}
                 className={`${BTN} border border-gray-300 bg-white hover:bg-gray-50`}
                 style={{ color: INK }}
               >
-                {copy.keep}
+                Thôi
               </button>
-              <button
-                type="submit"
-                disabled={isPending}
-                className={`${BTN} text-white hover:brightness-110`}
-                style={{ background: copy.danger ? RED : brandColors.primary }}
-              >
-                {isPending ? copy.pending : copy.confirm}
+              <button type="submit" disabled={refunding} className={`${BTN} text-white hover:brightness-110`} style={{ background: brandColors.primary }}>
+                {refunding ? "Đang xử lý..." : "Đã hoàn tiền"}
               </button>
             </div>
           </form>

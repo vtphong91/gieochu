@@ -24,6 +24,11 @@ Tiến độ (đối chiếu 2026-10-27): **đã code đủ** — đợt 1 (khá
 
 Mức xác minh: ✅ Long đã đối chiếu code working tree · 🟡 theo `docs/DECISIONS.md`/brief · ❓ cần trình duyệt/môi trường thật.
 
+> [!NOTE] Liên quan ADR-052 (KB) — tương ứng ADR-068 docs (2026-11-25)
+> Ngoại lệ "xác nhận sau hạn khi khách báo chuyển trước hạn" (Bổ sung ADR-062 mục 3) nay **chỉ còn áp cho webhook/job và hàm cũ `confirmOrderManually`**; người bán dùng
+> "Đổi trạng thái…" xác nhận được **mọi** đơn đã hết hạn, và mở lại đơn thì mốc "khách báo đã chuyển" bị xoá —
+> [[01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm|ADR-052 KB (≙ ADR-068)]]. Nội dung bên dưới giữ nguyên.
+
 ---
 
 ## 2. Quyết Định (Decision)

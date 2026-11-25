@@ -9,12 +9,15 @@ import { saveTenantProviderConfig } from "../../lib/tenant-payment";
 import { createCoupon } from "../../lib/coupon";
 import {
   applyCouponToOrder,
+  changeOrderStatusBySeller,
   confirmOrderManually,
   createOrder,
   getOrderDetailView,
   getOrderForCustomer,
   initiateOrderCheckout,
   listOrdersPage,
+  markOrderPaid,
+  orderStatusTargets,
   removeCouponFromOrder,
   runOrderSweep,
 } from "../../lib/order";
@@ -296,7 +299,7 @@ describe("M8 checkout and orders", () => {
   }, 90_000); // DB dùng chung qua mạng (Neon) — case nhiều truy vấn tuần tự vượt 20s mặc định.
 
   it("owner's manual confirm requires a note, then fulfills the order and grants an entitlement", async () => {
-    const { tenant } = await createOwnerAndTenant("Manual Confirm Test", "manualconfirm");
+    const { owner, tenant } = await createOwnerAndTenant("Manual Confirm Test", "manualconfirm");
     const product = await createPublishedProduct(tenant.id, "de-thi", 50_000);
     const buyer = await createActiveUser(nextEmail());
     const order = await createOrder(buyer.id, tenant.slug, product.id);
@@ -326,7 +329,144 @@ describe("M8 checkout and orders", () => {
     );
     expect(customerStats?.ordersCount).toBe(1);
     expect(customerStats?.totalSpentVnd).toBe(50_000);
-  });
+
+    // ADR-068 — người bán "Đổi trạng thái…": bảng chuyển theo trạng thái hiệu lực; huỷ PENDING; mở lại đơn đã huỷ (bị chặn khi tài
+    // liệu ngừng bán; hạn giữ mới ở tương lai, xoá mốc khách báo chuyển/nhắc); webhook/job KHÔNG áp đơn hết hạn; người bán xác
+    // nhận đơn hết hạn → FULFILLED + quyền tải; ghi chú thành ghi chú nội bộ, audit không chứa văn bản.
+    const past = new Date(Date.now() - 60_000);
+    const future = new Date(Date.now() + 60 * 60_000);
+    expect(orderStatusTargets({ status: "PENDING", expiresAt: future })).toEqual(["PAID", "CANCELLED"]);
+    expect(orderStatusTargets({ status: "PENDING", expiresAt: past })).toEqual(["PAID", "PENDING", "CANCELLED"]);
+    expect(orderStatusTargets({ status: "CANCELED", expiresAt: past })).toEqual(["PENDING"]);
+    expect(orderStatusTargets({ status: "FULFILLED", expiresAt: future })).toEqual([]);
+    expect(fulfilled.statusTargets).toEqual([]);
+    await expect(changeOrderStatusBySeller(tenant.id, order.id, "CANCELLED", null, owner.id)).rejects.toMatchObject({
+      code: "ORDER_STATUS_NOT_CHANGEABLE",
+      httpStatus: 409,
+    });
+
+    const buyer2 = await createActiveUser(nextEmail());
+    const order2 = await createOrder(buyer2.id, tenant.slug, product.id);
+    await changeOrderStatusBySeller(tenant.id, order2.id, "CANCELLED", "  Khách nhờ huỷ  ", owner.id);
+    const canceled = await getOrderDetailView(tenant.id, order2.id, owner.id);
+    expect(canceled.status).toBe("CANCELED");
+    expect(canceled.statusTargets).toEqual(["PENDING"]);
+    expect(canceled.notes.map((n) => n.body)).toEqual(["[Đổi trạng thái: Chờ thanh toán → Đã huỷ] Khách nhờ huỷ"]);
+    const cancelAudit = await prisma.auditLog.findFirstOrThrow({ where: { action: "ORDER_CANCELED_BY_SELLER", targetId: order2.id } });
+    expect(cancelAudit).toMatchObject({ scope: "TENANT", tenantId: tenant.id, actorId: owner.id });
+    expect(cancelAudit.metadata).toEqual({ fromStatus: "PENDING", toStatus: "CANCELED" });
+
+    await withTenant(tenant.id, (tx) => tx.product.update({ where: { id: product.id }, data: { status: "ARCHIVED" } }));
+    await expect(changeOrderStatusBySeller(tenant.id, order2.id, "PENDING", null, owner.id)).rejects.toMatchObject({ code: "PRODUCT_UNAVAILABLE" });
+    await withTenant(tenant.id, (tx) => tx.product.update({ where: { id: product.id }, data: { status: "PUBLISHED" } }));
+
+    await withTenant(tenant.id, (tx) =>
+      tx.order.update({ where: { id: order2.id }, data: { customerDeclaredPaidAt: past, customerReminderSentAt: past } }),
+    );
+    const reopenStartedAt = Date.now();
+    await changeOrderStatusBySeller(tenant.id, order2.id, "PENDING", null, owner.id);
+    const reopened = await withTenant(tenant.id, (tx) => tx.order.findUniqueOrThrow({ where: { id: order2.id } }));
+    expect(reopened).toMatchObject({ status: "PENDING", customerDeclaredPaidAt: null, customerReminderSentAt: null, totalVnd: order2.totalVnd });
+    // Hạn giữ mới ở tương lai (≥ 1 giờ) → sweep không hết hạn lại ngay.
+    expect(reopened.expiresAt.getTime()).toBeGreaterThan(reopenStartedAt + 59 * 60_000);
+    expect((await getOrderDetailView(tenant.id, order2.id)).statusTargets).toEqual(["PAID", "CANCELLED"]);
+    const reopenAudit = await prisma.auditLog.findFirstOrThrow({ where: { action: "ORDER_REOPENED_BY_SELLER", targetId: order2.id } });
+    expect(reopenAudit.metadata).toMatchObject({ fromStatus: "CANCELED", toStatus: "PENDING" });
+    // Đơn thứ hai của cùng khách cho cùng tài liệu (huỷ) — dùng ở mục 6 bên dưới, sau khi khách đã sở hữu qua order2.
+    const order2b = await createOrder(buyer2.id, tenant.slug, product.id);
+    await changeOrderStatusBySeller(tenant.id, order2b.id, "CANCELLED", null, owner.id);
+
+    // Hết hạn → giao dịch đúng tiền tới sau hạn KHÔNG được webhook/job tự áp (vẫn "cần xử lý").
+    await withTenant(tenant.id, (tx) => tx.order.update({ where: { id: order2.id }, data: { expiresAt: past } }));
+    await processPaymentEvent({
+      tenantId: tenant.id,
+      provider: "SEPAY",
+      providerEventId: `evt_${RUN_PREFIX}_late_after_reopen`,
+      reference: order2.code,
+      amountVnd: order2.totalVnd,
+      success: true,
+      rawPayload: { test: true },
+    });
+    const stillExpired = await getOrderDetailView(tenant.id, order2.id);
+    expect(stillExpired.status).toBe("EXPIRED");
+    expect(stillExpired.statusTargets).toEqual(["PAID", "PENDING", "CANCELLED"]);
+
+    await changeOrderStatusBySeller(tenant.id, order2.id, "PAID", null, owner.id);
+    const latePaid = await getOrderDetailView(tenant.id, order2.id);
+    expect(latePaid.status).toBe("FULFILLED");
+    expect(latePaid.confirmNote).toBeNull();
+    const lateEntitlement = await withTenant(tenant.id, (tx) => tx.entitlement.findUnique({ where: { orderItemId: latePaid.lines[0]!.id } }));
+    expect(lateEntitlement?.userId).toBe(buyer2.id);
+    const latePaidAudit = await prisma.auditLog.findFirstOrThrow({ where: { action: "ORDER_MANUALLY_CONFIRMED", targetId: order2.id } });
+    expect(latePaidAudit.metadata).toMatchObject({ source: "SELLER_STATUS_CHANGE", fromStatus: "EXPIRED", toStatus: "PAID", lateConfirmation: true });
+
+    // ADR-068 mục 6: khách đã có quyền tải tài liệu qua đơn khác (order2) → không mở lại order2b.
+    await expect(changeOrderStatusBySeller(tenant.id, order2b.id, "PENDING", null, owner.id)).rejects.toMatchObject({
+      code: "ALREADY_OWNED",
+      httpStatus: 409,
+    });
+    expect((await getOrderDetailView(tenant.id, order2b.id)).status).toBe("CANCELED");
+
+    // ADR-068 mục 8–9: đơn tạo đã lâu (200 giờ — vượt mức giữ tối đa 168 giờ của cài đặt) được mở lại → chọn được phương thức (mốc
+    // giữ = lúc mở lại, không phải createdAt), hạn ở tương lai; người bán xác nhận KHÔNG ghi chú → kênh "xác nhận thủ công".
+    await saveTenantProviderConfig(tenant.id, {
+      provider: "MANUAL_QR",
+      isEnabled: true,
+      publicConfig: { bankBin: "970403", accountNo: "0011012345678", accountName: "NGUYEN VAN A" },
+      secrets: {},
+    });
+    const buyer4 = await createActiveUser(nextEmail());
+    const order4 = await createOrder(buyer4.id, tenant.slug, product.id);
+    await withTenant(tenant.id, (tx) => tx.order.update({ where: { id: order4.id }, data: { createdAt: new Date(Date.now() - 200 * 60 * 60_000) } }));
+    await changeOrderStatusBySeller(tenant.id, order4.id, "CANCELLED", null, owner.id);
+    const reopenOldAt = Date.now();
+    await changeOrderStatusBySeller(tenant.id, order4.id, "PENDING", null, owner.id);
+    const reopenedOld = await withTenant(tenant.id, (tx) => tx.order.findUniqueOrThrow({ where: { id: order4.id } }));
+    expect(reopenedOld.holdStartedAt!.getTime()).toBeGreaterThanOrEqual(reopenOldAt - 1_000);
+    const withMethod = await initiateOrderCheckout(tenant.id, order4.id, buyer4.id, "MANUAL_QR");
+    expect(withMethod.provider).toBe("MANUAL_QR");
+    expect(withMethod.expiresAt.getTime()).toBeGreaterThan(Date.now());
+    await changeOrderStatusBySeller(tenant.id, order4.id, "PAID", null, owner.id);
+    const noNotePaid = await getOrderDetailView(tenant.id, order4.id);
+    expect(noNotePaid.status).toBe("FULFILLED");
+    expect(noNotePaid.confirmNote).toBeNull();
+    expect(noNotePaid.paymentChannel).toEqual({ kind: "MANUAL", provider: "MANUAL_QR" });
+
+    // ADR-068 mục 7: webhook/job + người bán + một lần áp trực tiếp chạy SONG SONG trên cùng đơn (có mã giảm giá) → chỉ áp một lần.
+    await createCoupon(tenant.id, { code: "RACE10", type: "PERCENT", value: 10, isEnabled: true });
+    const buyer3 = await createActiveUser(nextEmail());
+    const order3 = await createOrder(buyer3.id, tenant.slug, product.id);
+    const discounted = await applyCouponToOrder(tenant.id, order3.id, buyer3.id, "RACE10");
+    const [, sellerOutcome] = await Promise.allSettled([
+      processPaymentEvent({
+        tenantId: tenant.id,
+        provider: "SEPAY",
+        providerEventId: `evt_${RUN_PREFIX}_race`,
+        reference: order3.code,
+        amountVnd: discounted.totalVnd,
+        success: true,
+        rawPayload: { test: true },
+      }),
+      changeOrderStatusBySeller(tenant.id, order3.id, "PAID", null, owner.id),
+      withTenant(tenant.id, (tx) => markOrderPaid(tx, order3.id, "MANUAL_CONFIRM")),
+    ]);
+    expect((await getOrderDetailView(tenant.id, order3.id)).status).toBe("FULFILLED");
+    const raceCoupon = await withTenant(tenant.id, (tx) => tx.coupon.findFirstOrThrow({ where: { tenantId: tenant.id, code: "RACE10" } }));
+    expect(raceCoupon.usedCount).toBe(1);
+    expect(await withTenant(tenant.id, (tx) => tx.couponRedemption.count({ where: { orderId: order3.id } }))).toBe(1);
+    expect(await withTenant(tenant.id, (tx) => tx.entitlement.count({ where: { orderItem: { orderId: order3.id } } }))).toBe(1);
+    const buyer3Stats = await withTenant(tenant.id, (tx) =>
+      tx.tenantCustomer.findUniqueOrThrow({ where: { tenantId_userId: { tenantId: tenant.id, userId: buyer3.id } } }),
+    );
+    expect(buyer3Stats.ordersCount).toBe(1);
+    const raceAudits = await prisma.auditLog.count({ where: { action: "ORDER_MANUALLY_CONFIRMED", targetId: order3.id } });
+    if (sellerOutcome.status === "fulfilled") {
+      expect(raceAudits).toBe(1);
+    } else {
+      expect(raceAudits).toBe(0);
+      expect(sellerOutcome.reason).toMatchObject({ httpStatus: 409 });
+    }
+  }, 180_000); // DB dùng chung qua mạng (Neon) — case nhiều truy vấn tuần tự.
 
   it("a signed SePay webhook is accepted once and recorded idempotently on retry, an invalid signature is rejected", async () => {
     const { tenant } = await createOwnerAndTenant("Sepay Webhook Test", "sepaywebhook");

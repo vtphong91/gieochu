@@ -1,9 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { AppError } from "@gieochu/core";
 import { requireTenantMember } from "../../../../../lib/tenant";
-import { cancelOrder, confirmOrderManually, markOrderRefunded } from "../../../../../lib/order";
+import { changeOrderStatusBySeller, markOrderRefunded } from "../../../../../lib/order";
 import { grantExtraDownloads, revokeEntitlement } from "../../../../../lib/entitlement";
 import { addOrderNote, deleteOrderNote } from "../../../../../lib/order-note";
 
@@ -11,38 +12,38 @@ export interface OrderActionState {
   error?: string;
 }
 
-export async function confirmOrderManuallyAction(
-  tenantSlug: string,
-  orderId: string,
-  _prevState: OrderActionState,
-  formData: FormData,
-): Promise<OrderActionState> {
-  const { tenant, user } = await requireTenantMember(tenantSlug);
-  const note = String(formData.get("note") ?? "");
-
-  try {
-    await confirmOrderManually(tenant.id, orderId, note, user.userId);
-  } catch (error) {
-    if (error instanceof AppError) return { error: error.message };
-    throw error;
-  }
-
-  revalidatePath(`/studio/${tenantSlug}/orders/${orderId}`);
-  revalidatePath(`/studio/${tenantSlug}/orders`);
-  return {};
+export interface ChangeOrderStatusState {
+  error?: string;
+  success?: boolean;
 }
 
-export async function cancelOrderAction(tenantSlug: string, orderId: string): Promise<OrderActionState> {
-  const { tenant } = await requireTenantMember(tenantSlug);
+const orderStatusTargetSchema = z.enum(["PAID", "PENDING", "CANCELLED"]);
+
+/**
+ * ADR-068 — "Đổi trạng thái…" đơn hàng: Đã thanh toán / Chưa thanh toán (mở lại) / Huỷ. `tenantId` lấy từ guard, không từ form;
+ * trạng thái hiện tại và điều kiện chuyển kiểm lại ở server. Ghi chú không bắt buộc (ghi chú nội bộ + `confirmNote` khi xác nhận).
+ */
+export async function changeOrderStatusAction(
+  tenantSlug: string,
+  orderId: string,
+  _prevState: ChangeOrderStatusState,
+  formData: FormData,
+): Promise<ChangeOrderStatusState> {
+  const { tenant, user } = await requireTenantMember(tenantSlug);
+  const target = orderStatusTargetSchema.safeParse(formData.get("target"));
+  if (!target.success) return { error: "Vui lòng chọn trạng thái hợp lệ." };
+  const note = formData.get("note");
+
   try {
-    await cancelOrder(tenant.id, orderId);
+    await changeOrderStatusBySeller(tenant.id, orderId, target.data, typeof note === "string" ? note : null, user.userId);
   } catch (error) {
     if (error instanceof AppError) return { error: error.message };
     throw error;
   }
+
   revalidatePath(`/studio/${tenantSlug}/orders/${orderId}`);
   revalidatePath(`/studio/${tenantSlug}/orders`);
-  return {};
+  return { success: true };
 }
 
 export async function markOrderRefundedAction(tenantSlug: string, orderId: string): Promise<OrderActionState> {
