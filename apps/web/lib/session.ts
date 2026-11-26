@@ -1,7 +1,8 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { verifyAccessToken, type SystemRole, type VerifiedAccessToken } from "@gieochu/auth";
-import { forbidden, unauthorized } from "@gieochu/core";
+import { AppError, forbidden, unauthorized } from "@gieochu/core";
+import { getPrismaClient } from "@gieochu/db";
 import { ACCESS_COOKIE_NAME } from "./cookies";
 import { getJwtContext } from "./jwt-context";
 
@@ -61,9 +62,54 @@ export async function requireUser(): Promise<CurrentUser> {
   return user;
 }
 
+export type SessionState = "ACTIVE" | "LOCKED" | "REVOKED";
+
+/**
+ * ADR-073 mục 9 — trạng thái THẬT của phiên trong DB (access token stateless chỉ hết hiệu lực khi hết hạn): tài khoản bị khoá
+ * → LOCKED; họ phiên (`familyId` = claim `sid`) không còn refresh token nào chưa thu hồi (đăng xuất, "Đăng xuất mọi thiết bị",
+ * đặt lại mật khẩu, phát hiện dùng lại token, hết idle/absolute ở lần refresh) → REVOKED. Một truy vấn `users` + `refresh_tokens`
+ * (bảng L1, index `familyId`), `cache()` theo request + tham số. Token bị thay khi rotate vẫn `revokedAt = NULL` → phiên đang
+ * làm mới song song không bị coi là đã thu hồi.
+ */
+const loadSessionState = cache(async (userId: string, familyId: string): Promise<SessionState> => {
+  const row = await getPrismaClient().user.findUnique({
+    where: { id: userId },
+    select: { status: true, refreshTokens: { where: { familyId, revokedAt: null }, select: { id: true }, take: 1 } },
+  });
+  if (!row) return "REVOKED";
+  if (row.status === "LOCKED") return "LOCKED";
+  return row.refreshTokens.length > 0 ? "ACTIVE" : "REVOKED";
+});
+
+export async function getSessionState(user: CurrentUser): Promise<SessionState> {
+  return loadSessionState(user.userId, user.familyId);
+}
+
+export const SESSION_GUARD_ERROR_CODES = { LOCKED: "ACCOUNT_LOCKED", REVOKED: "SESSION_REVOKED" } as const;
+
+/**
+ * ADR-073 mục 9 — guard khu vực nhạy cảm (System Center, Studio, thanh toán/checkout, cấp token tải): khoá tài khoản hoặc
+ * thu hồi phiên có hiệu lực NGAY, không đợi access token hết hạn. Ném AppError 401.
+ */
+export async function assertActiveSession(user: CurrentUser): Promise<void> {
+  const state = await getSessionState(user);
+  if (state === "LOCKED") {
+    throw new AppError({ code: SESSION_GUARD_ERROR_CODES.LOCKED, message: "Tài khoản đã bị khoá.", httpStatus: 401 });
+  }
+  if (state === "REVOKED") {
+    throw new AppError({
+      code: SESSION_GUARD_ERROR_CODES.REVOKED,
+      message: "Phiên đăng nhập đã kết thúc, vui lòng đăng nhập lại.",
+      httpStatus: 401,
+    });
+  }
+}
+
+/** Kiểm vai trò TRƯỚC (không tốn truy vấn với người không đủ quyền), rồi trạng thái phiên trong DB (ADR-073 mục 9). */
 export async function requireRole(role: SystemRole): Promise<CurrentUser> {
   const user = await requireUser();
   if (user.role !== role) throw forbidden();
+  await assertActiveSession(user);
   return user;
 }
 
@@ -78,6 +124,8 @@ export async function requireVerified(): Promise<CurrentUser> {
   if (!user.emailVerified) {
     throw forbidden("Vui lòng xác minh email trước khi tiếp tục.");
   }
+  // ADR-073 mục 9: Server Actions profile/security/library/review/mở Studio — khoá/thu hồi phiên có hiệu lực ngay.
+  await assertActiveSession(user);
   return user;
 }
 
@@ -91,5 +139,7 @@ export async function requireCheckoutUser(): Promise<CurrentUser> {
   if (!user.emailVerified && !user.guestCheckout) {
     throw forbidden("Vui lòng xác minh email trước khi tiếp tục.");
   }
+  // ADR-073 mục 9: thanh toán + cấp token tải — khoá/đăng xuất có hiệu lực ngay.
+  await assertActiveSession(user);
   return user;
 }

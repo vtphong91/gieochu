@@ -1,27 +1,19 @@
 import Link from "next/link";
+import { brandColors } from "@gieochu/config/theme";
 import { getPrismaClient } from "@gieochu/db";
 import type { Prisma } from "@gieochu/db";
 import { requireAdminAccess } from "../../../lib/page-guards";
 import { escapeContainsValue } from "../../../lib/prisma-contains";
 import { AdminPageHeader, Badge, DataTable, EmptyState, Td, Tr } from "../_ui/kit";
-import { IconLock, IconUnlock, IconUsers } from "../_ui/icons";
-import { MenuItemButton, RowMenu } from "../_ui/row-menu";
+import { formatAdminDate } from "../_ui/billing-labels";
+import { IconUsers } from "../_ui/icons";
 import { Pagination } from "../_ui/pagination";
 import { parsePagination } from "../_ui/pagination-utils";
-import { lockUserAction, unlockUserAction } from "./actions";
-import { ResendVerificationMenuItem } from "./resend-verification-item";
+import { USER_ROLE_LABEL, USER_ROLE_TONE, USER_STATUS_LABEL, USER_STATUS_TONE, resolveUserRole } from "./_ui/user-labels";
+import { UserRowActions } from "./_ui/user-row-actions";
 
-const STATUS_LABEL: Record<string, string> = {
-  PENDING: "Chờ kích hoạt",
-  ACTIVE: "Đang hoạt động",
-  LOCKED: "Đã khoá",
-};
-
-const STATUS_TONE: Record<string, "success" | "warning" | "danger"> = {
-  ACTIVE: "success",
-  PENDING: "warning",
-  LOCKED: "danger",
-};
+const HIDE_BELOW_MD = "hidden md:table-cell";
+const HIDE_BELOW_LG = "hidden lg:table-cell";
 
 type RoleFilter = "all" | "admin" | "owner" | "other";
 
@@ -44,7 +36,7 @@ export default async function AdminUsersPage({
 }: {
   searchParams: Promise<{ q?: string; role?: string; page?: string; pageSize?: string }>;
 }) {
-  await requireAdminAccess("/admin/users");
+  const admin = await requireAdminAccess("/admin/users");
   const sp = await searchParams;
   const role: RoleFilter = TABS.some((t) => t.value === sp.role) ? (sp.role as RoleFilter) : "all";
   const { page, pageSize, skip, take } = parsePagination(sp);
@@ -111,41 +103,67 @@ export default async function AdminUsersPage({
           <EmptyState icon={<IconUsers className="h-6 w-6" />} title="Không tìm thấy người dùng nào" description={sp.q ? `Không có email nào khớp "${sp.q}".` : undefined} />
         ) : (
           <>
-            <DataTable head={["Họ tên", "Vai trò", "Gian hàng", "Trạng thái", "Email", "Ngày tạo", ""]}>
-              {users.map((user) => (
-                <Tr key={user.id}>
-                  <Td className="font-medium">{user.profile?.fullName ?? "—"}</Td>
-                  <Td>
-                    <Badge tone={user.isSuperAdmin ? "info" : user.systemRole === "SYSTEM_ADMIN" ? "info" : user.ownedTenant ? "success" : "neutral"}>
-                      {user.isSuperAdmin ? "Super admin" : user.systemRole === "SYSTEM_ADMIN" ? "Admin" : user.ownedTenant ? "Chủ gian hàng" : "Người dùng"}
-                    </Badge>
-                  </Td>
-                  <Td className="text-gray-500">{user.ownedTenant?.name ?? "—"}</Td>
-                  <Td>
-                    <Badge tone={STATUS_TONE[user.status] ?? "neutral"}>{STATUS_LABEL[user.status] ?? user.status}</Badge>
-                  </Td>
-                  <Td className="text-gray-500">{user.email}</Td>
-                  <Td className="text-gray-500">{user.createdAt.toLocaleDateString("vi-VN")}</Td>
-                  <Td>
-                    <RowMenu label={`Chức năng cho ${user.email}`}>
-                      {user.status === "LOCKED" ? (
-                        <form action={unlockUserAction.bind(null, user.id)}>
-                          <MenuItemButton tone="success" icon={<IconUnlock />}>
-                            Mở khoá tài khoản
-                          </MenuItemButton>
-                        </form>
-                      ) : (
-                        <form action={lockUserAction.bind(null, user.id)}>
-                          <MenuItemButton tone="danger" icon={<IconLock />}>
-                            Khoá tài khoản
-                          </MenuItemButton>
-                        </form>
-                      )}
-                      {user.status === "PENDING" ? <ResendVerificationMenuItem userId={user.id} /> : null}
-                    </RowMenu>
-                  </Td>
-                </Tr>
-              ))}
+            <DataTable
+              caption="Danh sách người dùng"
+              head={[
+                "Người dùng",
+                "Vai trò",
+                "Gian hàng",
+                "Trạng thái",
+                "Ngày tạo",
+                <span key="act" className="sr-only">
+                  Thao tác
+                </span>,
+              ]}
+              headClassName={[undefined, HIDE_BELOW_MD, HIDE_BELOW_LG, HIDE_BELOW_MD, HIDE_BELOW_LG, "text-right"]}
+            >
+              {users.map((user) => {
+                const fullName = user.profile?.fullName ?? null;
+                const displayName = fullName ?? user.email;
+                const userRole = resolveUserRole({ isSuperAdmin: user.isSuperAdmin, systemRole: user.systemRole, hasOwnedTenant: user.ownedTenant !== null });
+                const ownedTenantName = user.ownedTenant?.name ?? null;
+                // Cờ để ẩn/hiện mục menu; server kiểm lại khi thực hiện (không tự khoá mình, không khoá siêu quản trị).
+                const protectedTarget = user.isSuperAdmin || user.id === admin.userId;
+                return (
+                  <Tr key={user.id}>
+                    <Td className="font-medium">
+                      <Link
+                        href={`/admin/users/${user.id}`}
+                        className="underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-primary)] [overflow-wrap:anywhere]"
+                        style={{ color: brandColors.primary }}
+                      >
+                        {displayName}
+                      </Link>
+                      {fullName ? <span className="mt-0.5 block text-xs font-normal text-gray-500 [overflow-wrap:anywhere]">{user.email}</span> : null}
+                      {/* Dưới lg cột Gian hàng ẩn → lặp ở đây. */}
+                      {ownedTenantName ? (
+                        <span className="mt-0.5 block text-xs font-normal text-gray-500 [overflow-wrap:anywhere] lg:hidden">Gian hàng: {ownedTenantName}</span>
+                      ) : null}
+                      {/* Dưới md các cột Vai trò / Trạng thái ẩn → lặp ở đây. */}
+                      <span className="mt-1.5 flex flex-wrap gap-1.5 md:hidden">
+                        <Badge tone={USER_ROLE_TONE[userRole]}>{USER_ROLE_LABEL[userRole]}</Badge>
+                        <Badge tone={USER_STATUS_TONE[user.status]}>{USER_STATUS_LABEL[user.status]}</Badge>
+                      </span>
+                    </Td>
+                    <Td className={HIDE_BELOW_MD}>
+                      <Badge tone={USER_ROLE_TONE[userRole]}>{USER_ROLE_LABEL[userRole]}</Badge>
+                    </Td>
+                    <Td className={`text-gray-500 [overflow-wrap:anywhere] ${HIDE_BELOW_LG}`}>{ownedTenantName ?? "—"}</Td>
+                    <Td className={HIDE_BELOW_MD}>
+                      <Badge tone={USER_STATUS_TONE[user.status]}>{USER_STATUS_LABEL[user.status]}</Badge>
+                    </Td>
+                    <Td className={`text-gray-500 ${HIDE_BELOW_LG}`}>{formatAdminDate(user.createdAt)}</Td>
+                    <Td className="text-right">
+                      <UserRowActions
+                        user={{ id: user.id, name: displayName, email: user.email, status: user.status, ownedTenantName }}
+                        canLock={user.status !== "LOCKED" && !protectedTarget}
+                        canUnlock={user.status === "LOCKED"}
+                        canResendVerification={user.status === "PENDING"}
+                      />
+                    </Td>
+                  </Tr>
+                );
+              })}
             </DataTable>
             <Pagination total={total} page={page} pageSize={pageSize} />
           </>

@@ -157,7 +157,7 @@ viết → `HIDE_CONTENT` · `LOCK_TENANT` · `REJECT`. Sai → 400 `REPORT_INVA
 - Đối tượng đã bị xoá → 409 `REPORT_TARGET_GONE` (chỉ còn Bác bỏ / Khoá gian hàng).
 - Ghi chú ≤2000 ký tự (400 `VALIDATION_ERROR`), chỉ nội bộ — không gửi cho tenant/người báo cáo.
 - Sau commit: audit `REPORT_RESOLVED` (`tenantId = null`), `CONTENT_MODERATION_LOCKED` (**có** `tenantId` — chủ gian hàng thấy nội dung nào
-  bị khoá, actor hiện "Quản trị hệ thống"), `TENANT_LOCKED` (metadata `source: "ABUSE_REPORT"`, chỉ khi tenant chưa khoá trước đó).
+  bị khoá, actor hiện "Quản trị hệ thống"), `TENANT_LOCKED` (metadata `source: "ABUSE_REPORT"`, `reason` = nhãn loại vi phạm, `reportType`, `previousStatus`; chỉ khi tenant chưa khoá trước đó — ADR-072, KB ADR-056 ✅ code). Luồng này **không** gửi email `tenant_locked`: chủ gian hàng nhận `content_moderated` có cờ `tenantLocked: true`.
 - Email gửi trong `after()` (§7). Revalidate trang công khai của tenant + `/admin/reports` (+ `/admin/tenants` khi khoá tenant).
 
 ### 4.3. Gỡ khoá kiểm duyệt — `unlockModerationAction(targetType, targetId)` → `unlockModeration`

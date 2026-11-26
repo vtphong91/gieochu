@@ -1823,3 +1823,32 @@
      `TENANT_LOCKED`/`TENANT_UNLOCKED`), email báo chủ gian hàng sau commit (không chứa ghi chú nội bộ khác), một email mỗi lần đổi.
   4. Danh sách: cột GMV = tổng `gmvVnd` 30 ngày gần nhất (giờ VN) + menu "⋯" thêm "Xem chi tiết".
   5. Không migration. Kế hoạch chi tiết: `docs/ke-hoach-dot-3-chi-tiet-gian-hang-2026-11-26.md`.
+
+## ADR-073 — Đợt 4: Trang chi tiết người dùng (System Center) + thao tác quản trị tài khoản
+
+- **Bối cảnh (2026-11-26):** `/admin/users` chỉ có danh sách; Khoá/Mở khoá chạy ngay, không lý do, không email; có "Gửi lại email kích
+  hoạt". Chưa có trang chi tiết người dùng.
+- **Chủ dự án chốt:** trang chi tiết gồm Hồ sơ & tài khoản (luôn có), Bảo mật & phiên đăng nhập, Gian hàng sở hữu, Điều khoản đã đồng ý,
+  Nhật ký; số điện thoại **che một phần**, có nút "Hiện đầy đủ" (ghi audit khi xem); tỉnh/thành, nghề nghiệp hiện bình thường; IP phiên
+  đăng nhập **che một phần**; thao tác: **Khoá/Mở khoá có lý do + email**, **Đăng xuất mọi thiết bị**, **Gửi lại email kích hoạt**, **Yêu cầu
+  đặt lại mật khẩu**.
+- **Quyết định:**
+  1. Trang `/admin/users/[userId]` (System Admin). Chỉ dữ liệu L1 (user, hồ sơ, phiên `refresh_tokens`, `user_legal_acceptances`, gian hàng
+     sở hữu, audit). **Không** hiện đơn mua, thư viện, khách hàng của gian hàng (§7.9). Không bao giờ trả `passwordHash`, `tokenHash`.
+  2. Xem số điện thoại đầy đủ: server action riêng, ghi audit (người xem, thời điểm), không đưa số đầy đủ vào HTML ban đầu.
+  3. Khoá/Mở khoá tài khoản: hộp xác nhận, lý do bắt buộc ≤ 500 ký tự (gửi cho người dùng), audit kèm lý do, email báo người dùng; giữ
+     quy tắc hiện có (không khoá được super admin…). Áp cả danh sách và trang chi tiết.
+  4. Đăng xuất mọi thiết bị: thu hồi mọi phiên còn hiệu lực, audit. Yêu cầu đặt lại mật khẩu: bật cờ bắt đặt lại + gửi email đặt lại theo
+     luồng sẵn có (token chỉ lưu hash) — quản trị viên **không** bao giờ xem hay đặt mật khẩu thay người dùng.
+  5. Không migration. Kế hoạch chi tiết: `docs/ke-hoach-dot-4-chi-tiet-nguoi-dung-2026-11-26.md`.
+- **Bổ sung (2026-11-26, sau thiết kế của Phong):**
+  6. Mở khoá tài khoản chưa xác minh email → về `PENDING` (không nhảy `ACTIVE`). (Quốc)
+  7. Gửi lại email kích hoạt: thêm audit `USER_VERIFICATION_RESENT` + giới hạn 1 lần/60 giây/người dùng. (Quốc)
+  8. Không cho "Đăng xuất mọi thiết bị"/"Yêu cầu đặt lại mật khẩu" với chính mình hoặc siêu quản trị. Nhãn vai trò: Siêu quản trị,
+     Quản trị viên, Chủ gian hàng, Người dùng. (Quốc)
+  9. **Khoá/đăng xuất có hiệu lực ngay ở khu vực nhạy cảm** (chủ dự án chốt): access token stateless cho phép phiên đang mở thao tác thêm
+     tới khi hết hạn → kiểm trạng thái tài khoản (và phiên đã bị thu hồi) trong DB ở guard của khu vực nhạy cảm (System Center, Studio,
+     thanh toán, tải tài liệu). Nếu cần cột mới để biết phiên đã thu hồi → dừng, hỏi trước khi migration.
+  10. **Yêu cầu đặt lại mật khẩu thu hồi luôn mọi phiên** (chủ dự án chốt).
+- **Ghi chú đợt 3 (Quốc):** khoá gian hàng từ báo cáo vi phạm giữ email `content_moderated` (có cờ gian hàng bị khoá), không gửi thêm
+  `tenant_locked`; link chia sẻ ngừng hoạt động khi gian hàng không ACTIVE; lọc `/admin/reports` theo gian hàng → backlog.

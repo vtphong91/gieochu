@@ -81,6 +81,14 @@ export type {
   SubscriptionInvoiceEmailStage,
 } from "./templates/payment-status";
 
+// ADR-072 — báo chủ gian hàng khi System Admin khoá / mở khoá gian hàng (kèm lý do)
+export { renderTenantLockedEmail, renderTenantUnlockedEmail } from "./templates/tenant-lock";
+export type { TenantLockEmailData } from "./templates/tenant-lock";
+
+// ADR-073 — báo người dùng khi System Admin khoá / mở khoá tài khoản (kèm lý do)
+export { renderUserLockedEmail, renderUserUnlockedEmail } from "./templates/user-lock";
+export type { UserLockEmailData } from "./templates/user-lock";
+
 // ADR-061 Q1 — kích hoạt tài khoản khách vãng lai + đặt mật khẩu
 export { renderGuestActivationEmail } from "./templates/guest-activation";
 export type { GuestActivationTemplateData } from "./templates/guest-activation";

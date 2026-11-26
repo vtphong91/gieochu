@@ -45,6 +45,15 @@ const PASSWORD_RESET_REQUIRED = new AppError({
   httpStatus: 403,
 });
 
+// ADR-073: quản trị viên bật `passwordResetRequired` qua `requestUserPasswordReset` (không tăng `failedLoginAttempts`) →
+// cùng mã/HTTP status (login-form.tsx map theo mã để hiện lối "Quên mật khẩu"), chỉ khác câu báo.
+const ADMIN_PASSWORD_RESET_REQUIRED = new AppError({
+  code: "PASSWORD_RESET_REQUIRED",
+  message:
+    "Tài khoản của bạn cần đặt lại mật khẩu trước khi đăng nhập. Vui lòng dùng liên kết trong email chúng tôi đã gửi hoặc chọn \"Quên mật khẩu\".",
+  httpStatus: 403,
+});
+
 export async function POST(request: Request) {
   const requestId = getRequestId(request);
   try {
@@ -90,7 +99,8 @@ export async function POST(request: Request) {
 
     if (user.passwordResetRequired) {
       await auditLoginFailed("PASSWORD_RESET_REQUIRED");
-      throw PASSWORD_RESET_REQUIRED;
+      // Đạt ngưỡng sai mật khẩu → câu "khoá tạm thời"; còn lại là do quản trị viên yêu cầu (ADR-073).
+      throw user.failedLoginAttempts >= MAX_FAILED_LOGIN_ATTEMPTS ? PASSWORD_RESET_REQUIRED : ADMIN_PASSWORD_RESET_REQUIRED;
     }
 
     const passwordOk = await verifyPassword(user.passwordHash, body.password);

@@ -7,7 +7,7 @@ tags:
   - account
   - status/living
 date: 2026-10-24
-updated: 2026-10-27
+updated: 2026-11-26
 author: Long
 ---
 
@@ -86,6 +86,10 @@ author: Long
   Chống vòng lặp bằng mốc thời gian trong `sessionStorage` (`gieochu-session-resume-at`, 30 giây); `sessionStorage` bị chặn → bỏ qua. Dùng cho trường hợp
   access cookie đã hết nhưng `rt` persistent còn và trang cần đăng nhập đẩy về `/login?next=…` (guard trong `lib/page-guards.ts` ✅). Chạy thật trên
   trình duyệt ❓.
+- **`PASSWORD_RESET_REQUIRED` (HTTP 403, `POST /api/auth/login`)** — cùng mã, hai câu báo ✅ (`app/api/auth/login/route.ts`, ADR-057 KB mục 2.6):
+  - sai mật khẩu đủ `MAX_FAILED_LOGIN_ATTEMPTS` (5) lần: "Tài khoản đã bị khoá tạm thời do đăng nhập sai quá nhiều lần. Vui lòng đặt lại mật khẩu để tiếp tục."
+  - quản trị viên yêu cầu đặt lại (`passwordResetRequired`, không tăng bộ đếm): "Tài khoản của bạn cần đặt lại mật khẩu trước khi đăng nhập. Vui lòng dùng liên kết trong email chúng tôi đã gửi hoặc chọn "Quên mật khẩu"."
+  - Cờ được kiểm trước khi xác minh mật khẩu, nên hai câu phân biệt được ngay với người chỉ biết email (Quốc chấp nhận, rủi ro thấp, 2026-11-26).
 
 ---
 
@@ -266,9 +270,40 @@ Quyết định: [[01-Architecture-Decisions/ADR-046-Customer-Purchase-Flow-Pend
 
 ---
 
+## 9B. Guard khoá tài khoản / thu hồi phiên đối chiếu DB — ADR-073 mục 9 (KB ADR-057) — ✅ đọc code 2026-11-26 (working tree, chưa commit)
+
+Access token là stateless, nên sau khi khoá tài khoản hoặc thu hồi phiên, token còn hạn vẫn qua được cổng cũ. Đợt 4 thêm kiểm tra trạng thái thật trong DB ở các guard nhạy cảm.
+
+- **Claim `sid`** trong access token = `familyId` của refresh token (`apps/web/lib/session.ts`, `getCurrentUser` gán `familyId: claims.sid`).
+- **`getSessionState(user)`** → `ACTIVE` | `LOCKED` | `REVOKED`. Một truy vấn `users` (lấy `status`) kèm `refreshTokens` lọc `familyId` + `revokedAt: null` (`take 1`). Không có user → `REVOKED`. Bọc `cache()` theo request + tham số. Index `familyId` có sẵn. Không migration.
+- **`assertActiveSession(user)`** ném `AppError` 401:
+  - `LOCKED` → `ACCOUNT_LOCKED` ("Tài khoản đã bị khoá.");
+  - `REVOKED` → `SESSION_REVOKED` ("Phiên đăng nhập đã kết thúc, vui lòng đăng nhập lại.").
+  Mã nằm ở `SESSION_GUARD_ERROR_CODES`.
+- **Token bị thay khi rotate** vẫn có `revokedAt = NULL`, nên phiên đang làm mới song song không bị coi là đã thu hồi.
+
+| Nơi gắn guard | Cách gọi | Ghi chú |
+| :-- | :-- | :-- |
+| `requireRole` (`session.ts`) | `assertActiveSession` sau kiểm vai trò | Vai trò kiểm trước, không tốn truy vấn với người không đủ quyền |
+| `requireCheckoutUser` (`session.ts`) | `assertActiveSession` | API/Server Action checkout, tải |
+| `requireVerified` (`session.ts`) | `assertActiveSession` sau kiểm `emailVerified` | Server Actions profile, security, thư viện, đánh giá, tạo gian hàng (Quốc báo 2026-11-26) |
+| `requireTenantMember` (`lib/tenant.ts`) | `assertActiveSession` | Kéo theo `requireTenantMemberPage` (Studio) |
+| `createTenantAction` (`app/studio/actions.ts`) | Dựa vào `requireVerified` | Bỏ lời gọi `assertActiveSession` trùng |
+| `requireAdminAccess`, `requireCheckoutAccess`, `requireVerifiedAccess`, `requireTenantMemberPage` (`lib/page-guards.ts`) | `getSessionState` → `redirect("/login?next=…")` | Trang: không về 401 mà chuyển về đăng nhập. `requireVerifiedAccess` cho `/account`, `/account/profile`, `/account/security`, `/studio` |
+
+`requireUser` **không** gắn guard: logout, refresh và login không bị chặn, nên không lặp redirect.
+
+**Ngoại lệ có chủ đích (Quốc chấp nhận 2026-11-26):**
+
+- Bước 2 tải tài liệu `GET /api/downloads/[token]`: không kiểm phiên, vì token một lần đã do bước 1 cấp và bước 1 có guard (xem [[01-Architecture-Decisions/ADR-057-User-Detail-Account-Actions-Session-Guard|ADR-057 KB]] §8).
+
+Không thêm `route.ts`, không thêm test case (vẫn 105/69).
+
+---
+
 ## 10. Giới hạn đã biết
 
-- Access token đã cấp vẫn sống tới hết TTL sau khi thu hồi phiên / quá absolute (absolute chỉ kiểm khi refresh) ✅ suy từ code — TTL access nay ≤ idle.
+- Access token đã cấp vẫn sống tới hết TTL sau khi thu hồi phiên / quá absolute (absolute chỉ kiểm khi refresh) ✅ suy từ code — TTL access nay ≤ idle. Từ ADR-073, các khu vực có guard (§9B) chặn ngay, kể cả `/account/profile`, `/account/security` và `requireVerified`. Ngoại lệ có chủ đích: bước 2 tải tài liệu (§9B).
 - ~~`updateProfileAction` ký lại access token thiếu claim `rm`~~ — **đã sửa 2026-10-24** qua `issueAccessCookieForSession` (§1.1; KB-Audit §33 mục 1).
   Còn lại: lần ký lại này đặt `iat` mới nên mốc idle phía client (`sessionIssuedAtMs`) dời theo, trong khi server vẫn đo idle từ `createdAt` của refresh
   token; helper cũng không xét idle/absolute trước khi ký (TTL access ≤ idle nên phần dư bị giới hạn) ✅ suy từ code, tác động thật ❓.

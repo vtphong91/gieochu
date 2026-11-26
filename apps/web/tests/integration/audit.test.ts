@@ -1,4 +1,10 @@
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
+
+// ADR-073: khoá/mở khoá tài khoản gửi email người dùng — không gửi thật (DB/SMTP dùng chung).
+vi.mock("../../lib/email-dispatch", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../lib/email-dispatch")>();
+  return { ...actual, sendEmailNow: async () => ({ ok: true }) };
+});
 import { hashPassword } from "@gieochu/auth";
 import { getPrismaClient } from "@gieochu/db";
 import { lockUser, unlockUser } from "../../lib/admin-users";
@@ -49,8 +55,8 @@ describe("M12 audit", () => {
     expect((await login(loginRequest(target.email, password))).status).toBe(200);
 
     // 2. Admin khoá rồi mở khoá → USER_LOCKED + USER_UNLOCKED, actor là admin.
-    await lockUser(toCurrentUser(admin.id), target.id);
-    await unlockUser(toCurrentUser(admin.id), target.id);
+    await lockUser(toCurrentUser(admin.id), target.id, "Lý do khoá (test)");
+    await unlockUser(toCurrentUser(admin.id), target.id, "Lý do mở khoá (test)");
 
     // 3. Metadata nhạy cảm bị lọc trước khi ghi.
     expect(

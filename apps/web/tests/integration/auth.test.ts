@@ -301,6 +301,16 @@ describe("M1 auth", () => {
       const { email } = await registerUser();
       await activateUser(email);
       const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+      // ADR-073 mục 9: requireVerifiedAccess kiểm họ phiên trong DB — cần 1 refresh token chưa thu hồi (xoá CASCADE cùng user).
+      await prisma.refreshToken.create({
+        data: {
+          userId: user.id,
+          familyId: "test-family",
+          tokenHash: hashOpaqueToken(`${RUN_PREFIX}-library-session`),
+          expiresAt: new Date(Date.now() + 60 * 60_000),
+          sessionStartedAt: new Date(),
+        },
+      });
 
       const accessToken = await signAccessToken(
         { sub: user.id, sid: "test-family", role: "USER", ver: true, pc: false },

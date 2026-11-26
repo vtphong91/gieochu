@@ -2687,7 +2687,99 @@ Quyết định thiết kế của Phong (contract dòng theo đề xuất Phong
 
 ---
 
-## 28. Tài Liệu Tham Chiếu & Liên Kết
+## 28. Trang chi tiết gian hàng + hộp khoá/mở khoá (ADR-072 đợt 3 — KB ADR-056) ✅ đọc code 2026-11-26 (working tree, chưa commit; chưa thử trình duyệt ❓)
+
+Thư mục: `apps/web/app/admin/tenants/[tenantId]/` (trang, `loading.tsx`, `not-found.tsx`, `_ui/`) và `apps/web/app/admin/tenants/_ui/` (hộp khoá, nhãn). Contract dữ liệu: [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §36.
+
+### 28.1. Bố cục trang (`[tenantId]/page.tsx`)
+
+- **Đầu trang:** tên gian hàng + badge trạng thái; nút "Mở trang gian hàng" (**ẩn khi `LOCKED`**, vì storefront trả 404); nút Khoá / Mở khoá (`TenantLockButton`).
+- **Notice** trạng thái `LOCKED` (kèm lý do khoá gần nhất) hoặc `READ_ONLY`.
+- **7 phần** theo thứ tự: Thông tin (`TenantInfoSection`) · Chủ (`OwnerSection` — tên trống thì hiện email) · Gói (`PlanSection` — link `/admin/subscriptions/{id}`) · Phương thức thanh toán (`PaymentMethodsSection` — chỉ tên cổng) · Số liệu kinh doanh (`MetricsSection` — 30 ngày đến hôm qua và từ trước tới nay; `StatTile`) · Nội dung & lưu trữ (`ContentSection` — `UsageBar`) · Vi phạm (`AbuseSection`) + Nhật ký quản trị (`TenantAuditLog`, ≤ 50 dòng).
+- Phần không có dữ liệu: `CompactEmpty` ngắn (không dùng `EmptyState` cả khối). Ô không có số liệu hiện `Dash` (có `srText`).
+- ✅ Tên thành phần đối chiếu file; bố cục 375/1024/1280px ❓ chưa thử.
+
+### 28.2. `UsageBar` — thanh mức dùng (`_ui/parts.tsx`) ✅
+
+- `role="progressbar"` có tên qua `aria-labelledby` (trỏ tới nhãn hiển thị) và `aria-valuemin`/`aria-valuemax` 0–100, `aria-valuenow` + `aria-valuetext` đọc được (dạng "120 MB trên 500 MB, 24%", thêm ", gần đầy" khi ≥ 90%).
+- Thanh chặn ở 100% nhưng **chữ hiện % thật** (có thể vượt 100%).
+- Từ **90%** đổi màu thanh sang amber-700 **và** hiện badge chữ "Gần đầy" — không phụ thuộc màu một mình (≥ 3:1 trên nền track).
+
+### 28.3. `TenantLockDialog` (`admin/tenants/_ui/tenant-lock-dialog.tsx`) ✅
+
+- Cùng mẫu `<dialog>` + `showModal()` với hộp ADR-066/067 (top layer, nền phía sau `inert`; Esc / "Huỷ bỏ" / bấm nền mờ để đóng — đang xử lý thì không đóng). `aria-labelledby` trỏ tới tiêu đề; `aria-describedby` trỏ tới mô tả hệ quả. Focus vào tiêu đề khi mở; đóng xong trả focus về nút/menu mở.
+- **Lý do bắt buộc:** `<textarea>` `maxLength` 500; khi lỗi → `aria-invalid="true"`, viền `border-red-600`, `aria-describedby` gồm hint + thông báo lỗi, focus chuyển vào ô lý do. Thiếu lý do → `reasonError` từ server hoặc lỗi cục bộ.
+- Hộp ghi rõ **lý do sẽ gửi cho chủ gian hàng** để quản trị viên không ghi thông tin nội bộ.
+- Đóng hộp chỉ khi `success` và `emailSent !== false`.
+
+**Màn kết quả khi email lỗi (`emailSent: false`):** hộp **không đóng** — đổi sang màn kết quả: "Đã khoá/mở khoá gian hàng {tên}. Chưa gửi được email cho chủ gian hàng." (câu chữ đậm phần "chưa gửi được"), kèm hướng dẫn liên hệ chủ gian hàng; nút đóng ở cuối. Thành công có email → thông báo "Đã gửi email cho chủ gian hàng.".
+
+### 28.4. `TenantRowActions` — menu "⋯" ở danh sách ✅
+
+- Menu `RowMenu` (nhãn "Chức năng cho {tên}", `size="touch"`): "Xem chi tiết" (`MenuItemLink` tới `/admin/tenants/[tenantId]`) và "Khoá gian hàng…" / "Mở khoá gian hàng…" (mở `TenantLockDialog` qua ref, không chạy ngay).
+- Cột bảng: tên là link chi tiết; cột "GMV / 30 ngày" (thay "Cần M12"); dòng chủ gian hàng dưới tên. Ẩn cột theo breakpoint: `HIDE_BELOW_MD` (`hidden md:table-cell`) và `HIDE_BELOW_LG` (`hidden lg:table-cell`) — ✅ đối chiếu code; kiểm trên trình duyệt ❓.
+
+### 28.5. Việc còn mở ❓
+
+- Kiểm trên trình duyệt 375 / 1024 / 1280px: bố cục 7 phần, thanh mức dùng, menu "⋯", hộp khoá (focus khi mở, Esc, đọc bằng trình đọc màn hình).
+- Màn kết quả email lỗi: chưa thử với SMTP thật.
+
+---
+
+## 29. Trang chi tiết người dùng + hộp thao tác tài khoản (ADR-073 đợt 4 — KB ADR-057) ✅ đọc code 2026-11-26 (working tree, chưa commit; chưa thử trình duyệt ❓)
+
+Thư mục: `apps/web/app/admin/users/[userId]/` (`page.tsx`, `loading.tsx`, `not-found.tsx`, `_ui/sections.tsx`, `_ui/audit-log.tsx`) và `apps/web/app/admin/users/_ui/` (6 file dưới đây). Contract dữ liệu: [[03-API-Contracts/Endpoint-Directory|Endpoint-Directory]] §37. Nghiệp vụ: [[02-System-Specs/User-Management-System-Center-Specs|User-Management-System-Center-Specs]] §3.5.
+
+### 29.1. `UserLockDialog` (`_ui/user-lock-dialog.tsx`) ✅
+
+- `<dialog>` + `showModal()`, cùng mẫu với hộp khoá gian hàng (§28.3). Một component cho cả khoá và mở khoá (prop `isLock`; placeholder đổi theo chế độ).
+- Ô lý do bắt buộc, `maxLength` 500, bộ đếm "n / 500", thông báo "Hãy nhập lý do (tối đa 500 ký tự)". Nêu rõ lý do sẽ gửi cho người dùng.
+- Gọi `lockUserAction` / `unlockUserAction`; lỗi `reasonError` hiện ngay dưới ô nhập.
+
+### 29.2. `UserConfirmDialog` (`_ui/user-confirm-dialog.tsx`) ✅
+
+- Ba loại (`UserConfirmKind`): `revoke-sessions` (đăng xuất mọi thiết bị), `password-reset` (yêu cầu đặt lại mật khẩu), `resend-verification` (gửi lại email kích hoạt).
+- Mở bằng `<dialog>` + `showModal()`: focus tiêu đề khi mở; Esc, "Huỷ bỏ", bấm nền mờ đều đóng.
+- **Khi thành công, hộp đổi sang màn kết quả và không tự đóng:** banner xanh `role="status"` + nút "Đóng". Nội dung ví dụ: "Đã yêu cầu đặt lại mật khẩu và đăng xuất N phiên đăng nhập. Đã gửi email cho người dùng."
+- Email lỗi (`emailSent: false`): màn kết quả thêm cảnh báo để quản trị viên đọc trước khi đóng.
+
+### 29.3. `PhoneField` (`_ui/phone-field.tsx`) ✅
+
+- Nhận `masked` từ server; số đầy đủ **không** có trong HTML ban đầu.
+- Nút "Hiện đầy đủ" gọi `revealUserPhoneAction` (mỗi lần ghi audit). Khi chờ: "Đang tải...". Lỗi (ví dụ vượt 30 lần/phút, audit lỗi) hiện ngay tại trường.
+
+### 29.4. `UserRowActions` (`_ui/user-row-actions.tsx`) ✅
+
+- Menu "⋯" dùng **Popover API** (`popover="auto"`, top layer), toạ độ đặt bằng `placeMenu()` (`position: fixed`). Không dùng `RowMenu` của kit (position absolute bị khung bảng cắt và gây thanh cuộn dọc). Đồng bộ `aria-expanded` với `:popover-open`; trình duyệt không có Popover API thì fallback.
+- Mục: "Xem chi tiết", "Khoá/Mở khoá…" (theo `canLock` / `canUnlock`), "Gửi lại email kích hoạt…" (chỉ khi `canResendVerification`, tức `PENDING`).
+- Logic popover nhân bản từ `InvoiceRowMenu` (ADR-069) — xem nợ kỹ thuật §29.7.
+
+### 29.5. `user-detail-actions` (`_ui/user-detail-actions.tsx`) ✅
+
+- Hàng thao tác trên trang chi tiết. Mỗi nút có một cờ `can*` do server tính (`AdminUserDetail.actions`); `lockBlocked` do trang hiển thị.
+- **Hộp xác nhận luôn nằm trong DOM, kể cả khi cờ tắt.** Cờ tắt chỉ ẩn nút kích hoạt, không gỡ hộp khỏi cây DOM. Đóng hộp thì trả focus về nút kích hoạt.
+- Khoá và mở khoá dùng chung `UserLockDialog` (§29.1); ba thao tác còn lại dùng `UserConfirmDialog` (§29.2).
+
+### 29.6. `user-labels.ts` (`_ui/user-labels.ts`) ✅
+
+- `USER_STATUS_LABEL` / `USER_STATUS_TONE` cho `PENDING`, `ACTIVE`, `LOCKED`.
+- `USER_ROLE_LABEL` / `USER_ROLE_TONE` cho `SUPER_ADMIN` → "Siêu quản trị", `ADMIN` → "Quản trị viên", `OWNER` → "Chủ gian hàng", `USER` → "Người dùng". `resolveUserRole(user)` suy vai trò hiển thị từ `isSuperAdmin`, `systemRole`, `hasOwnedTenant`.
+
+### 29.7. Nợ kỹ thuật (ghi nhận 2026-11-26, chưa xử lý)
+
+1. **Popover nhân bản:** logic menu popover ở `UserRowActions` nhân bản từ `InvoiceRowMenu` (ADR-069). Gom về một hook hoặc component dùng chung khi có task kế tiếp.
+2. **Import chéo từ trang tenant:** `admin/users/[userId]/page.tsx` (`SectionHeading`), `_ui/audit-log.tsx` (`LINE`) và `_ui/sections.tsx` (`CARD`, `CompactEmpty`, `Dash`, `InfoGrid`, `LINE`, `SectionHeading`, `StatTile`, `TextLink`) đều import từ `admin/tenants/[tenantId]/_ui/parts.tsx`. Nên chuyển các phần dùng chung sang `apps/web/app/admin/_ui/` (❓ chưa có task).
+3. **Hằng số lý do ở client:** `REASON_MAX_LENGTH = 500` hard-code trong `user-lock-dialog.tsx`, song song `USER_LOCK_REASON_MAX_LENGTH` ở `lib/admin-users.ts`. Client không import được lib server nên phải giữ hai bản; đổi giới hạn phải sửa cả hai.
+4. **Ô tìm kiếm:** placeholder "Tìm theo tên, email, SĐT..." nhưng chỉ lọc email (lỗi có sẵn, xem User-Management §3.5 và [[00-Index/KB-Audit-2026-09-26|KB-Audit]] §56).
+
+### 29.8. Việc còn mở ❓
+
+- Trải nghiệm trên trình duyệt 375 / 1024 / 1280px, a11y của hộp thoại (focus, Esc, nền mờ) và menu Popover ❓ chưa thử.
+- Trạng thái loading/empty/error của trang chi tiết (`loading.tsx`, `not-found.tsx`) cần kiểm trực quan ❓.
+
+---
+
+## 30. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * `apps/web/app/admin/_ui/kit.tsx`, `apps/web/app/admin/_ui/kit-interactive.tsx`, `apps/web/app/admin/_ui/icons.tsx`

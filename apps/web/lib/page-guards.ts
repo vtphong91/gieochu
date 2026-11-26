@@ -1,7 +1,17 @@
 import { notFound, redirect } from "next/navigation";
 import { AppError } from "@gieochu/core";
-import { getCurrentUser, type CurrentUser } from "./session";
+import { getCurrentUser, getSessionState, type CurrentUser } from "./session";
 import { requireTenantMember, type TenantContext } from "./tenant";
+
+/**
+ * ADR-073 mục 9 — trang nhạy cảm: tài khoản bị khoá / phiên đã thu hồi → về /login (access token còn hạn không đủ). Trang
+ * đăng nhập không tự chuyển hướng người đã có cookie nên không lặp; lần refresh kế tiếp cũng bị từ chối và xoá cookie.
+ */
+async function redirectUnlessSessionActive(user: CurrentUser, nextPath: string): Promise<void> {
+  if ((await getSessionState(user)) !== "ACTIVE") {
+    redirect(`/login?next=${encodeURIComponent(nextPath)}`);
+  }
+}
 
 /**
  * Server Component guard cho /account/*, /studio/* và checkout: chưa đăng
@@ -19,6 +29,8 @@ export async function requireVerifiedAccess(nextPath: string): Promise<CurrentUs
   if (!user.emailVerified) {
     redirect("/verify-email?pending=1");
   }
+  // ADR-073 mục 9: /account, /account/profile, /account/security, /studio — khoá/thu hồi phiên có hiệu lực ngay.
+  await redirectUnlessSessionActive(user, nextPath);
   return user;
 }
 
@@ -34,6 +46,7 @@ export async function requireCheckoutAccess(nextPath: string): Promise<CurrentUs
   if (!user.emailVerified && !user.guestCheckout) {
     redirect("/verify-email?pending=1");
   }
+  await redirectUnlessSessionActive(user, nextPath);
   return user;
 }
 
@@ -52,6 +65,7 @@ export async function requireAdminAccess(nextPath: string): Promise<CurrentUser>
   if (user.role !== "SYSTEM_ADMIN") {
     notFound();
   }
+  await redirectUnlessSessionActive(user, nextPath);
   return user;
 }
 
@@ -66,6 +80,9 @@ export async function requireTenantMemberPage(slug: string, nextPath: string): P
   if (!user) {
     redirect(`/login?next=${encodeURIComponent(nextPath)}`);
   }
+  // Kiểm trước requireTenantMember: phiên hết hiệu lực → /login (không biến thành 404). Kết quả cache theo request nên
+  // requireTenantMember kiểm lại không tốn thêm truy vấn.
+  await redirectUnlessSessionActive(user, nextPath);
   try {
     return await requireTenantMember(slug);
   } catch (error) {

@@ -90,6 +90,11 @@ export const AUDIT_ACTIONS = [
   "ORDER_REOPENED_BY_SELLER",
   // ADR-071 (2A) — mốc tạo hoá đơn gói (metadata: code, planId, provider, amountVnd)
   "SUBSCRIPTION_INVOICE_CREATED",
+  // ADR-073 — thao tác quản trị trên tài khoản (System Admin; metadata không chứa số điện thoại/token)
+  "USER_SESSIONS_REVOKED",
+  "USER_PASSWORD_RESET_REQUIRED",
+  "USER_PHONE_VIEWED",
+  "USER_VERIFICATION_RESENT",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -168,6 +173,10 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   ORDER_CANCELED_BY_SELLER: "Người bán huỷ đơn",
   ORDER_REOPENED_BY_SELLER: "Người bán mở lại đơn",
   SUBSCRIPTION_INVOICE_CREATED: "Tạo hoá đơn gói dịch vụ",
+  USER_SESSIONS_REVOKED: "Đăng xuất mọi thiết bị của người dùng",
+  USER_PASSWORD_RESET_REQUIRED: "Yêu cầu người dùng đặt lại mật khẩu",
+  USER_PHONE_VIEWED: "Xem số điện thoại đầy đủ của người dùng",
+  USER_VERIFICATION_RESENT: "Gửi lại email kích hoạt",
 };
 
 export const AUDIT_SCOPE_LABELS: Record<AuditScopeValue, string> = {

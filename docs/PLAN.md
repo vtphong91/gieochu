@@ -1295,9 +1295,9 @@ Checklist pháp lý: `docs/legal/LEGAL_REVIEW_CHECKLIST.md`.
 ## Kế hoạch 4 đợt System Center / thanh toán (chủ dự án chốt 2026-11-25)
 
 1. **Đợt 1 — Email thông báo thanh toán (ADR-070):** thành công (hoá đơn gói), hết hạn chưa trả, sai số tiền, MoMo thất bại, bị huỷ —
-   cho hoá đơn gói (chủ gian hàng) và đơn tài liệu (khách). Đang làm.
+   cho hoá đơn gói (chủ gian hàng) và đơn tài liệu (khách). **Đã xong, đã commit.**
 2. **Đợt 2 — Nhật ký thao tác chi tiết** (nguồn/cổng thanh toán, số tiền, mã giao dịch, mốc tạo hoá đơn) + **đổi chữ "Tenant" → "Gian hàng"**
-   trong System Center (chỉ chữ hiển thị; code/DB giữ `tenant`). **Kế hoạch chi tiết đã chốt 2026-11-25 (ADR-071), chưa code — file đầy đủ:
+   trong System Center (chỉ chữ hiển thị; code/DB giữ `tenant`). **Kế hoạch chi tiết đã chốt 2026-11-25 (ADR-071) — đã xong, đã commit — file đầy đủ:
    [`docs/ke-hoach-dot-2-nhat-ky-chi-tiet-va-ten-gian-hang-2026-11-25.md`](ke-hoach-dot-2-nhat-ky-chi-tiet-va-ten-gian-hang-2026-11-25.md):**
    - **2B trước (quy trình rút gọn — Phong → Quốc):** ~20 chuỗi hiển thị trong System Center → "Gian hàng" (menu, `/admin/tenants`, Tổng
      quan, form gói, Danh mục, Cấu hình thanh toán, Báo cáo vi phạm, SMTP); trang Vai trò ghi "Gian hàng (tenant)". Giữ URL `/admin/tenants`,
@@ -1309,10 +1309,16 @@ Checklist pháp lý: `docs/legal/LEGAL_REVIEW_CHECKLIST.md`.
      mốc **"Tạo hoá đơn"** = audit mới `SUBSCRIPTION_INVOICE_CREATED` (ai tạo, gói, cổng, số tiền) + suy ra từ `createdAt` cho hoá đơn cũ
      ("không rõ người tạo"); dòng **email đã gửi** (từ `email_send_log`, chỉ email hoá đơn gói/nhắc hạn). Không migration, không thêm test
      case, chỉ dữ liệu L1 (§7.9).
-3. **Đợt 3 — Trang chi tiết gian hàng** — **kế hoạch chi tiết đã chốt 2026-11-26 (ADR-072), chưa code:**
+3. **Đợt 3 — Trang chi tiết gian hàng** — **ĐÃ CODE + VERIFY 2026-11-26 (ADR-072), KB ADR-056; chờ chủ dự án commit/deploy:**
    [`docs/ke-hoach-dot-3-chi-tiet-gian-hang-2026-11-26.md`](ke-hoach-dot-3-chi-tiet-gian-hang-2026-11-26.md). Phạm vi gốc: `/admin/tenants/[id]` (thông tin, chủ, gói hiện tại → chi tiết đơn hàng gói, dung lượng, số tài
    liệu, số liệu tổng hợp, báo cáo vi phạm, nhật ký admin; không đơn/khách của gian hàng — §7.9).
-4. **Đợt 4 — Trang chi tiết người dùng** `/admin/users/[id]` (hồ sơ, bảo mật/phiên, gian hàng sở hữu, điều khoản đã đồng ý, nhật ký; không
+4. **Đợt 4 — Trang chi tiết người dùng** — **ĐÃ CODE + VERIFY 2026-11-26 (ADR-073), KB ADR-057; không migration; guard phiên
+   `assertActiveSession` (khoá/đăng xuất có hiệu lực ngay ở System Center, Studio, thanh toán, cấp token tải); chờ chủ dự án commit/deploy.
+   Bổ sung (chủ dự án chốt 2026-11-26, đã code + verify): `requireVerified`/`requireVerifiedAccess` cũng chặn ngay (`/account/*`, thư viện,
+   đánh giá); câu báo lỗi đăng nhập tách "sai quá nhiều lần" / "quản trị viên yêu cầu đặt lại MK". Integration 68/69 — case lỗi
+   `product-file-preview-route` có từ trước, không liên quan (xem backlog). Backlog: ô tìm
+   SĐT danh sách người dùng chỉ lọc email, tách `parts.tsx`/popover menu ra kit `admin/_ui`:**
+   [`docs/ke-hoach-dot-4-chi-tiet-nguoi-dung-2026-11-26.md`](ke-hoach-dot-4-chi-tiet-nguoi-dung-2026-11-26.md). Phạm vi gốc: `/admin/users/[id]` (hồ sơ, bảo mật/phiên, gian hàng sở hữu, điều khoản đã đồng ý, nhật ký; không
    đơn mua/thư viện — §7.9).
 ## Kế hoạch SEO tổng thể — hoãn (chủ dự án chốt 2026-10-24)
 

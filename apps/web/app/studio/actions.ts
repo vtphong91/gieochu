@@ -25,6 +25,7 @@ export async function createTenantAction(
   _prevState: CreateTenantActionState,
   formData: FormData,
 ): Promise<CreateTenantActionState> {
+  // ADR-073 mục 9: requireVerified() đã chặn tài khoản bị khoá / phiên đã thu hồi.
   const user = await requireVerified();
 
   const parsed = createTenantSchema.safeParse({

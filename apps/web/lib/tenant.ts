@@ -1,6 +1,6 @@
 import { canManageTenant, forbidden, notFound, type TenantMemberRole } from "@gieochu/core";
 import { getPrismaClient, withTenant, type Tenant } from "@gieochu/db";
-import { requireUser, type CurrentUser } from "./session";
+import { assertActiveSession, requireUser, type CurrentUser } from "./session";
 
 export interface TenantContext {
   user: CurrentUser;
@@ -29,6 +29,8 @@ export async function requireTenantMember(slug: string, requiredRole: TenantMemb
   if (!member || (requiredRole === "OWNER" && !canManageTenant(member.role))) {
     throw forbidden("Bạn không có quyền truy cập trang này.");
   }
+  // ADR-073 mục 9: Studio — tài khoản bị khoá / phiên đã thu hồi bị chặn ngay dù access token còn hạn.
+  await assertActiveSession(user);
 
   return { user, tenant, role: member.role };
 }

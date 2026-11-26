@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { getPrismaClient, withSystemJob, withTenant } from "@gieochu/db";
-import { signAccessToken } from "@gieochu/auth";
+import { hashOpaqueToken, signAccessToken } from "@gieochu/auth";
 import { createTenantForUser } from "../../lib/create-tenant";
 import { getAccessTokenTtlSeconds, getJwtContext } from "../../lib/jwt-context";
 import { ACCESS_COOKIE_NAME } from "../../lib/cookies";
@@ -25,7 +25,14 @@ function toCurrentUser(userId: string): CurrentUser {
   return { userId, familyId: "test-family", role: "USER", emailVerified: true, profileCompleted: true };
 }
 
+let sessionCounter = 0;
+
 async function mockCookieFor(userId: string): Promise<void> {
+  // ADR-073 mục 9: requireTenantMember kiểm họ phiên (`sid`) còn refresh token chưa thu hồi — tạo phiên thật (xoá CASCADE cùng user).
+  sessionCounter += 1;
+  await prisma.refreshToken.create({
+    data: { userId, familyId: "test-family", tokenHash: hashOpaqueToken(`${RUN_PREFIX}-session-${sessionCounter}`), expiresAt: new Date(Date.now() + 60 * 60_000) },
+  });
   const accessToken = await signAccessToken(
     { sub: userId, sid: "test-family", role: "USER", ver: true, pc: true },
     getJwtContext(),

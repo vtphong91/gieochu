@@ -760,7 +760,14 @@ export async function resolveAbuseReport(actor: CurrentUser, reportId: string, i
     });
   }
   if (decision === "LOCK_TENANT" && applied.tenantPreviousStatus !== null && applied.tenantPreviousStatus !== "LOCKED") {
-    await auditTenantLocked(actor.userId, report.tenantId, { source: "ABUSE_REPORT", reportType: report.type, previousStatus: applied.tenantPreviousStatus });
+    // ADR-072: lý do sẵn có của luồng = nhãn loại vi phạm (KHÔNG dùng ghi chú nội bộ `note`). Email chủ gian hàng vẫn là
+    // `content_moderated` (notifyAbuseReportResolution) — không gửi thêm email khoá gian hàng.
+    await auditTenantLocked(actor.userId, report.tenantId, {
+      source: "ABUSE_REPORT",
+      reason: ABUSE_REPORT_TYPE_LABELS[report.type],
+      reportType: report.type,
+      previousStatus: applied.tenantPreviousStatus,
+    });
   }
   if (applied.reviewProductId) await recomputeProductRatings([applied.reviewProductId]);
 

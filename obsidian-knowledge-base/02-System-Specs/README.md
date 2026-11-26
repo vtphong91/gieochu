@@ -37,7 +37,7 @@ bộ nội dung được viết lại từ nguồn thật: `CLAUDE.md`, `docs/AR
   §11 Public preview cache (ADR-063) — bảng `product_file_previews` không RLS, 5 nhánh định dạng (docx/xlsx/pdf/text/unsupported),
   payload JSONB ≤ 256 KB, hook sinh cache sau `file.scan=CLEAN` fire-and-forget + lazy fallback, endpoint public 404-mọi-lỗi,
   rate limit 60/phút/IP TODO.
-- `[[User-Management-System-Center-Specs]]`: Console quản trị `/admin/**`, khoá/mở khoá tài khoản, cơ chế
+- `[[User-Management-System-Center-Specs]]`: Console quản trị `/admin/**`, quản lý gian hàng `/admin/tenants` + trang chi tiết `/admin/tenants/[tenantId]` và khoá/mở khoá có lý do + email chủ gian hàng (ADR-072, KB ADR-056, chưa commit), khoá/mở khoá tài khoản, cơ chế
   refresh-token rotation + reuse detection, ranh giới "System Admin không đọc order/customer của tenant"; menu có "Đơn hàng" (`/admin/subscriptions`) và
   "Cấu hình thanh toán" (ADR-056).
 - `[[Auth-Session-Specs]]`: Phiên đăng nhập (M1 + ADR-053) — **GĐ A + GĐ B xong code (2026-10-24), chưa commit; migration đã chạy**. Một `familyId` = một

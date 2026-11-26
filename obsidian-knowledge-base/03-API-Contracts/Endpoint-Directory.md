@@ -747,7 +747,7 @@ Cả hai có `loading.tsx` (`AuditLogSkeleton`).
 Thêm tham số cuối `actorId: string | null = null`: `archiveProduct`, `confirmOrderManually`, `markOrderRefunded`,
 `grantExtraDownloads`, `revokeEntitlement`, `createShareLink`, `revokeShareLink`, `hideReview`, `unhideReview`,
 `confirmManualInvoicePayment`, `testPlatformProviderConnection`; input lưu cấu hình thanh toán platform/tenant thêm `actorId?`.
-`markInvoicePaid(invoiceId, { source: "PLATFORM_WEBHOOK" | "ADMIN_MANUAL_CONFIRM", actorId? })`. **`unlockUser(actor, targetUserId)`** —
+`markInvoicePaid(invoiceId, { source: "PLATFORM_WEBHOOK" | "ADMIN_MANUAL_CONFIRM", actorId? })`. **`unlockUser(actor, targetUserId, rawReason)`** (ADR-073 thêm `rawReason`; xem §37.2) —
 `actor` bắt buộc (phá chữ ký cũ). Mới: `auditMarkOrderPaid(tenantId, orderId, result, source)`; `MarkOrderPaidResult` thêm
 `couponOverused: { couponId, couponCode } | null`. Từ M12c (ADR-038): `publishProduct(tenantId, productId, actorId: string | null,
 { rightsConfirmed: boolean })` — `actorId` + options **bắt buộc** (§20.4).
@@ -1807,7 +1807,105 @@ Export mới `renderSubscriptionInvoiceEmail(stage, data)`, `renderOrderStatusEm
 
 ---
 
-## 36. Tài Liệu Tham Chiếu & Liên Kết
+## 36. Trang chi tiết gian hàng + khoá/mở khoá có lý do (ADR-072 đợt 3 — KB ADR-056) — 2026-11-26 ✅
+
+Đối chiếu code working tree 2026-11-26, **chưa commit** ✅ `git status`. **Không thêm `route.ts`**, không migration, không đổi URL (giữ `/admin/tenants`). Nghiệp vụ: [[02-System-Specs/User-Management-System-Center-Specs|User-Management-System-Center-Specs]] (bảng `/admin/tenants`); quyết định [[01-Architecture-Decisions/ADR-056-Tenant-Detail-Lock-Reason-Emails|ADR-056 KB (≙ ADR-072)]].
+
+### 36.1. Trang (App Router, Server Component)
+
+| Đường dẫn | Ghi chú |
+| :-- | :-- |
+| `apps/web/app/admin/tenants/[tenantId]/page.tsx` | Trang chi tiết gian hàng; `requireRole("SYSTEM_ADMIN")`; `null` từ `getAdminTenantDetail` → `notFound()` |
+| `apps/web/app/admin/tenants/[tenantId]/loading.tsx` | Trạng thái tải |
+| `apps/web/app/admin/tenants/[tenantId]/not-found.tsx` | 404 |
+| `apps/web/app/admin/tenants/[tenantId]/_ui/{parts,sections,audit-log}.tsx` | Các phần hiển thị (`UsageBar`, `TenantInfoSection`, `OwnerSection`, `PlanSection`, `PaymentMethodsSection`, `MetricsSection`, `ContentSection`, `AbuseSection`, `TenantAuditLog`) |
+| `apps/web/app/admin/tenants/page.tsx` | Danh sách: `listAdminTenants`, cột GMV 30 ngày, dòng chủ, menu "⋯" |
+
+### 36.2. `apps/web/lib/admin-tenant-detail.ts` (mới)
+
+| Export | Contract |
+| :-- | :-- |
+| `getAdminTenantDetail(tenantId, options?: { now? })` | → `AdminTenantDetail \| null`. Gồm gian hàng, chủ, gói + thuê bao, `paymentMethods` (`provider`, `isEnabled: true` — ngoại lệ đọc L2 qua `withSystemJob`), `stats`, `content` (đếm `products` theo `status` qua `withSystemJob`), `abuse` (đếm theo trạng thái, 5 báo cáo gần nhất không mô tả/email, `overdueRefundRequests`), `audit` (≤ 50 dòng, `TENANT_AUDIT_ACTIONS`) |
+| `listAdminTenants({ skip, take, now? })` | → `{ items: AdminTenantListItem[], total }`; tự `requireRole("SYSTEM_ADMIN")`; GMV 30 ngày bằng một `groupBy` cho cả trang |
+| `adminStatsWindow(now?)` | → `{ from, to }` (giờ VN, `to` = hôm qua, 30 ngày, dùng chung danh sách + chi tiết) |
+| `ADMIN_TENANT_STATS_DAYS` | `30` |
+| `TENANT_AUDIT_ACTIONS` | 13 action cố định (không có action của khách/đơn — §7.9) |
+| Kiểu `AdminTenantStatus` / `AdminOwnerStatus` / `AdminTenantPaymentProvider` / `AdminAbuseType` / `AdminAbuseStatus` / `AdminAbuseTarget` | Alias từ enum Prisma — không thêm giá trị mới |
+
+### 36.3. Server Action `apps/web/app/admin/tenants/actions.ts`
+
+| Action | Chữ ký | Kết quả |
+| :-- | :-- | :-- |
+| `lockTenantAction(tenantId, _prev, formData)` | FormData `reason` (bắt buộc, 1–500 ký tự sau trim) | `TenantLockState = { error?, reasonError?, success?, emailSent? }` |
+| `unlockTenantAction(tenantId, _prev, formData)` | Như trên; mở khoá luôn về `ACTIVE` | Như trên |
+
+- Revalidate `/admin/tenants` và `/admin/tenants/[tenantId]` (`"page"`). ✅
+- Lỗi: `reasonError` khi `TENANT_LOCK_REASON_INVALID`; `error` cho các mã còn lại (`AppError` → `message`). ✅
+
+### 36.4. `apps/web/lib/tenant-lock.ts` — hàm khoá/mở khoá
+
+| Export | Contract |
+| :-- | :-- |
+| `lockTenant(actor, tenantId, rawReason)` / `unlockTenant(actor, tenantId, rawReason)` | Kiểm `SYSTEM_ADMIN` → kiểm lý do → đổi trạng thái có điều kiện (`updateMany`) → audit → email chủ gian hàng → trả `TenantLockChangeResult { previousStatus, emailSent }` |
+| `lockTenantInTx(tx, tenantId)` | Dùng trong transaction xử lý báo cáo `LOCK_TENANT` (`abuse-report.ts`); không gửi email |
+| `auditTenantLocked(actorId, tenantId, metadata?)` | Ghi `TENANT_LOCKED` |
+| `normalizeTenantLockReason(value)` | Trim; `null` khi rỗng / không phải chuỗi / > 500 ký tự |
+| `TENANT_LOCK_REASON_MAX_LENGTH` | `500` |
+| `TENANT_LOCK_ERROR_CODES` | `REASON_INVALID` → `TENANT_LOCK_REASON_INVALID` (400), `ALREADY_LOCKED` → `TENANT_ALREADY_LOCKED` (409), `NOT_LOCKED` → `TENANT_NOT_LOCKED` (409) |
+
+Audit: `TENANT_LOCKED` / `TENANT_UNLOCKED` với metadata `{ reason, previousStatus }` (khoá từ báo cáo: `source: "ABUSE_REPORT"`, `reportType`). Số action `AUDIT_ACTIONS` không đổi. ✅ Chi tiết [[02-System-Specs/Audit-Log-Specs|Audit-Log-Specs]] §4.
+
+### 36.5. `@gieochu/email`
+
+| Export | Ghi chú |
+| :-- | :-- |
+| `renderTenantLockedEmail(data)` / `renderTenantUnlockedEmail(data)` | `TenantLockEmailData` = `{ appName, tenantName, reason, supportEmail, studioUrl }` → `RenderedEmail` (`subject`, `html`, `text`) |
+
+Gửi qua `sendEmailNow` với `type` `tenant_locked` / `tenant_unlocked` (`email_send_log`). Danh mục: [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5S. ✅
+
+---
+
+## 37. Trang chi tiết người dùng + thao tác quản trị tài khoản (ADR-073 đợt 4 — KB ADR-057) — 2026-11-26 ✅
+
+Đối chiếu code working tree 2026-11-26, **chưa commit** ✅ `git status`. **Không thêm `route.ts`**, không migration, không đổi URL. Nghiệp vụ: [[02-System-Specs/User-Management-System-Center-Specs|User-Management-System-Center-Specs]] §3.5. Guard phiên: [[02-System-Specs/Auth-Session-Specs|Auth-Session-Specs]] §9B.
+
+### 37.1. Server Actions — `apps/web/app/admin/users/actions.ts` (✅ mỗi action `requireRole("SYSTEM_ADMIN")`)
+
+| Action | Tham số | Trả về | Ghi chú |
+| :-- | :-- | :-- | :-- |
+| `lockUserAction(userId, _prev, formData)` | `formData.reason` | `UserLockState` `{ error?, reasonError?, success?, emailSent? }` | `reasonError` khi lý do trống hoặc > 500 ký tự; `emailSent: false` khi chủ chưa nhận email |
+| `unlockUserAction(userId, _prev, formData)` | `formData.reason` | `UserLockState` | Như trên |
+| `revokeUserSessionsAction(userId)` | — | `UserActionState` `{ error?, success?, revokedCount? }` | Đăng xuất mọi thiết bị |
+| `requestUserPasswordResetAction(userId)` | — | `UserActionState` `{ error?, success?, emailSent?, revokedCount? }` | Bật `passwordResetRequired`, thu hồi mọi phiên, gửi email |
+| `revealUserPhoneAction(userId)` | — | `RevealPhoneState` `{ phone?, error? }` | Ghi `USER_PHONE_VIEWED` trước khi trả số |
+| `resendVerificationAdminAction(userId)` | — | `ResendVerificationActionState` `{ error?, success? }` | Chỉ `PENDING`; 1 lần/60 giây/người dùng |
+
+### 37.2. Lib — `apps/web/lib/admin-users.ts`, `apps/web/lib/admin-user-detail.ts`
+
+| Export | Chữ ký / ghi chú |
+| :-- | :-- |
+| `lockUser(actor, targetUserId, rawReason)` | → `UserLockResult` `{ previousStatus, revokedSessions, emailSent }`. **Đổi:** thêm `rawReason` (bắt buộc, ≤ 500 ký tự). ✅ |
+| `unlockUser(actor, targetUserId, rawReason)` | → `UserUnlockResult` `{ status: "ACTIVE" \| "PENDING", emailSent }`. **Đổi:** thêm `rawReason`; về `PENDING` nếu chưa xác minh email. ✅ |
+| `resendVerificationForUser(actor, userId)` | → `void`. **Đổi:** thêm `actor` (trước: chỉ `userId`). Chỉ `PENDING`; 1 lần/60 giây (`consumeRateLimit`). ✅ |
+| `revokeUserSessions(actor, targetUserId)` | → `{ revokedCount }`; không có phiên → 409 `USER_NO_ACTIVE_SESSIONS`. ✅ |
+| `requestUserPasswordReset(actor, targetUserId)` | → `{ revokedCount, emailSent }`; chỉ `ACTIVE`; 5 lần/giờ/email (`checkRateLimit`, trong bộ nhớ). ✅ |
+| `revealUserPhone(actor, targetUserId)` | → `string`; 30 lần/phút/quản trị viên (`consumeRateLimit`); audit lỗi → 503 `AUDIT_WRITE_FAILED`. ✅ |
+| `normalizeUserLockReason(value)` | → `string \| null` (trim; rỗng hoặc > 500 → `null`). ✅ |
+| `getAdminUserDetail(userId, { now? })` | → `AdminUserDetail \| null` (`null` → trang 404). `lockBlocked: "SELF" \| "SUPER_ADMIN" \| null`. ✅ `admin-user-detail.ts` |
+| `maskPhone(phone)`, `maskIp(ip)` | Che SĐT (2 đầu + 3 cuối) và IP (IPv4/IPv6). ✅ |
+| `USER_AUDIT_ACTIONS` | Allowlist nhật ký trang chi tiết: 6 action quản trị + 6 action tự thân (xem User-Management §3.5). ✅ |
+
+### 37.3. Mã lỗi `USER_ADMIN_ERROR_CODES` (✅ `admin-users.ts`)
+
+`USER_LOCK_REASON_INVALID` (400) · `USER_ALREADY_LOCKED` (409) · `USER_NOT_LOCKED` (409) · `USER_NOT_ACTIVE` (409) · `NOT_PENDING` (400) · `USER_NO_ACTIVE_SESSIONS` (409) · `USER_NO_PHONE` · `AUDIT_WRITE_FAILED` (503) · `RATE_LIMITED` (429). Không tìm thấy → `NOT_FOUND`.
+
+### 37.4. Ghi chú
+
+- Guard phiên mới (`ACCOUNT_LOCKED` / `SESSION_REVOKED`, 401) — mục 9B của Auth-Session-Specs; không thêm mã vào bảng `route.ts`.
+- Email gửi qua `sendEmailNow` với `type` `user_locked` / `user_unlocked` và biến thể `requestedByAdmin` của đặt lại mật khẩu (`email_send_log`). Danh mục: User-Management-System-Center-Specs §3.5.
+- Đơn/thư viện/khách của gian hàng **không** được đọc từ các action này (§7.9).
+
+## 38. Tài Liệu Tham Chiếu & Liên Kết
 
 * [[MOC-Home]] — Trang chủ Map of Content ([MOC-Home.md](../00-Index/MOC-Home.md))
 * [[01-Architecture-Decisions/ADR-049-Sepay-Numeric-Payment-Code-Shared|ADR-049 (≙ ADR-065)]] · [[01-Architecture-Decisions/ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider|ADR-050 (≙ ADR-066)]] — mã thanh toán SePay, xác nhận tay hoá đơn gói (§9, §31) · [[04-Operations-Runbooks/SePay-Live-Test-Runbook|SePay-Live-Test-Runbook]]

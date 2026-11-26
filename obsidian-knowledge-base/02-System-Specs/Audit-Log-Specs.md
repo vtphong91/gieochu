@@ -112,9 +112,9 @@ Từ M12c (ADR-038, 2026-10-17) ✅: **`publishProduct(tenantId, productId, acto
 
 ## 4. Action và nơi ghi ✅ (grep `audit.log(` 2026-10-16; cập nhật M12c 2026-10-17; cập nhật ADR-041 2026-10-17; cập nhật ADR-047 2026-10-18; cập nhật ADR-048 2026-10-23; cập nhật ADR-050 2026-10-23; cập nhật ADR-051 + ADR-054 2026-10-24)
 
-**63** action trong `AUDIT_ACTIONS` ✅ (đếm working tree 2026-11-26: +1 ở ADR-071 — `SUBSCRIPTION_INVOICE_CREATED`; **62** đếm 2026-11-25: +2 ở ADR-067 — `SUBSCRIPTION_INVOICE_VOIDED`, `SUBSCRIPTION_INVOICE_REOPENED`; +2 ở ADR-068 —
+**67** action trong `AUDIT_ACTIONS` ✅ (đếm working tree 2026-11-26 sau ADR-073: +4 ở ADR-073 — `USER_SESSIONS_REVOKED`, `USER_PASSWORD_RESET_REQUIRED`, `USER_PHONE_VIEWED`, `USER_VERIFICATION_RESENT`; `USER_LOCKED`/`USER_UNLOCKED` có từ M12a, đợt này chỉ thêm metadata; **63** đếm working tree 2026-11-26 trước ADR-073: +1 ở ADR-071 — `SUBSCRIPTION_INVOICE_CREATED`; **62** đếm 2026-11-25: +2 ở ADR-067 — `SUBSCRIPTION_INVOICE_VOIDED`, `SUBSCRIPTION_INVOICE_REOPENED`; +2 ở ADR-068 —
 `ORDER_CANCELED_BY_SELLER`, `ORDER_REOPENED_BY_SELLER`; trước đó **58** đếm 2026-10-27 (HEAD `c7891f0` vẫn 58 ✅): +2 ở khách vãng lai — `AUTH_GUEST_ACCOUNT_CREATED`, `AUTH_GUEST_ACTIVATED`; +4 ở ADR-061/062 — `ORDER_PAYMENT_EMAIL_SENT`, `ORDER_CUSTOMER_DECLARED_PAID`, `ORDER_CUSTOMER_DECLARED_PAID_UNDONE`, `ORDER_CANCELED_BY_CUSTOMER`; trước đó **52** đếm 2026-10-24, sau ADR-051 của vuong + ADR-054; 50 ở 2026-10-23 sau ADR-050): 21 theo đặc tả §"M12" + 6 bổ sung ở M12a (trước đây chỉ ghi `logger`) + 5 ở
-M12c/ADR-039 + 8 ở ADR-041 (Hồ sơ, Bảng giá CMS, hoàn tiền gói) + 2 ở ADR-047 (ghi chú nội bộ đơn) + 1 ở ADR-048 (ghi chú khách) + 7 ở ADR-050 (CMS trang chủ, menu, văn bản pháp lý) + 1 ở ADR-051 (`PRODUCT_DELETED` — vuong, commit `c63b72b`) + 1 ở ADR-054 (`LEGAL_DOCUMENT_META_UPDATED`) + 6 ở ADR-061/062 + 2 ở ADR-067 + 2 ở ADR-068 + 1 ở ADR-071. Thêm action không
+M12c/ADR-039 + 8 ở ADR-041 (Hồ sơ, Bảng giá CMS, hoàn tiền gói) + 2 ở ADR-047 (ghi chú nội bộ đơn) + 1 ở ADR-048 (ghi chú khách) + 7 ở ADR-050 (CMS trang chủ, menu, văn bản pháp lý) + 1 ở ADR-051 (`PRODUCT_DELETED` — vuong, commit `c63b72b`) + 1 ở ADR-054 (`LEGAL_DOCUMENT_META_UPDATED`) + 6 ở ADR-061/062 + 2 ở ADR-067 + 2 ở ADR-068 + 1 ở ADR-071 + 4 ở ADR-073. Thêm action không
 cần DDL (`action` là chuỗi).
 
 | Action | Scope | Nơi ghi | Actor |
@@ -124,9 +124,14 @@ cần DDL (`action` là chuỗi).
 | `AUTH_GUEST_ACCOUNT_CREATED` | SYSTEM | `lib/guest-checkout.ts` `startGuestCheckout` — `targetType: "User"`, metadata `{ tenantId, legalVersions }` (số bản pháp lý đã ghi chấp thuận), kèm IP/UA. Nhãn "Tạo tài khoản khi mua (khách vãng lai)" (ADR-061 Q1, 2026-10-27 working tree) | chính user vừa tạo |
 | `AUTH_GUEST_ACTIVATED` | SYSTEM | `lib/guest-checkout.ts` `activateGuestAccount` (trang `/verify-email/dat-mat-khau`). Nhãn "Kích hoạt tài khoản và đặt mật khẩu" | user |
 | `AUTH_REFRESH_REUSE` | SYSTEM | `api/auth/refresh/route.ts` — metadata `revokedSessions` | user |
-| `USER_LOCKED` / `USER_UNLOCKED` | SYSTEM | `lib/admin-users.ts` (`lockUser`, `unlockUser`) | admin |
+| `USER_LOCKED` | SYSTEM (+`targetType: "User"`) | `lib/admin-users.ts` `lockUser` (ADR-073 ✅ code) — metadata `{ reason, previousStatus, revokedSessions, emailSent }`; `reason` là lý do quản trị viên nhập (≤ 500 ký tự), không phải ghi chú nội bộ. Nhãn "Khoá người dùng" | admin |
+| `USER_UNLOCKED` | SYSTEM (+`targetType: "User"`) | `lib/admin-users.ts` `unlockUser` (ADR-073 ✅ code) — metadata `{ reason, newStatus, emailSent }`; `newStatus` = `ACTIVE` hoặc `PENDING` (chưa xác minh email). Bản ghi cũ không có `newStatus` → hiểu là `ACTIVE`. Nhãn "Mở khoá người dùng" | admin |
+| `USER_SESSIONS_REVOKED` | SYSTEM (+`targetType: "User"`) | `lib/admin-users.ts` `revokeUserSessions` (ADR-073) — metadata `{ revokedSessions }`. Nhãn "Đăng xuất mọi thiết bị của người dùng" | admin |
+| `USER_PASSWORD_RESET_REQUIRED` | SYSTEM (+`targetType: "User"`) | `lib/admin-users.ts` `requestUserPasswordReset` (ADR-073) — metadata `{ revokedSessions, emailSent }`, **không có `reason`**. Ghi sau khi gửi email. Nhãn "Yêu cầu người dùng đặt lại mật khẩu" | admin |
+| `USER_PHONE_VIEWED` | SYSTEM (+`targetType: "User"`) | `lib/admin-users.ts` `revealUserPhone` (ADR-073) — không metadata. Ghi **trước** khi trả số; ghi lỗi → không trả số (503). Nhãn "Xem số điện thoại đầy đủ của người dùng" | admin |
+| `USER_VERIFICATION_RESENT` | SYSTEM (+`targetType: "User"`) | `lib/admin-users.ts` `resendVerificationForUser` (ADR-073) — metadata `{ emailSent: true }`, ghi sau khi gửi. Nhãn "Gửi lại email kích hoạt" | admin |
 | `TENANT_CREATED` | TENANT | `lib/create-tenant.ts` | user tạo |
-| `TENANT_LOCKED` / `TENANT_UNLOCKED` | SYSTEM (+`tenantId`) | `lib/tenant-lock.ts` — gọi từ `app/admin/tenants/actions.ts`; `TENANT_LOCKED` còn ghi khi xử lý báo cáo `LOCK_TENANT` (metadata `source: "ABUSE_REPORT"`, chỉ khi tenant chưa khoá) | admin |
+| `TENANT_LOCKED` / `TENANT_UNLOCKED` | SYSTEM (+`tenantId`) | `lib/tenant-lock.ts` — gọi từ `app/admin/tenants/actions.ts`. **Từ ADR-072 (KB ADR-056, 2026-11-26, ✅ code, chưa commit)**: metadata `{ reason, previousStatus }` — `reason` là lý do quản trị viên nhập (bắt buộc, ≤ 500 ký tự), cũng là nội dung gửi cho chủ gian hàng; mở khoá luôn về `ACTIVE`. `TENANT_LOCKED` còn ghi khi xử lý báo cáo `LOCK_TENANT` (metadata `source: "ABUSE_REPORT"`, `reason` = nhãn loại vi phạm, `reportType`, `previousStatus`; chỉ khi tenant chưa khoá; luồng này **không** gửi email `tenant_locked`) | admin |
 | `TENANT_SLUG_CHANGED` | TENANT | `app/studio/[tenantSlug]/settings/actions.ts` — `{ from, to }` | thành viên |
 | `PLAN_CREATED` / `PLAN_UPDATED` | SYSTEM | `app/admin/plans/actions.ts` (tạo, sửa, bật/tắt) | admin |
 | `SUBSCRIPTION_PAID` | SYSTEM (+`tenantId`) | `lib/subscription-billing.ts` — 3 nơi ghi, phân biệt bằng `metadata.source` (ADR-059, ✅ đọc code 2026-10-26, đã commit `fa29d99`): `markInvoicePaid` (`PLATFORM_WEBHOOK` hoặc `ADMIN_MANUAL_CONFIRM`; metadata `provider`, `planId`, `previousPlanId`, `amountVnd`, `periodEnd`, `reactivated`); `confirmExpiredManualInvoice` (`ADMIN_MANUAL_CONFIRM` + `previousInvoiceStatus: "EXPIRED"`, `lateConfirmation: true`, `dueAt`, `storedPeriodStart/End`, `periodRecomputed: true`, `periodStart/End`); `confirmInvoiceFromPlatformTransaction` (**`ADMIN_TRANSACTION_CONFIRM`** + `transactionId`, `transactionProvider`, `receivedAmountVnd`, `differenceVnd`, kèm metadata trễ nếu hoá đơn EXPIRED, không thì `periodEnd`). Không thêm action mới. Từ ADR-066 (2026-11-24, working tree ✅ code): `ADMIN_MANUAL_CONFIRM` áp cho **mọi cổng** (cả SePay/MoMo) và có thêm khoá **`note`** khi admin nhập ghi chú (trim, ≤ 500 ký tự; trống → không có khoá). Từ ADR-067: lựa chọn "Đã thanh toán" trong hộp "Đổi trạng thái…" ghi đúng action này (cùng `confirmManualInvoicePayment`) | null (webhook) hoặc admin (xác nhận tay / từ giao dịch) |
@@ -251,7 +256,7 @@ Studio **chỉ hiện khi vai trò là OWNER** (`role` từ `requireTenantMember
 
 ## 9. Giới hạn đã biết (chi tiết `docs/BACKLOG.md` mục "Phát sinh trong đợt M12a")
 
-- `ADMIN_VIEWED_TENANT`, `REPORT_RESOLVED`, `REVIEW_HIDDEN_REFUNDED` chưa vào bảng; khoá user chưa có ô lý do (đặc tả §"M2" muốn
+- `ADMIN_VIEWED_TENANT`, `REPORT_RESOLVED`, `REVIEW_HIDDEN_REFUNDED` chưa vào bảng; khoá user đã có ô lý do từ ADR-073 (§4) (đặc tả §"M2" muốn
   "USER_LOCKED + lý do").
 - Purge một lệnh, chưa partition, phân trang offset — chậm khi bảng lớn.
 - Ô lọc action ở Studio liệt kê cả action cấp hệ thống.

@@ -250,7 +250,7 @@ Quyết định: [[01-Architecture-Decisions/ADR-041-System-Center-Subscription-
     `SubscriptionStatus`); có `page`/`pageSize`.
   - Sắp xếp `plan.isFree asc` → `currentPeriodEnd asc` → `id asc`: gói trả phí hết hạn sớm nhất lên đầu, **gói miễn phí xếp sau**; cột "Hết hạn" của gói
     miễn phí hiện **"Không thời hạn"** (Free có `currentPeriodEnd = currentPeriodStart` — comment code).
-  - "Hoá đơn gần nhất" = hoá đơn mới nhất của tenant (`createdAt desc`, lấy 1). Tên gian hàng link tới `/admin/tenants` (danh sách chung, không trang chi tiết).
+  - "Hoá đơn gần nhất" = hoá đơn mới nhất của tenant (`createdAt desc`, lấy 1). Tên gian hàng link tới `/admin/tenants/[tenantId]` (trang chi tiết gian hàng, ADR-072 — KB ADR-056, ✅ code, chưa commit).
     Từ ADR-066: ô hiện mã / trạng thái / "số tiền · cổng" và có cột mới **"Thao tác"** — §5N.
 - `parseEnumParam(allowed, value)` — query không thuộc danh sách → `undefined` (bỏ lọc), không ném lỗi ✅.
 - Nhãn/tông badge dùng chung ở `app/admin/_ui/billing-labels.ts` (`INVOICE_STATUS_LABEL`, `INVOICE_PROVIDER_LABEL`, `SUBSCRIPTION_STATUS_LABEL`, …,
@@ -689,6 +689,23 @@ Quyết định: [[01-Architecture-Decisions/ADR-055-Subscription-Activity-Log-D
 - **Gộp:** audit (≤ 100 mới nhất) + dòng suy ra + email (≤ 100), sắp `createdAt desc`, cắt **100 dòng**.
 - **Test:** không thêm case; `subscription-billing.test.ts` assert audit tạo (1 dòng khi 2 lần tạo song song), dòng huỷ/mở lại, thanh toán trễ (Quản trị viên, EXPIRED → PAID), tạo
   hoá đơn (audit + suy ra), email — mock ghi `email_send_log` **chỉ** cho địa chỉ test `m3test_*` rồi xoá ở `afterAll` ✅ đọc `git diff`. Integration 7/7 🟡 Quốc báo.
+
+---
+
+### 5S. Email khoá / mở khoá gian hàng (ADR-072 — KB ADR-056) — working tree, chưa commit, không migration ✅ đọc code 2026-11-26
+
+Danh mục email thêm bởi Đợt 3 (không thuộc luồng thanh toán nhưng ghi ở đây vì cùng nhóm email gửi chủ gian hàng):
+
+| Loại (`type`) | Người nhận | Nội dung chính | Ghi chú |
+| :-- | :-- | :-- | :-- |
+| `tenant_locked` | Chủ gian hàng (`owner.email`) | Tiêu đề `Gian hàng "{tên}" đã bị khoá — {tên ứng dụng}`; lý do quản trị viên nhập; email hỗ trợ; link Studio | Gửi sau commit khi khoá từ `/admin/tenants` hoặc trang chi tiết |
+| `tenant_unlocked` | Chủ gian hàng | Tiêu đề `… đã được mở khoá — …`; lý do; email hỗ trợ; link Studio | Gửi sau commit khi mở khoá |
+
+- Template: `packages/email/src/templates/tenant-lock.ts` (`renderTenantLockedEmail`, `renderTenantUnlockedEmail`), export qua `@gieochu/email`. ✅
+- Gửi qua `sendEmailNow` (`apps/web/lib/email-dispatch.ts`) → ghi `email_send_log` cả thành công lẫn thất bại. Lỗi gửi chỉ log, hàm trả `emailSent: false` để hộp xác nhận hiện cảnh báo. ✅ (`apps/web/lib/tenant-lock.ts` `notifyOwner`)
+- **Một email mỗi lần đổi trạng thái.** Không gửi khi khoá từ báo cáo vi phạm — luồng đó dùng `content_moderated` có cờ `tenantLocked: true` ([[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]] §7). ✅ (`apps/web/lib/abuse-report.ts`)
+- Email chứa lý do quản trị viên nhập — vì vậy hộp xác nhận ghi rõ "lý do sẽ gửi cho chủ gian hàng" (ADR-072 mục 3). Không đưa ghi chú nội bộ vào lý do.
+- Chưa gửi thật qua SMTP ❓.
 
 ---
 
