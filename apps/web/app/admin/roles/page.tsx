@@ -33,8 +33,8 @@ export default async function AdminRolesPage() {
       >
         {[
           ["System", "users.systemRole", "/admin/*", "Quản trị toàn nền tảng"],
-          ["Tenant", "tenant_members.role", "/studio/[slug]/*", "Chủ shop / nhân sự trong 1 tenant"],
-          ["Customer", "tenant_customers (không có cột role)", "/account/*", "Người đã mua hàng ở 1+ tenant"],
+          ["Gian hàng (tenant)", "tenant_members.role", "/studio/[slug]/*", "Chủ shop / nhân sự trong 1 gian hàng"],
+          ["Customer", "tenant_customers (không có cột role)", "/account/*", "Người đã mua hàng ở 1+ gian hàng"],
         ].map((row) => (
           <Tr key={row[0]}>
             {row.map((cell, i) => (
@@ -77,13 +77,13 @@ export default async function AdminRolesPage() {
 
       <TableCard
         icon={<IconUsers className="h-5 w-5" />}
-        title="3. Vai trò Tenant (Studio)"
-        description="Tenant.ownerId là unique nên số tenant = số OWNER. STAFF đã có sẵn trong schema nhưng MVP chưa có luồng mời/tạo — luôn bằng 0."
+        title="3. Vai trò Gian hàng (tenant) — Studio"
+        description="Tenant.ownerId là unique nên số gian hàng = số OWNER. STAFF đã có sẵn trong schema nhưng MVP chưa có luồng mời/tạo — luôn bằng 0."
         head={["Vai trò", "Mô tả", "Số lượng hiện tại"]}
       >
         <Tr>
           <Td className="font-mono text-xs font-medium">OWNER</Td>
-          <Td>Chủ shop — toàn quyền trong tenant của mình</Td>
+          <Td>Chủ shop — toàn quyền trong gian hàng của mình</Td>
           <Td>
             <Badge tone="info">{tenantOwners}</Badge>
           </Td>
@@ -101,7 +101,7 @@ export default async function AdminRolesPage() {
         <h2 className="font-[family-name:var(--font-heading)] font-semibold">4. Customer</h2>
         <p className="mt-1.5 max-w-2xl text-sm text-gray-500">
           Không phải role — chỉ cần có bản ghi <code className="rounded bg-gray-100 px-1 py-0.5 text-xs">tenant_customers</code> (tự tạo khi đơn
-          hàng đầu tiên &quot;PAID&quot;). System Admin không có route nào đọc bảng này hay đơn hàng của tenant (§7.9), nên trang này không hiển
+          hàng đầu tiên &quot;PAID&quot;). System Admin không có route nào đọc bảng này hay đơn hàng của gian hàng (§7.9), nên trang này không hiển
           thị số liệu customer.
         </p>
       </section>

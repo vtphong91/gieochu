@@ -287,7 +287,7 @@ function TenantCard({ detail, overdueRefunds }: { detail: AbuseReportDetail; ove
           {overdueRefunds > 0 ? (
             <span className="flex flex-col items-start gap-1">
               <Badge tone="danger">{overdueRefunds} yêu cầu quá hạn</Badge>
-              <span style={{ color: INK_SOFT }}>Gian hàng chưa hoàn tiền cho khách đúng hạn. Có thể khoá gian hàng ở trang quản lý tenant.</span>
+              <span style={{ color: INK_SOFT }}>Gian hàng chưa hoàn tiền cho khách đúng hạn. Có thể khoá gian hàng ở trang quản lý gian hàng.</span>
             </span>
           ) : (
             <span style={{ color: INK_SOFT }}>Không có</span>
@@ -302,7 +302,7 @@ function TenantCard({ detail, overdueRefunds }: { detail: AbuseReportDetail; ove
           </a>
         ) : null}
         <Link href="/admin/tenants" className={LINK} style={{ color: brandColors.primary }}>
-          Quản lý tenant
+          Quản lý gian hàng
         </Link>
       </div>
     </ConfigCard>

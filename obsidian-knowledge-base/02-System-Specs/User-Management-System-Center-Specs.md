@@ -6,7 +6,7 @@ tags:
   - security
   - status/living
 date: 2026-09-26
-updated: 2026-10-25
+updated: 2026-11-26
 author: System Architect
 ---
 
@@ -48,7 +48,7 @@ flowchart TB
         U2["/admin/roles — Phân quyền (trang tham khảo, chỉ đọc)"]
     end
     subgraph G2["Kinh doanh"]
-        B1["/admin/tenants — Tenant"]
+        B1["/admin/tenants — Gian hàng (trước ADR-071: Tenant)"]
         B2["/admin/plans — Gói dịch vụ"]
         B3["/admin/subscriptions — Đơn hàng (Đơn hàng gói dịch vụ, ADR-056)"]
     end

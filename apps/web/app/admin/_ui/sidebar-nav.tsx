@@ -268,7 +268,7 @@ const ADMIN_GROUPS: SidebarNavGroup[] = [
     label: "Kinh doanh",
     icon: "store",
     items: [
-      { href: "/admin/tenants", label: "Tenant", icon: "store" },
+      { href: "/admin/tenants", label: "Gian hàng", icon: "store" },
       { href: "/admin/plans", label: "Gói dịch vụ", icon: "package" },
       { href: "/admin/subscriptions", label: "Đơn hàng", icon: "shoppingBag" },
     ],

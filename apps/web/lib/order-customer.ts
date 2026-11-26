@@ -149,12 +149,22 @@ export async function notifyCustomerOfPaymentInstructions(tenantId: string, orde
  * ADR-061 Q7 — bước cron hằng ngày: nhắc 1 lần các đơn còn chờ, ĐÃ chọn phương thức, còn ≤ 24 giờ. Nhận mốc
  * `customerReminderSentAt` nguyên tử trước khi gửi (cron chạy lại không nhắc trùng). Đọc dưới `withSystemJob` (job hệ thống).
  * Trả số email đã gửi.
+ *
+ * `tenantIds` (tuỳ chọn) — chỉ nhắc đơn của các tenant này (integration test, ADR-034 DB dùng chung). Bỏ trống = mọi tenant (cron).
  */
-export async function runOrderPaymentReminders(now = new Date()): Promise<number> {
+export async function runOrderPaymentReminders(now = new Date(), options: { tenantIds?: readonly string[] } = {}): Promise<number> {
+  const tenantIds = options.tenantIds ? [...new Set(options.tenantIds)] : null;
+  if (tenantIds !== null && tenantIds.length === 0) return 0;
   const until = new Date(now.getTime() + PAYMENT_REMINDER_WINDOW_HOURS * 60 * 60 * 1000);
   const due = await withSystemJob((tx) =>
     tx.order.findMany({
-      where: { status: "PENDING", provider: { not: null }, expiresAt: { gt: now, lte: until }, customerReminderSentAt: null },
+      where: {
+        status: "PENDING",
+        provider: { not: null },
+        expiresAt: { gt: now, lte: until },
+        customerReminderSentAt: null,
+        ...(tenantIds !== null ? { tenantId: { in: tenantIds } } : {}),
+      },
       select: ORDER_EMAIL_SELECT,
       orderBy: { expiresAt: "asc" },
       take: 500,

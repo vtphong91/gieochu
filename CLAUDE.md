@@ -19,6 +19,18 @@ Hiến chương đội: [obsidian-knowledge-base/06-AI-Agent-Guides/Team-Charter
 | Hiếu | Kỹ sư lập trình 10 năm kinh nghiệm (A03/A04 logic/A05) | Sub-agent `hieu` (`.claude/agents/hieu.md`) | `apps/web/**`, `packages/**` (gồm `packages/db/prisma/`), test — lớp trình bày chỉ khi brief giao |
 | Phong | Chuyên viên UX/UI — design layout, component, token, a11y (A04 UI) | Sub-agent `phong` (`.claude/agents/phong.md`), skill `ui-ux-pro-max` | Lớp trình bày: `apps/web/app/**/_ui/**`, `globals.css`, `public/**`, JSX/className/bố cục trong `page.tsx`/`layout.tsx`; `packages/config/src/theme.ts` chỉ khi brief nêu rõ |
 
+**Model theo vai trò (chủ dự án chốt 2026-11-26 — mục tiêu tiết kiệm token):**
+
+| Thành viên | Model | Ghi chú |
+|---|---|---|
+| Quốc | Opus 5.5 | Phiên chính — chọn bằng `/model` (không khai trong file agent) |
+| Hiếu | Sonnet (mặc định trong `.claude/agents/hieu.md`) | Task tiền/bảo mật/RLS/migration phức tạp: Quốc gọi kèm `model: opus` khi giao |
+| Phong | Sonnet | Thiết kế, sửa lớp trình bày, soát câu chữ |
+| Long | Haiku | Ghi KB theo brief đã liệt kê sẵn thay đổi; KB lớn/đối chiếu phức tạp: Quốc gọi kèm `model: sonnet` |
+
+Tiết kiệm thêm: mỗi task giao **agent mới** với brief ngắn, đủ ý (không nối mãi một agent cũ — ngữ cảnh dài tốn token mỗi lượt);
+brief chỉ trỏ đúng file/mục cần đọc; Long không đọc lại cả trang KB khi chỉ cần thêm một mục.
+
 **Vùng tri thức** — mỗi người chỉ mở vùng của mình, cần thứ ngoài vùng thì hỏi Quốc:
 
 | Vùng | Quốc | Long | Hiếu | Phong |
@@ -126,7 +138,8 @@ thiết kế giao diện. Mẫu đã áp dụng: trang chủ CMS (ADR-033), Cử
   từ máy dev là thao tác trên production. Agent **không tự chạy** `db:migrate`/DDL khi chưa được Quốc duyệt; migration
   theo expand → contract (deploy chỉ *thêm* cột/bảng; `DROP`/`RENAME` chỉ sau khi code không còn dùng đã lên prod).
   **Không chạy `pnpm db:seed`**. Integration test/script thủ công phải dọn dữ liệu tạm, không đụng cấu hình dùng chung,
-  không gửi email tới địa chỉ thật.
+  không gửi email tới địa chỉ thật. Test gọi hàm sweep/cron (`runOrderSweep`, `runOrderPaymentReminders`, `runSubscriptionSweep`,
+  `aggregateTenantDailyStats`…) **bắt buộc** truyền `{ tenantIds: [...] }` của tenant tạm — không bao giờ quét toàn DB (2026-11-26).
 - ID: **cuid2** — dùng thuộc tính Prisma gốc `@default(cuid(2))` cho mọi `@id`. Không dùng UUID (xem
   `docs/DECISIONS.md`).
 - Không hard-code chuỗi thương hiệu ("Gieo Chữ", "Gieo", slogan) — đọc bằng `getEffectiveBrand()`

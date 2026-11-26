@@ -167,7 +167,7 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
           </div>
           <div>
             <div className="text-2xl font-bold">{summary.totalTenants}</div>
-            <div className="text-xs text-white/70">Tổng tenant</div>
+            <div className="text-xs text-white/70">Tổng gian hàng</div>
           </div>
         </div>
       </section>
@@ -177,7 +177,7 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
         <StatCard Icon={IconUsers} label="Người dùng hoạt động" value={summary.usersByStatus.ACTIVE.toLocaleString("vi-VN")} sub={`${summary.usersByStatus.LOCKED} bị khoá`} />
         <StatCard
           Icon={IconStore}
-          label="Tenant hoạt động"
+          label="Gian hàng hoạt động"
           value={summary.tenantsByStatus.ACTIVE.toLocaleString("vi-VN")}
           sub={`${summary.totalTenants} tổng cộng`}
           ratio={activeTenantRatio}
@@ -199,7 +199,7 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
             <div>
               <h2 className="text-base font-bold text-gray-900">Doanh thu gói dịch vụ</h2>
               <p className="mt-0.5 text-xs" style={{ color: MUTED }}>
-                Doanh thu Platform Billing 6 tháng gần nhất (tenant trả phí cho {brand.name})
+                Doanh thu Platform Billing 6 tháng gần nhất (gian hàng trả phí cho {brand.name})
               </p>
             </div>
             <div className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: GREEN }}>
@@ -289,7 +289,7 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
             </Link>
             <Link href="/admin/tenants" className="rounded-xl p-4 text-white" style={{ background: GREEN }}>
               <IconStore className="mb-2 h-5 w-5" />
-              <div className="text-sm font-semibold">Tenant</div>
+              <div className="text-sm font-semibold">Gian hàng</div>
               <div className="text-xs opacity-80">Quản lý trang bán</div>
             </Link>
             <Link href="/admin/plans" className="rounded-xl p-4 text-white" style={{ background: AMBER }}>
@@ -320,7 +320,7 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
                 <li key={p.planName}>
                   <div className="mb-1 flex items-center justify-between text-sm">
                     <span className="font-medium text-gray-800">{p.planName}</span>
-                    <span style={{ color: MUTED }}>{p.count} tenant</span>
+                    <span style={{ color: MUTED }}>{p.count} gian hàng</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-gray-100">
                     <div className="h-1.5 rounded-full" style={{ width: `${Math.round(ratio * 100)}%`, background: p.isFree ? GREEN : BLUE }} />
@@ -334,14 +334,14 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
         {/* Recent tenants */}
         <section className="rounded-2xl border bg-white p-6" style={{ borderColor: LINE }}>
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-bold text-gray-900">Tenant mới</h2>
+            <h2 className="text-base font-bold text-gray-900">Gian hàng mới</h2>
             <Link href="/admin/tenants" className="text-xs font-semibold" style={{ color: BLUE }}>
               Xem tất cả
             </Link>
           </div>
           {recentTenants.length === 0 ? (
             <p className="py-6 text-center text-sm" style={{ color: MUTED }}>
-              Chưa có tenant nào.
+              Chưa có gian hàng nào.
             </p>
           ) : (
             <ul className="space-y-3.5">

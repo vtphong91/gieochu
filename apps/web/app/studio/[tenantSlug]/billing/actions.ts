@@ -19,7 +19,7 @@ export async function renewSubscriptionAction(
   _prevState: BillingActionState,
   formData: FormData,
 ): Promise<BillingActionState> {
-  const { tenant } = await requireTenantMember(tenantSlug);
+  const { tenant, user } = await requireTenantMember(tenantSlug);
 
   const provider = String(formData.get("provider") ?? "") as PaymentProviderId;
   if (!VALID_PROVIDERS.includes(provider)) {
@@ -29,7 +29,8 @@ export async function renewSubscriptionAction(
 
   try {
     // ADR-059: email báo admin (hoá đơn QR thủ công chờ đối soát) gửi sau response.
-    await createRenewalInvoice(tenant.id, { provider, planId }, { scheduleNotification: (task) => after(task) });
+    // ADR-071: người bấm gia hạn ghi vào audit "Tạo hoá đơn gói dịch vụ".
+    await createRenewalInvoice(tenant.id, { provider, planId }, { scheduleNotification: (task) => after(task), actorId: user.userId });
   } catch (error) {
     if (error instanceof AppError) return { error: error.message };
     throw error;

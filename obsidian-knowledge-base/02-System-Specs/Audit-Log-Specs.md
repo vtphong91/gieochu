@@ -8,7 +8,7 @@ tags:
   - database
   - status/living
 date: 2026-10-16
-updated: 2026-11-25
+updated: 2026-11-26
 author: Long
 ---
 
@@ -112,9 +112,9 @@ Từ M12c (ADR-038, 2026-10-17) ✅: **`publishProduct(tenantId, productId, acto
 
 ## 4. Action và nơi ghi ✅ (grep `audit.log(` 2026-10-16; cập nhật M12c 2026-10-17; cập nhật ADR-041 2026-10-17; cập nhật ADR-047 2026-10-18; cập nhật ADR-048 2026-10-23; cập nhật ADR-050 2026-10-23; cập nhật ADR-051 + ADR-054 2026-10-24)
 
-**62** action trong `AUDIT_ACTIONS` ✅ (đếm working tree 2026-11-25: +2 ở ADR-067 — `SUBSCRIPTION_INVOICE_VOIDED`, `SUBSCRIPTION_INVOICE_REOPENED`; +2 ở ADR-068 —
+**63** action trong `AUDIT_ACTIONS` ✅ (đếm working tree 2026-11-26: +1 ở ADR-071 — `SUBSCRIPTION_INVOICE_CREATED`; **62** đếm 2026-11-25: +2 ở ADR-067 — `SUBSCRIPTION_INVOICE_VOIDED`, `SUBSCRIPTION_INVOICE_REOPENED`; +2 ở ADR-068 —
 `ORDER_CANCELED_BY_SELLER`, `ORDER_REOPENED_BY_SELLER`; trước đó **58** đếm 2026-10-27 (HEAD `c7891f0` vẫn 58 ✅): +2 ở khách vãng lai — `AUTH_GUEST_ACCOUNT_CREATED`, `AUTH_GUEST_ACTIVATED`; +4 ở ADR-061/062 — `ORDER_PAYMENT_EMAIL_SENT`, `ORDER_CUSTOMER_DECLARED_PAID`, `ORDER_CUSTOMER_DECLARED_PAID_UNDONE`, `ORDER_CANCELED_BY_CUSTOMER`; trước đó **52** đếm 2026-10-24, sau ADR-051 của vuong + ADR-054; 50 ở 2026-10-23 sau ADR-050): 21 theo đặc tả §"M12" + 6 bổ sung ở M12a (trước đây chỉ ghi `logger`) + 5 ở
-M12c/ADR-039 + 8 ở ADR-041 (Hồ sơ, Bảng giá CMS, hoàn tiền gói) + 2 ở ADR-047 (ghi chú nội bộ đơn) + 1 ở ADR-048 (ghi chú khách) + 7 ở ADR-050 (CMS trang chủ, menu, văn bản pháp lý) + 1 ở ADR-051 (`PRODUCT_DELETED` — vuong, commit `c63b72b`) + 1 ở ADR-054 (`LEGAL_DOCUMENT_META_UPDATED`) + 6 ở ADR-061/062 + 2 ở ADR-067 + 2 ở ADR-068. Thêm action không
+M12c/ADR-039 + 8 ở ADR-041 (Hồ sơ, Bảng giá CMS, hoàn tiền gói) + 2 ở ADR-047 (ghi chú nội bộ đơn) + 1 ở ADR-048 (ghi chú khách) + 7 ở ADR-050 (CMS trang chủ, menu, văn bản pháp lý) + 1 ở ADR-051 (`PRODUCT_DELETED` — vuong, commit `c63b72b`) + 1 ở ADR-054 (`LEGAL_DOCUMENT_META_UPDATED`) + 6 ở ADR-061/062 + 2 ở ADR-067 + 2 ở ADR-068 + 1 ở ADR-071. Thêm action không
 cần DDL (`action` là chuỗi).
 
 | Action | Scope | Nơi ghi | Actor |
@@ -130,6 +130,7 @@ cần DDL (`action` là chuỗi).
 | `TENANT_SLUG_CHANGED` | TENANT | `app/studio/[tenantSlug]/settings/actions.ts` — `{ from, to }` | thành viên |
 | `PLAN_CREATED` / `PLAN_UPDATED` | SYSTEM | `app/admin/plans/actions.ts` (tạo, sửa, bật/tắt) | admin |
 | `SUBSCRIPTION_PAID` | SYSTEM (+`tenantId`) | `lib/subscription-billing.ts` — 3 nơi ghi, phân biệt bằng `metadata.source` (ADR-059, ✅ đọc code 2026-10-26, đã commit `fa29d99`): `markInvoicePaid` (`PLATFORM_WEBHOOK` hoặc `ADMIN_MANUAL_CONFIRM`; metadata `provider`, `planId`, `previousPlanId`, `amountVnd`, `periodEnd`, `reactivated`); `confirmExpiredManualInvoice` (`ADMIN_MANUAL_CONFIRM` + `previousInvoiceStatus: "EXPIRED"`, `lateConfirmation: true`, `dueAt`, `storedPeriodStart/End`, `periodRecomputed: true`, `periodStart/End`); `confirmInvoiceFromPlatformTransaction` (**`ADMIN_TRANSACTION_CONFIRM`** + `transactionId`, `transactionProvider`, `receivedAmountVnd`, `differenceVnd`, kèm metadata trễ nếu hoá đơn EXPIRED, không thì `periodEnd`). Không thêm action mới. Từ ADR-066 (2026-11-24, working tree ✅ code): `ADMIN_MANUAL_CONFIRM` áp cho **mọi cổng** (cả SePay/MoMo) và có thêm khoá **`note`** khi admin nhập ghi chú (trim, ≤ 500 ký tự; trống → không có khoá). Từ ADR-067: lựa chọn "Đã thanh toán" trong hộp "Đổi trạng thái…" ghi đúng action này (cùng `confirmManualInvoicePayment`) | null (webhook) hoặc admin (xác nhận tay / từ giao dịch) |
+| `SUBSCRIPTION_INVOICE_CREATED` | SYSTEM (+`tenantId`) | `lib/subscription-billing.ts` `createRenewalInvoice` (ADR-071, 2026-11-26 working tree ✅ code) — **chỉ khi tạo hoá đơn mới** (dùng lại hoá đơn chờ → không ghi), sau commit; `targetType: "SubscriptionInvoice"`, metadata `{ code, planId, provider, amountVnd }`. Nhãn "Tạo hoá đơn gói dịch vụ". Hoá đơn tạo trước ADR-071 không có dòng này — nhật ký chi tiết suy ra mốc tạo (Payment-And-Billing §5R) | chủ gian hàng bấm gia hạn (`renewSubscriptionAction` truyền `actorId`); null khi script/test |
 | `SUBSCRIPTION_INVOICE_VOIDED` | SYSTEM (+`tenantId`) | `lib/subscription-billing.ts` `voidSubscriptionInvoice` (ADR-067, 2026-11-25, đã commit `2ccc2fc` ✅ code) — `targetType: "SubscriptionInvoice"`, metadata `{ code, provider, amountVnd, fromStatus, toStatus: "VOID", note? }`. Nhãn "Huỷ hoá đơn gói dịch vụ" | admin |
 | `SUBSCRIPTION_INVOICE_REOPENED` | SYSTEM (+`tenantId`) | `lib/subscription-billing.ts` `reopenSubscriptionInvoice` (ADR-067) — metadata `{ code, provider, amountVnd, fromStatus, toStatus: "PENDING", dueAt, periodStart, periodEnd, note? }`. Nhãn "Mở lại hoá đơn gói dịch vụ" | admin |
 | `PAYMENT_CONFIG_UPDATED` | SYSTEM | `lib/platform-payment.ts` (lưu cấu hình; kiểm tra kết nối thành công tự bật) — chỉ cờ thay đổi, không secret | admin |
@@ -209,7 +210,7 @@ Bảng chưa tồn tại → `{ status: "unavailable" }` (trang hiện thông b�
 `audit_logs` không có RLS — **mọi đường đọc audit đi qua `lib/audit-query.ts`** (BACKLOG). **Ngoại lệ** (Quốc chấp nhận 2026-11-25, KB-Audit §52 mục 2): trang chi tiết
 đơn hàng gói `/admin/subscriptions/[subscriptionId]` (ADR-069) đọc audit của **hoá đơn gói / yêu cầu hoàn tiền gói** của một gian hàng qua `getAdminSubscriptionDetail`
 (`lib/subscription-billing.ts`); hàm không tự kiểm quyền — **quyền do page guard** (`requireAdminAccess`, SYSTEM_ADMIN), cùng mẫu `listSubscriptions`/`listSubscriptionInvoices`;
-chỉ lấy `fromStatus`/`toStatus`/`note` ✅ code — [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5P.
+chỉ lấy `fromStatus`/`toStatus`/`note` ✅ code — [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5P. **Từ ADR-071 (2026-11-26, working tree)** nhật ký này đọc thêm khoá metadata `source`, `lateConfirmation`, `previousInvoiceStatus`, `receivedAmountVnd`, `transactionId` (để suy nguồn/số tiền/giao dịch), cùng `platform_payment_transactions` (5 trường trích, không `rawPayload`) và `email_send_log` (5 loại `subscription_invoice_*`) — vẫn L1, cùng ngoại lệ, quyền do page guard ✅ code — Payment-And-Billing §5R.
 
 ---
 

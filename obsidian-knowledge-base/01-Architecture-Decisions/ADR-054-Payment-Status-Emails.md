@@ -7,7 +7,7 @@ tags:
   - status/accepted
 date: 2026-11-25
 decider: vtphong91
-status: Accepted — đã code, verify đạt (Quốc báo), chưa commit; không migration
+status: Accepted — đã code, verify đạt (Quốc báo), đã commit dbf9984; không migration
 ---
 
 # 🏛️ ADR-054: Email thông báo thanh toán — thành công / hết hạn / sai số tiền / thất bại / bị huỷ
@@ -16,7 +16,7 @@ status: Accepted — đã code, verify đạt (Quốc báo), chưa commit; khôn
 **ĐÃ PHÊ DUYỆT (Accepted)** — tương ứng **ADR-070** trong [`docs/DECISIONS.md`](../../docs/DECISIONS.md) (chủ dự án chốt 2026-11-25). Bản trích ghi theo duyệt của Quốc
 (brief 2026-11-25). Đây là **đợt 1** trong kế hoạch 4 đợt ở `docs/PLAN.md` (§4 dưới).
 
-Tiến độ (đối chiếu 2026-11-25): code ở working tree, **chưa commit** ✅ `git status`. **Không migration**, **không thêm `route.ts`** (24 / 26 ✅ đếm). Không thêm test case —
+Tiến độ (đối chiếu 2026-11-25): **đã commit `dbf9984`** ✅ `git show --stat` (cập nhật 2026-11-26). **Không migration**, **không thêm `route.ts`** (24 / 26 ✅ đếm). Không thêm test case —
 `pnpm test:count` = **105/105 unit, 69/69 integration** ✅ (Long chạy). tsc 17/17, lint (chỉ cảnh báo cũ), unit, integration `order` + `subscription-billing` 17/17 🟡 (Quốc báo).
 
 Mức xác minh: ✅ Long đã đối chiếu code working tree · 🟡 theo `docs/DECISIONS.md`/brief · ❓ **chưa gửi thật** tới hộp thư nào, chưa chạy trên production.
@@ -64,7 +64,8 @@ MoMo API có kết quả thất bại/huỷ (`resultCode ≠ 0`).
 ---
 
 ## 4. Kế hoạch 4 đợt (chủ dự án chốt 2026-11-25 — `docs/PLAN.md`) 🟡
-1. **Đợt 1 — Email thông báo thanh toán** (ADR này) — đã code, chưa commit.
+1. **Đợt 1 — Email thông báo thanh toán** (ADR này) — đã commit `dbf9984`.
+   - Đợt 2 đã code, chưa commit (2026-11-26) — [[01-Architecture-Decisions/ADR-055-Subscription-Activity-Log-Detail-Gian-Hang-Label|ADR-055 KB (≙ ADR-071)]].
 2. **Đợt 2 — Nhật ký thao tác chi tiết** (nguồn/cổng thanh toán, số tiền, mã giao dịch, mốc tạo hoá đơn) + **đổi chữ "Tenant" → "Gian hàng"** trong System Center (chỉ chữ hiển
    thị; code/DB giữ `tenant`).
 3. **Đợt 3 — Trang chi tiết gian hàng** `/admin/tenants/[id]` (không đơn/khách của gian hàng — §7.9).

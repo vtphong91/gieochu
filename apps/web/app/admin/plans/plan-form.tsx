@@ -109,7 +109,7 @@ export function PlanForm({
         defaultOpen={expandAll}
         icon={<IconDatabase className="h-5 w-5" />}
         title="Giới hạn sử dụng"
-        description="Số liệu ở đây điều khiển giới hạn thật của tenant dùng gói này."
+        description="Số liệu ở đây điều khiển giới hạn thật của gian hàng dùng gói này."
         status={sectionStatus({ dirty: dirtyOf(LIMIT_FIELDS) })}
       >
         <div className="grid gap-4 sm:grid-cols-2">
@@ -125,12 +125,12 @@ export function PlanForm({
         defaultOpen={expandAll}
         icon={<IconTag className="h-5 w-5" />}
         title="Gói Free & tính năng"
-        description="Gán tự động cho tenant mới và các tính năng mở khoá theo gói."
+        description="Gán tự động cho gian hàng mới và các tính năng mở khoá theo gói."
         status={sectionStatus({ dirty: dirtyOf(FEATURE_FIELDS) })}
       >
 
         <div className="rounded-lg border bg-gray-50 px-3.5 py-3" style={{ borderColor: "#E5E7EB" }}>
-          <Toggle name="isFree" defaultChecked={initial.isFree} label="Gói Free — gán tự động cho tenant mới, không bao giờ hết hạn" />
+          <Toggle name="isFree" defaultChecked={initial.isFree} label="Gói Free — gán tự động cho gian hàng mới, không bao giờ hết hạn" />
           <p className="mt-1 pl-[52px] text-xs text-gray-500">Chỉ được 1 gói Free đang bật tại một thời điểm.</p>
         </div>
 

@@ -235,8 +235,9 @@ describe("M8 checkout and orders", () => {
     const farNow = new Date("2099-01-01T00:00:00.000Z");
     await withTenant(tenant.id, (tx) => tx.order.update({ where: { id: order.id }, data: { expiresAt: new Date("2099-01-01T12:00:00.000Z") } }));
     sendEmailNowSpy.mockClear();
-    expect(await runOrderPaymentReminders(farNow)).toBe(1);
-    expect(await runOrderPaymentReminders(farNow)).toBe(0);
+    // Chỉ quét tenant tạm của test (không chạm đơn thật trên DB dùng chung).
+    expect(await runOrderPaymentReminders(farNow, { tenantIds: [tenant.id] })).toBe(1);
+    expect(await runOrderPaymentReminders(farNow, { tenantIds: [tenant.id] })).toBe(0);
     expect(sentOf("order_payment_reminder")).toHaveLength(1);
     expect(sentOf("order_payment_reminder")[0]).toMatchObject({ to: buyer.email, subject: expect.stringContaining(order.code) });
 
@@ -738,8 +739,9 @@ describe("M8 checkout and orders", () => {
     const expiredEmails = (code: string) =>
       sendEmailNowSpy.mock.calls.map(([message]) => message).filter((message) => message.type === "order_expired_customer" && message.subject.includes(code));
 
-    await runOrderSweep();
-    await runOrderSweep(); // lần quét sau không chuyển lại → không gửi lại.
+    // Chỉ quét tenant tạm của test (không chuyển EXPIRED đơn thật trên DB dùng chung).
+    await runOrderSweep({ tenantIds: [tenant.id] });
+    await runOrderSweep({ tenantIds: [tenant.id] }); // lần quét sau không chuyển lại → không gửi lại.
     expect(expiredEmails(order.code)).toHaveLength(0);
     expect(expiredEmails(withMethod.code)).toHaveLength(1);
     expect(expiredEmails(withMethod.code)[0]).toMatchObject({ to: methodBuyer.email, subject: `Đơn hàng ${withMethod.code} đã hết hạn thanh toán` });

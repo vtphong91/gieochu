@@ -85,7 +85,7 @@ export function ResolveReportForm({
     }
     if (
       decision === "LOCK_TENANT" &&
-      !window.confirm(`Khoá gian hàng “${tenantName}”? Trang bán sẽ ngừng hiển thị và chủ gian hàng nhận email thông báo. Có thể mở khoá lại ở mục Tenant.`)
+      !window.confirm(`Khoá gian hàng “${tenantName}”? Trang bán sẽ ngừng hiển thị và chủ gian hàng nhận email thông báo. Có thể mở khoá lại ở mục Gian hàng.`)
     ) {
       return;
     }

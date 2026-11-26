@@ -68,8 +68,16 @@ export async function downgradeToFree(
  * actually happens). FREE-plan subscriptions are excluded from every query
  * below (`plan: { isFree: false }`) — Free never expires, so it never enters
  * GRACE and never needs a renewal reminder.
+ *
+ * `tenantIds` (tuỳ chọn) giới hạn mọi truy vấn chọn thuê bao/hoá đơn (và do đó email gửi kèm) trong các tenant này — dùng cho
+ * integration test để không đổi dữ liệu thật trên DB dùng chung (ADR-034); cron/worker luôn gọi không lọc.
  */
-export async function runSubscriptionSweep(): Promise<void> {
+export async function runSubscriptionSweep(options: { tenantIds?: readonly string[] } = {}): Promise<void> {
+  const tenantIds = options.tenantIds ? [...new Set(options.tenantIds)] : null;
+  if (tenantIds !== null && tenantIds.length === 0) return;
+  const filterTenants = tenantIds !== null;
+  const ids = tenantIds ?? [];
+  const tenantScope: Prisma.SubscriptionWhereInput = tenantIds !== null ? { tenantId: { in: tenantIds } } : {};
   const prisma = getPrismaClient();
   const now = new Date();
   // ADR-032: đọc lại mỗi lần chạy sweep (worker, ngoài React → không cache) — đổi ân hạn chỉ áp cho
@@ -78,7 +86,7 @@ export async function runSubscriptionSweep(): Promise<void> {
   const freePlan = await prisma.plan.findFirstOrThrow({ where: { isFree: true, isActive: true } });
 
   const graceExpiring = await prisma.subscription.findMany({
-    where: { status: "GRACE", graceEndsAt: { lt: now } },
+    where: { status: "GRACE", graceEndsAt: { lt: now }, ...tenantScope },
     include: { tenant: true },
   });
   for (const sub of graceExpiring) {
@@ -88,7 +96,7 @@ export async function runSubscriptionSweep(): Promise<void> {
   }
 
   const canceledEnding = await prisma.subscription.findMany({
-    where: { status: "CANCELED", currentPeriodEnd: { lt: now } },
+    where: { status: "CANCELED", currentPeriodEnd: { lt: now }, ...tenantScope },
     include: { tenant: true },
   });
   for (const sub of canceledEnding) {
@@ -98,7 +106,7 @@ export async function runSubscriptionSweep(): Promise<void> {
   }
 
   const periodEnding = await prisma.subscription.findMany({
-    where: { status: "ACTIVE", currentPeriodEnd: { lt: now }, plan: { isFree: false } },
+    where: { status: "ACTIVE", currentPeriodEnd: { lt: now }, plan: { isFree: false }, ...tenantScope },
     include: { tenant: true },
   });
   for (const sub of periodEnding) {
@@ -112,7 +120,7 @@ export async function runSubscriptionSweep(): Promise<void> {
   }
 
   const remindCandidates = await prisma.subscription.findMany({
-    where: { status: "ACTIVE", currentPeriodEnd: { gte: now }, plan: { isFree: false } },
+    where: { status: "ACTIVE", currentPeriodEnd: { gte: now }, plan: { isFree: false }, ...tenantScope },
     include: { tenant: true },
   });
   for (const sub of remindCandidates) {
@@ -137,6 +145,7 @@ export async function runSubscriptionSweep(): Promise<void> {
     UPDATE "subscription_invoices"
     SET "status" = 'EXPIRED'::"SubscriptionInvoiceStatus", "updatedAt" = ${now}
     WHERE "status" = 'PENDING'::"SubscriptionInvoiceStatus" AND "dueAt" < ${now}
+      AND (NOT ${filterTenants} OR "tenantId" = ANY(${ids}::text[]))
     RETURNING "id"
   `;
   for (const row of expired) {

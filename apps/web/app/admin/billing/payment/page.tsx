@@ -35,7 +35,7 @@ export default async function AdminBillingPaymentPage() {
     <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader
         title="Tài khoản thu phí SaaS"
-        subtitle={`Tài khoản ngân hàng của ${brand.name} dùng để thu phí gói dịch vụ từ các tenant — hoàn toàn khác với thanh toán khách hàng ↔ tenant (cấu hình riêng theo từng tenant).`}
+        subtitle={`Tài khoản ngân hàng của ${brand.name} dùng để thu phí gói dịch vụ từ các gian hàng — hoàn toàn khác với thanh toán khách hàng ↔ gian hàng (cấu hình riêng theo từng gian hàng).`}
       />
 
       {/* ADR-058 (task 1.11): mỗi cổng là một khối thu gọn (cổng đang bật mở sẵn) — xếp 1 cột để khối thu gọn không lệch

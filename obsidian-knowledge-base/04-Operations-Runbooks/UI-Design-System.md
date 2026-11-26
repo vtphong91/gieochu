@@ -5,7 +5,7 @@ tags:
   - design-system
   - status/living
 date: 2026-05-24
-updated: 2026-11-25
+updated: 2026-11-26
 author: System Architect
 ---
 
@@ -2648,6 +2648,42 @@ Quyết định thiết kế của Phong qua brief Quốc 2026-11-25. Nghiệp v
        `sr-only` " chuyển sang ") · ghi chú trong khung viền trái, `whitespace-pre-line` (tiền tố `sr-only` "Ghi chú: "). Rỗng → `EmptyState`.
   - `loading.tsx`: khung xương cùng bố cục, `aria-busy`, `role="status"` `sr-only`, `motion-reduce:animate-none`.
 * ❓ **Ô vuông xanh ở cột "Thao tác"** — chưa tái hiện được; nhánh "—" ở `/admin/subscriptions` đã bỏ — chờ chủ dự án xác nhận sau deploy (KB-Audit §52).
+* *Từ ADR-071 (§27.9):* phần "Nhật ký thao tác" dùng component `SubscriptionActivityLog` (dòng nhật ký chi tiết).
+
+### 27.9. Dòng nhật ký chi tiết — `SubscriptionActivityLog` (ADR-071 đợt 2) ✅ đọc code 2026-11-26 (working tree, chưa commit) / ❓ trình duyệt, 375px
+
+Quyết định thiết kế của Phong (contract dòng theo đề xuất Phong — ADR-071 Bổ sung) qua brief Quốc 2026-11-26. File `app/admin/subscriptions/[subscriptionId]/_ui/activity-log.tsx`
+(Server Component thuần). Nghiệp vụ: [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5R.
+
+* **Pattern dòng nhật ký chi tiết** (`<ol>` chia dòng `divide-y`, khung `rounded-2xl`): mỗi `<li>` = cột **thời gian** `<time dateTime>` (từ `sm` rộng 9rem bên trái; dưới `sm` dòng
+  riêng phía trên) + cột **nội dung** theo thứ tự cố định:
+  1. Ô icon trang trí (`aria-hidden`, nền `surface`) theo `kind` — tạo hoá đơn `IconReceipt`, thanh toán `IconCard`, huỷ `IconXCircle`, mở lại `IconRefresh`, email `IconMail`,
+     khác `IconClock` · **tiêu đề** đậm · badge nguồn thanh toán (tone `info` khi tự động, `neutral` khi quản trị viên) · badge `warning` "Xác nhận trễ" · badge `danger` "Gửi
+     thất bại".
+  2. **Người làm:** "{họ tên/email} · Quản trị viên | Chủ gian hàng"; không actor → "Tự động"; dòng suy ra → *"Không rõ người tạo"* (nghiêng).
+  3. **Hoá đơn:** mã (mono) · số tiền · cổng (+ "gói {tên}" ở dòng tạo hoá đơn); `sr-only` "Hoá đơn ".
+  4. **Đã nhận / chênh** (chỉ khi chênh ≠ 0): "Đã nhận {x} · thừa|thiếu {y}" màu amber-800 `#92400E` (≥ 4.5:1) — luôn có chữ, không chỉ màu.
+  5. **Trạng thái** "cũ → mới" (mũi tên `aria-hidden`, `sr-only` "Trạng thái hoá đơn: " / " chuyển sang ").
+  6. **Khối giao dịch ngân hàng** (`max-w-xl`, nền xám nhạt): tiêu đề "Giao dịch [i/n] {cổng}" + `dl` Mã giao dịch (`#…`, mono) / Thời điểm / Số tiền / Nội dung (“…”, mono);
+     trống → "Không có"/"Không rõ". ≥ 2 giao dịch → cảnh báo đỏ `IconAlertTriangle` "Nhiều giao dịch khớp cùng hoá đơn — kiểm tra trả trùng."
+  7. **Ghi chú** khung viền trái, `whitespace-pre-line`, `sr-only` "Ghi chú: ".
+  Chuỗi dài (mã, nội dung CK, ghi chú) `[overflow-wrap:anywhere]` — mục tiêu không cuộn ngang ở 375px ❓ chưa đo.
+* **Tiêu đề theo `kind`:** "Tạo hoá đơn gói dịch vụ", "Thanh toán hoá đơn gói", "Huỷ hoá đơn gói", "Mở lại hoá đơn gói"; `OTHER` dùng nhãn audit.
+* **Bảng nhãn nguồn thanh toán:**
+
+  | `paymentSource` | Nhãn | Tone |
+  | :-- | :-- | :-- |
+  | `AUTO_SEPAY` | Tự động qua SePay | `info` |
+  | `AUTO_MOMO` | Tự động qua MoMo | `info` |
+  | `AUTO_OTHER` | Tự động qua cổng thanh toán | `info` |
+  | `ADMIN_MANUAL` | Quản trị viên xác nhận tay | `neutral` |
+  | `ADMIN_FROM_TRANSACTION` | Quản trị viên xác nhận từ giao dịch | `neutral` |
+
+  Quy ước chữ: **"Quản trị viên"**, không "Admin" (ADR-071 Bổ sung).
+* **Tên 5 email** (tiêu đề dòng "Đã gửi email “{tên}” [tới …]" / "Gửi email “{tên}” [tới …] không thành công"): "Thanh toán thành công", "Hết hạn thanh toán", "Số tiền không khớp",
+  "Thanh toán chưa thành công", "Huỷ hoá đơn".
+* **Quy ước che email người nhận:** người nhận = email chủ gian hàng **hiện tại** → ghi "tới chủ gian hàng", không hiện địa chỉ; khác → "tới `ng•••@domain`" (2 ký tự đầu + `•••` +
+  phần `@…`) kèm dòng phụ "Người nhận không phải email chủ gian hàng hiện tại.". Không bao giờ hiện đầy đủ địa chỉ khác chủ.
 
 ---
 
@@ -2681,7 +2717,7 @@ Quyết định thiết kế của Phong qua brief Quốc 2026-11-25. Nghiệp v
 * `apps/web/app/_ui/{nav-link,nav-dropdown,mobile-nav,site-header,site-footer}.tsx` (§1.1.1), `apps/web/app/_home-sections.tsx` (§12.9), `apps/web/app/admin/cms/{menu,phap-ly}/*` (§13.7), `apps/web/app/phap-ly/[slug]/{page.tsx,_ui/legal-toc.ts}` (§22) · [[02-System-Specs/System-Cms-Menu-Home-Seo-Specs|System-Cms-Menu-Home-Seo-Specs]] · [[02-System-Specs/Legal-Documents-Specs|Legal-Documents-Specs]] · [[01-Architecture-Decisions/ADR-035-Menu-Home-Seo-Versioned-Terms|ADR-035 (≙ ADR-050)]]
 * `apps/web/app/admin/_ui/{kit,billing-labels,icons}.ts(x)`, `apps/web/app/admin/billing/invoices/page.tsx`, `apps/web/app/admin/subscriptions/page.tsx`, `apps/web/app/_ui/bank-transfer-panel.tsx`, `apps/web/app/[tenantSlug]/checkout/[orderCode]/{page,coupon-panel}.tsx`, `apps/web/app/studio/[tenantSlug]/billing/page.tsx` (§24) · [[01-Architecture-Decisions/ADR-041-System-Center-Subscription-Invoices-Bank-Transfer-Qr|ADR-041 (≙ ADR-056)]]
 * `apps/web/app/admin/_ui/{module-tabs,collapsible-section,unsaved-changes,in-page-tabs}.tsx`, `apps/web/app/admin/_ui/{nav-match,use-form-draft}.ts`, `apps/web/app/admin/cms/_ui/cms-tabs.ts`, `apps/web/app/admin/settings/_ui/settings-tabs.ts`, `apps/web/app/admin/_ui/sidebar-nav.tsx` (`match`), `apps/web/app/admin/layout.tsx`, `apps/web/app/studio/[tenantSlug]/layout.tsx` (Provider), `apps/web/app/studio/page.tsx` (Provider onboarding), `apps/web/app/studio/[tenantSlug]/settings/_ui/settings-tabs.ts`, `apps/web/app/studio/[tenantSlug]/{settings,settings/payments,products/_ui,products/[productId]/share-links,posts/_ui,storefront,coupons}/*` (GĐ 2), `docs/ke-hoach-toi-uu-layout-tab-accordion-2026-10-25.md` (§5 quy tắc full width, §11.1, §25) · [[01-Architecture-Decisions/ADR-043-Module-Tabs-Accordion-Unsaved-Guard|ADR-043 (≙ ADR-058)]] · [[01-Architecture-Decisions/ADR-042-Legal-Drafts-Import-Preview-Draft-Release|ADR-042 (≙ ADR-057)]] (§13.7)
-* `apps/web/app/admin/billing/invoices/confirm-button.tsx`, `apps/web/app/admin/_ui/secret-key-field.tsx`, `apps/web/app/admin/billing/payment/sepay-form.tsx`, `apps/web/app/studio/[tenantSlug]/settings/payments/sepay-form.tsx`, `apps/web/lib/sepay-setup.ts`, `apps/web/app/admin/subscriptions/page.tsx` (§27) · [[01-Architecture-Decisions/ADR-049-Sepay-Numeric-Payment-Code-Shared|ADR-049 (≙ ADR-065)]] · [[01-Architecture-Decisions/ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider|ADR-050 (≙ ADR-066)]] · [[01-Architecture-Decisions/ADR-051-Subscription-Invoice-Status-Change-Void-Reopen|ADR-051 (≙ ADR-067)]] (§27.7) · `apps/web/app/admin/subscriptions/[subscriptionId]/{page,loading}.tsx` (§27.8) · [[01-Architecture-Decisions/ADR-053-Admin-Subscription-Detail-Row-Menu|ADR-053 (≙ ADR-069)]]
+* `apps/web/app/admin/billing/invoices/confirm-button.tsx`, `apps/web/app/admin/_ui/secret-key-field.tsx`, `apps/web/app/admin/billing/payment/sepay-form.tsx`, `apps/web/app/studio/[tenantSlug]/settings/payments/sepay-form.tsx`, `apps/web/lib/sepay-setup.ts`, `apps/web/app/admin/subscriptions/page.tsx` (§27) · [[01-Architecture-Decisions/ADR-049-Sepay-Numeric-Payment-Code-Shared|ADR-049 (≙ ADR-065)]] · [[01-Architecture-Decisions/ADR-050-Admin-Manual-Confirm-Invoice-Any-Provider|ADR-050 (≙ ADR-066)]] · [[01-Architecture-Decisions/ADR-051-Subscription-Invoice-Status-Change-Void-Reopen|ADR-051 (≙ ADR-067)]] (§27.7) · `apps/web/app/admin/subscriptions/[subscriptionId]/{page,loading}.tsx` (§27.8) · [[01-Architecture-Decisions/ADR-053-Admin-Subscription-Detail-Row-Menu|ADR-053 (≙ ADR-069)]] · `apps/web/app/admin/subscriptions/[subscriptionId]/_ui/activity-log.tsx` (§27.9) · [[01-Architecture-Decisions/ADR-055-Subscription-Activity-Log-Detail-Gian-Hang-Label|ADR-055 (≙ ADR-071)]]
 * `apps/web/app/studio/[tenantSlug]/orders/_ui/{order-status-dialog,order-row-actions,order-list}.tsx`, `apps/web/app/studio/[tenantSlug]/orders/[orderId]/{page,order-status-actions}.tsx` (§20.9) · [[01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-Reopen-Late-Confirm|ADR-052 (≙ ADR-068)]]
 * [[04-Operations-Runbooks/README|Quay lại danh mục Operations Runbooks]]
 

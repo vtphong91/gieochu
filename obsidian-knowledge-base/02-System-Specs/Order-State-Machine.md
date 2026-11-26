@@ -389,7 +389,7 @@ Quyết định: [[01-Architecture-Decisions/ADR-052-Studio-Order-Status-Change-
   `customerPaymentEmailed*` không reset — xem [[00-Index/KB-Audit-2026-09-26|KB-Audit]] §51.
 - **Test:** không thêm case — mở rộng `order.test.ts` (10/10 🟡 Quốc báo) và `state.test.ts`; `pnpm test:count` 105/69 ✅.
 
-### 3.15. Email cho khách khi đơn hết hạn / sai số tiền / MoMo thất bại / người bán huỷ (ADR-070) — working tree, chưa commit ✅ đọc code 2026-11-25
+### 3.15. Email cho khách khi đơn hết hạn / sai số tiền / MoMo thất bại / người bán huỷ (ADR-070) — đã commit `dbf9984` ✅ đọc code 2026-11-25
 
 Bảng đầy đủ + nội dung: [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5Q (B1–B5). Điểm gắn với máy trạng thái ✅ code:
 - **B2 hết hạn:** `runOrderSweep` nay chuyển **có điều kiện từng đơn** (`updateMany where status = PENDING AND expiresAt < now`), trả số đơn thật sự chuyển; sau commit gửi

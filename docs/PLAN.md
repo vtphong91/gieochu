@@ -1309,7 +1309,8 @@ Checklist pháp lý: `docs/legal/LEGAL_REVIEW_CHECKLIST.md`.
      mốc **"Tạo hoá đơn"** = audit mới `SUBSCRIPTION_INVOICE_CREATED` (ai tạo, gói, cổng, số tiền) + suy ra từ `createdAt` cho hoá đơn cũ
      ("không rõ người tạo"); dòng **email đã gửi** (từ `email_send_log`, chỉ email hoá đơn gói/nhắc hạn). Không migration, không thêm test
      case, chỉ dữ liệu L1 (§7.9).
-3. **Đợt 3 — Trang chi tiết gian hàng** `/admin/tenants/[id]` (thông tin, chủ, gói hiện tại → chi tiết đơn hàng gói, dung lượng, số tài
+3. **Đợt 3 — Trang chi tiết gian hàng** — **kế hoạch chi tiết đã chốt 2026-11-26 (ADR-072), chưa code:**
+   [`docs/ke-hoach-dot-3-chi-tiet-gian-hang-2026-11-26.md`](ke-hoach-dot-3-chi-tiet-gian-hang-2026-11-26.md). Phạm vi gốc: `/admin/tenants/[id]` (thông tin, chủ, gói hiện tại → chi tiết đơn hàng gói, dung lượng, số tài
    liệu, số liệu tổng hợp, báo cáo vi phạm, nhật ký admin; không đơn/khách của gian hàng — §7.9).
 4. **Đợt 4 — Trang chi tiết người dùng** `/admin/users/[id]` (hồ sơ, bảo mật/phiên, gian hàng sở hữu, điều khoản đã đồng ý, nhật ký; không
    đơn mua/thư viện — §7.9).

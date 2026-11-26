@@ -144,7 +144,7 @@ File: `apps/web/app/api/cron/daily/route.ts` ✅. Contract đầy đủ: [[03-AP
 - **Các bước** — chạy tuần tự, **mỗi bước cô lập** (bước lỗi không làm bỏ bước sau) ✅:
   1. `subscriptionSweep` — `runSubscriptionSweep()` trực tiếp;
   2. `orderSweep` — `runOrderSweep()` trực tiếp, kết quả `{ expired: <số đơn chuyển EXPIRED> }`;
-     *Từ ADR-070 (2026-11-25, working tree) ✅ code:* bước 1 gửi `subscription_invoice_expired` cho mỗi hoá đơn gói **do lần sweep đó** chuyển PENDING → EXPIRED (`UPDATE …
+     *Từ ADR-070 (2026-11-25, đã commit `dbf9984`) ✅ code:* bước 1 gửi `subscription_invoice_expired` cho mỗi hoá đơn gói **do lần sweep đó** chuyển PENDING → EXPIRED (`UPDATE …
      RETURNING`); bước 2 gửi `order_expired_customer` cho đơn **có `provider`** do lần sweep đó chuyển (cập nhật có điều kiện). Email gửi tuần tự trong request cron, lỗi chỉ log —
      [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5Q. Lần cron đầu sau deploy có thể gửi một loạt email cho dữ liệu quá hạn tồn đọng (KB-Audit §53);
   2a. `orderReminders` *(thêm ở ADR-061 Q7, đợt 1 2026-10-27 — chưa commit — bước `order.payment_reminders`)* — `runOrderPaymentReminders()` (`lib/order-customer.ts`):

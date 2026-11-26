@@ -1906,12 +1906,17 @@ export async function getOrderDetailView(tenantId: string, orderId: string, view
  * `markOrderPaid()`. ADR-036: runs once a day from `/api/cron/daily` — it only syncs the stored status; every
  * read/payment path already treats an overdue PENDING order as EXPIRED (`effectiveOrderStatus`). Returns the
  * number of orders expired.
+ *
+ * `tenantIds` (tuỳ chọn) — chỉ quét đơn (và gửi email) của các tenant này (integration test, ADR-034 DB dùng chung).
+ * Bỏ trống = mọi tenant (cron).
  */
-export async function runOrderSweep(): Promise<number> {
+export async function runOrderSweep(options: { tenantIds?: readonly string[] } = {}): Promise<number> {
+  const tenantIds = options.tenantIds ? [...new Set(options.tenantIds)] : null;
+  if (tenantIds !== null && tenantIds.length === 0) return 0;
   const now = new Date();
   const expired = await withSystemJob(async (tx) => {
     const expiring = await tx.order.findMany({
-      where: { status: "PENDING", expiresAt: { lt: now } },
+      where: { status: "PENDING", expiresAt: { lt: now }, ...(tenantIds !== null ? { tenantId: { in: tenantIds } } : {}) },
       select: { id: true, tenantId: true, status: true, provider: true },
     });
     const transitioned: { id: string; tenantId: string; provider: PaymentProviderId | null }[] = [];

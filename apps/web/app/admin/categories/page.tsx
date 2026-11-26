@@ -24,7 +24,7 @@ export default async function AdminCategoriesListPage({
     <div className="px-5 py-8 lg:px-8">
       <AdminPageHeader
         title="Danh mục tài liệu"
-        subtitle="Danh mục do System Admin tạo trước — tenant sẽ gán sản phẩm vào các danh mục này (module sau)."
+        subtitle="Danh mục do System Admin tạo trước — gian hàng sẽ gán sản phẩm vào các danh mục này (module sau)."
         action={
           <Link href="/admin/categories/new">
             <PrimaryButton type="button">

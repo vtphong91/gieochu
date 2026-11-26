@@ -1802,3 +1802,24 @@
      `createdAt` "không rõ người tạo"; dòng email đã gửi từ `email_send_log` (email hoá đơn gói + nhắc hạn/ân hạn/hạ gói của gian hàng).
   3. Không migration; không thêm test case; chỉ dữ liệu L1 + audit + nhật ký email (§7.9).
 - **Kế hoạch chi tiết:** `docs/ke-hoach-dot-2-nhat-ky-chi-tiet-va-ten-gian-hang-2026-11-25.md`.
+- **Bổ sung (chủ dự án chốt 2026-11-26):** dòng "Đã gửi email" chỉ gồm **5 email hoá đơn gói** (`subscription_invoice_*` — ghép chính xác
+  theo mã hoá đơn trong tiêu đề); **bỏ** email nhắc hạn/ân hạn/hạ gói vì `email_send_log` không có cột gắn gian hàng (ghép gián tiếp dễ
+  sót). Nhãn nguồn dùng "Quản trị viên" (không "Admin"). Contract dòng nhật ký theo đề xuất của Phong (enum `kind`, `paymentSource`,
+  `bankTransactions`…; không trả `rawPayload`; người nhận email chỉ hiện dạng che khi khác email chủ hiện tại).
+
+## ADR-072 — Đợt 3: Trang chi tiết gian hàng (System Center) + khoá/mở khoá có lý do
+
+- **Bối cảnh (2026-11-26):** `/admin/tenants` chỉ có danh sách (cột GMV ghi cứng "Cần M12" dù `tenant_daily_stats` đã được cron tính) và
+  menu Khoá/Mở khoá chạy ngay khi bấm, không lý do, không báo chủ gian hàng. Chưa có trang chi tiết gian hàng.
+- **Chủ dự án chốt:** trang chi tiết gồm Thông tin + chủ gian hàng, Gói dịch vụ, Số liệu kinh doanh, Nội dung & lưu trữ, Vi phạm & nhật ký;
+  khoá/mở khoá có hộp xác nhận + **lý do bắt buộc** + **email báo chủ gian hàng**; cột GMV ở danh sách = GMV 30 ngày từ số liệu có sẵn;
+  hiện **tên** các cổng thanh toán gian hàng đang bật (không số tài khoản/secret).
+- **Quyết định:**
+  1. Trang `/admin/tenants/[tenantId]` (System Admin). Dữ liệu: L1 (tenant, chủ, thuê bao/gói, audit), `tenant_daily_stats` (tổng hợp), số
+     đếm tài liệu theo trạng thái, báo cáo vi phạm + hoàn tiền quá hạn của gian hàng. **Không** đọc đơn hàng/khách hàng của gian hàng (§7.9).
+  2. **Ngoại lệ đọc L2 có giới hạn:** System Center được đọc `tenant_payment_configs` **chỉ** cột `provider` + `isEnabled` (qua `withSystemJob`)
+     để hiện tên cổng đang bật — không đọc `publicConfig`, `encryptedSecrets`.
+  3. Khoá/Mở khoá (danh sách + trang chi tiết): hộp `<dialog>` xác nhận, lý do bắt buộc (≤ 500 ký tự, lưu metadata audit
+     `TENANT_LOCKED`/`TENANT_UNLOCKED`), email báo chủ gian hàng sau commit (không chứa ghi chú nội bộ khác), một email mỗi lần đổi.
+  4. Danh sách: cột GMV = tổng `gmvVnd` 30 ngày gần nhất (giờ VN) + menu "⋯" thêm "Xem chi tiết".
+  5. Không migration. Kế hoạch chi tiết: `docs/ke-hoach-dot-3-chi-tiet-gian-hang-2026-11-26.md`.

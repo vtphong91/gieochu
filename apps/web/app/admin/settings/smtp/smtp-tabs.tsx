@@ -395,7 +395,7 @@ function HistoryTab({ log }: { log: EmailLogRow[] }) {
           Chưa có email nào được gửi
         </p>
         <p className="mx-auto mt-1 max-w-sm text-sm text-gray-500">
-          Lịch sử chỉ ghi lại email cấp hệ thống (xác thực, reset mật khẩu, billing...) — không bao gồm email gửi tới khách hàng của tenant.
+          Lịch sử chỉ ghi lại email cấp hệ thống (xác thực, reset mật khẩu, billing...) — không bao gồm email gửi tới khách hàng của gian hàng.
         </p>
       </div>
     );
@@ -403,7 +403,7 @@ function HistoryTab({ log }: { log: EmailLogRow[] }) {
 
   return (
     <div>
-      <p className="mb-3 text-sm text-gray-500">50 email gần nhất — chỉ email cấp hệ thống, không gồm email gửi tới khách hàng của tenant.</p>
+      <p className="mb-3 text-sm text-gray-500">50 email gần nhất — chỉ email cấp hệ thống, không gồm email gửi tới khách hàng của gian hàng.</p>
       <div className="overflow-hidden rounded-2xl border bg-white" style={{ borderColor: "#E5E7EB" }}>
         <table className="w-full text-left text-sm">
           <thead>

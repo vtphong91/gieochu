@@ -4,7 +4,7 @@ tags:
   - index
   - taxonomy
 date: 2026-09-26
-updated: 2026-11-24
+updated: 2026-11-26
 author: System Architect
 ---
 
@@ -35,7 +35,7 @@ giúp phân loại nội dung và tra cứu nhanh cho người và AI agent đ�
 
 | Thẻ | Phạm vi nghiệp vụ áp dụng |
 | :--- | :--- |
-| `#tenant` | Tenant workspace, storefront, onboarding, slug, branding |
+| `#tenant` | **Gian hàng** (= tenant, tầng dữ liệu L2): workspace, storefront, onboarding, slug, branding. Từ ADR-071 (2026-11-26) giao diện System Center chỉ ghi "Gian hàng" (trang Vai trò ghi "Gian hàng (tenant)"); URL `/admin/tenants`, tên trong code/DB và thẻ `#tenant` giữ nguyên |
 | `#billing` | Subscription, plan, hoá đơn, mô hình Free Forever + Paid (M3 v2); lịch sử hoá đơn gói + trang "Đơn hàng gói dịch vụ" ở System Center (ADR-056) |
 | `#payment` | Cổng thanh toán Platform và Tenant (SePay/MoMo/VietQR QR thủ công), webhook, mã hoá secret; khối chuyển khoản tải QR + sao chép `BankTransferPanel` (ADR-056); email báo xác nhận tay, giao dịch cổng, tiền tố SePay, chạy thử SePay (ADR-059, `SePay-Live-Test-Runbook`); MoMo cá nhân `MOMO_MANUAL` (ADR-059 bổ sung lần 3, `MoMo-Manual-Verification-Runbook`); mã thanh toán SePay tiền tố + 8 chữ số, `orders.paymentRef`, key webhook ngẫu nhiên, API Token + "Kiểm tra kết nối" SePay (ADR-065); xác nhận tay hoá đơn gói mọi cổng (ADR-066) |
 | `#order` | Checkout, vòng đời đơn hàng, khuyến mãi/coupon; trang Đơn hàng Studio — danh sách + chi tiết (ADR-046), tìm không dấu + ghi chú nội bộ `order_notes` (ADR-047, `Studio-Orders-Specs`) |

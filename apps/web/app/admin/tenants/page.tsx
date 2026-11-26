@@ -48,11 +48,11 @@ export default async function AdminTenantsPage({
   return (
     // Wrapper <div>: layout admin đã có <main>.
     <div className="px-5 py-8 lg:px-8">
-      <AdminPageHeader title="Tenant" subtitle="Không có màn hình đơn hàng/khách hàng của tenant (§4.2) — chỉ số liệu tổng hợp." />
+      <AdminPageHeader title="Gian hàng" subtitle="Không có màn hình đơn hàng/khách hàng của gian hàng (§4.2) — chỉ số liệu tổng hợp." />
 
       <div className="mt-6">
         {tenants.length === 0 ? (
-          <EmptyState icon={<IconLayers className="h-6 w-6" />} title="Chưa có tenant nào" />
+          <EmptyState icon={<IconLayers className="h-6 w-6" />} title="Chưa có gian hàng nào" />
         ) : (
           <>
             <DataTable head={["Trang", "Gói hiện tại", "Trạng thái", "Dung lượng đã dùng", "Số sản phẩm", "GMV", ""]}>
@@ -78,13 +78,13 @@ export default async function AdminTenantsPage({
                       {tenant.status === "LOCKED" ? (
                         <form action={unlockTenantAction.bind(null, tenant.id)}>
                           <MenuItemButton tone="success" icon={<IconUnlock />}>
-                            Mở khoá tenant
+                            Mở khoá gian hàng
                           </MenuItemButton>
                         </form>
                       ) : (
                         <form action={lockTenantAction.bind(null, tenant.id)}>
                           <MenuItemButton tone="danger" icon={<IconLock />}>
-                            Khoá tenant
+                            Khoá gian hàng
                           </MenuItemButton>
                         </form>
                       )}

@@ -96,6 +96,8 @@ export interface CreateRenewalInvoiceOptions {
    * Bỏ trống → không gửi (test, script).
    */
   scheduleNotification?: ScheduleAfterResponse;
+  /** ADR-071: người bấm gia hạn (ghi vào audit `SUBSCRIPTION_INVOICE_CREATED`). Bỏ trống → null (script/test). */
+  actorId?: string | null;
 }
 
 /**
@@ -184,6 +186,18 @@ export async function createRenewalInvoice(tenantId: string, input: CreateRenewa
     });
     return { invoice: row, created: true };
   });
+  if (created) {
+    // ADR-071 (2A): mốc "Tạo hoá đơn" — CHỈ khi lần này thật sự tạo (dùng lại hoá đơn chờ cũ → không ghi). Sau commit (ADR-037).
+    await audit.log({
+      actorId: options.actorId ?? null,
+      scope: "SYSTEM",
+      tenantId,
+      action: "SUBSCRIPTION_INVOICE_CREATED",
+      targetType: "SubscriptionInvoice",
+      targetId: invoice.id,
+      metadata: { code: invoice.code, planId: invoice.planId, provider: invoice.provider, amountVnd: invoice.amountVnd },
+    });
+  }
   if (created && isManualConfirmProvider(invoice.provider) && options.scheduleNotification) {
     options.scheduleNotification(() => notifyAdminOfPendingManualInvoice(invoice.id));
   }
@@ -867,7 +881,31 @@ export async function listSubscriptions(input: ListSubscriptionsInput) {
   return { items, total, page, pageSize };
 }
 
-// ───────────────────────── ADR-069: chi tiết đơn hàng gói (System Center) ─────────────────────────
+// ───────────────────────── ADR-069 + ADR-071 (2A): chi tiết đơn hàng gói (System Center) ─────────────────────────
+
+export type SubscriptionActivityKind = "INVOICE_CREATED" | "PAYMENT" | "INVOICE_VOIDED" | "INVOICE_REOPENED" | "EMAIL" | "OTHER";
+export type SubscriptionPaymentSource = "AUTO_SEPAY" | "AUTO_MOMO" | "AUTO_OTHER" | "ADMIN_MANUAL" | "ADMIN_FROM_TRANSACTION";
+export type SubscriptionEmailKind = "INVOICE_PAID" | "INVOICE_EXPIRED" | "INVOICE_AMOUNT_MISMATCH" | "INVOICE_PAYMENT_FAILED" | "INVOICE_VOIDED";
+export interface AdminSubscriptionActivityEntry {
+  id: string;                       // id audit | "created:{invoiceId}" (suy ra) | "email:{logId}"
+  kind: SubscriptionActivityKind;
+  action: string | null;            // mã audit gốc; null với dòng suy ra/email
+  actionLabel: string;              // auditActionLabel — UI dùng cho OTHER
+  createdAt: Date;
+  inferred: boolean;                // dòng tạo hoá đơn suy ra từ invoice.createdAt
+  actor: { label: string; role: "SYSTEM_ADMIN" | "TENANT_OWNER" | "OTHER" } | null; // null = tự động / không rõ
+  invoice: { code: string; amountVnd: number; provider: PaymentProviderId } | null;
+  planName: string | null;          // chỉ INVOICE_CREATED
+  paymentSource: SubscriptionPaymentSource | null;   // chỉ PAYMENT
+  lateConfirmation: boolean;
+  receivedVnd: number | null;       // receivedAmountVnd (từ giao dịch) hoặc tổng GD khớp (webhook); null nếu không biết
+  differenceVnd: number | null;     // receivedVnd − invoice.amountVnd
+  bankTransactions: Array<{ provider: PaymentProviderId; reference: string | null; occurredAt: Date | null; contentExcerpt: string | null; amountVnd: number }>; // chỉ PAYMENT; [] nếu không có
+  fromStatus: string | null;        // PAYMENT luôn có: suy ra PENDING, EXPIRED khi xác nhận trễ
+  toStatus: string | null;
+  note: string | null;
+  email: { kind: SubscriptionEmailKind; status: "SENT" | "FAILED"; recipientIsCurrentOwner: boolean; recipientMasked: string | null } | null; // chỉ EMAIL
+}
 
 export interface AdminSubscriptionDetail {
   id: string; status: DbSubscriptionStatus; currentPeriodStart: Date; currentPeriodEnd: Date; graceEndsAt: Date | null;
@@ -875,26 +913,114 @@ export interface AdminSubscriptionDetail {
   tenant: { id: string; name: string; slug: string; status: string };
   invoices: Array<{ id: string; code: string; status: DbInvoiceStatus; provider: DbPaymentProviderId; amountVnd: number;
     periodStart: Date; periodEnd: Date; createdAt: Date; dueAt: Date; paidAt: Date | null; statusTargets: InvoiceStatusTarget[] }>;
-  activity: Array<{ id: string; action: string; actionLabel: string; createdAt: Date; actorLabel: string | null;
-    invoiceCode: string | null; fromStatus: string | null; toStatus: string | null; note: string | null }>;
+  activity: AdminSubscriptionActivityEntry[];
 }
 
 /** Trần số dòng đọc cho trang chi tiết (an toàn hiệu năng — một gian hàng thực tế có vài chục hoá đơn). */
 const ADMIN_DETAIL_INVOICE_LIMIT = 500;
 const ADMIN_DETAIL_ACTIVITY_LIMIT = 100;
+const BANK_CONTENT_EXCERPT_MAX = 80;
+
+/** ADR-070/071: loại email hoá đơn gói (ghi EmailSendLog) → loại hiển thị trong nhật ký. Email nhắc hạn/ân hạn KHÔNG đưa vào. */
+const INVOICE_EMAIL_KIND_BY_TYPE: Record<string, SubscriptionEmailKind> = {
+  subscription_invoice_paid: "INVOICE_PAID",
+  subscription_invoice_expired: "INVOICE_EXPIRED",
+  subscription_invoice_amount_mismatch: "INVOICE_AMOUNT_MISMATCH",
+  subscription_invoice_payment_failed: "INVOICE_PAYMENT_FAILED",
+  subscription_invoice_voided: "INVOICE_VOIDED",
+};
+
+const ACTIVITY_KIND_BY_ACTION: Record<string, SubscriptionActivityKind> = {
+  SUBSCRIPTION_INVOICE_CREATED: "INVOICE_CREATED",
+  SUBSCRIPTION_PAID: "PAYMENT",
+  SUBSCRIPTION_INVOICE_VOIDED: "INVOICE_VOIDED",
+  SUBSCRIPTION_INVOICE_REOPENED: "INVOICE_REOPENED",
+};
 
 function metadataString(meta: Record<string, unknown>, key: string): string | null {
   const value = meta[key];
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
+function metadataNumber(meta: Record<string, unknown>, key: string): number | null {
+  const value = meta[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+/** ADR-071: nguồn thanh toán từ `metadata.source` + cổng của hoá đơn. */
+function paymentSourceOf(source: string | null, provider: PaymentProviderId | null): SubscriptionPaymentSource {
+  if (source === "ADMIN_MANUAL_CONFIRM") return "ADMIN_MANUAL";
+  if (source === "ADMIN_TRANSACTION_CONFIRM") return "ADMIN_FROM_TRANSACTION";
+  if (provider === "SEPAY") return "AUTO_SEPAY";
+  if (provider === "MOMO") return "AUTO_MOMO";
+  return "AUTO_OTHER";
+}
+
+/** Email người nhận khác chủ hiện tại → che dạng "ng•••@gmail.com" (không lộ đầy đủ). */
+function maskRecipient(email: string): string {
+  const at = email.lastIndexOf("@");
+  if (at <= 0) return "•••";
+  return `${email.slice(0, Math.min(2, at))}•••${email.slice(at)}`;
+}
+
+/** SePay `transactionDate` "YYYY-MM-DD HH:mm:ss" là giờ Việt Nam → UTC (+07:00). Sai định dạng → null. */
+function parseSepayTransactionDate(value: unknown): Date | null {
+  if (typeof value !== "string") return null;
+  const match = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}(?::\d{2})?)$/.exec(value.trim());
+  if (!match) return null;
+  const date = new Date(`${match[1]}T${match[2]}+07:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function contentExcerpt(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const line = value.replace(/\s+/g, " ").trim();
+  if (!line) return null;
+  return line.length > BANK_CONTENT_EXCERPT_MAX ? `${line.slice(0, BANK_CONTENT_EXCERPT_MAX)}…` : line;
+}
+
 /**
- * ADR-069 — dữ liệu trang `/admin/subscriptions/[subscriptionId]`. TIỀN ĐIỀU KIỆN: nơi gọi đã `requireRole("SYSTEM_ADMIN")`.
- * Chỉ bảng L1 (subscriptions, plans, tenants, subscription_invoices, subscription_refund_requests — chỉ id, users — tên/email
- * người làm) + `audit_logs` (L1, không RLS — đọc bằng getPrismaClient như `lib/audit-query.ts`) giới hạn ĐÚNG mục tiêu là hoá đơn
- * gói / yêu cầu hoàn tiền gói của gian hàng này. Không đọc đơn hàng/khách hàng của gian hàng (§7.9).
- * Nhật ký chỉ lấy các khoá metadata `fromStatus`/`toStatus`/`note` (và `previousInvoiceStatus` của xác nhận trễ) — không trả
- * metadata thô (giao dịch SePay/MoMo, số tiền chênh…). Bảng audit chưa có → nhật ký rỗng.
+ * ADR-071: chỉ trích mã GD, thời điểm, nội dung CK (một dòng, ≤ 80 ký tự) và số tiền từ `rawPayload` — KHÔNG trả payload thô.
+ * SePay: `id` (mã giao dịch SePay; thiếu thì `referenceCode`), `transactionDate` (giờ VN), `content`. MoMo: `transId`,
+ * `responseTime` (ms), `orderInfo`.
+ */
+function bankTransactionView(txn: { provider: PaymentProviderId; amountVnd: number; rawPayload: unknown }): AdminSubscriptionActivityEntry["bankTransactions"][number] {
+  const raw = asRecord(txn.rawPayload);
+  const idOf = (value: unknown) => (typeof value === "string" || typeof value === "number") && String(value).trim() ? String(value).trim() : null;
+  if (txn.provider === "SEPAY") {
+    return {
+      provider: txn.provider,
+      reference: idOf(raw.id) ?? idOf(raw.referenceCode),
+      occurredAt: parseSepayTransactionDate(raw.transactionDate),
+      contentExcerpt: contentExcerpt(raw.content),
+      amountVnd: txn.amountVnd,
+    };
+  }
+  if (txn.provider === "MOMO") {
+    const responseTime = typeof raw.responseTime === "number" ? new Date(raw.responseTime) : null;
+    return {
+      provider: txn.provider,
+      reference: idOf(raw.transId),
+      occurredAt: responseTime && !Number.isNaN(responseTime.getTime()) ? responseTime : null,
+      contentExcerpt: contentExcerpt(raw.orderInfo),
+      amountVnd: txn.amountVnd,
+    };
+  }
+  return { provider: txn.provider, reference: null, occurredAt: null, contentExcerpt: null, amountVnd: txn.amountVnd };
+}
+
+/**
+ * ADR-069 + ADR-071 (2A) — dữ liệu trang `/admin/subscriptions/[subscriptionId]`. TIỀN ĐIỀU KIỆN: nơi gọi đã kiểm quyền System Admin.
+ * Chỉ đọc bảng L1 (subscriptions, plans, tenants, subscription_invoices, subscription_refund_requests — chỉ id, users — tên/email/vai
+ * trò người làm, platform_payment_transactions — chỉ các trường trích ở trên), `audit_logs` (giới hạn ĐÚNG mục tiêu là hoá đơn gói /
+ * yêu cầu hoàn tiền gói của gian hàng này) và `email_send_log` (chỉ 5 loại email hoá đơn gói, ghép theo mã hoá đơn trong tiêu đề).
+ * Không đọc đơn hàng/khách hàng của gian hàng (§7.9).
+ * Nhật ký = dòng audit + dòng "Tạo hoá đơn" SUY RA cho hoá đơn chưa có audit tạo + dòng email; mới nhất trước, tối đa 100 dòng.
+ * Bảng audit chưa có → chỉ còn dòng suy ra và email.
  */
 export async function getAdminSubscriptionDetail(subscriptionId: string): Promise<AdminSubscriptionDetail | null> {
   const prisma = getPrismaClient();
@@ -907,11 +1033,12 @@ export async function getAdminSubscriptionDetail(subscriptionId: string): Promis
       currentPeriodEnd: true,
       graceEndsAt: true,
       plan: { select: { code: true, name: true, isFree: true, priceVnd: true } },
-      tenant: { select: { id: true, name: true, slug: true, status: true } },
+      tenant: { select: { id: true, name: true, slug: true, status: true, ownerId: true, owner: { select: { email: true } } } },
     },
   });
   if (!subscription) return null;
-  const tenantId = subscription.tenant.id;
+  const { ownerId, owner, ...tenant } = subscription.tenant;
+  const tenantId = tenant.id;
 
   const invoiceRows = await prisma.subscriptionInvoice.findMany({
     where: { tenantId },
@@ -928,46 +1055,205 @@ export async function getAdminSubscriptionDetail(subscriptionId: string): Promis
       createdAt: true,
       dueAt: true,
       paidAt: true,
+      plan: { select: { name: true } },
     },
   });
   const invoiceIds = invoiceRows.map((row) => row.id);
-  const codeByInvoiceId = new Map(invoiceRows.map((row) => [row.id, row.code]));
+  const invoiceById = new Map(invoiceRows.map((row) => [row.id, row]));
 
-  const refundRequests =
+  const [refundRequests, transactions] =
     invoiceIds.length > 0
-      ? await prisma.subscriptionRefundRequest.findMany({ where: { invoiceId: { in: invoiceIds } }, select: { id: true, invoiceId: true } })
-      : [];
+      ? await Promise.all([
+          prisma.subscriptionRefundRequest.findMany({ where: { invoiceId: { in: invoiceIds } }, select: { id: true, invoiceId: true } }),
+          prisma.platformPaymentTransaction.findMany({
+            where: { matchedInvoiceId: { in: invoiceIds } },
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+            select: { id: true, provider: true, amountVnd: true, rawPayload: true, matchedInvoiceId: true },
+          }),
+        ])
+      : [[], []];
   const invoiceIdByRefundId = new Map(refundRequests.map((row) => [row.id, row.invoiceId]));
+  const transactionsByInvoiceId = new Map<string, typeof transactions>();
+  for (const txn of transactions) {
+    if (!txn.matchedInvoiceId) continue;
+    transactionsByInvoiceId.set(txn.matchedInvoiceId, [...(transactionsByInvoiceId.get(txn.matchedInvoiceId) ?? []), txn]);
+  }
 
-  const auditRows =
+  const auditMissing = (error: unknown) => {
+    if (isAuditTableMissing(error)) return [];
+    throw error;
+  };
+  const [auditRows, createdAuditRows] =
     invoiceIds.length > 0
-      ? await prisma.auditLog
-          .findMany({
-            where: {
-              tenantId,
-              OR: [
-                { targetType: "SubscriptionInvoice", targetId: { in: invoiceIds } },
-                ...(refundRequests.length > 0
-                  ? [{ targetType: "SubscriptionRefundRequest", targetId: { in: refundRequests.map((row) => row.id) } }]
-                  : []),
-              ],
-            },
-            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-            take: ADMIN_DETAIL_ACTIVITY_LIMIT,
-            select: { id: true, action: true, actorId: true, targetType: true, targetId: true, metadata: true, createdAt: true },
-          })
-          .catch((error: unknown) => {
-            if (isAuditTableMissing(error)) return [];
-            throw error;
-          })
+      ? await Promise.all([
+          prisma.auditLog
+            .findMany({
+              where: {
+                tenantId,
+                OR: [
+                  { targetType: "SubscriptionInvoice", targetId: { in: invoiceIds } },
+                  ...(refundRequests.length > 0
+                    ? [{ targetType: "SubscriptionRefundRequest", targetId: { in: refundRequests.map((row) => row.id) } }]
+                    : []),
+                ],
+              },
+              orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+              take: ADMIN_DETAIL_ACTIVITY_LIMIT,
+              select: { id: true, action: true, actorId: true, targetType: true, targetId: true, metadata: true, createdAt: true },
+            })
+            .catch(auditMissing),
+          // Hoá đơn nào đã có audit tạo (đọc riêng, không giới hạn bởi 100 dòng ở trên) — còn lại → dòng suy ra.
+          prisma.auditLog
+            .findMany({
+              where: { tenantId, action: "SUBSCRIPTION_INVOICE_CREATED", targetType: "SubscriptionInvoice", targetId: { in: invoiceIds } },
+              select: { targetId: true },
+            })
+            .catch(auditMissing),
+        ])
+      : [[], []];
+  const invoicesWithCreatedAudit = new Set(createdAuditRows.map((row) => row.targetId));
+
+  // Email hoá đơn gói: chỉ 5 loại `subscription_invoice_*`, tiêu đề chứa mã hoá đơn của gian hàng (mã duy nhất toàn hệ thống).
+  const emailRows =
+    invoiceRows.length > 0
+      ? await prisma.emailSendLog.findMany({
+          where: {
+            type: { in: Object.keys(INVOICE_EMAIL_KIND_BY_TYPE) },
+            OR: invoiceRows.map((row) => ({ subject: { contains: row.code } })),
+          },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: ADMIN_DETAIL_ACTIVITY_LIMIT,
+          select: { id: true, type: true, recipient: true, subject: true, status: true, createdAt: true },
+        })
       : [];
 
   const actorIds = [...new Set(auditRows.flatMap((row) => (row.actorId ? [row.actorId] : [])))];
   const actors =
     actorIds.length > 0
-      ? await prisma.user.findMany({ where: { id: { in: actorIds } }, select: { id: true, email: true, profile: { select: { fullName: true } } } })
+      ? await prisma.user.findMany({
+          where: { id: { in: actorIds } },
+          select: { id: true, email: true, systemRole: true, profile: { select: { fullName: true } } },
+        })
       : [];
-  const actorLabelById = new Map(actors.map((user) => [user.id, user.profile?.fullName ?? user.email]));
+  const actorById = new Map(actors.map((user) => [user.id, user]));
+  const actorOf = (actorId: string | null): AdminSubscriptionActivityEntry["actor"] => {
+    if (!actorId) return null;
+    const user = actorById.get(actorId);
+    if (!user) return { label: "Tài khoản đã xoá", role: "OTHER" };
+    const role = user.systemRole === "SYSTEM_ADMIN" ? "SYSTEM_ADMIN" : user.id === ownerId ? "TENANT_OWNER" : "OTHER";
+    return { label: user.profile?.fullName ?? user.email, role };
+  };
+  const invoiceRef = (invoiceId: string | null): AdminSubscriptionActivityEntry["invoice"] => {
+    const row = invoiceId ? invoiceById.get(invoiceId) : undefined;
+    return row ? { code: row.code, amountVnd: row.amountVnd, provider: row.provider } : null;
+  };
+  const blank = {
+    inferred: false,
+    actor: null,
+    invoice: null,
+    planName: null,
+    paymentSource: null,
+    lateConfirmation: false,
+    receivedVnd: null,
+    differenceVnd: null,
+    bankTransactions: [],
+    fromStatus: null,
+    toStatus: null,
+    note: null,
+    email: null,
+  } satisfies Omit<AdminSubscriptionActivityEntry, "id" | "kind" | "action" | "actionLabel" | "createdAt">;
+
+  const auditEntries = auditRows.map((row): AdminSubscriptionActivityEntry => {
+    const meta = asRecord(row.metadata);
+    const invoiceId =
+      row.targetType === "SubscriptionInvoice" ? row.targetId : row.targetId ? (invoiceIdByRefundId.get(row.targetId) ?? null) : null;
+    const invoice = invoiceRef(invoiceId);
+    const kind = ACTIVITY_KIND_BY_ACTION[row.action] ?? "OTHER";
+    const common = {
+      ...blank,
+      id: row.id,
+      kind,
+      action: row.action,
+      actionLabel: auditActionLabel(row.action),
+      createdAt: row.createdAt,
+      actor: actorOf(row.actorId),
+      invoice,
+      fromStatus: metadataString(meta, "fromStatus"),
+      toStatus: metadataString(meta, "toStatus"),
+      note: metadataString(meta, "note"),
+    };
+    if (kind === "INVOICE_CREATED") {
+      return { ...common, planName: (invoiceId ? invoiceById.get(invoiceId)?.plan.name : undefined) ?? null, toStatus: common.toStatus ?? "PENDING" };
+    }
+    if (kind !== "PAYMENT") return common;
+
+    const lateConfirmation = meta.lateConfirmation === true || metadataString(meta, "previousInvoiceStatus") === "EXPIRED";
+    // Giao dịch ngân hàng: mọi giao dịch đã gắn hoá đơn + giao dịch admin chọn (`metadata.transactionId`), không trùng.
+    const linked = invoiceId ? (transactionsByInvoiceId.get(invoiceId) ?? []) : [];
+    const chosenId = metadataString(meta, "transactionId");
+    const chosen = chosenId ? transactions.find((txn) => txn.id === chosenId) : undefined;
+    const bankTxns = chosen && !linked.some((txn) => txn.id === chosen.id) ? [...linked, chosen] : linked;
+    const receivedVnd =
+      metadataNumber(meta, "receivedAmountVnd") ?? (bankTxns.length > 0 ? bankTxns.reduce((sum, txn) => sum + txn.amountVnd, 0) : null);
+    return {
+      ...common,
+      paymentSource: paymentSourceOf(metadataString(meta, "source"), invoice?.provider ?? null),
+      lateConfirmation,
+      receivedVnd,
+      differenceVnd: receivedVnd !== null && invoice ? receivedVnd - invoice.amountVnd : null,
+      bankTransactions: bankTxns.map(bankTransactionView),
+      // `SUBSCRIPTION_PAID` không ghi fromStatus → suy ra: EXPIRED khi xác nhận trễ, ngược lại PENDING.
+      fromStatus: common.fromStatus ?? (lateConfirmation ? "EXPIRED" : "PENDING"),
+      toStatus: common.toStatus ?? "PAID",
+    };
+  });
+
+  const inferredCreated = invoiceRows
+    .filter((row) => !invoicesWithCreatedAudit.has(row.id))
+    .map(
+      (row): AdminSubscriptionActivityEntry => ({
+        ...blank,
+        id: `created:${row.id}`,
+        kind: "INVOICE_CREATED",
+        action: null,
+        actionLabel: auditActionLabel("SUBSCRIPTION_INVOICE_CREATED"),
+        createdAt: row.createdAt,
+        inferred: true,
+        invoice: invoiceRef(row.id),
+        planName: row.plan.name,
+        toStatus: "PENDING",
+      }),
+    );
+
+  const ownerEmail = owner.email.trim().toLowerCase();
+  const emailEntries = emailRows.flatMap((log): AdminSubscriptionActivityEntry[] => {
+    const emailKind = INVOICE_EMAIL_KIND_BY_TYPE[log.type];
+    // Mã hoá đơn dài nhất khớp tiêu đề (tránh mã là tiền tố của mã khác).
+    const matched = invoiceRows.filter((row) => log.subject.includes(row.code)).sort((a, b) => b.code.length - a.code.length)[0];
+    if (!emailKind || !matched) return [];
+    const isOwner = log.recipient.trim().toLowerCase() === ownerEmail;
+    return [
+      {
+        ...blank,
+        id: `email:${log.id}`,
+        kind: "EMAIL",
+        action: null,
+        actionLabel: "Gửi email hoá đơn gói dịch vụ",
+        createdAt: log.createdAt,
+        invoice: invoiceRef(matched.id),
+        email: {
+          kind: emailKind,
+          status: log.status === "SENT" ? "SENT" : "FAILED",
+          recipientIsCurrentOwner: isOwner,
+          recipientMasked: isOwner ? null : maskRecipient(log.recipient),
+        },
+      },
+    ];
+  });
+
+  const activity = [...auditEntries, ...inferredCreated, ...emailEntries]
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))
+    .slice(0, ADMIN_DETAIL_ACTIVITY_LIMIT);
 
   return {
     id: subscription.id,
@@ -976,28 +1262,21 @@ export async function getAdminSubscriptionDetail(subscriptionId: string): Promis
     currentPeriodEnd: subscription.currentPeriodEnd,
     graceEndsAt: subscription.graceEndsAt,
     plan: subscription.plan,
-    tenant: subscription.tenant,
-    invoices: invoiceRows.map((row) => ({ ...row, statusTargets: invoiceStatusTargets(row.status) })),
-    activity: auditRows.map((row) => {
-      const meta = (typeof row.metadata === "object" && row.metadata !== null && !Array.isArray(row.metadata) ? row.metadata : {}) as Record<
-        string,
-        unknown
-      >;
-      const invoiceId =
-        row.targetType === "SubscriptionInvoice" ? row.targetId : row.targetId ? (invoiceIdByRefundId.get(row.targetId) ?? null) : null;
-      return {
-        id: row.id,
-        action: row.action,
-        actionLabel: auditActionLabel(row.action),
-        createdAt: row.createdAt,
-        // null = hệ thống (webhook/cron); tài khoản người làm đã bị xoá → nhãn riêng.
-        actorLabel: row.actorId ? (actorLabelById.get(row.actorId) ?? "Tài khoản đã xoá") : null,
-        invoiceCode: (invoiceId ? codeByInvoiceId.get(invoiceId) : undefined) ?? null,
-        fromStatus: metadataString(meta, "fromStatus") ?? metadataString(meta, "previousInvoiceStatus"),
-        toStatus: metadataString(meta, "toStatus") ?? (row.action === "SUBSCRIPTION_PAID" ? "PAID" : null),
-        note: metadataString(meta, "note"),
-      };
-    }),
+    tenant,
+    invoices: invoiceRows.map((row) => ({
+      id: row.id,
+      code: row.code,
+      status: row.status,
+      provider: row.provider,
+      amountVnd: row.amountVnd,
+      periodStart: row.periodStart,
+      periodEnd: row.periodEnd,
+      createdAt: row.createdAt,
+      dueAt: row.dueAt,
+      paidAt: row.paidAt,
+      statusTargets: invoiceStatusTargets(row.status),
+    })),
+    activity,
   };
 }
 

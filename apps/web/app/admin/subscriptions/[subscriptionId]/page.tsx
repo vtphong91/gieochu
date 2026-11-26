@@ -18,6 +18,7 @@ import {
   formatAdminDateTime,
 } from "../../_ui/billing-labels";
 import { InvoiceStatusButton } from "../../billing/invoices/confirm-button";
+import { SubscriptionActivityLog } from "./_ui/activity-log";
 
 export const metadata: Metadata = { title: "Chi tiết đơn hàng gói dịch vụ" };
 
@@ -34,11 +35,6 @@ function Dash({ srText }: { srText: string }) {
       <span className="sr-only">{srText}</span>
     </>
   );
-}
-
-/** Nhãn trạng thái hoá đơn trong nhật ký (giá trị lạ → giữ nguyên mã). */
-function invoiceStatusText(status: string): string {
-  return (INVOICE_STATUS_LABEL as Record<string, string>)[status] ?? status;
 }
 
 function SectionHeading({ id, icon, title, description }: { id: string; icon: ReactNode; title: string; description?: string }) {
@@ -232,49 +228,12 @@ export default async function AdminSubscriptionDetailPage({ params }: { params: 
             id="sub-activity-title"
             icon={<IconClock className="h-4 w-4" />}
             title="Nhật ký thao tác"
-            description="Xác nhận, huỷ, mở lại và thanh toán hoá đơn gói, mới nhất trước. Giờ Việt Nam."
+            description="Tạo, thanh toán, huỷ, mở lại hoá đơn gói và email đã gửi cho chủ gian hàng, mới nhất trước. Giờ Việt Nam."
           />
           {detail.activity.length === 0 ? (
             <EmptyState icon={<IconClock className="h-6 w-6" />} title="Chưa có thao tác nào" description="Thao tác trên hoá đơn gói của gian hàng sẽ hiện ở đây." />
           ) : (
-            <ol className="divide-y divide-gray-100 rounded-2xl border bg-white px-5 sm:px-6" style={{ borderColor: LINE }}>
-              {detail.activity.map((entry) => (
-                <li key={entry.id} className="flex flex-col gap-1 py-4 sm:flex-row sm:gap-6">
-                  <time dateTime={entry.createdAt.toISOString()} className="shrink-0 text-xs text-gray-600 tabular-nums sm:w-36 sm:pt-0.5">
-                    {formatAdminDateTime(entry.createdAt)}
-                  </time>
-                  <div className="min-w-0 flex-1 text-sm" style={{ color: brandColors.ink }}>
-                    <p>
-                      <span className="font-semibold">{entry.actionLabel}</span>
-                      <span className="text-gray-600"> · {entry.actorLabel ?? "Hệ thống"}</span>
-                    </p>
-                    {entry.invoiceCode || entry.fromStatus || entry.toStatus ? (
-                      <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-600">
-                        {entry.invoiceCode ? (
-                          <span>
-                            Hoá đơn <span className="font-mono [overflow-wrap:anywhere]">{entry.invoiceCode}</span>
-                          </span>
-                        ) : null}
-                        {entry.fromStatus || entry.toStatus ? (
-                          <span>
-                            {entry.fromStatus ? invoiceStatusText(entry.fromStatus) : "—"}
-                            <span aria-hidden="true"> → </span>
-                            <span className="sr-only"> chuyển sang </span>
-                            {entry.toStatus ? invoiceStatusText(entry.toStatus) : "—"}
-                          </span>
-                        ) : null}
-                      </p>
-                    ) : null}
-                    {entry.note ? (
-                      <p className="mt-2 rounded-lg border-l-4 bg-gray-50 px-3 py-2 text-sm whitespace-pre-line [overflow-wrap:anywhere]" style={{ borderColor: LINE }}>
-                        <span className="sr-only">Ghi chú: </span>
-                        {entry.note}
-                      </p>
-                    ) : null}
-                  </div>
-                </li>
-              ))}
-            </ol>
+            <SubscriptionActivityLog entries={detail.activity} />
           )}
         </section>
       </div>

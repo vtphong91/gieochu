@@ -73,11 +73,17 @@ vi.mock("../../lib/email-dispatch", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../lib/email-dispatch")>();
   // ADR-070: runSubscriptionSweep quét TOÀN DB dùng chung → chặn MỌI email "subscription_*": email hoá đơn gói
   // (subscription_invoice_*) lẫn email của sweep thuê bao (subscription_reminder_7d / _reminder_1d / _grace / _downgraded_to_free).
-  sendEmailNowSpy.mockImplementation(async (message: { type: string }) =>
-    message.type === "invoice_pending_manual" || message.type.startsWith("subscription_")
-      ? { ok: true }
-      : actual.sendEmailNow(message as never),
-  );
+  // ADR-071 (2A): email hoá đơn gói tới địa chỉ CỦA TEST (m3test_*) vẫn ghi email_send_log như gửi thật (không gửi SMTP) để kiểm dòng
+  // "Đã gửi email" của nhật ký; địa chỉ khác (sweep chạm dữ liệu thật) không ghi gì. Dọn trong afterAll.
+  sendEmailNowSpy.mockImplementation(async (message: { type: string; to: string; subject: string }) => {
+    if (message.type === "invoice_pending_manual" || message.type.startsWith("subscription_")) {
+      if (message.type.startsWith("subscription_invoice_") && message.to.startsWith("m3test_")) {
+        await actual.logEmailSend({ type: message.type, recipient: message.to, subject: message.subject, status: "SENT" });
+      }
+      return { ok: true };
+    }
+    return actual.sendEmailNow(message as never);
+  });
   return { ...actual, sendEmailNow: sendEmailNowSpy };
 });
 vi.mock("../../lib/system-settings", async (importOriginal) => {
@@ -141,6 +147,8 @@ describe("M3 subscription and platform billing", () => {
         await tx.tenantMember.deleteMany({ where: { tenantId: { in: tenantIds } } });
       });
     }
+    // ADR-071: dòng email_send_log do mock ghi cho địa chỉ của lần chạy này.
+    await prisma.emailSendLog.deleteMany({ where: { recipient: { startsWith: RUN_PREFIX } } });
     await prisma.tenant.deleteMany({ where: { slug: { startsWith: RUN_PREFIX } } });
     // ADR-067 bổ sung: gói tạm (đã ngừng bán) của lần chạy này — hoá đơn tham chiếu đã xoá ở trên.
     await prisma.plan.deleteMany({ where: { code: { startsWith: RUN_PREFIX } } });
@@ -163,10 +171,15 @@ describe("M3 subscription and platform billing", () => {
     const scheduleNotification = (task: () => Promise<void>) => void scheduled.push(task);
     // ADR-059 (B2): hai lần tạo SONG SONG (khoá dòng subscriptions) → cùng một hoá đơn, chỉ 1 hoá đơn PENDING.
     const [manualInvoice, reused] = await Promise.all([
-      createRenewalInvoice(tenant.id, { planId: creatorPlan.id, provider: "MANUAL_QR" }, { scheduleNotification }),
-      createRenewalInvoice(tenant.id, { planId: creatorPlan.id, provider: "MANUAL_QR" }, { scheduleNotification }),
+      createRenewalInvoice(tenant.id, { planId: creatorPlan.id, provider: "MANUAL_QR" }, { scheduleNotification, actorId: owner.id }),
+      createRenewalInvoice(tenant.id, { planId: creatorPlan.id, provider: "MANUAL_QR" }, { scheduleNotification, actorId: owner.id }),
     ]);
     expect(reused.id).toBe(manualInvoice.id);
+    // ADR-071: audit "Tạo hoá đơn" chỉ khi thật sự tạo — lần dùng lại hoá đơn chờ không ghi.
+    const createdAudits = await prisma.auditLog.findMany({ where: { action: "SUBSCRIPTION_INVOICE_CREATED", targetId: manualInvoice.id } });
+    expect(createdAudits).toHaveLength(1);
+    expect(createdAudits[0]).toMatchObject({ actorId: owner.id, scope: "SYSTEM", tenantId: tenant.id, targetType: "SubscriptionInvoice" });
+    expect(createdAudits[0]!.metadata).toMatchObject({ code: manualInvoice.code, planId: creatorPlan.id, provider: "MANUAL_QR", amountVnd: creatorPlan.priceVnd });
     expect(await prisma.subscriptionInvoice.count({ where: { tenantId: tenant.id, status: "PENDING" } })).toBe(1);
     expect(scheduled).toHaveLength(1);
 
@@ -308,21 +321,62 @@ describe("M3 subscription and platform billing", () => {
     expect(detail.invoices.find((i) => i.id === manualInvoice.id)!.statusTargets).toEqual([]);
     const activityTimes = detail.activity.map((a) => a.createdAt.getTime());
     expect(activityTimes).toEqual([...activityTimes].sort((a, b) => b - a));
+    // ADR-071 (2A): dòng nhật ký chi tiết — huỷ/mở lại, thanh toán trễ (Quản trị viên, EXPIRED → PAID), tạo hoá đơn (audit + suy ra),
+    // email đã gửi (ghi email_send_log qua mock).
+    const ownerActor = { label: owner.email, role: "TENANT_OWNER" };
     expect(detail.activity).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
+          kind: "INVOICE_VOIDED",
           action: "SUBSCRIPTION_INVOICE_VOIDED",
           actionLabel: "Huỷ hoá đơn gói dịch vụ",
-          invoiceCode: latestInvoice.code,
+          invoice: { code: latestInvoice.code, amountVnd: latestInvoice.amountVnd, provider: "MANUAL_QR" },
           fromStatus: "PENDING",
           toStatus: "VOID",
           note: "Khách đổi ý",
-          actorLabel: owner.email,
+          actor: ownerActor,
         }),
-        expect.objectContaining({ action: "SUBSCRIPTION_INVOICE_REOPENED", invoiceCode: latestInvoice.code, fromStatus: "VOID", toStatus: "PENDING", note: null }),
-        expect.objectContaining({ action: "SUBSCRIPTION_PAID", invoiceCode: manualInvoice.code, fromStatus: "EXPIRED", toStatus: "PAID" }),
+        expect.objectContaining({ kind: "INVOICE_REOPENED", fromStatus: "VOID", toStatus: "PENDING", note: null }),
+        expect.objectContaining({
+          kind: "PAYMENT",
+          invoice: expect.objectContaining({ code: manualInvoice.code }),
+          paymentSource: "ADMIN_MANUAL",
+          lateConfirmation: true,
+          fromStatus: "EXPIRED",
+          toStatus: "PAID",
+          bankTransactions: [],
+          receivedVnd: null,
+        }),
+        expect.objectContaining({
+          kind: "INVOICE_CREATED",
+          inferred: false,
+          actor: ownerActor,
+          planName: creatorPlan.name,
+          invoice: expect.objectContaining({ code: manualInvoice.code }),
+        }),
+        expect.objectContaining({
+          id: `created:${inactivePlanInvoice.id}`,
+          kind: "INVOICE_CREATED",
+          action: null,
+          inferred: true,
+          actor: null,
+          planName: inactivePlan.name,
+          createdAt: inactivePlanInvoice.createdAt,
+        }),
+        expect.objectContaining({
+          kind: "EMAIL",
+          invoice: expect.objectContaining({ code: latestInvoice.code }),
+          email: { kind: "INVOICE_VOIDED", status: "SENT", recipientIsCurrentOwner: true, recipientMasked: null },
+        }),
+        expect.objectContaining({
+          kind: "EMAIL",
+          invoice: expect.objectContaining({ code: manualInvoice.code }),
+          email: expect.objectContaining({ kind: "INVOICE_PAID", status: "SENT" }),
+        }),
       ]),
     );
+    // Hoá đơn tạo qua createRenewalInvoice có audit → không có dòng suy ra trùng.
+    expect(detail.activity.some((a) => a.id === `created:${manualInvoice.id}`)).toBe(false);
   });
 
   it("creates a renewal invoice and marks it PAID via a signed platform SePay webhook, activating the subscription", async () => {
@@ -359,6 +413,35 @@ describe("M3 subscription and platform billing", () => {
     expect(paidEmails[0]!.text).toContain(`/studio/${tenant.slug}/billing`);
     expect(paidEmails[0]!.subject).toBe(`Thanh toán thành công hoá đơn ${invoice.code} — gói ${proPlan.name}`);
     expect(paidEmails[0]!.text).toMatch(/có hiệu lực từ \d{2}\/\d{2}\/\d{4} đến \d{2}\/\d{2}\/\d{4}/);
+    // ADR-071 (2A): nhật ký — thanh toán tự động qua SePay kèm giao dịch ngân hàng (chỉ trường trích, không payload thô) + email đã gửi.
+    const paidSubscription = await prisma.subscription.findUniqueOrThrow({ where: { tenantId: tenant.id } });
+    const paidDetail = (await getAdminSubscriptionDetail(paidSubscription.id))!;
+    const autoPayment = paidDetail.activity.find((a) => a.kind === "PAYMENT");
+    expect(autoPayment).toMatchObject({
+      paymentSource: "AUTO_SEPAY",
+      actor: null,
+      lateConfirmation: false,
+      fromStatus: "PENDING",
+      toStatus: "PAID",
+      receivedVnd: invoice.amountVnd,
+      differenceVnd: 0,
+      bankTransactions: [
+        {
+          provider: "SEPAY",
+          reference: `evt_${RUN_PREFIX}_paid`,
+          occurredAt: new Date("2026-01-01T03:00:00.000Z"),
+          contentExcerpt: `thanh toan ${invoice.code}`,
+          amountVnd: invoice.amountVnd,
+        },
+      ],
+    });
+    expect(Object.keys(autoPayment!.bankTransactions[0]!).sort()).toEqual(["amountVnd", "contentExcerpt", "occurredAt", "provider", "reference"]);
+    expect(paidDetail.activity).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "EMAIL", email: { kind: "INVOICE_PAID", status: "SENT", recipientIsCurrentOwner: true, recipientMasked: null } }),
+        expect.objectContaining({ kind: "INVOICE_CREATED", inferred: false, actor: null }),
+      ]),
+    );
 
     // ADR-056: System Center "Tất cả" invoices tab + /admin/subscriptions read the same rows (read-only, L1).
     const paidSepay = await listSubscriptionInvoices({ status: "PAID", provider: "SEPAY", page: 1, pageSize: 100 });
@@ -483,6 +566,21 @@ describe("M3 subscription and platform billing", () => {
     await expect(confirmInvoiceFromPlatformTransaction(overpaid.id, renewal.code, owner.id)).rejects.toMatchObject({ code: "INVOICE_ALREADY_PAID" });
     // ADR-070 A1: xác nhận từ giao dịch → 1 email thành công; lần xác nhận lại bị chặn không gửi thêm.
     expect(invoiceEmails("subscription_invoice_paid", renewal.code)).toHaveLength(1);
+    // ADR-071 (2A): nhật ký — Quản trị viên xác nhận từ giao dịch (trễ): đã nhận/chênh lệch, giao dịch đã chọn, EXPIRED → PAID.
+    const txnSubscription = await prisma.subscription.findUniqueOrThrow({ where: { tenantId: tenant.id } });
+    const txnPayment = (await getAdminSubscriptionDetail(txnSubscription.id))!.activity.find(
+      (a) => a.kind === "PAYMENT" && a.invoice?.code === renewal.code,
+    );
+    expect(txnPayment).toMatchObject({
+      paymentSource: "ADMIN_FROM_TRANSACTION",
+      actor: { label: owner.email, role: "TENANT_OWNER" },
+      lateConfirmation: true,
+      fromStatus: "EXPIRED",
+      toStatus: "PAID",
+      receivedVnd: renewal.amountVnd + 5_000,
+      differenceVnd: 5_000,
+      bankTransactions: [expect.objectContaining({ provider: "SEPAY", reference: `evt_${RUN_PREFIX}_over`, amountVnd: renewal.amountVnd + 5_000 })],
+    });
     await expect(confirmInvoiceFromPlatformTransaction(overpaid.id, invoice.code, owner.id)).rejects.toMatchObject({ code: "TRANSACTION_ALREADY_USED" });
 
     // ADR-066: tiền đã về nhưng webhook không tới → admin xác nhận tay hoá đơn SePay (mọi cổng), ghi chú không bắt buộc vào audit.
@@ -508,7 +606,8 @@ describe("M3 subscription and platform billing", () => {
     const overdueInvoice = await createRenewalInvoice(tenant.id, { provider: "SEPAY" });
     await prisma.subscriptionInvoice.update({ where: { id: overdueInvoice.id }, data: { dueAt: new Date(Date.now() - 60_000) } });
 
-    await runSubscriptionSweep();
+    // Chỉ quét tenant tạm của test (không đổi thuê bao/hoá đơn thật trên DB dùng chung).
+    await runSubscriptionSweep({ tenantIds: [tenant.id] });
     expect((await prisma.subscriptionInvoice.findUniqueOrThrow({ where: { id: overdueInvoice.id } })).status).toBe("EXPIRED");
     expect(invoiceEmails("subscription_invoice_expired", overdueInvoice.code)).toHaveLength(1);
     expect(invoiceEmails("subscription_invoice_expired", overdueInvoice.code)[0]).toMatchObject({
@@ -525,8 +624,8 @@ describe("M3 subscription and platform billing", () => {
       data: { graceEndsAt: new Date(Date.now() - 60 * 1000) },
     });
 
-    await runSubscriptionSweep();
-    subscription = await prisma.subscription.findUniqueOrThrow({ where: { tenantId: tenant.id }, include: { plan: true } });
+    await runSubscriptionSweep({ tenantIds: [tenant.id] });
+    subscription =await prisma.subscription.findUniqueOrThrow({ where: { tenantId: tenant.id }, include: { plan: true } });
     expect(subscription.status).toBe("ACTIVE");
     expect(subscription.plan.isFree).toBe(true);
     expect(invoiceEmails("subscription_invoice_expired", overdueInvoice.code)).toHaveLength(1);

@@ -5,7 +5,7 @@ tags:
   - security
   - status/living
 date: 2026-09-26
-updated: 2026-09-26
+updated: 2026-11-26
 author: System Architect
 ---
 
@@ -23,8 +23,8 @@ cấp chi nhánh. Trang tham khảo chỉ-đọc trong sản phẩm thật: `/ad
 | Lớp | Bảng dữ liệu | Route | Ý nghĩa |
 | :--- | :--- | :--- | :--- |
 | **System** | `users.systemRole` | `/admin/*` | Quản trị toàn nền tảng |
-| **Tenant** | `tenant_members.role` | `/studio/[slug]/*` | Chủ gian hàng / nhân sự trong 1 tenant |
-| **Customer** | `tenant_customers` (không có cột role) | `/account/*` | Người đã mua hàng ở 1+ tenant |
+| **Tenant** (trang `/admin/roles` ghi **"Gian hàng (tenant)"** từ ADR-071 ✅ code) | `tenant_members.role` | `/studio/[slug]/*` | Chủ gian hàng / nhân sự trong 1 gian hàng |
+| **Customer** | `tenant_customers` (không có cột role) | `/account/*` | Người đã mua hàng ở 1+ gian hàng |
 
 ---
 
