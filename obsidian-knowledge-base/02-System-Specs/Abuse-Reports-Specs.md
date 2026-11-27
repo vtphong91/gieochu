@@ -132,6 +132,9 @@ Giao diện: `ReportAbuseButton` (`apps/web/app/[tenantSlug]/_ui/report-abuse.ts
 
 - `listAbuseReports(sp, paging)` — lọc `status` (mặc định `OPEN`; `ALL` = mọi trạng thái), `type`, `targetType`; mới nhất trước; kèm
   `openCount`. Hiện email người báo cáo (chỉ admin), tiêu đề hiện tại của đối tượng (null = đã xoá).
+- **Lọc theo gian hàng `?tenantId=…`** (ADR-074 mục 3, 2026-11-27 ✅ code `report-list.tsx`): đầu danh sách hiện "Đang lọc theo gian hàng: <tên>" + link "Bỏ lọc"; phân
+  trang và nút "Lọc" giữ tham số. Id không hợp lệ (rỗng, dài hơn 64 ký tự, không tồn tại) → **bỏ qua** (không lỗi). Trang chi tiết gian hàng `/admin/tenants/[tenantId]`,
+  phần Vi phạm: link "Xem tất cả báo cáo" → `/admin/reports?tenantId=…` (thay link cũ `?status=ALL`).
 - `getAbuseReportDetail(id)` — dưới `withSystemJob`: nội dung đối tượng + trạng thái khoá; **đánh giá chỉ hiện sao + nội dung + tên tài
   liệu**, không userId/tên hiển thị/đơn của khách (§7.9); bài viết hiện văn bản thuần (không render HTML). Kèm số báo cáo OPEN khác cùng
   đối tượng, danh sách quyết định hợp lệ, và **số yêu cầu hoàn tiền quá hạn của tenant** (ADR-039, chỉ số đếm).

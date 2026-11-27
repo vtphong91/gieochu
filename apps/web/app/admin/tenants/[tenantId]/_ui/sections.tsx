@@ -29,7 +29,8 @@ import {
   formatStorageFromMb,
   formatVnDateString,
 } from "../../_ui/tenant-labels";
-import { CARD, CompactEmpty, Dash, InfoGrid, LINE, SectionHeading, StatTile, TextLink, UsageBar, type InfoItem } from "./parts";
+import { CARD, CompactEmpty, Dash, InfoGrid, LINE, SectionHeading, StatTile, TextLink, type InfoItem } from "../../../_ui/detail-kit";
+import { UsageBar } from "./parts";
 
 /*
  * ADR-072 — các phần của trang chi tiết gian hàng. Server Component thuần. §7.9: không có đơn hàng/khách/giao dịch của gian hàng —
@@ -325,7 +326,7 @@ export function ContentSection({ content }: { content: AdminTenantDetail["conten
 
 const REPORT_STATUS_TONE: Record<string, "warning" | "success" | "neutral"> = { OPEN: "warning", RESOLVED: "success", REJECTED: "neutral" };
 
-export function AbuseSection({ abuse }: { abuse: AdminTenantDetail["abuse"] }) {
+export function AbuseSection({ tenantId, abuse }: { tenantId: string; abuse: AdminTenantDetail["abuse"] }) {
   const typeLabels: Record<string, string> = ABUSE_REPORT_TYPE_LABELS;
   const targetLabels: Record<string, string> = ABUSE_TARGET_TYPE_LABELS;
   const statusLabels: Record<string, string> = ABUSE_REPORT_STATUS_LABELS;
@@ -384,7 +385,7 @@ export function AbuseSection({ abuse }: { abuse: AdminTenantDetail["abuse"] }) {
               <span className="text-gray-600">Không có yêu cầu hoàn tiền quá hạn.</span>
             )}
           </p>
-          <TextLink href="/admin/reports?status=ALL">Xem trang Báo cáo vi phạm</TextLink>
+          <TextLink href={`/admin/reports?tenantId=${encodeURIComponent(tenantId)}`}>Xem tất cả báo cáo</TextLink>
         </div>
       </div>
     </section>

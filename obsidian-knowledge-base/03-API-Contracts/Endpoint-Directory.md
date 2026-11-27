@@ -279,8 +279,8 @@ origin) thay vì presigned URL storage; client vẫn `PUT` thẳng vào URL đó
 
 | Method | Endpoint | Truy cập | Mô tả |
 | :-- | :-- | :-- | :-- |
-| `POST` | `/api/webhooks/platform/[provider]` | Public + xác thực chữ ký provider (`SEPAY`, `MOMO`) | Webhook thanh toán **phí subscription nền tảng** (Tenant → Gieo Chữ). Xác thực chữ ký trước (`provider.verifyWebhook`), ghi `WebhookEvent` (`scope=PLATFORM`) để idempotent, đối soát `SubscriptionInvoice` theo mã tham chiếu + số tiền, gọi `markInvoicePaid()` nếu khớp, luôn ghi `PlatformPaymentTransaction` (khớp hoặc `UNMATCHED` để admin xử lý tay). **ADR-059 ✅ `git diff` 2026-10-26:** ghi `PlatformPaymentTransaction` **trước** rồi mới `markInvoicePaid` (chỉ khi hoá đơn PENDING, khớp mã + đúng tiền); mã SePay thử tiền tố đã cấu hình rồi `SUB`, đúng 8 ký tự (`sepayInvoiceReferenceCandidates`); body không phải JSON/thiếu trường → **400 `{ error: "invalid_body" }`**. Mã trả: 404 `unsupported_provider`/`not_configured`, 401 `invalid_signature`, 400 `invalid_body`, 200 `{ success: true }` (kể cả sự kiện trùng). **ADR-065 ✅ `git diff` 2026-11-24:** mã hoá đơn đọc bằng `extractSepayPaymentCodes` (tiền tố 2–5 chữ cái + **8 chữ số**, thử `paymentPrefix` rồi `SUB`); SePay có `accountNumber` khác số TK đã cấu hình → **200 `{ success: true }`**, **không** ghi `webhook_events`/giao dịch (kiểm sau chữ ký + parse body). |
-| `POST` | `/api/webhooks/tenants/[tenantId]/[provider]` | Public + xác thực chữ ký provider (`SEPAY`, `MOMO` — không nhận `MANUAL_QR`, vì đó không có webhook) | Webhook thanh toán **đơn hàng khách mua sản phẩm của tenant**. Đọc `TenantPaymentConfig` (giải mã `encryptedSecrets` bằng `PAYMENT_ENCRYPTION_KEY`), xác thực chữ ký, ghi `WebhookEvent` (`scope=TENANT`) để idempotent, rồi **trả 200 ngay** và đẩy việc nặng (khớp `Order`, `markOrderPaid()`) vào job `payment.process` qua `enqueuePaymentProcess()` — đúng CLAUDE.md §7.4 "trả 2xx nhanh rồi xử lý nặng trong job". ADR-036 ✅: không có worker thường trực trên Vercel — sau khi enqueue gọi `scheduleQueueDrain([payment.process])`, job được xử lý trong `after()` sau khi `200 { success: true }` đã gửi (hàm không bao giờ ném nên không đổi mã trả về); `export const maxDuration = 60`; cron §17 dọn job sót. **ADR-059 ✅ `git diff` 2026-10-26:** SePay đọc `referenceCandidates` theo `[cfg.paymentPrefix, tenant.orderCodePrefix]`, đúng 6 ký tự, đưa vào job (`PaymentProcessJobData.referenceCandidates?`, `reference` = phần tử đầu); body hỏng/thiếu trường → **400 `invalid_body`**; chữ ký sai 401 `invalid_signature`. **ADR-065 ✅ `git diff` 2026-11-24:** ứng viên = mã thanh toán `extractSepayPaymentCodes(body, [cfg.paymentPrefix, orderCodePrefix])` (8 chữ số) **rồi** mã đơn (`orderCodePrefix` + 6 ký tự), bỏ trùng; job khớp `orders.paymentRef` **hoặc** `orders.code` trong gian hàng; `accountNumber` khác số TK đã cấu hình → **200**, không ghi `webhook_events`. Shape request/response không đổi. |
+| `POST` | `/api/webhooks/platform/[provider]` | Public + xác thực chữ ký provider (`SEPAY`, `MOMO`) | Webhook thanh toán **phí subscription nền tảng** (Tenant → Gieo Chữ). Xác thực chữ ký trước (`provider.verifyWebhook`), ghi `WebhookEvent` (`scope=PLATFORM`) để idempotent, đối soát `SubscriptionInvoice` theo mã tham chiếu + số tiền, gọi `markInvoicePaid()` nếu khớp, luôn ghi `PlatformPaymentTransaction` (khớp hoặc `UNMATCHED` để admin xử lý tay). **ADR-059 ✅ `git diff` 2026-10-26:** ghi `PlatformPaymentTransaction` **trước** rồi mới `markInvoicePaid` (chỉ khi hoá đơn PENDING, khớp mã + đúng tiền); mã SePay thử tiền tố đã cấu hình rồi `SUB`, đúng 8 ký tự (`sepayInvoiceReferenceCandidates`); body không phải JSON/thiếu trường → **400 `{ error: "invalid_body" }`**. Mã trả: 404 `unsupported_provider`/`not_configured`, 401 `invalid_signature`, 400 `invalid_body`, 200 `{ success: true }` (kể cả sự kiện trùng). **ADR-065 ✅ `git diff` 2026-11-24:** mã hoá đơn đọc bằng `extractSepayPaymentCodes` (tiền tố 2–5 chữ cái + **8 chữ số**, thử `paymentPrefix` rồi `SUB`); SePay có `accountNumber` khác số TK đã cấu hình → **200 `{ success: true }`**, **không** ghi `webhook_events`/giao dịch (kiểm sau chữ ký + parse body). **ADR-074 mục 7 ✅ code 2026-11-27 (`lib/webhook-event.ts`):** chỉ lỗi trùng khoá P2002 khi ghi `webhook_events` mới là "đã xử lý" (200); lỗi khác (mất DB…) → **5xx `{ error: { code, message, requestId } }`** để cổng gửi lại; vùng bảo vệ dừng ở ghi `PlatformPaymentTransaction` — lỗi ở đó → xoá đúng dòng `webhook_events` vừa ghi rồi 5xx (`markInvoicePaid` ngoài vùng bảo vệ, giữ ADR-059 B2). Xem §37A. |
+| `POST` | `/api/webhooks/tenants/[tenantId]/[provider]` | Public + xác thực chữ ký provider (`SEPAY`, `MOMO` — không nhận `MANUAL_QR`, vì đó không có webhook) | Webhook thanh toán **đơn hàng khách mua sản phẩm của tenant**. Đọc `TenantPaymentConfig` (giải mã `encryptedSecrets` bằng `PAYMENT_ENCRYPTION_KEY`), xác thực chữ ký, ghi `WebhookEvent` (`scope=TENANT`) để idempotent, rồi **trả 200 ngay** và đẩy việc nặng (khớp `Order`, `markOrderPaid()`) vào job `payment.process` qua `enqueuePaymentProcess()` — đúng CLAUDE.md §7.4 "trả 2xx nhanh rồi xử lý nặng trong job". ADR-036 ✅: không có worker thường trực trên Vercel — sau khi enqueue gọi `scheduleQueueDrain([payment.process])`, job được xử lý trong `after()` sau khi `200 { success: true }` đã gửi (hàm không bao giờ ném nên không đổi mã trả về); `export const maxDuration = 60`; cron §17 dọn job sót. **ADR-059 ✅ `git diff` 2026-10-26:** SePay đọc `referenceCandidates` theo `[cfg.paymentPrefix, tenant.orderCodePrefix]`, đúng 6 ký tự, đưa vào job (`PaymentProcessJobData.referenceCandidates?`, `reference` = phần tử đầu); body hỏng/thiếu trường → **400 `invalid_body`**; chữ ký sai 401 `invalid_signature`. **ADR-065 ✅ `git diff` 2026-11-24:** ứng viên = mã thanh toán `extractSepayPaymentCodes(body, [cfg.paymentPrefix, orderCodePrefix])` (8 chữ số) **rồi** mã đơn (`orderCodePrefix` + 6 ký tự), bỏ trùng; job khớp `orders.paymentRef` **hoặc** `orders.code` trong gian hàng; `accountNumber` khác số TK đã cấu hình → **200**, không ghi `webhook_events`. Shape request/response không đổi. **ADR-074 mục 7 ✅ code 2026-11-27 (`lib/webhook-event.ts`):** chỉ P2002 là "đã xử lý" (200); lỗi khác → **5xx `{ error: { code, message, requestId } }`**; vùng bảo vệ gồm tra tenant, trích mã, enqueue — bước nào lỗi sau khi ghi sự kiện → xoá đúng dòng `webhook_events` vừa ghi rồi 5xx để cổng gửi lại. Xem §37A. |
 
 ---
 
@@ -744,7 +744,7 @@ Cả hai có `loading.tsx` (`AuditLogSkeleton`).
 
 ### 18.4. Chữ ký hàm lib đổi (contract nội bộ giữa Server Action ↔ lib)
 
-Thêm tham số cuối `actorId: string | null = null`: `archiveProduct`, `confirmOrderManually`, `markOrderRefunded`,
+Thêm tham số cuối `actorId: string | null = null`: `archiveProduct`, ~~`confirmOrderManually`~~ (đã xoá — ADR-074), `markOrderRefunded`,
 `grantExtraDownloads`, `revokeEntitlement`, `createShareLink`, `revokeShareLink`, `hideReview`, `unhideReview`,
 `confirmManualInvoicePayment`, `testPlatformProviderConnection`; input lưu cấu hình thanh toán platform/tenant thêm `actorId?`.
 `markInvoicePaid(invoiceId, { source: "PLATFORM_WEBHOOK" | "ADMIN_MANUAL_CONFIRM", actorId? })`. **`unlockUser(actor, targetUserId, rawReason)`** (ADR-073 thêm `rawReason`; xem §37.2) —
@@ -1054,8 +1054,8 @@ Tiền là `number` nguyên VND (khác `admin-stats.ts` trả chuỗi BIGINT). H
 ## 23. Trang Đơn hàng Studio — loader, tham số URL, quy ước escape, ghi chú nội bộ (ADR-046, ADR-047) ✅
 
 Đối chiếu code working tree 2026-10-18 (nay **đã commit** `dd349b9` (deploy ❓) ✅ `git log`). **Không có `route.ts` mới** — hai trang là Server Component gọi
-loader trực tiếp; thao tác tiền dùng lại action cũ ở `studio/[tenantSlug]/orders/[orderId]/actions.ts` (`confirmOrderManuallyAction`,
-`cancelOrderAction`, `markOrderRefundedAction`, `grantExtraDownloadsAction`, `revokeEntitlementAction` — không đổi). **ADR-047** thêm đúng 2 Server
+loader trực tiếp; thao tác tiền dùng lại action cũ ở `studio/[tenantSlug]/orders/[orderId]/actions.ts` (~~`confirmOrderManuallyAction`~~,
+~~`cancelOrderAction`~~ — cả hai đã xoá từ ADR-068, `markOrderRefundedAction`, `grantExtraDownloadsAction`, `revokeEntitlementAction` — không đổi). **ADR-047** thêm đúng 2 Server
 Action ghi chú (§23.5). Nghiệp vụ: [[02-System-Specs/Studio-Orders-Specs|Studio-Orders-Specs]]. **Từ ADR-068 (2026-11-25):** `confirmOrderManuallyAction` và
 `cancelOrderAction` **đã xoá**, thay bằng `changeOrderStatusAction` (§32.2); `OrderListItem`/`OrderDetailView` thêm `statusTargets` (§32.3).
 
@@ -1595,6 +1595,8 @@ Nguồn: `apps/web/app/api/[tenantSlug]/[productSlug]/preview/[fileId]/route.ts`
 
 Payload sau serialize **≤ 256 KB** (giới hạn ở extractor, [[02-System-Specs/File-Storage-And-Downloads-Specs|File-Storage-And-Downloads-Specs]] §11).
 
+> **ADR-074 mục 1 (2026-11-27) ✅ code:** guard + đọc file/cache nay qua helper RLS (`withPublic` → `withTenant` → `withSystemJob`) — trước đó đọc bằng `getPrismaClient()` nên route trả 404 cả với tài liệu đã xuất bản. Contract request/response **không đổi**. Xem File-Storage-And-Downloads-Specs §11.4.
+
 > Đánh số: mục này là §29 ở nhánh của vuong (commit `970f713`); khi gộp 2026-10-30 đổi thành **§30** vì §29 đã là trang thanh toán (ADR-061/062). Các trang của vuong vốn trỏ "Endpoint-Directory §30" — nay khớp. KB-Audit §49.
 
 ---
@@ -1692,7 +1694,7 @@ Secret không bao giờ trả về client — trang chỉ nhận `maskedSecrets`
 | `changeOrderStatusBySeller(tenantId, orderId, target, note, actorId) → Promise<void>` | **Tiền điều kiện:** nơi gọi đã `requireTenantMember`. Lỗi: 404 (không thuộc gian hàng), 409 `ORDER_STATUS_NOT_CHANGEABLE`, `ORDER_ALREADY_PAID`, `ORDER_CHANGED`, `PRODUCT_UNAVAILABLE`, `ALREADY_OWNED`, `CANNOT_BUY_OWN_PRODUCT` |
 | `OrderListItem.statusTargets`, `OrderListItem.provider`, `OrderDetailView.statusTargets` | Mới |
 | ~~`cancelOrder(tenantId, orderId)`~~ | **Đã xoá** |
-| `confirmOrderManually(tenantId, orderId, note, actorId?)` | **Giữ** (ghi chú bắt buộc, luật ADR-061/062) — không còn UI gọi; dùng ở test + `scripts/demo-reviews.ts` |
+| ~~`confirmOrderManually(tenantId, orderId, note, actorId?)`~~ | **Đã xoá** (ADR-074 mục 8, 2026-11-27) — test chuyển sang `changeOrderStatusBySeller`. Trước đó "giữ, không còn UI gọi" |
 | `markOrderPaid(tx, orderId, source)` | Chữ ký không đổi; hành vi: cập nhật có điều kiện, thua cuộc → `{ fulfilled: false }` |
 | `orderHoldStartedAt(order: { holdStartedAt, createdAt }) → Date` | Mới (ADR-068 mục 8) — mốc giữ `holdStartedAt ?? createdAt`; dùng ở `initiateOrderCheckout` và `checkout-view.ts` (`CheckoutView` phương thức `available`, shape không đổi) |
 | `OrderPaymentChannel.MANUAL` | Nghĩa mở rộng (mục 9): `confirmNote` **hoặc** audit `ORDER_MANUALLY_CONFIRMED` của đơn; shape không đổi |
@@ -1708,7 +1710,7 @@ Secret không bao giờ trả về client — trang chỉ nhận `maskedSecrets`
 | `INVOICE_NOT_REOPENABLE`, `INVOICE_NOT_LATEST`, `PENDING_INVOICE_EXISTS` | 409 | `reopenSubscriptionInvoice` |
 | `PLAN_INACTIVE` | 409 | `reopenSubscriptionInvoice` (mã đã có ở `createRenewalInvoice` với **400**) |
 | `ORDER_STATUS_NOT_CHANGEABLE` | 409 | `changeOrderStatusBySeller` |
-| `ORDER_ALREADY_PAID` | 409 | `changeOrderStatusBySeller` (→ PAID) và `confirmOrderManually` — `markOrderPaid` no-op vì nguồn khác vừa áp |
+| `ORDER_ALREADY_PAID` | 409 | `changeOrderStatusBySeller` (→ PAID; trước ADR-074 còn `confirmOrderManually`, đã xoá) — `markOrderPaid` no-op vì nguồn khác vừa áp |
 
 `INVOICE_NOT_FOUND`, `ORDER_CHANGED`, `PRODUCT_UNAVAILABLE`, `ALREADY_OWNED`, `CANNOT_BUY_OWN_PRODUCT` là mã có sẵn, nay thêm nơi ném.
 
@@ -1904,6 +1906,44 @@ Gửi qua `sendEmailNow` với `type` `tenant_locked` / `tenant_unlocked` (`emai
 - Guard phiên mới (`ACCOUNT_LOCKED` / `SESSION_REVOKED`, 401) — mục 9B của Auth-Session-Specs; không thêm mã vào bảng `route.ts`.
 - Email gửi qua `sendEmailNow` với `type` `user_locked` / `user_unlocked` và biến thể `requestedByAdmin` của đặt lại mật khẩu (`email_send_log`). Danh mục: User-Management-System-Center-Specs §3.5.
 - Đơn/thư viện/khách của gian hàng **không** được đọc từ các action này (§7.9).
+
+## 37A. Webhook an toàn, nhãn gian hàng cho email, kit giao diện (ADR-074 — KB ADR-058) — 2026-11-27 ✅
+
+Đối chiếu code working tree 2026-11-27 (✅ đọc `webhook-event.ts`, `email-dispatch.ts`, `lock-reason.ts`, `report-list.tsx`, `admin/users/page.tsx`). **Không thêm `route.ts`**; có 1 migration (`email_send_log.tenantId`, §Database-Schema-Reference). Quyết định: [[01-Architecture-Decisions/ADR-058-Backlog-Preview-Rls-User-Search-Report-Filter-Email-Tenant|ADR-058 KB (≙ ADR-074)]].
+
+### 37A.1. `apps/web/lib/webhook-event.ts` (mới)
+
+| Export | Chữ ký / ghi chú |
+| :-- | :-- |
+| `WebhookEventKey` | `{ scope: "PLATFORM" \| "TENANT"; provider: PaymentProviderId; providerEventId: string; tenantId?: string }` |
+| `RecordedWebhookEvent` | `WebhookEventKey & { id: string }` |
+| `recordWebhookEvent(key) → Promise<RecordedWebhookEvent \| null>` | Ghi `webhook_events` qua `withSystemJob`. `null` = trùng khoá (P2002) → route trả 200 idempotent. Lỗi khác **ném tiếp** → route 5xx |
+| `releaseWebhookEventOnFailure(event, step) → Promise<T>` | Chạy `step`; lỗi → `deleteMany({ where: { id: event.id } })` rồi ném lại lỗi gốc. Xoá lỗi → `logger.error` "could not release webhook_events row" (cần đối soát tay theo `providerEventId`), vẫn ném lỗi gốc |
+
+Response lỗi 5xx của hai route webhook: `{ error: { code, message, requestId } }` (khớp quy ước chung). Các mã cũ (404 `unsupported_provider`/`not_configured`, 401 `invalid_signature`, 400 `invalid_body`, 200 trùng) không đổi.
+
+### 37A.2. `apps/web/lib/email-dispatch.ts`
+
+| Export | Chữ ký / ghi chú |
+| :-- | :-- |
+| `SendEmailOptions` | `{ tenantId?: string \| null }` (mới) |
+| `sendEmailNow(message, options?: SendEmailOptions) → Promise<SendEmailResult>` | **Đổi:** thêm tham số `options`; `tenantId` ghi vào `email_send_log` cả khi `SENT` lẫn `FAILED`. Không truyền → `NULL` |
+| `EmailSendLogEntry.tenantId?: string \| null` / `logEmailSend(entry)` | Thêm trường `tenantId` |
+
+Quy tắc gắn `tenantId`: ADR-058 KB §2.4 (có: email trong ngữ cảnh gian hàng; `NULL`: `abuse_report_resolved`, `guest_activation`, email tài khoản).
+
+### 37A.3. `apps/web/lib/lock-reason.ts` (mới, client-safe)
+
+`LOCK_REASON_MAX_LENGTH = 500` — nguồn duy nhất; `USER_LOCK_REASON_MAX_LENGTH` / `TENANT_LOCK_REASON_MAX_LENGTH` giữ làm alias (không đổi giá trị). ✅
+
+### 37A.4. Query string
+
+- `/admin/reports?tenantId=…` — lọc theo gian hàng; id không hợp lệ (rỗng, > 64 ký tự, không tồn tại) bị bỏ qua ([[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]] §4.1). ✅
+- `/admin/users?q=…` — nay khớp email **hoặc** `user_profiles.fullName`; không khớp SĐT. ✅ ([[02-System-Specs/User-Management-System-Center-Specs|User-Management-System-Center-Specs]] §3.5)
+
+### 37A.5. Hàm đã xoá
+
+`confirmOrderManually` (`lib/order.ts`) — dùng `changeOrderStatusBySeller` (§32.3). ✅
 
 ## 38. Tài Liệu Tham Chiếu & Liên Kết
 

@@ -104,7 +104,7 @@ export async function notifyPurchaseRemedyOpened(n: PurchaseRemedyNotification, 
         libraryUrl,
         supportEmail,
       });
-      const result = await sendEmailNow({ type: "entitlement_remedy_customer", to, ...rendered });
+      const result = await sendEmailNow({ type: "entitlement_remedy_customer", to, ...rendered }, { tenantId: n.tenantId });
       if (!result.ok) logger.warn({ tenantId: n.tenantId, error: result.error }, "entitlement_remedy: gửi email cho khách thất bại");
     }
 
@@ -118,7 +118,7 @@ export async function notifyPurchaseRemedyOpened(n: PurchaseRemedyNotification, 
       ordersUrl: `${appBaseUrl()}/studio/${data.tenant.slug}/orders?remedy=REFUND_REQUESTED`,
       supportEmail,
     });
-    const result = await sendEmailNow({ type: "entitlement_remedy_tenant", to: data.tenant.owner.email, ...rendered });
+    const result = await sendEmailNow({ type: "entitlement_remedy_tenant", to: data.tenant.owner.email, ...rendered }, { tenantId: n.tenantId });
     if (!result.ok) logger.warn({ tenantId: n.tenantId, error: result.error }, "entitlement_remedy: gửi email cho chủ gian hàng thất bại");
   } catch (error) {
     logger.error({ err: error, tenantId: n.tenantId }, "entitlement_remedy: lỗi khi gửi email mở quyền chọn");
@@ -166,7 +166,7 @@ export async function notifyPurchaseRemedyForOrder(orderId: string): Promise<voi
         libraryUrl,
         supportEmail,
       });
-      const result = await sendEmailNow({ type: "entitlement_remedy_customer", to: row.user.email, ...rendered });
+      const result = await sendEmailNow({ type: "entitlement_remedy_customer", to: row.user.email, ...rendered }, { tenantId: row.tenantId });
       if (!result.ok) logger.warn({ tenantId: row.tenantId, error: result.error }, "entitlement_remedy: gửi email cho khách (đơn muộn) thất bại");
     }
   } catch (error) {
@@ -341,7 +341,7 @@ export async function notifyRefundRequested(n: RefundRequestedNotification): Pro
       refundSlaDays: REMEDY_REFUND_SLA_DAYS,
       orderUrl: `${appBaseUrl()}/studio/${tenant.slug}/orders/${n.orderId}`,
     });
-    const result = await sendEmailNow({ type: "remedy_refund_requested", to: tenant.owner.email, ...rendered });
+    const result = await sendEmailNow({ type: "remedy_refund_requested", to: tenant.owner.email, ...rendered }, { tenantId: n.tenantId });
     if (!result.ok) logger.warn({ tenantId: n.tenantId, error: result.error }, "entitlement_remedy: gửi email yêu cầu hoàn tiền thất bại");
   } catch (error) {
     logger.error({ err: error, tenantId: n.tenantId }, "entitlement_remedy: lỗi khi gửi email yêu cầu hoàn tiền");

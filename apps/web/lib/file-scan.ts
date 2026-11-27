@@ -70,7 +70,7 @@ export async function runFileScan(productFileId: string): Promise<void> {
       fileName: file.fileName,
       productUrl: `${env.APP_URL}/studio/${tenant.slug}/products/${product.id}`,
     });
-    const sent = await sendEmailNow({ type: "product_file_rejected", to: owner.email, subject: rendered.subject, html: rendered.html, text: rendered.text });
+    const sent = await sendEmailNow({ type: "product_file_rejected", to: owner.email, subject: rendered.subject, html: rendered.html, text: rendered.text }, { tenantId: tenant.id });
     if (!sent.ok) {
       logger.warn({ productFileId, email: owner.email, error: sent.error }, "file.scan: gửi email báo owner thất bại");
     }

@@ -13,7 +13,7 @@ function formatVnDate(date: Date): string {
   return date.toLocaleDateString("vi-VN", { timeZone: DISPLAY_TIME_ZONE });
 }
 
-async function notify(tenant: Pick<Tenant, "name" | "slug" | "ownerId">, stage: SubscriptionEmailStage, periodEnd?: Date) {
+async function notify(tenant: Pick<Tenant, "id" | "name" | "slug" | "ownerId">, stage: SubscriptionEmailStage, periodEnd?: Date) {
   const env = getEnv();
   const brand = await getEffectiveBrand();
   const prisma = getPrismaClient();
@@ -27,7 +27,7 @@ async function notify(tenant: Pick<Tenant, "name" | "slug" | "ownerId">, stage: 
     periodEndDisplay: periodEnd ? formatVnDate(periodEnd) : undefined,
   });
   const type = `subscription_${stage.toLowerCase()}`;
-  const sent = await sendEmailNow({ type, to: owner.email, subject: rendered.subject, html: rendered.html, text: rendered.text });
+  const sent = await sendEmailNow({ type, to: owner.email, subject: rendered.subject, html: rendered.html, text: rendered.text }, { tenantId: tenant.id });
   if (!sent.ok) {
     logger.warn({ tenantSlug: tenant.slug, type, email: owner.email, error: sent.error }, "subscription.sweep: gửi email thất bại");
   }

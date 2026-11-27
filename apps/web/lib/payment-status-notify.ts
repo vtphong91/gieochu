@@ -83,6 +83,7 @@ export async function notifyOwnerOfInvoiceStatus(
       where: { id: invoiceId },
       select: {
         code: true,
+        tenantId: true,
         amountVnd: true,
         provider: true,
         periodStart: true,
@@ -108,7 +109,7 @@ export async function notifyOwnerOfInvoiceStatus(
         : {}),
     });
     const type = SUBSCRIPTION_INVOICE_EMAIL_TYPES[stage];
-    const result = await sendEmailNow({ type, to: invoice.tenant.owner.email, ...rendered });
+    const result = await sendEmailNow({ type, to: invoice.tenant.owner.email, ...rendered }, { tenantId: invoice.tenantId });
     if (!result.ok) logger.warn({ invoiceId, type, error: result.error }, "invoice.status_email: gửi email cho chủ gian hàng thất bại");
   } catch (error) {
     logger.warn({ invoiceId, stage, err: error }, "invoice.status_email: lỗi khi gửi email cho chủ gian hàng");
@@ -176,7 +177,7 @@ export async function notifyCustomerOfOrderStatus(
       ...(stage === "PAYMENT_FAILED" ? { holdUntilDisplay: formatVnDateTime(order.expiresAt) } : {}),
     });
     const type = ORDER_STATUS_EMAIL_TYPES[stage];
-    const result = await sendEmailNow({ type, to: order.customer.email, ...rendered });
+    const result = await sendEmailNow({ type, to: order.customer.email, ...rendered }, { tenantId });
     if (!result.ok) logger.warn({ tenantId, orderId, type, error: result.error }, "order.status_email: gửi email cho khách thất bại");
   } catch (error) {
     logger.warn({ tenantId, orderId, stage, err: error }, "order.status_email: lỗi khi gửi email cho khách");

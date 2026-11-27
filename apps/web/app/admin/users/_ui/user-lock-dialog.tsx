@@ -16,6 +16,7 @@ import { brandColors } from "@gieochu/config/theme";
 import { FormBanner, GhostButton, Notice, PrimaryButton } from "../../_ui/kit";
 // `import type` bị xoá khi biên dịch → không kéo code server (Prisma, email…) vào bundle client.
 import type { AdminUserStatus } from "../../../../lib/admin-user-detail";
+import { LOCK_REASON_MAX_LENGTH as REASON_MAX_LENGTH } from "../../../../lib/lock-reason";
 import { lockUserAction, unlockUserAction, type UserLockState } from "../actions";
 
 /**
@@ -30,7 +31,6 @@ import { lockUserAction, unlockUserAction, type UserLockState } from "../actions
  * action revalidate làm trạng thái đổi giữa chừng cũng không đảo nội dung hộp.
  */
 
-const REASON_MAX_LENGTH = 500;
 const REASON_REQUIRED_MESSAGE = `Hãy nhập lý do (tối đa ${REASON_MAX_LENGTH} ký tự).`;
 /** Nút xác nhận khoá — đỏ như tông "danger" của kit (chữ trắng trên #DC2626 ≈ 4.8:1). */
 const DANGER_BG = "#DC2626";

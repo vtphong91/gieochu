@@ -83,6 +83,8 @@ export interface EmailSendLogEntry {
   subject: string;
   status: "SENT" | "FAILED";
   errorMessage?: string;
+  /** ADR-074: gian hàng mà email thuộc về (nhãn lọc trên nhật ký L1); bỏ trống/null = không thuộc gian hàng nào. */
+  tenantId?: string | null;
 }
 
 export async function logEmailSend(entry: EmailSendLogEntry): Promise<void> {
@@ -95,8 +97,14 @@ export async function logEmailSend(entry: EmailSendLogEntry): Promise<void> {
       subject: entry.subject,
       status: entry.status,
       errorMessage: entry.errorMessage ?? null,
+      tenantId: entry.tenantId ?? null,
     },
   });
+}
+
+/** ADR-074: ngữ cảnh gửi — `tenantId` truyền khi email thuộc một gian hàng (không truyền cho email đăng nhập/tài khoản người dùng). */
+export interface SendEmailOptions {
+  tenantId?: string | null;
 }
 
 export interface SendEmailResult {
@@ -114,8 +122,9 @@ export interface SendEmailResult {
  * xong mới xong (chậm hơn ~1-2s), nhưng thành công/thất bại phản hồi được
  * ngay cho người gọi thay vì im lặng.
  */
-export async function sendEmailNow(message: EmailMessage): Promise<SendEmailResult> {
+export async function sendEmailNow(message: EmailMessage, options: SendEmailOptions = {}): Promise<SendEmailResult> {
   const env = getEnv();
+  const tenantId = options.tenantId ?? null;
   let sender: EmailSender | null;
   try {
     // Đọc + giải mã SystemSmtpConfig có thể lỗi (DB, khoá giải mã sai) — không throw lên người gọi
@@ -125,22 +134,22 @@ export async function sendEmailNow(message: EmailMessage): Promise<SendEmailResu
     // Không trả/ghi message kỹ thuật (có thể chứa chi tiết kết nối DB) — chi tiết chỉ nằm trong log server.
     const errorMessage = "Không đọc được cấu hình máy chủ email.";
     logger.error({ err: error, type: message.type }, "email: không đọc được cấu hình máy chủ email");
-    await safeLogEmailSend({ type: message.type, recipient: message.to, subject: message.subject, status: "FAILED", errorMessage });
+    await safeLogEmailSend({ type: message.type, recipient: message.to, subject: message.subject, status: "FAILED", errorMessage, tenantId });
     return { ok: false, error: errorMessage };
   }
   if (!sender) {
     const error = emailNotConfiguredError();
     logger.warn({ type: message.type, code: error.code }, "email: chưa cấu hình máy chủ email, bỏ qua gửi");
-    await logEmailSend({ type: message.type, recipient: message.to, subject: message.subject, status: "FAILED", errorMessage: error.message });
+    await logEmailSend({ type: message.type, recipient: message.to, subject: message.subject, status: "FAILED", errorMessage: error.message, tenantId });
     return { ok: false, error: error.message, code: error.code };
   }
   try {
     await sender.send(message);
-    await logEmailSend({ type: message.type, recipient: message.to, subject: message.subject, status: "SENT" });
+    await logEmailSend({ type: message.type, recipient: message.to, subject: message.subject, status: "SENT", tenantId });
     return { ok: true };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Gửi email thất bại.";
-    await logEmailSend({ type: message.type, recipient: message.to, subject: message.subject, status: "FAILED", errorMessage });
+    await logEmailSend({ type: message.type, recipient: message.to, subject: message.subject, status: "FAILED", errorMessage, tenantId });
     return { ok: false, error: errorMessage };
   }
 }

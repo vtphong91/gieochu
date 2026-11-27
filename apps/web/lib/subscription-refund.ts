@@ -482,7 +482,7 @@ async function notifyTenant(tenantId: string, stage: SubscriptionRefundEmailStag
       adminNote: stage === "REQUESTED" ? null : request.adminNote,
     });
     const type = `subscription_refund_${stage.toLowerCase()}`;
-    const sent = await sendEmailNow({ type, to: request.tenant.owner.email, subject: rendered.subject, html: rendered.html, text: rendered.text });
+    const sent = await sendEmailNow({ type, to: request.tenant.owner.email, subject: rendered.subject, html: rendered.html, text: rendered.text }, { tenantId });
     if (!sent.ok) logger.warn({ tenantId, type, error: sent.error }, "subscription-refund: gửi email thất bại");
   } catch (error) {
     logger.error({ err: error, tenantId, stage }, "subscription-refund: lỗi khi gửi email");

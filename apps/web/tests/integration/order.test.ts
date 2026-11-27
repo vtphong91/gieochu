@@ -10,7 +10,6 @@ import { createCoupon } from "../../lib/coupon";
 import {
   applyCouponToOrder,
   changeOrderStatusBySeller,
-  confirmOrderManually,
   createOrder,
   getOrderDetailView,
   getOrderForCustomer,
@@ -39,7 +38,7 @@ import type { CurrentUser } from "../../lib/session";
 const { sendEmailNowSpy } = vi.hoisted(() => ({ sendEmailNowSpy: vi.fn() }));
 vi.mock("../../lib/email-dispatch", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../lib/email-dispatch")>();
-  sendEmailNowSpy.mockImplementation(async (message: { type: string }) =>
+  sendEmailNowSpy.mockImplementation(async (message: { type: string }, options?: { tenantId?: string | null }) =>
     // ADR-061/062: email người bán/khách của luồng mua cũng chặn (không gửi thật).
     [
       "order_pending_manual",
@@ -60,9 +59,17 @@ vi.mock("../../lib/email-dispatch", async (importOriginal) => {
       "subscription_downgraded_to_free",
     ].includes(message.type)
       ? { ok: true }
-      : actual.sendEmailNow(message as never),
+      : actual.sendEmailNow(message as never, options),
   );
   return { ...actual, sendEmailNow: sendEmailNowSpy };
+});
+
+// ADR-074 mục 7: bọc `enqueuePaymentProcess` để mô phỏng hàng đợi lỗi một lần — mặc định gọi hàm thật.
+const { enqueuePaymentProcessSpy } = vi.hoisted(() => ({ enqueuePaymentProcessSpy: vi.fn() }));
+vi.mock("../../lib/jobs", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../lib/jobs")>();
+  enqueuePaymentProcessSpy.mockImplementation(actual.enqueuePaymentProcess);
+  return { ...actual, enqueuePaymentProcess: enqueuePaymentProcessSpy };
 });
 
 const prisma = getPrismaClient();
@@ -309,15 +316,14 @@ describe("M8 checkout and orders", () => {
     });
   }, 90_000); // DB dùng chung qua mạng (Neon) — case nhiều truy vấn tuần tự vượt 20s mặc định.
 
-  it("owner's manual confirm requires a note, then fulfills the order and grants an entitlement", async () => {
+  it("owner's manual confirm stores the optional note, then fulfills the order and grants an entitlement", async () => {
     const { owner, tenant } = await createOwnerAndTenant("Manual Confirm Test", "manualconfirm");
     const product = await createPublishedProduct(tenant.id, "de-thi", 50_000);
     const buyer = await createActiveUser(nextEmail());
     const order = await createOrder(buyer.id, tenant.slug, product.id);
 
-    await expect(confirmOrderManually(tenant.id, order.id, "")).rejects.toMatchObject({ code: "NOTE_REQUIRED" });
-
-    await confirmOrderManually(tenant.id, order.id, "Đã đối chiếu sao kê ngân hàng lúc 10:30");
+    // ADR-068: ghi chú xác nhận không còn bắt buộc (NOTE_REQUIRED đã bỏ) — case trống được phủ ở các lần xác nhận không ghi chú bên dưới.
+    await changeOrderStatusBySeller(tenant.id, order.id, "PAID", "Đã đối chiếu sao kê ngân hàng lúc 10:30", owner.id);
 
     const fulfilled = await getOrderDetailView(tenant.id, order.id);
     expect(fulfilled.status).toBe("FULFILLED");
@@ -512,6 +518,15 @@ describe("M8 checkout and orders", () => {
     const rejected = await tenantWebhook(badSignature, { params: Promise.resolve({ tenantId: tenant.id, provider: "sepay" }) });
     expect(rejected.status).toBe(401);
 
+    // ADR-074 mục 7: đẩy job lỗi sau khi đã ghi webhook_events → 5xx và dòng sự kiện bị xoá, để lần gửi lại bên dưới được xử lý.
+    enqueuePaymentProcessSpy.mockRejectedValueOnce(new Error("simulated queue outage"));
+    const queueDown = await tenantWebhook(signedSepayRequest(tenant.id, secret, rawBody), {
+      params: Promise.resolve({ tenantId: tenant.id, provider: "sepay" }),
+    });
+    expect(queueDown.status).toBe(500);
+    expect(await queueDown.json()).toMatchObject({ error: { code: expect.any(String), requestId: expect.any(String) } });
+    expect(await prisma.webhookEvent.count({ where: { tenantId: tenant.id, providerEventId: `evt_${RUN_PREFIX}_1` } })).toBe(0);
+
     const first = await tenantWebhook(signedSepayRequest(tenant.id, secret, rawBody), {
       params: Promise.resolve({ tenantId: tenant.id, provider: "sepay" }),
     });
@@ -523,6 +538,10 @@ describe("M8 checkout and orders", () => {
 
     const eventCount = await prisma.webhookEvent.count({ where: { tenantId: tenant.id, providerEventId: `evt_${RUN_PREFIX}_1` } });
     expect(eventCount).toBe(1);
+    // Lần gửi lại sau sự cố đẩy đúng 1 job (lần lặp tiếp theo bị chặn bởi webhook_events).
+    const queue = await getStartedQueue();
+    const jobs = await queue.boss.findJobs<PaymentProcessJobData>(QUEUE_NAMES.PAYMENT_PROCESS, { data: { tenantId: tenant.id } });
+    expect(jobs.filter((job) => job.data.providerEventId === `evt_${RUN_PREFIX}_1`)).toHaveLength(1);
 
     // ADR-059 bổ sung lần 2: body hỏng / thiếu trường (chữ ký hợp lệ) → 400, không 500, không ghi webhook_events.
     const brokenBody = await tenantWebhook(signedSepayRequest(tenant.id, secret, "{not json"), {
@@ -722,7 +741,7 @@ describe("M8 checkout and orders", () => {
   });
 
   it("the hourly sweep expires an overdue PENDING order without consuming its coupon", async () => {
-    const { tenant } = await createOwnerAndTenant("Sweep Test", "sweep");
+    const { owner, tenant } = await createOwnerAndTenant("Sweep Test", "sweep");
     const product = await createPublishedProduct(tenant.id, "de-thi", 100_000);
     const buyer = await createActiveUser(nextEmail());
     await createCoupon(tenant.id, { code: "SWEEP10", type: "PERCENT", value: 10, isEnabled: true });
@@ -752,7 +771,8 @@ describe("M8 checkout and orders", () => {
     expect(expired.status).toBe("EXPIRED");
     // ADR-061: không còn cửa sổ trễ 24 giờ → hết hạn là không xác nhận tay được, không huỷ được.
     expect(expired.allowedActions).toEqual(["view"]);
-    await expect(confirmOrderManually(tenant.id, order.id, "muộn")).rejects.toMatchObject({ code: "ORDER_NOT_CONFIRMABLE" });
+    // ADR-068: người bán vẫn xác nhận được đơn hết hạn qua "Đổi trạng thái…" (luật cũ "hết hạn → ORDER_NOT_CONFIRMABLE" chỉ còn cho webhook/job).
+    expect(expired.statusTargets).toEqual(["PAID", "PENDING", "CANCELLED"]);
     await expect(cancelOrderByCustomer(buyer.id, order.id)).rejects.toMatchObject({ code: "ORDER_NOT_PENDING" });
 
     const coupon = await withTenant(tenant.id, (tx) => tx.coupon.findFirstOrThrow({ where: { tenantId: tenant.id, code: "SWEEP10" } }));
@@ -764,10 +784,10 @@ describe("M8 checkout and orders", () => {
       tx.order.update({ where: { id: order.id }, data: { provider: "MANUAL_QR", customerDeclaredPaidAt: new Date(expiredAt.getTime() - 5_000) } }),
     );
     expect((await getOrderDetailView(tenant.id, order.id)).allowedActions).toEqual(["view", "confirm"]);
-    await confirmOrderManually(tenant.id, order.id, "Khách báo đã chuyển trước hạn, đã thấy tiền");
+    await changeOrderStatusBySeller(tenant.id, order.id, "PAID", "Khách báo đã chuyển trước hạn, đã thấy tiền", owner.id);
     expect((await getOrderDetailView(tenant.id, order.id)).status).toBe("FULFILLED");
     const lateAudit = await prisma.auditLog.findFirstOrThrow({ where: { targetId: order.id, action: "ORDER_MANUALLY_CONFIRMED" } });
-    expect(lateAudit.metadata).toMatchObject({ previousStatus: "EXPIRED", lateDeclaredPaid: true, customerDeclaredPaid: true });
+    expect(lateAudit.metadata).toMatchObject({ previousStatus: "EXPIRED", lateConfirmation: true, customerDeclaredPaid: true });
 
     // ADR-062 Q4 + ADR-061 Q6: khách tự huỷ đơn chờ (khách khác không huỷ được — đọc dưới withCustomer); mã giảm giá "mỗi
     // khách" tính cả đơn chờ còn hiệu lực.
@@ -837,7 +857,7 @@ describe("M8 checkout and orders", () => {
 
     // ADR-048: khách chỉ xuất hiện khi có đơn đã thanh toán; tenant B không thấy khách của A; ghi chú khách bị chặn chéo tenant.
     expect((await listCustomersPage(tenantA.id, {})).total).toBe(0);
-    await confirmOrderManually(tenantA.id, order.id, "Đã đối chiếu sao kê");
+    await changeOrderStatusBySeller(tenantA.id, order.id, "PAID", "Đã đối chiếu sao kê", ownerA.id);
     const customersA = await listCustomersPage(tenantA.id, { q: "nguyen van thu" });
     expect(customersA.items.map((c) => [c.userId, c.paidOrders, c.freeClaims, c.spentVnd, c.refundedVnd])).toEqual([[buyer1.id, 1, 0, 20_000, 0]]);
     expect(customersA.stats).toMatchObject({ totalCustomers: 1, payingCustomers: 1, returningCustomers: 0, spentVnd: 20_000, freeOnlyCustomers: 0 });
@@ -866,7 +886,7 @@ describe("M8 checkout and orders", () => {
   }, 90_000); // DB dùng chung qua mạng (Neon) — case nhiều truy vấn tuần tự vượt 20s mặc định.
 
   it("a coupon is only consumed once an order is PAID, and concurrent orders never push usedCount past usageLimit", async () => {
-    const { tenant } = await createOwnerAndTenant("Coupon Race Test", "couponrace");
+    const { owner, tenant } = await createOwnerAndTenant("Coupon Race Test", "couponrace");
     const product = await createPublishedProduct(tenant.id, "de-thi", 40_000);
     const buyer1 = await createActiveUser(nextEmail());
     const buyer2 = await createActiveUser(nextEmail());
@@ -881,8 +901,8 @@ describe("M8 checkout and orders", () => {
     // runs out by the time it's paid (§"M8"/docs/BACKLOG.md), so both confirms succeed here;
     // only the *redemption* row is capped by the atomic update inside markOrderPaid().
     await Promise.all([
-      confirmOrderManually(tenant.id, order1.id, "confirm 1"),
-      confirmOrderManually(tenant.id, order2.id, "confirm 2"),
+      changeOrderStatusBySeller(tenant.id, order1.id, "PAID", "confirm 1", owner.id),
+      changeOrderStatusBySeller(tenant.id, order2.id, "PAID", "confirm 2", owner.id),
     ]);
 
     const [fulfilled1, fulfilled2] = await Promise.all([getOrderDetailView(tenant.id, order1.id), getOrderDetailView(tenant.id, order2.id)]);

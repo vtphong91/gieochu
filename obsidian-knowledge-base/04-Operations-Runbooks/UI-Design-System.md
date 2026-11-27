@@ -2733,7 +2733,7 @@ Thư mục: `apps/web/app/admin/users/[userId]/` (`page.tsx`, `loading.tsx`, `no
 ### 29.1. `UserLockDialog` (`_ui/user-lock-dialog.tsx`) ✅
 
 - `<dialog>` + `showModal()`, cùng mẫu với hộp khoá gian hàng (§28.3). Một component cho cả khoá và mở khoá (prop `isLock`; placeholder đổi theo chế độ).
-- Ô lý do bắt buộc, `maxLength` 500, bộ đếm "n / 500", thông báo "Hãy nhập lý do (tối đa 500 ký tự)". Nêu rõ lý do sẽ gửi cho người dùng.
+- Ô lý do bắt buộc, `maxLength` = `LOCK_REASON_MAX_LENGTH` (500, `lib/lock-reason.ts` — ADR-074 mục 5), bộ đếm "n / 500", thông báo "Hãy nhập lý do (tối đa 500 ký tự)". Nêu rõ lý do sẽ gửi cho người dùng.
 - Gọi `lockUserAction` / `unlockUserAction`; lỗi `reasonError` hiện ngay dưới ô nhập.
 
 ### 29.2. `UserConfirmDialog` (`_ui/user-confirm-dialog.tsx`) ✅
@@ -2752,7 +2752,7 @@ Thư mục: `apps/web/app/admin/users/[userId]/` (`page.tsx`, `loading.tsx`, `no
 
 - Menu "⋯" dùng **Popover API** (`popover="auto"`, top layer), toạ độ đặt bằng `placeMenu()` (`position: fixed`). Không dùng `RowMenu` của kit (position absolute bị khung bảng cắt và gây thanh cuộn dọc). Đồng bộ `aria-expanded` với `:popover-open`; trình duyệt không có Popover API thì fallback.
 - Mục: "Xem chi tiết", "Khoá/Mở khoá…" (theo `canLock` / `canUnlock`), "Gửi lại email kích hoạt…" (chỉ khi `canResendVerification`, tức `PENDING`).
-- Logic popover nhân bản từ `InvoiceRowMenu` (ADR-069) — xem nợ kỹ thuật §29.7.
+- Từ ADR-074 (2026-11-27) dùng chung `RowPopoverMenu` với `InvoiceRowMenu` (ADR-069) — xem §29.7 mục 1 (mô tả Popover API ở trên nay nằm trong `RowPopoverMenu`).
 
 ### 29.5. `user-detail-actions` (`_ui/user-detail-actions.tsx`) ✅
 
@@ -2765,12 +2765,14 @@ Thư mục: `apps/web/app/admin/users/[userId]/` (`page.tsx`, `loading.tsx`, `no
 - `USER_STATUS_LABEL` / `USER_STATUS_TONE` cho `PENDING`, `ACTIVE`, `LOCKED`.
 - `USER_ROLE_LABEL` / `USER_ROLE_TONE` cho `SUPER_ADMIN` → "Siêu quản trị", `ADMIN` → "Quản trị viên", `OWNER` → "Chủ gian hàng", `USER` → "Người dùng". `resolveUserRole(user)` suy vai trò hiển thị từ `isSuperAdmin`, `systemRole`, `hasOwnedTenant`.
 
-### 29.7. Nợ kỹ thuật (ghi nhận 2026-11-26, chưa xử lý)
+### 29.7. Nợ kỹ thuật (ghi nhận 2026-11-26) — **cả 3 mục kỹ thuật đã xử lý 2026-11-27 (ADR-074 mục 5)** ✅ đọc code
 
-1. **Popover nhân bản:** logic menu popover ở `UserRowActions` nhân bản từ `InvoiceRowMenu` (ADR-069). Gom về một hook hoặc component dùng chung khi có task kế tiếp.
-2. **Import chéo từ trang tenant:** `admin/users/[userId]/page.tsx` (`SectionHeading`), `_ui/audit-log.tsx` (`LINE`) và `_ui/sections.tsx` (`CARD`, `CompactEmpty`, `Dash`, `InfoGrid`, `LINE`, `SectionHeading`, `StatTile`, `TextLink`) đều import từ `admin/tenants/[tenantId]/_ui/parts.tsx`. Nên chuyển các phần dùng chung sang `apps/web/app/admin/_ui/` (❓ chưa có task).
-3. **Hằng số lý do ở client:** `REASON_MAX_LENGTH = 500` hard-code trong `user-lock-dialog.tsx`, song song `USER_LOCK_REASON_MAX_LENGTH` ở `lib/admin-users.ts`. Client không import được lib server nên phải giữ hai bản; đổi giới hạn phải sửa cả hai.
-4. **Ô tìm kiếm:** placeholder "Tìm theo tên, email, SĐT..." nhưng chỉ lọc email (lỗi có sẵn, xem User-Management §3.5 và [[00-Index/KB-Audit-2026-09-26|KB-Audit]] §56).
+1. ~~**Popover nhân bản:** logic menu popover ở `UserRowActions` nhân bản từ `InvoiceRowMenu`.~~ **Đã xử lý:** component dùng chung **`RowPopoverMenu`** (`apps/web/app/admin/_ui/row-popover-menu.tsx`) — props `label` (tên truy cập nút "⋯"), `width` (mặc định `"md"`), `handleRef` (`RowPopoverMenuHandle.focusTrigger()` trả focus về nút khi đóng hộp), `dialogs` (render ngoài menu, cùng khung với nút), kèm các mục menu làm children. `InvoiceRowMenu` (`admin/billing/invoices/confirm-button.tsx`) và `UserRowActions` (§29.4) dùng chung; nhìn thấy không đổi.
+2. ~~**Import chéo từ trang tenant** (`parts.tsx`).~~ **Đã xử lý:** các mảnh dùng chung chuyển sang **`apps/web/app/admin/_ui/detail-kit.tsx`**: `CARD`, `LINE`, `Dash`, `SectionHeading`, `InfoItem` (kiểu), `InfoGrid`, `CompactEmpty`, `TextLink`, `StatTile`. `tenants/[tenantId]/_ui/parts.tsx` **chỉ còn `UsageBar`** (§28.2). Trang chi tiết người dùng và gian hàng cùng import từ kit.
+3. ~~**Hằng số lý do ở client** (`REASON_MAX_LENGTH = 500` hard-code).~~ **Đã xử lý:** `apps/web/lib/lock-reason.ts` có **`LOCK_REASON_MAX_LENGTH = 500`** — module client-safe (không import Prisma/server), nguồn duy nhất cho `user-lock-dialog.tsx`, `tenant-lock-dialog.tsx` và server; `USER_LOCK_REASON_MAX_LENGTH` / `TENANT_LOCK_REASON_MAX_LENGTH` giữ làm alias.
+4. ~~**Ô tìm kiếm:** placeholder "Tìm theo tên, email, SĐT..." nhưng chỉ lọc email.~~ **Đã sửa 2026-11-27 (ADR-074 mục 2):** placeholder "Tìm theo tên hoặc email..." và truy vấn lọc email hoặc họ tên; không tìm theo SĐT ([[00-Index/KB-Audit-2026-09-26|KB-Audit]] §56 mục 4, §57).
+
+Chưa thử trên trình duyệt sau khi gom kit (giao diện được báo là không đổi) ❓.
 
 ### 29.8. Việc còn mở ❓
 

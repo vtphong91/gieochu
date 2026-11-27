@@ -229,21 +229,37 @@ export interface AbuseReportListFilters {
   status: AbuseReportStatusValue | null;
   type: AbuseReportTypeValue | null;
   targetType: AbuseTargetTypeValue | null;
+  /** ADR-074: lọc theo gian hàng bị báo cáo. null = không lọc (kể cả khi `tenantId` trên URL rỗng/không tồn tại). */
+  tenant: { id: string; name: string } | null;
 }
 
 export interface AbuseReportSearchParams {
   status?: string;
   type?: string;
   targetType?: string;
+  /** `/admin/reports?tenantId=<id>` — id không tồn tại/rỗng bị bỏ qua, không báo lỗi. */
+  tenantId?: string;
 }
 
+/** Phần thuần (không đụng DB): `tenant` luôn null — `listAbuseReports` tra gian hàng rồi mới điền. */
 export function parseAbuseReportFilters(sp: AbuseReportSearchParams): AbuseReportListFilters {
   return {
     // Mặc định xem báo cáo chờ xử lý; `status=ALL` = mọi trạng thái.
     status: sp.status === "ALL" ? null : isAbuseReportStatus(sp.status) ? sp.status : "OPEN",
     type: isAbuseReportType(sp.type) ? sp.type : null,
     targetType: isAbuseTargetType(sp.targetType) ? sp.targetType : null,
+    tenant: null,
   };
+}
+
+const TENANT_ID_MAX_LENGTH = 64;
+
+/** Tra gian hàng cho bộ lọc `tenantId`; giá trị không phải chuỗi/rỗng/quá dài/không tồn tại → null (bỏ qua lọc). */
+async function resolveTenantFilter(raw: unknown): Promise<AbuseReportListFilters["tenant"]> {
+  if (typeof raw !== "string") return null;
+  const id = raw.trim();
+  if (!id || id.length > TENANT_ID_MAX_LENGTH) return null;
+  return getPrismaClient().tenant.findUnique({ where: { id }, select: { id: true, name: true } });
 }
 
 export interface AbuseReportListItem {
@@ -297,10 +313,12 @@ export async function listAbuseReports(
 ): Promise<AbuseReportListResult> {
   await requireRole("SYSTEM_ADMIN");
   const filters = parseAbuseReportFilters(sp);
+  filters.tenant = await resolveTenantFilter(sp.tenantId);
   const where: Prisma.AbuseReportWhereInput = {
     ...(filters.status ? { status: filters.status } : {}),
     ...(filters.type ? { type: filters.type } : {}),
     ...(filters.targetType ? { targetType: filters.targetType } : {}),
+    ...(filters.tenant ? { tenantId: filters.tenant.id } : {}),
   };
   const prisma = getPrismaClient();
   try {
@@ -843,7 +861,7 @@ export async function notifyAbuseReportResolution(n: AbuseReportNotification): P
         manageUrl: studioUrlFor(n),
         supportEmail,
       });
-      const result = await sendEmailNow({ type: "content_moderated", to: n.tenant.ownerEmail, ...rendered });
+      const result = await sendEmailNow({ type: "content_moderated", to: n.tenant.ownerEmail, ...rendered }, { tenantId: n.tenant.id });
       if (!result.ok) logger.warn({ tenantId: n.tenant.id, error: result.error }, "abuse_report: gửi email cho chủ gian hàng thất bại");
     }
 

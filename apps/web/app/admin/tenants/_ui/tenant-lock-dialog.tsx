@@ -18,6 +18,7 @@ import { IconEye, IconLock, IconUnlock } from "../../_ui/icons";
 import { MenuItemButton, MenuItemLink, MenuSeparator, RowMenu } from "../../_ui/row-menu";
 // `import type` bị xoá khi biên dịch → không kéo code server (Prisma, email…) vào bundle client.
 import type { AdminTenantStatus } from "../../../../lib/admin-tenant-detail";
+import { LOCK_REASON_MAX_LENGTH as REASON_MAX_LENGTH } from "../../../../lib/lock-reason";
 import { lockTenantAction, unlockTenantAction, type TenantLockState } from "../actions";
 
 /**
@@ -31,7 +32,6 @@ import { lockTenantAction, unlockTenantAction, type TenantLockState } from "../a
  * Chế độ (khoá/mở khoá) chốt lúc mở hộp — action revalidate làm trạng thái gian hàng đổi giữa chừng cũng không đảo nội dung hộp.
  */
 
-const REASON_MAX_LENGTH = 500;
 const REASON_REQUIRED_MESSAGE = `Hãy nhập lý do (tối đa ${REASON_MAX_LENGTH} ký tự).`;
 /** Nút xác nhận khoá — đỏ như tông "danger" của kit (chữ trắng trên #DC2626 ≈ 4.8:1). */
 const DANGER_BG = "#DC2626";

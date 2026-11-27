@@ -507,6 +507,13 @@ xem **20% nội dung THẬT** đã trích ở server (không ẩn 80% còn lại
 - **Lazy fallback ✅:** route handler gọi `getPreviewForPublicRoute` — không có cache → sinh ngay rồi đọc lại;
   vẫn lỗi/không hỗ trợ → trả `{ kind: "unsupported", payload: {} }`.
 - Sản phẩm `DRAFT`/`ARCHIVED` **không** sinh, **không** trả (route 404). Chỉ `PUBLISHED` + tenant `ACTIVE`.
+- **Đọc qua helper RLS (ADR-074 mục 1, 2026-11-27) ✅ code `apps/web/lib/product-file-preview.ts`:** trước đây `getPreviewForPublicRoute` đọc L2 bằng
+  `getPrismaClient()` trực tiếp → role `gieochu_app` không có ngữ cảnh RLS → route trả 404 cho cả tài liệu đã xuất bản. Nay từng bước:
+  1. `withPublic` — gian hàng `ACTIVE` + sản phẩm `PUBLISHED` (guard);
+  2. `withTenant(tenantId)` — đọc `product_files` và cache `product_file_previews` (chỉ sau khi qua guard);
+  3. `withSystemJob` — `generateAndStorePreview` đọc file và upsert cache (cả hook sau `file.scan = CLEAN` lẫn lazy fallback).
+  `tenants` và `product_file_previews` **không bật RLS**; policy public của `product_files` chỉ cho thấy `isPreview = true`, nên bước 2 dùng `withTenant`. Không đổi
+  policy, không migration. Tương ứng KB [[01-Architecture-Decisions/ADR-058-Backlog-Preview-Rls-User-Search-Report-Filter-Email-Tenant|ADR-058]]. Chạy với dữ liệu thật ❓.
 
 ### 11.5 Liệt kê file công khai
 Server component `page.tsx` gọi `listPublicPreviewFiles(productId)` — trả metadata `{ id, fileName, mimeType,

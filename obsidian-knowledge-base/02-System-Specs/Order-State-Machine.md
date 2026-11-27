@@ -93,10 +93,10 @@ Mọi nguồn tiền vào đều gọi đúng một hàm này (`apps/web/lib/ord
 - **Luật xác nhận hiện hành (ADR-061 + Bổ sung ADR-062 mục 3 — đợt 1 luồng mua, working tree chưa commit, 2026-10-27) ✅ code:**
   `canManuallyConfirmOrder(status, expiresAt, now, { declaredPaidAt })`: hiệu lực `PENDING` → được; hiệu lực `EXPIRED` → **chỉ** khi `declaredPaidAt` có và
   `declaredPaidAt < expiresAt`. Webhook (`processPaymentEvent`) gọi **không** truyền `declaredPaidAt` → tiền SePay/MoMo về sau hạn: giao dịch ghi `MATCHED` nhưng
-  **không** tự giao, hiện ở "Giao dịch cần xử lý" với nhãn "Về sau hạn giữ đơn" (§3.11). `confirmOrderManually` truyền `customerDeclaredPaidAt` khi cổng là loại xác
-  nhận tay. Chi tiết §3.12.
+  **không** tự giao, hiện ở "Giao dịch cần xử lý" với nhãn "Về sau hạn giữ đơn" (§3.11). ~~`confirmOrderManually` truyền `customerDeclaredPaidAt` khi cổng là loại xác
+  nhận tay~~ (hàm **đã xoá** — ADR-074 mục 8, 2026-11-27; xác nhận tay nay chỉ qua `changeOrderStatusBySeller`, §3.14). Chi tiết §3.12.
 - ~~**Cửa sổ 24h (chủ dự án chốt giữ 2026-10-16, ADR-036)**~~ — **đã thay bởi ADR-061 (2026-10-26), code đợt 1 đã bỏ**. Mô tả cũ giữ để tra lịch sử: webhook `payment.process` (`processPaymentEvent`) và xác nhận tay
-  (`confirmOrderManually`) cùng dùng `canManuallyConfirmOrder(status, expiresAt, now)` (`packages/core/src/order/expiry.ts`): đơn
+  (`confirmOrderManually` — nay đã xoá, ADR-074) cùng dùng `canManuallyConfirmOrder(status, expiresAt, now)` (`packages/core/src/order/expiry.ts`): đơn
   hiệu lực `PENDING` → được; hiệu lực `EXPIRED` → chỉ được khi `now ≤ expiresAt + 24h`. Webhook khớp số tiền nhưng trễ hơn 24h:
   giao dịch vẫn ghi `tenant_payment_transactions` với `matchStatus = MATCHED`, **không** tự fulfil — tenant đối soát/xử lý tay.
   Từ ADR-036 hàm này xét theo `effectiveOrderStatus`, nên đơn DB còn `PENDING` nhưng đã quá hạn cũng chỉ có 24h (trước đây
@@ -132,7 +132,7 @@ commit/deploy**) ✅.
   `@gieochu/core`) trả `EXPIRED` khi `status = PENDING` và `expiresAt < now` (cùng ranh giới với `runOrderSweep`), ngược lại trả
   nguyên `status`. Không ghi DB. Áp vào ✅:
   - `applyCouponToOrder`, `removeCouponFromOrder`, `initiateOrderCheckout` — đơn quá hạn → `409 ORDER_NOT_PENDING`;
-  - ~~`cancelOrder` (§3.2)~~ (đã xoá — ADR-068); `canManuallyConfirmOrder` (§3.1 — webhook + `confirmOrderManually`); `orderStatusTargets` / `changeOrderStatusBySeller`
+  - ~~`cancelOrder` (§3.2)~~ (đã xoá — ADR-068); `canManuallyConfirmOrder` (§3.1 — webhook/job, `checkout-view.ts`, `orderAllowedActions` ✅ grep; `confirmOrderManually` đã xoá — ADR-074); `orderStatusTargets` / `changeOrderStatusBySeller`
     (§3.14 — ADR-068);
   - đọc: `getOrderForCustomer` (trang checkout), `getOrderDetailView`, `listOrdersPage` trả `status` hiệu lực; bộ lọc trạng thái của
     `listOrdersPage` (SQL `effectiveStatusSql`): `PENDING` loại đơn quá hạn, `EXPIRED` gồm cả đơn `PENDING` quá hạn ✅ code
@@ -289,9 +289,11 @@ Phần khách vãng lai (task 12/13): §3.13. Code: `packages/core/src/order/exp
 - **Khoá khi đã báo chuyển:** đổi phương thức, áp/gỡ mã giảm giá, tự huỷ → **409 `ORDER_DECLARED_PAID`** (phải hoàn tác trước). Ghi có điều kiện
   `customerDeclaredPaidAt IS NULL`.
 - **Ngoại lệ xác nhận sau hạn** (Bổ sung ADR-062 mục 3): đơn cổng xác nhận tay đã `EXPIRED` mà `customerDeclaredPaidAt < expiresAt` → người bán vẫn xác nhận được
-  (`confirmOrderManually`, `orderAllowedActions`). Audit `ORDER_MANUALLY_CONFIRMED` thêm `lateDeclaredPaid` (xác nhận khi đã hết hạn) và `customerDeclaredPaid`.
+  (~~`confirmOrderManually`~~, `orderAllowedActions`). ~~Audit `ORDER_MANUALLY_CONFIRMED` thêm `lateDeclaredPaid` (xác nhận khi đã hết hạn) và `customerDeclaredPaid`.~~
   *Từ ADR-068:* UI Studio không còn gọi `confirmOrderManually` — người bán xác nhận được mọi đơn `EXPIRED` qua "Đổi trạng thái…" (§3.14); ngoại lệ này còn tác dụng ở
-  `displayStatus` phía khách ("Chờ người bán xác nhận") và hàm cũ.
+  `displayStatus` phía khách ("Chờ người bán xác nhận").
+  *Từ ADR-074 mục 8 (2026-11-27) ✅ code:* `confirmOrderManually` **đã xoá**. Metadata `lateDeclaredPaid` **không còn được ghi**; luồng `changeOrderStatusBySeller` ghi audit
+  `ORDER_MANUALLY_CONFIRMED` với `lateConfirmation` (= đơn xác nhận từ `EXPIRED`). Dòng audit cũ có thể còn `lateDeclaredPaid`.
 - **Khách tự huỷ** (`cancelOrderByCustomer`, ADR-062 Q4): đơn hiệu lực `PENDING`, chưa báo chuyển → `PENDING → CANCELED` theo FSM (`transitionOrderStatus`). Audit
   `ORDER_CANCELED_BY_CUSTOMER`. UI có hộp xác nhận.
 - **`displayStatus` trang khách** (`CheckoutDisplayStatus`, `lib/checkout-view.ts`) — server tính, UI không tự suy:

@@ -27,7 +27,16 @@ const envSchema = z.object({
   JWT_ISSUER: z.string().min(1),
   JWT_AUDIENCE: z.string().min(1),
 
-  PAYMENT_ENCRYPTION_KEY: z.string().min(1),
+  /**
+   * ADR-074 mục 8: khoá AES-256-GCM — `encryptSecret/decryptSecret` (@gieochu/core) đọc bằng `Buffer.from(key, "base64")` và cần
+   * đúng 32 byte. Kiểm y hệt cách đọc đó, để khoá sai fail-fast lúc khởi động thay vì lỗi "Invalid key length" khi giải mã secret cổng.
+   */
+  PAYMENT_ENCRYPTION_KEY: z
+    .string()
+    .min(1)
+    .refine((value) => Buffer.from(value, "base64").length === 32, {
+      message: "PAYMENT_ENCRYPTION_KEY phải là chuỗi base64 của đúng 32 byte (vd. `openssl rand -base64 32`)",
+    }),
   /** §"M5"/ADR-017: separate key from PAYMENT_ENCRYPTION_KEY for SystemStorageConfig secrets — object
    * storage credentials reach every tenant's files, so they never share a key with payment secrets. */
   STORAGE_ENCRYPTION_KEY: z.string().min(1),

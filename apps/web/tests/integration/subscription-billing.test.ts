@@ -75,20 +75,30 @@ vi.mock("../../lib/email-dispatch", async (importOriginal) => {
   // (subscription_invoice_*) lẫn email của sweep thuê bao (subscription_reminder_7d / _reminder_1d / _grace / _downgraded_to_free).
   // ADR-071 (2A): email hoá đơn gói tới địa chỉ CỦA TEST (m3test_*) vẫn ghi email_send_log như gửi thật (không gửi SMTP) để kiểm dòng
   // "Đã gửi email" của nhật ký; địa chỉ khác (sweep chạm dữ liệu thật) không ghi gì. Dọn trong afterAll.
-  sendEmailNowSpy.mockImplementation(async (message: { type: string; to: string; subject: string }) => {
+  // ADR-074: chuyển tiếp `options.tenantId` để dòng log mock mang nhãn gian hàng như gửi thật.
+  sendEmailNowSpy.mockImplementation(async (message: { type: string; to: string; subject: string }, options?: { tenantId?: string | null }) => {
     if (message.type === "invoice_pending_manual" || message.type.startsWith("subscription_")) {
       if (message.type.startsWith("subscription_invoice_") && message.to.startsWith("m3test_")) {
-        await actual.logEmailSend({ type: message.type, recipient: message.to, subject: message.subject, status: "SENT" });
+        await actual.logEmailSend({ type: message.type, recipient: message.to, subject: message.subject, status: "SENT", tenantId: options?.tenantId ?? null });
       }
       return { ok: true };
     }
-    return actual.sendEmailNow(message as never);
+    return actual.sendEmailNow(message as never, options);
   });
   return { ...actual, sendEmailNow: sendEmailNowSpy };
 });
 vi.mock("../../lib/system-settings", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../lib/system-settings")>();
   return { ...actual, getSupportEmail: supportEmailMock };
+});
+
+// ADR-074 mục 7: bọc `sepayInvoiceReferenceCandidates` (bước tra hoá đơn sau khi ghi webhook_events) để mô phỏng lỗi một lần —
+// mặc định gọi hàm thật; các hàm khác của module giữ nguyên.
+const { sepayCandidatesSpy } = vi.hoisted(() => ({ sepayCandidatesSpy: vi.fn() }));
+vi.mock("../../lib/subscription-billing", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../lib/subscription-billing")>();
+  sepayCandidatesSpy.mockImplementation(actual.sepayInvoiceReferenceCandidates);
+  return { ...actual, sepayInvoiceReferenceCandidates: sepayCandidatesSpy };
 });
 
 const prisma = getPrismaClient();
@@ -225,6 +235,10 @@ describe("M3 subscription and platform billing", () => {
     // ADR-070 A1: xác nhận trễ (2 lần bấm song song) → đúng 1 email "thanh toán thành công" cho chủ gian hàng.
     expect(invoiceEmails("subscription_invoice_paid", manualInvoice.code)).toHaveLength(1);
     expect(invoiceEmails("subscription_invoice_paid", manualInvoice.code)[0]).toMatchObject({ to: owner.email });
+    // ADR-074: email hoá đơn gói mang nhãn gian hàng (cột `email_send_log.tenantId`) — trang chi tiết lọc theo nhãn này.
+    const paidLog = await prisma.emailSendLog.findMany({ where: { type: "subscription_invoice_paid", subject: { contains: manualInvoice.code } } });
+    expect(paidLog.length).toBeGreaterThan(0);
+    expect(paidLog.every((row) => row.tenantId === tenant.id)).toBe(true);
 
     // ADR-067 — "Đổi trạng thái" hoá đơn gói: bảng chuyển trạng thái; hoá đơn đã trả không huỷ/mở lại được; huỷ PENDING → VOID;
     // mở lại chỉ cho hoá đơn mới nhất và khi không có hoá đơn PENDING khác; mở lại đặt hạn mới + tính lại kỳ, giữ mã/số tiền.
@@ -488,6 +502,15 @@ describe("M3 subscription and platform billing", () => {
       transferAmount: invoice.amountVnd,
       transactionDate: "2026-01-01 10:00:00",
     });
+
+    // ADR-074 mục 7: bước sau khi ghi webhook_events lỗi → 5xx, dòng sự kiện bị xoá, chưa có giao dịch → lần gửi lại được xử lý.
+    sepayCandidatesSpy.mockImplementationOnce(() => {
+      throw new Error("simulated lookup failure");
+    });
+    const failed = await platformWebhook(signedSepayRequest(rawBody), { params: Promise.resolve({ provider: "sepay" }) });
+    expect(failed.status).toBe(500);
+    expect(await prisma.webhookEvent.count({ where: { scope: "PLATFORM", provider: "SEPAY", providerEventId: `evt_${RUN_PREFIX}_dup` } })).toBe(0);
+    expect(await prisma.platformPaymentTransaction.count({ where: { matchedInvoiceId: invoice.id } })).toBe(0);
 
     // ADR-059 (B2): webhook và admin áp cùng lúc → hoá đơn chỉ áp một lần, đúng 1 audit SUBSCRIPTION_PAID.
     const [first] = await Promise.all([

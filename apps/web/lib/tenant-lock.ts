@@ -5,6 +5,7 @@ import { renderTenantLockedEmail, renderTenantUnlockedEmail } from "@gieochu/ema
 import { audit } from "./audit";
 import { getEffectiveBrand } from "./branding";
 import { sendEmailNow } from "./email-dispatch";
+import { LOCK_REASON_MAX_LENGTH } from "./lock-reason";
 import type { CurrentUser } from "./session";
 import { getSupportEmail } from "./system-settings";
 
@@ -17,7 +18,8 @@ import { getSupportEmail } from "./system-settings";
  * và GỬI NGUYÊN VĂN cho chủ gian hàng trong 1 email sau commit (lỗi gửi chỉ log). Mở khoá luôn đặt ACTIVE.
  */
 
-export const TENANT_LOCK_REASON_MAX_LENGTH = 500;
+/** Alias giữ import cũ — nguồn duy nhất là `lib/lock-reason.ts` (client-safe, ADR-074). */
+export const TENANT_LOCK_REASON_MAX_LENGTH = LOCK_REASON_MAX_LENGTH;
 
 export const TENANT_LOCK_ERROR_CODES = {
   REASON_INVALID: "TENANT_LOCK_REASON_INVALID",
@@ -117,7 +119,7 @@ async function notifyOwner(
       studioUrl: `${getEnv().APP_URL.replace(/\/+$/, "")}/studio/${tenant.slug}`,
     };
     const rendered = kind === "LOCKED" ? renderTenantLockedEmail(data) : renderTenantUnlockedEmail(data);
-    const result = await sendEmailNow({ type: kind === "LOCKED" ? "tenant_locked" : "tenant_unlocked", to: tenant.ownerEmail, ...rendered });
+    const result = await sendEmailNow({ type: kind === "LOCKED" ? "tenant_locked" : "tenant_unlocked", to: tenant.ownerEmail, ...rendered }, { tenantId: tenant.id });
     if (!result.ok) logger.warn({ tenantId: tenant.id, kind, error: result.error }, "tenant_lock: gửi email cho chủ gian hàng thất bại");
     return result.ok;
   } catch (error) {

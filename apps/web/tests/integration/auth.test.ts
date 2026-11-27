@@ -20,8 +20,8 @@ import { rateLimitKey } from "../../lib/rate-limit-store";
 const { sendEmailNowSpy } = vi.hoisted(() => ({ sendEmailNowSpy: vi.fn() }));
 vi.mock("../../lib/email-dispatch", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../lib/email-dispatch")>();
-  sendEmailNowSpy.mockImplementation(async (message: { type: string }) =>
-    message.type === "guest_activation" ? { ok: true } : actual.sendEmailNow(message as never),
+  sendEmailNowSpy.mockImplementation(async (message: { type: string }, options?: { tenantId?: string | null }) =>
+    message.type === "guest_activation" ? { ok: true } : actual.sendEmailNow(message as never, options),
   );
   return { ...actual, sendEmailNow: sendEmailNowSpy };
 });

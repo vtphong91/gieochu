@@ -137,7 +137,7 @@ async function notifyOwnerOfPaymentMismatch(
       orderUrl: `${base}/${mismatch.orderId}`,
       transactionsUrl: `${base}/giao-dich`,
     });
-    const result = await sendEmailNow({ type: "payment_mismatch", to: tenant.owner.email, ...rendered });
+    const result = await sendEmailNow({ type: "payment_mismatch", to: tenant.owner.email, ...rendered }, { tenantId: data.tenantId });
     if (!result.ok) {
       logger.warn({ tenantId: data.tenantId, orderId: mismatch.orderId, error: result.error }, "payment.mismatch: gửi email báo chủ gian hàng thất bại");
     }

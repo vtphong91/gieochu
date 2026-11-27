@@ -42,9 +42,19 @@ export default async function AdminUsersPage({
   const { page, pageSize, skip, take } = parsePagination(sp);
 
   const prisma = getPrismaClient();
+  // ADR-074: tìm theo email HOẶC họ tên (user_profiles.fullName); không tìm theo SĐT.
+  const q = sp.q?.trim();
+  const keyword = q ? escapeContainsValue(q) : null;
   const where: Prisma.UserWhereInput = {
     ...roleWhere(role),
-    ...(sp.q ? { email: { contains: escapeContainsValue(sp.q), mode: "insensitive" } } : {}),
+    ...(keyword
+      ? {
+          OR: [
+            { email: { contains: keyword, mode: "insensitive" } },
+            { profile: { is: { fullName: { contains: keyword, mode: "insensitive" } } } },
+          ],
+        }
+      : {}),
   };
   const [users, total] = await Promise.all([
     prisma.user.findMany({
@@ -85,7 +95,7 @@ export default async function AdminUsersPage({
           type="search"
           name="q"
           defaultValue={sp.q}
-          placeholder="Tìm theo tên, email, SĐT..."
+          placeholder="Tìm theo tên hoặc email..."
           className="w-full max-w-sm rounded-lg border bg-white px-3.5 py-2.5 text-[15px] outline-none focus:border-[#0F3B82] focus:ring-2 focus:ring-[#0F3B82]/15"
           style={{ borderColor: "#E5E7EB" }}
         />
@@ -100,7 +110,7 @@ export default async function AdminUsersPage({
 
       <div className="mt-4">
         {users.length === 0 ? (
-          <EmptyState icon={<IconUsers className="h-6 w-6" />} title="Không tìm thấy người dùng nào" description={sp.q ? `Không có email nào khớp "${sp.q}".` : undefined} />
+          <EmptyState icon={<IconUsers className="h-6 w-6" />} title="Không tìm thấy người dùng nào" description={sp.q ? `Không có tên hoặc email nào khớp "${sp.q}".` : undefined} />
         ) : (
           <>
             <DataTable

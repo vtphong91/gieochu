@@ -319,7 +319,7 @@ export async function notifyTenantOwnerOfReview(input: { tenantId: string; produ
       body: review.body,
       manageUrl,
     });
-    const result = await sendEmailNow({ type: "review_new", to: tenant.owner.email, ...rendered });
+    const result = await sendEmailNow({ type: "review_new", to: tenant.owner.email, ...rendered }, { tenantId: input.tenantId });
     if (!result.ok) logger.warn({ tenantId: input.tenantId, error: result.error }, "review: gửi email báo chủ trang thất bại");
   } catch (error) {
     logger.warn({ tenantId: input.tenantId, err: error }, "review: lỗi khi gửi email báo chủ trang");

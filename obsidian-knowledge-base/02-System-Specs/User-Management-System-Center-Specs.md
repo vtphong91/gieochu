@@ -136,8 +136,9 @@ Không có bảng `SessionRecord` đa thiết bị trong Gieo Chữ. Cơ chế b
 
 **Danh sách `/admin/users`:** cột "Người dùng" gộp tên và email (link tới chi tiết); menu "⋯" (`UserRowActions`, Popover API) gồm
 "Xem chi tiết", "Khoá/Mở khoá…", "Gửi lại email kích hoạt…" (chỉ khi `PENDING`). Nhãn vai trò (`user-labels.ts`): Siêu quản trị ·
-Quản trị viên · Chủ gian hàng · Người dùng. Ô tìm kiếm ghi "tên, email, SĐT" nhưng **truy vấn chỉ lọc email** (`contains`, không phân biệt
-hoa thường) — lỗi có sẵn, chưa sửa ([[00-Index/KB-Audit-2026-09-26|KB-Audit]] §56).
+Quản trị viên · Chủ gian hàng · Người dùng. Ô tìm kiếm (placeholder "Tìm theo tên hoặc email...") lọc theo **email HOẶC họ tên** (`user_profiles.fullName`; `contains`, không phân biệt
+hoa thường) ✅ code (ADR-074 mục 2, 2026-11-27). **Không tìm theo SĐT** (chủ dự án chốt: tránh dò số né audit "Hiện đầy đủ" ADR-073). (Trước đó placeholder ghi "tên, email, SĐT"
+nhưng truy vấn chỉ lọc email — đã sửa, [[00-Index/KB-Audit-2026-09-26|KB-Audit]] §56 mục 4, §57.)
 
 **Trang `/admin/users/[userId]`** (`requireAdminAccess`; không có người dùng → 404). Các mục:
 

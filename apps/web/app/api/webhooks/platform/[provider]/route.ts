@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { decryptSecret, getProvider, sepayAccountMatches, type PaymentProviderId } from "@gieochu/payments";
 import { logger } from "@gieochu/core";
 import { getEnv } from "@gieochu/config";
-import { getPrismaClient, Prisma, withSystemJob } from "@gieochu/db";
+import { getPrismaClient, Prisma } from "@gieochu/db";
 import { markInvoicePaid, sepayInvoiceReferenceCandidates } from "../../../../../lib/subscription-billing";
 import { getPlatformPaymentConfigRow } from "../../../../../lib/platform-payment";
 import { notifyOwnerOfInvoiceStatus, runAfterResponseOrNow } from "../../../../../lib/payment-status-notify";
+import { getRequestId, handleApiError } from "../../../../../lib/api-response";
+import { recordWebhookEvent, releaseWebhookEventOnFailure } from "../../../../../lib/webhook-event";
 
 const VALID_PROVIDERS = new Set<PaymentProviderId>(["SEPAY", "MOMO"]);
 
@@ -15,8 +17,19 @@ const VALID_PROVIDERS = new Set<PaymentProviderId>(["SEPAY", "MOMO"]);
  * không tìm thấy → lưu UNMATCHED để admin xử lý"), and always answers 200 on
  * a valid signature (only a bad signature gets 401, same as M7 — avoids
  * retry storms from the provider on data mismatches that aren't auth errors).
+ * ADR-074 mục 7: lỗi hạ tầng (DB…) vẫn trả 5xx để cổng gửi lại — xem `lib/webhook-event.ts`.
  */
-export async function POST(request: Request, { params }: { params: Promise<{ provider: string }> }) {
+export async function POST(request: Request, context: { params: Promise<{ provider: string }> }) {
+  // ADR-074 mục 7: lỗi không lường trước (DB, giải mã) → 5xx dạng `{ error: { code, message, requestId } }`, cổng gửi lại.
+  const requestId = getRequestId(request);
+  try {
+    return await handlePlatformWebhook(request, context);
+  } catch (error) {
+    return handleApiError(error, requestId);
+  }
+}
+
+async function handlePlatformWebhook(request: Request, { params }: { params: Promise<{ provider: string }> }): Promise<NextResponse> {
   const { provider: providerParam } = await params;
   const providerId = providerParam.toUpperCase() as PaymentProviderId;
 
@@ -65,48 +78,50 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
     return NextResponse.json({ success: true });
   }
 
-  try {
-    await withSystemJob((tx) =>
-      tx.webhookEvent.create({
-        data: { scope: "PLATFORM", provider: providerId, providerEventId: event.providerEventId },
-      }),
-    );
-  } catch {
-    // Unique constraint violation => already processed this event (idempotent).
+  // ADR-074 mục 7: chỉ trùng khoá unique (P2002) mới là "đã xử lý" → 200; lỗi ghi khác ném ra → 5xx, cổng gửi lại.
+  const recorded = await recordWebhookEvent({ scope: "PLATFORM", provider: providerId, providerEventId: event.providerEventId });
+  if (!recorded) {
     return NextResponse.json({ success: true });
   }
 
-  let matchedInvoiceId: string | null = null;
-  let applyInvoiceId: string | null = null;
-  // ADR-070 A3/A4 — tới đây chỉ khi `webhook_events` vừa ghi LẦN ĐẦU (lặp lại bị chặn ở trên) → mỗi sự kiện tối đa một email.
-  let mismatchInvoiceId: string | null = null;
-  let failedInvoiceId: string | null = null;
-  if (event.success) {
-    // ADR-059 bổ sung lần 2: thử tiền tố đã cấu hình rồi `SUB` (hoá đơn cũ), đúng độ dài mã hoá đơn; lấy mã đầu tiên có hoá đơn.
-    const candidates =
-      providerId === "SEPAY" ? sepayInvoiceReferenceCandidates(parsedBody, (cfg as { paymentPrefix?: unknown }).paymentPrefix) : event.reference ? [event.reference] : [];
+  // ADR-074 mục 7: tra hoá đơn + ghi giao dịch — lỗi ở đây (trước khi giao dịch tồn tại) thì xoá đúng dòng webhook_events vừa ghi
+  // rồi trả 5xx, để lần gửi lại của cổng được xử lý thay vì bị coi là trùng (trước đây giao dịch mất hẳn, admin không thấy).
+  // Ranh giới dừng ở `platformPaymentTransaction.create`: từ đó trở đi giữ dòng sự kiện (ADR-059 B2 — bảng giao dịch không có khoá
+  // chống trùng, gửi lại sẽ ghi giao dịch lần hai; áp hoá đơn lỗi thì giao dịch còn đó để admin xác nhận).
+  const { matchedInvoiceId, applyInvoiceId, mismatchInvoiceId, failedInvoiceId } = await releaseWebhookEventOnFailure(recorded, async () => {
+    let matched: string | null = null;
+    let apply: string | null = null;
+    // ADR-070 A3/A4 — tới đây chỉ khi `webhook_events` vừa ghi LẦN ĐẦU (lặp lại bị chặn ở trên) → mỗi sự kiện tối đa một email.
+    let mismatch: string | null = null;
+    let failed: string | null = null;
+    if (event.success) {
+      // ADR-059 bổ sung lần 2: thử tiền tố đã cấu hình rồi `SUB` (hoá đơn cũ), đúng độ dài mã hoá đơn; lấy mã đầu tiên có hoá đơn.
+      const candidates =
+        providerId === "SEPAY" ? sepayInvoiceReferenceCandidates(parsedBody, (cfg as { paymentPrefix?: unknown }).paymentPrefix) : event.reference ? [event.reference] : [];
 
-    if (candidates.length > 0) {
-      const found = await prisma.subscriptionInvoice.findMany({ where: { code: { in: candidates } } });
-      const invoice = candidates.map((code) => found.find((row) => row.code === code)).find((row) => row !== undefined);
-      if (invoice && invoice.amountVnd === event.amountVnd) {
-        matchedInvoiceId = invoice.id;
-        if (invoice.status === "PENDING") applyInvoiceId = invoice.id;
-      } else if (invoice && invoice.status !== "PAID" && invoice.status !== "REFUNDED") {
-        // A3: đúng mã hoá đơn chưa trả nhưng sai số tiền → báo chủ gian hàng (hoá đơn đã trả/hoàn: không báo).
-        mismatchInvoiceId = invoice.id;
+      if (candidates.length > 0) {
+        const found = await prisma.subscriptionInvoice.findMany({ where: { code: { in: candidates } } });
+        const invoice = candidates.map((code) => found.find((row) => row.code === code)).find((row) => row !== undefined);
+        if (invoice && invoice.amountVnd === event.amountVnd) {
+          matched = invoice.id;
+          if (invoice.status === "PENDING") apply = invoice.id;
+        } else if (invoice && invoice.status !== "PAID" && invoice.status !== "REFUNDED") {
+          // A3: đúng mã hoá đơn chưa trả nhưng sai số tiền → báo chủ gian hàng (hoá đơn đã trả/hoàn: không báo).
+          mismatch = invoice.id;
+        }
       }
+    } else if (providerId === "MOMO" && event.reference) {
+      // A4: MoMo báo thất bại/huỷ (`resultCode ≠ 0`) cho hoá đơn còn chưa trả → báo chủ gian hàng thanh toán lại.
+      const invoice = await prisma.subscriptionInvoice.findUnique({ where: { code: event.reference }, select: { id: true, status: true } });
+      if (invoice && (invoice.status === "PENDING" || invoice.status === "EXPIRED")) failed = invoice.id;
     }
-  } else if (providerId === "MOMO" && event.reference) {
-    // A4: MoMo báo thất bại/huỷ (`resultCode ≠ 0`) cho hoá đơn còn chưa trả → báo chủ gian hàng thanh toán lại.
-    const invoice = await prisma.subscriptionInvoice.findUnique({ where: { code: event.reference }, select: { id: true, status: true } });
-    if (invoice && (invoice.status === "PENDING" || invoice.status === "EXPIRED")) failedInvoiceId = invoice.id;
-  }
 
-  // ADR-059 (B2): ghi giao dịch TRƯỚC khi áp hoá đơn — webhook_events đã ghi nên lần thử lại của cổng bị bỏ qua; nếu áp hoá đơn
-  // lỗi giữa chừng, giao dịch vẫn còn (khớp, hoá đơn chưa thanh toán) để admin thấy ở tab "Giao dịch" thay vì mất dấu.
-  await prisma.platformPaymentTransaction.create({
-    data: { provider: providerId, amountVnd: event.amountVnd, rawPayload: parsedBody as Prisma.InputJsonValue, matchedInvoiceId },
+    // ADR-059 (B2): ghi giao dịch TRƯỚC khi áp hoá đơn — nếu áp hoá đơn lỗi giữa chừng, giao dịch vẫn còn (khớp, hoá đơn chưa
+    // thanh toán) để admin thấy ở tab "Giao dịch" thay vì mất dấu.
+    await prisma.platformPaymentTransaction.create({
+      data: { provider: providerId, amountVnd: event.amountVnd, rawPayload: parsedBody as Prisma.InputJsonValue, matchedInvoiceId: matched },
+    });
+    return { matchedInvoiceId: matched, applyInvoiceId: apply, mismatchInvoiceId: mismatch, failedInvoiceId: failed };
   });
   // ADR-070: email gửi SAU response (không chờ SMTP trong webhook). A1 chỉ lên lịch khi `markInvoicePaid` thật sự áp hoá đơn.
   const deferred: Array<() => Promise<void>> = [];

@@ -262,7 +262,7 @@ export type SystemBranding = Prisma.SystemBrandingModel
  * Model TenantPaymentConfig
  * §5.2 — TENANT_PAYMENT_CONFIGS. L2 (tenantId), RLS-protected like
  * products/tenant_members (packages/db/prisma/migrations/*_rls_m7/).
- * `encryptedSecrets` holds the AES-256-GCM ciphertext (packages/payments/src/encryption.ts);
+ * `encryptedSecrets` holds the AES-256-GCM ciphertext (packages/core/src/crypto/encryption.ts, re-exported by packages/payments);
  * plaintext secrets are never stored or returned to the client (§7.3).
  */
 export type TenantPaymentConfig = Prisma.TenantPaymentConfigModel

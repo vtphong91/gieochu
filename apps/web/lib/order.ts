@@ -240,6 +240,7 @@ async function sendOrderPaidEmailsInner(orderId: string): Promise<void> {
       select: {
         id: true,
         code: true,
+        tenantId: true,
         totalVnd: true,
         customer: { select: { email: true } },
         tenant: { select: { slug: true, owner: { select: { email: true } } } },
@@ -259,7 +260,7 @@ async function sendOrderPaidEmailsInner(orderId: string): Promise<void> {
     totalVndDisplay: formatEmailVnd(order.totalVnd),
     downloadsUrl,
   });
-  const buyerSent = await sendEmailNow({ type: "order_paid", to: order.customer.email, subject: buyerEmail.subject, html: buyerEmail.html, text: buyerEmail.text });
+  const buyerSent = await sendEmailNow({ type: "order_paid", to: order.customer.email, subject: buyerEmail.subject, html: buyerEmail.html, text: buyerEmail.text }, { tenantId: order.tenantId });
   if (!buyerSent.ok) {
     logger.warn({ orderId, email: order.customer.email, error: buyerSent.error }, "order.paid: gửi email cho khách hàng thất bại");
   }
@@ -273,7 +274,7 @@ async function sendOrderPaidEmailsInner(orderId: string): Promise<void> {
     totalVndDisplay: formatVnd(order.totalVnd),
     orderUrl,
   });
-  const ownerSent = await sendEmailNow({ type: "new_sale", to: order.tenant.owner.email, subject: ownerEmail.subject, html: ownerEmail.html, text: ownerEmail.text });
+  const ownerSent = await sendEmailNow({ type: "new_sale", to: order.tenant.owner.email, subject: ownerEmail.subject, html: ownerEmail.html, text: ownerEmail.text }, { tenantId: order.tenantId });
   if (!ownerSent.ok) {
     logger.warn({ orderId, email: order.tenant.owner.email, error: ownerSent.error }, "order.paid: gửi email báo owner thất bại");
   }
@@ -733,7 +734,7 @@ export async function notifyOwnerOfPendingManualOrder(tenantId: string, orderId:
       orderUrl: `${getEnv().APP_URL.replace(/\/+$/, "")}/studio/${tenant.slug}/orders/${order.id}`,
       methodLabel: ownerMethodLabel(order.provider),
     });
-    const result = await sendEmailNow({ type: "order_pending_manual", to: tenant.owner.email, ...rendered });
+    const result = await sendEmailNow({ type: "order_pending_manual", to: tenant.owner.email, ...rendered }, { tenantId });
     if (!result.ok) logger.warn({ tenantId, orderId, error: result.error }, "order.pending_manual: gửi email báo chủ gian hàng thất bại");
   } catch (error) {
     logger.warn({ tenantId, orderId, err: error }, "order.pending_manual: lỗi khi gửi email báo chủ gian hàng");
@@ -746,51 +747,6 @@ export async function getOrderForCustomer(customerId: string, orderCode: string)
   );
   if (!order) throw notFound("Không tìm thấy đơn hàng.");
   return withEffectiveStatus(order);
-}
-
-/**
- * §"M8" xác nhận thanh toán thủ công (bắt buộc ghi chú). ADR-061: chỉ đơn còn PENDING — không còn cửa sổ trễ 24 giờ.
- * Ngoại lệ ADR-062 bổ sung mục 3: đơn cổng xác nhận tay đã EXPIRED mà khách đã báo "Tôi đã chuyển khoản" trước hạn — audit ghi
- * `lateDeclaredPaid: true`.
- */
-export async function confirmOrderManually(tenantId: string, orderId: string, note: string, actorId: string | null = null): Promise<void> {
-  if (!note.trim()) {
-    throw new AppError({ code: "NOTE_REQUIRED", message: "Vui lòng nhập ghi chú xác nhận.", httpStatus: 400 });
-  }
-  const order = await withTenant(tenantId, (tx) => tx.order.findUnique({ where: { id: orderId } }));
-  if (!order) throw notFound("Không tìm thấy đơn hàng.");
-
-  const confirmNow = new Date();
-  const declaredPaidAt = order.provider && isManualConfirmProvider(order.provider) ? order.customerDeclaredPaidAt : null;
-  if (!canManuallyConfirmOrder(order.status as OrderStatus, order.expiresAt, confirmNow, { declaredPaidAt })) {
-    throw new AppError({ code: "ORDER_NOT_CONFIRMABLE", message: "Đơn hàng không ở trạng thái có thể xác nhận thủ công.", httpStatus: 409 });
-  }
-
-  const paid = await withTenant(tenantId, async (tx) => {
-    await tx.order.update({ where: { id: orderId }, data: { confirmNote: note.trim() } });
-    const result = await markOrderPaid(tx, orderId, "MANUAL_CONFIRM");
-    // ADR-068 mục 7: nguồn khác (webhook/job) vừa áp đơn → rollback ghi chú, không audit/email lần hai.
-    if (!result.fulfilled) throw orderAlreadyPaidError();
-    return result;
-  });
-  // ADR-037 / §7.9: chỉ id + trạng thái — KHÔNG ghi ghi chú xác nhận (văn bản tự do, có thể chứa thông tin khách).
-  await audit.log({
-    actorId,
-    scope: "TENANT",
-    tenantId,
-    action: "ORDER_MANUALLY_CONFIRMED",
-    targetType: "Order",
-    targetId: orderId,
-    metadata: {
-      previousStatus: effectiveOrderStatus(order.status, order.expiresAt, confirmNow),
-      fulfilled: paid.fulfilled,
-      lateDeclaredPaid: effectiveOrderStatus(order.status, order.expiresAt, confirmNow) === "EXPIRED",
-      customerDeclaredPaid: declaredPaidAt !== null,
-    },
-  });
-  await auditMarkOrderPaid(tenantId, orderId, paid, "MANUAL_CONFIRM");
-  await recomputeProductSoldCounts(paid.productIds);
-  if (paid.fulfilled) await sendOrderPaidEmails(orderId);
 }
 
 // ───────────────────────── ADR-068: "Đổi trạng thái…" đơn hàng (người bán) ─────────────────────────
@@ -1761,6 +1717,8 @@ export async function getOrderDetailView(tenantId: string, orderId: string, view
         recipient: { in: recipients },
         subject: { contains: order.code },
         createdAt: { gte: order.createdAt },
+        // ADR-074: dòng có nhãn gian hàng phải khớp gian hàng này; dòng cũ (tenantId NULL) giữ cách khớp cũ (người nhận + mã đơn).
+        OR: [{ tenantId }, { tenantId: null }],
       },
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       take: 50,
@@ -1838,7 +1796,7 @@ export async function getOrderDetailView(tenantId: string, orderId: string, view
 
   const matched = order.transactions.find((txn) => txn.matchStatus === "MATCHED");
   // ADR-068 mục 9: xác nhận tay không còn bắt buộc ghi chú → nhận diện thêm qua audit ORDER_MANUALLY_CONFIRMED của chính đơn này
-  // (đã nạp ở trên, ghi bởi cả `confirmOrderManually` lẫn "Đổi trạng thái…"). Không cần cột mới.
+  // (đã nạp ở trên, ghi bởi "Đổi trạng thái…"; hàng audit cũ do hàm `confirmOrderManually` đã xoá để lại vẫn khớp). Không cần cột mới.
   const manuallyConfirmed =
     Boolean(order.confirmNote) ||
     auditRows.some((row) => row.action === "ORDER_MANUALLY_CONFIRMED" && row.targetType === "Order" && row.targetId === order.id);

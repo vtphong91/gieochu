@@ -663,9 +663,13 @@ model EmailSendLog {
   subject      String
   status       String
   errorMessage String?
+  /// ADR-074: nhãn gian hàng của email (NULL = không thuộc gian hàng nào, hoặc dòng cũ trước migration). KHÔNG FK:
+  /// bảng L1 chỉ ghi nhật ký — dòng log không được chặn xoá gian hàng; cột chỉ là nhãn lọc, không đổi lớp dữ liệu.
+  tenantId     String?
   createdAt    DateTime @default(now())
 
   @@index([createdAt])
+  @@index([tenantId, createdAt])
   @@map("email_send_log")
 }
 
@@ -733,7 +737,7 @@ enum PaymentProviderId {
 
 /// §5.2 — TENANT_PAYMENT_CONFIGS. L2 (tenantId), RLS-protected like
 /// products/tenant_members (packages/db/prisma/migrations/*_rls_m7/).
-/// `encryptedSecrets` holds the AES-256-GCM ciphertext (packages/payments/src/encryption.ts);
+/// `encryptedSecrets` holds the AES-256-GCM ciphertext (packages/core/src/crypto/encryption.ts, re-exported by packages/payments);
 /// plaintext secrets are never stored or returned to the client (§7.3).
 model TenantPaymentConfig {
   id                String            @id @default(cuid(2))

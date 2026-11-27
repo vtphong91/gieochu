@@ -98,7 +98,7 @@ export async function notifyTenantOwnerOfMessage(input: {
       message: input.message,
       inboxUrl,
     });
-    const result = await sendEmailNow({ type: "storefront_message", to: owner.email, ...rendered });
+    const result = await sendEmailNow({ type: "storefront_message", to: owner.email, ...rendered }, { tenantId: input.tenant.id });
     if (!result.ok) {
       logger.warn({ tenantId: input.tenant.id, error: result.error }, "storefront.message: gửi email báo chủ trang thất bại");
     }

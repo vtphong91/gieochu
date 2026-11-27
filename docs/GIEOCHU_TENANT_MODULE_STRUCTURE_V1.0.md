@@ -307,7 +307,7 @@ Trang chi tiết sản phẩm (`/[tenantSlug]/products/[productSlug]`) có logic
 |---|---|---|
 | `GET /studio/[slug]` | Dashboard (doanh thu 30 ngày, đơn chờ xác nhận) | `getOrderDashboardStats` |
 | `GET .../orders` | Danh sách đơn, lọc theo trạng thái | `listOrders` |
-| `GET .../orders/[orderId]` | Chi tiết đơn: xác nhận thủ công/huỷ/hoàn tiền/cấp-thu hồi lượt tải | `confirmOrderManually/cancelOrder/markOrderRefunded` (order.ts), `grantExtraDownloads/revokeEntitlement` (entitlement.ts) |
+| `GET .../orders/[orderId]` | Chi tiết đơn: xác nhận thủ công/huỷ/hoàn tiền/cấp-thu hồi lượt tải | `changeOrderStatusBySeller` (ADR-068; `confirmOrderManually` đã xoá — ADR-074)`/cancelOrder/markOrderRefunded` (order.ts), `grantExtraDownloads/revokeEntitlement` (entitlement.ts) |
 | `GET .../customers` | Danh sách khách hàng | `listTenantCustomers` |
 | `GET .../products` | Danh sách sản phẩm | `listProducts` |
 | `GET .../products/new` | Tạo sản phẩm mới | `createProductAction` → `assertPlanLimit` |

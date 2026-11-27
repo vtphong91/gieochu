@@ -108,7 +108,8 @@ giảm giá / thống kê khách / email / audit lần hai. Áp cho mọi nguồ
 ---
 
 ## 4. Hệ Quả (Consequences)
-- `confirmOrderManually` (lib, ghi chú bắt buộc, luật ADR-061/062) **vẫn còn** nhưng không còn UI nào gọi — chỉ test integration + `scripts/demo-reviews.ts` ✅ grep.
+- ~~`confirmOrderManually` (lib, ghi chú bắt buộc, luật ADR-061/062) **vẫn còn** nhưng không còn UI nào gọi — chỉ test integration + `scripts/demo-reviews.ts` ✅ grep.~~
+  **Đã xoá 2026-11-27 (ADR-074 mục 8 — [[01-Architecture-Decisions/ADR-058-Backlog-Preview-Rls-User-Search-Report-Filter-Email-Tenant|ADR-058 KB]]):** test chuyển sang `changeOrderStatusBySeller`; metadata `lateDeclaredPaid` không còn được ghi, luồng mới ghi `lateConfirmation` ✅ code.
   `orderAllowedActions` vẫn trả `confirm`/`cancel` "cho tương thích"; UI chỉ dùng `view`/`refund` ✅ code.
 - **Sửa** [[01-Architecture-Decisions/ADR-048-Checkout-Layout-Declared-Paid-Guest-Session|ADR-048 KB (≙ ADR-062)]] Q3: mốc tính hạn giữ của phương thức không còn luôn là
   `createdAt` (mục 8).

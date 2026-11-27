@@ -5,7 +5,7 @@ import { Badge } from "../../../_ui/kit";
 import { IconDoc, IconMonitor, IconShield, IconStore, IconUsers } from "../../../_ui/icons";
 import { formatAdminDateTime } from "../../../_ui/billing-labels";
 // Mảnh trình bày dùng chung với trang chi tiết gian hàng (cùng ngôn ngữ thị giác — thẻ bo góc, tiêu đề phần có icon, `<dl>` nhãn → giá trị).
-import { CARD, CompactEmpty, Dash, InfoGrid, LINE, SectionHeading, StatTile, TextLink, type InfoItem } from "../../../tenants/[tenantId]/_ui/parts";
+import { CARD, CompactEmpty, Dash, InfoGrid, LINE, SectionHeading, StatTile, TextLink, type InfoItem } from "../../../_ui/detail-kit";
 import { TENANT_STATUS_LABEL, TENANT_STATUS_TONE } from "../../../tenants/_ui/tenant-labels";
 import { PhoneField } from "../../_ui/phone-field";
 

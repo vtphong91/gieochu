@@ -17,7 +17,7 @@ import {
   type PptxSlide,
 } from "@gieochu/core/content/preview-extract";
 import { sanitizeRichTextHtml } from "@gieochu/core/content/sanitize-html";
-import { getPrismaClient, withSystemJob, withTenant } from "@gieochu/db";
+import { withPublic, withSystemJob, withTenant } from "@gieochu/db";
 import { createS3Client, readObjectAsBuffer } from "@gieochu/storage";
 import { getDecryptedSystemStorageConfig, createClientForProvider, type S3ClientInstance, type StorageProvider } from "./system-storage";
 
@@ -322,7 +322,6 @@ function truncateRowsToBudget(rows: unknown[][]): unknown[][] {
 
 /** Tải object từ storage, chạy trích xuất, upsert vào cache. Không throw ra ngoài cho hook — caller tự catch. */
 export async function generateAndStorePreview(productFileId: string): Promise<void> {
-  const prisma = getPrismaClient();
   const file = await withSystemJob((tx) => tx.productFile.findUnique({ where: { id: productFileId } }));
   if (!file) return;
   if (file.sourceKind !== "FILE" || !file.objectKey) return;
@@ -350,25 +349,29 @@ export async function generateAndStorePreview(productFileId: string): Promise<vo
   const buffer = await readObjectAsBuffer(client, bucket, file.objectKey);
   const { kind, payload } = await extractPreviewPayload(buffer, file.fileName, file.mimeType);
 
-  await prisma.productFilePreview.upsert({
-    where: { productFileId: file.id },
-    create: {
-      productFileId: file.id,
-      tenantId: file.tenantId,
-      productId: file.productId,
-      kind,
-      payload: payload as object,
-      ratio: 20,
-      schemaVersion: 1,
-    },
-    update: {
-      kind,
-      payload: payload as object,
-      ratio: 20,
-      schemaVersion: 1,
-      generatedAt: new Date(),
-    },
-  });
+  // Ghi cache trong scope system_job (hàm chạy từ hook `file.scan` lẫn lazy fallback). Tải storage + trích xuất ở
+  // trên nằm NGOÀI transaction để không giữ kết nối DB trong lúc đọc object.
+  await withSystemJob((tx) =>
+    tx.productFilePreview.upsert({
+      where: { productFileId: file.id },
+      create: {
+        productFileId: file.id,
+        tenantId: file.tenantId,
+        productId: file.productId,
+        kind,
+        payload: payload as object,
+        ratio: 20,
+        schemaVersion: 1,
+      },
+      update: {
+        kind,
+        payload: payload as object,
+        ratio: 20,
+        schemaVersion: 1,
+        generatedAt: new Date(),
+      },
+    }),
+  );
 }
 
 export interface PublicProductPreviewFile {
@@ -447,21 +450,32 @@ export async function getPreviewForPublicRoute(
   productSlug: string,
   fileId: string,
 ): Promise<PublicPreviewResponse | null> {
-  const prisma = getPrismaClient();
-  const tenant = await prisma.tenant.findUnique({ where: { slug: tenantSlug } });
-  if (!tenant || tenant.status !== "ACTIVE") return null;
-
-  const product = await prisma.product.findUnique({
-    where: { tenantId_slug: { tenantId: tenant.id, slug: productSlug } },
+  // Bước 1 (withPublic): gian hàng ACTIVE + sản phẩm PUBLISHED. Policy `products` dưới scope public chỉ trả dòng
+  // PUBLISHED; `tenants` không bật RLS (ADR-023) nên đọc được trong cùng transaction.
+  const guard = await withPublic(async (tx) => {
+    const tenant = await tx.tenant.findUnique({ where: { slug: tenantSlug }, select: { id: true, status: true } });
+    if (!tenant || tenant.status !== "ACTIVE") return null;
+    const product = await tx.product.findUnique({
+      where: { tenantId_slug: { tenantId: tenant.id, slug: productSlug } },
+      select: { id: true, status: true },
+    });
+    if (!product || product.status !== "PUBLISHED") return null;
+    return { tenantId: tenant.id, productId: product.id };
   });
-  if (!product || product.status !== "PUBLISHED") return null;
+  if (!guard) return null;
+  const { tenantId, productId } = guard;
 
-  const file = await prisma.productFile.findUnique({
-    where: { id: fileId },
-    include: { productFilePreview: true },
-  });
+  // Bước 2 (withTenant, chỉ sau khi đã qua guard): policy public của `product_files` chỉ cho thấy file preview
+  // (`isPreview = true`) nên không đọc được file bán. Dùng scope tenant của chính gian hàng đã kiểm — hẹp hơn
+  // system_job, đồng nhất với `listPublicPreviewFiles`.
+  const file = await withTenant(tenantId, (tx) =>
+    tx.productFile.findUnique({
+      where: { id: fileId },
+      include: { productFilePreview: true },
+    }),
+  );
   if (!file) return null;
-  if (file.productId !== product.id || file.tenantId !== tenant.id) return null;
+  if (file.productId !== productId || file.tenantId !== tenantId) return null;
   if (file.sourceKind !== "FILE") return null;
   if (file.scanStatus !== "CLEAN") return null;
   if (file.removedAt !== null) return null;
@@ -470,7 +484,7 @@ export async function getPreviewForPublicRoute(
   let cache = file.productFilePreview;
   if (!cache) {
     await generateAndStorePreview(file.id);
-    cache = await prisma.productFilePreview.findUnique({ where: { productFileId: file.id } });
+    cache = await withTenant(tenantId, (tx) => tx.productFilePreview.findUnique({ where: { productFileId: file.id } }));
   }
 
   if (!cache) {

@@ -1320,6 +1320,21 @@ Checklist pháp lý: `docs/legal/LEGAL_REVIEW_CHECKLIST.md`.
    SĐT danh sách người dùng chỉ lọc email, tách `parts.tsx`/popover menu ra kit `admin/_ui`:**
    [`docs/ke-hoach-dot-4-chi-tiet-nguoi-dung-2026-11-26.md`](ke-hoach-dot-4-chi-tiet-nguoi-dung-2026-11-26.md). Phạm vi gốc: `/admin/users/[id]` (hồ sơ, bảo mật/phiên, gian hàng sở hữu, điều khoản đã đồng ý, nhật ký; không
    đơn mua/thư viện — §7.9).
+
+## ADR-074 — Backlog sau 4 đợt (2026-11-27) — đã code, verify, chờ commit/deploy
+
+- ✅ Xem trước 20% hết 404: `getPreviewForPublicRoute` qua `withPublic`/`withTenant`/`withSystemJob` (trước đọc L2 bằng client trần).
+- ✅ `/admin/users` tìm theo họ tên + email (không SĐT); `/admin/reports?tenantId=` + link từ chi tiết gian hàng; `stats.test.ts` dọn sạch.
+- ✅ Kit `admin/_ui`: `detail-kit.tsx`, `row-popover-menu.tsx`; `lib/lock-reason.ts`; bỏ `AMBER` → `pnpm lint` sạch hoàn toàn.
+- ✅ `email_send_log.tenantId` (migration `20261127120000_adr074_email_send_log_tenant` — **đã áp** DB `.env` 2026-11-27; production phải
+  áp **trước** khi deploy code).
+- ✅ Webhook Platform + Tenant: chỉ P2002 là trùng, bước sau khi ghi sự kiện lỗi → xoá dòng + 5xx (`lib/webhook-event.ts`).
+- ✅ `PAYMENT_ENCRYPTION_KEY` bắt base64 32 byte; sửa comment lỗi thời; xoá `confirmOrderManually`.
+- ✅ Tài liệu `docs/doc-payment-241126.md`.
+- **Backlog mới:** timeline email đơn Studio luôn rỗng (`ORDER_EMAIL_TYPES` thuộc loại không ghi log — có từ trước); `afterAll`
+  `subscription-billing.test.ts` không dọn `webhook_events` PLATFORM; `STORAGE_ENCRYPTION_KEY` chưa kiểm định dạng; nhánh xem trước lazy
+  (chưa có cache) chưa có test.
+
 ## Kế hoạch SEO tổng thể — hoãn (chủ dự án chốt 2026-10-24)
 
 - Không làm thêm chức năng SEO lẻ trong các phiên hiện tại; gom thành **một kế hoạch tổng thể cho toàn hệ thống** sau:

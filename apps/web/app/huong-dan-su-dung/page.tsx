@@ -26,7 +26,6 @@ export default async function UserGuidePage() {
   const INK_SOFT = brandColors.inkSoft;
   const PAPER = brandColors.background;
   const LINE = brandColors.line;
-  const AMBER = brandColors.accent;
 
   const SELLER_GUIDES = [
     {

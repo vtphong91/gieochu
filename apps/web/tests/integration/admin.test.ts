@@ -26,8 +26,8 @@ const MOCKED_EMAIL_TYPES = new Set(["tenant_locked", "tenant_unlocked", "user_lo
 const { sendEmailNowSpy } = vi.hoisted(() => ({ sendEmailNowSpy: vi.fn() }));
 vi.mock("../../lib/email-dispatch", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../lib/email-dispatch")>();
-  sendEmailNowSpy.mockImplementation(async (message: { type: string }) =>
-    MOCKED_EMAIL_TYPES.has(message.type) ? { ok: true } : actual.sendEmailNow(message as never),
+  sendEmailNowSpy.mockImplementation(async (message: { type: string }, options?: { tenantId?: string | null }) =>
+    MOCKED_EMAIL_TYPES.has(message.type) ? { ok: true } : actual.sendEmailNow(message as never, options),
   );
   return { ...actual, sendEmailNow: sendEmailNowSpy };
 });

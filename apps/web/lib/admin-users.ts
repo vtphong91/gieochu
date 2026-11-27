@@ -5,6 +5,7 @@ import { getPrismaClient, type Tx, type UserStatus } from "@gieochu/db";
 import { renderResetPasswordEmailTemplate, renderUserLockedEmail, renderUserUnlockedEmail, renderVerifyEmailTemplate } from "@gieochu/email";
 import { EMAIL_NOT_CONFIGURED, emailNotConfiguredError, sendEmailNow } from "./email-dispatch";
 import { getEffectiveBrand } from "./branding";
+import { LOCK_REASON_MAX_LENGTH } from "./lock-reason";
 import { getSupportEmail, getSystemSettings } from "./system-settings";
 import { audit } from "./audit";
 import { checkRateLimit } from "./rate-limit";
@@ -18,7 +19,8 @@ import type { CurrentUser } from "./session";
  * email chỉ log → `emailSent: false`. Quản trị viên không bao giờ xem/đặt mật khẩu thay người dùng.
  */
 
-export const USER_LOCK_REASON_MAX_LENGTH = 500;
+/** Alias giữ import cũ — nguồn duy nhất là `lib/lock-reason.ts` (client-safe, ADR-074). */
+export const USER_LOCK_REASON_MAX_LENGTH = LOCK_REASON_MAX_LENGTH;
 
 export const USER_ADMIN_ERROR_CODES = {
   REASON_INVALID: "USER_LOCK_REASON_INVALID",

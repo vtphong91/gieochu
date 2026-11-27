@@ -1852,3 +1852,37 @@
   10. **Yêu cầu đặt lại mật khẩu thu hồi luôn mọi phiên** (chủ dự án chốt).
 - **Ghi chú đợt 3 (Quốc):** khoá gian hàng từ báo cáo vi phạm giữ email `content_moderated` (có cờ gian hàng bị khoá), không gửi thêm
   `tenant_locked`; link chia sẻ ngừng hoạt động khi gian hàng không ACTIVE; lọc `/admin/reports` theo gian hàng → backlog.
+## ADR-074 — Backlog sau 4 đợt: xem trước 20% qua RLS, tìm người dùng theo tên, lọc báo cáo theo gian hàng, gắn gian hàng cho nhật ký email (2026-11-27)
+
+- **Bối cảnh:** sau đợt 4 còn các việc tồn: integration `product-file-preview-route` trả 404 cho tài liệu đã xuất bản (route công khai
+  "Xem trước 20%", ADR-063); ô tìm `/admin/users` ghi "tên, email, SĐT" nhưng chỉ lọc email; lọc `/admin/reports` theo gian hàng (hoãn từ
+  ADR-072); `email_send_log` không có cột gian hàng nên hai trang đọc nhật ký email (chi tiết đơn Studio, chi tiết đơn hàng gói) phải
+  đoán theo người nhận; nợ kit giao diện (`parts.tsx` import chéo, menu popover nhân bản, `REASON_MAX_LENGTH` hard-code), cảnh báo lint
+  `AMBER`, `stats.test.ts` dọn dữ liệu chưa hết; tài liệu `docs/doc-payment-241126.md` chủ dự án yêu cầu từ 2026-11-24.
+- **Nguyên nhân 404 xem trước (Quốc xác minh code):** `getPreviewForPublicRoute` (`apps/web/lib/product-file-preview.ts`) đọc bảng L2
+  `tenants`/`products`/`product_files`/`product_file_previews` bằng `getPrismaClient()` trực tiếp → role `gieochu_app` không có ngữ cảnh RLS →
+  không thấy dòng nào. Vi phạm quy tắc helper RLS (CLAUDE.md).
+- **Quyết định:**
+  1. Sửa đọc xem trước qua helper RLS phù hợp (`withPublic` cho tenant/sản phẩm đã xuất bản; file + cache xem trước theo policy hiện có,
+     nếu policy public không cho đọc thì dùng `withSystemJob` sau khi đã kiểm gian hàng ACTIVE + sản phẩm PUBLISHED). Không đổi policy RLS;
+     nếu bắt buộc đổi policy → dừng hỏi Quốc.
+  2. Tìm người dùng `/admin/users` theo **họ tên + email** (chủ dự án chốt 2026-11-27); **không** tìm theo số điện thoại (tránh dò số né
+     audit "Hiện đầy đủ" ADR-073); sửa chữ gợi ý ô tìm.
+  3. `/admin/reports?tenantId=…` lọc theo gian hàng; trang chi tiết gian hàng link sang danh sách đã lọc.
+  4. `email_send_log` thêm cột **`tenantId String?`** + index `(tenantId, createdAt)` (chủ dự án chốt "làm luôn" 2026-11-27). Migration
+     expand-only (chỉ thêm cột null + index); dòng cũ để `NULL`. Bảng vẫn là L1 (không RLS) — cột chỉ là nhãn. Email gửi trong ngữ cảnh một
+     gian hàng (đơn tài liệu, hoá đơn gói, khoá gian hàng, thông báo Studio…) ghi `tenantId`; trang đọc nhật ký email lọc theo `tenantId`,
+     dòng cũ `NULL` giữ cách khớp cũ. **Không** thêm màn hình System Center hiển thị email theo gian hàng (email gửi khách là dữ liệu L3 —
+     §7.9). Thứ tự triển khai: chủ dự án chạy `pnpm db:migrate` **trước** khi deploy code ghi cột mới.
+  5. Kit `admin/_ui`: chuyển các mảnh dùng chung (`CARD`, `InfoGrid`, `SectionHeading`, `StatTile`), menu popover hàng bảng, hằng độ dài lý do
+     ra chỗ dùng chung; không đổi giao diện nhìn thấy.
+  6. Tài liệu `docs/doc-payment-241126.md`: hướng dẫn phát triển module thanh toán (SePay, MoMo, QR, hai phạm vi Platform/Tenant, webhook,
+     job, mã thanh toán ADR-065, xác nhận tay/đổi trạng thái ADR-066…069, email ADR-070) có trích code để tái dùng ở hệ thống khác.
+- **Không thêm test case** (trần 105/69): mở rộng case sẵn có.  7. **Webhook thanh toán bỏ sót giao dịch khi đẩy job lỗi** (Long phát hiện khi viết `doc-payment-241126.md`, Quốc xác minh; chủ dự án
+     chốt "sửa cả hai phía" 2026-11-27): route webhook ghi `webhook_events` rồi mới đẩy job; nếu bước sau lỗi, lần cổng gửi lại bị coi là
+     trùng → bỏ qua. `catch` khi ghi sự kiện coi mọi lỗi là trùng. Sửa **đồng thời** `/api/webhooks/platform/[provider]` và
+     `/api/webhooks/tenants/[tenantId]/[provider]`: chỉ lỗi trùng khoá (P2002) mới là "đã xử lý"; lỗi khác → 5xx để cổng gửi lại; bước sau khi
+     ghi sự kiện lỗi → xoá dòng sự kiện vừa ghi (bù trừ) rồi trả 5xx. Không migration.
+  8. Dọn nhỏ (chủ dự án chốt 2026-11-27): env bắt `PAYMENT_ENCRYPTION_KEY` đúng định dạng/độ dài mà hàm mã hoá dùng (fail-fast); sửa comment
+     lỗi thời (`SepayConfig.paymentPrefix`, comment trước `parseSepayWebhook`, docblock `markInvoicePaid`, comment `TenantPaymentConfig` trong
+     schema); xoá `confirmOrderManually` không còn nơi dùng (test chuyển sang `changeOrderStatusBySeller`, không đổi số case).

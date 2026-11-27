@@ -578,6 +578,14 @@ cột đã xoá) **không** quay lại được. Point-in-Time Restore ảnh hư
   `cam-ket-ban-quyen`, `quyen-su-dung-tai-lieu`, `chinh-sach-nguoi-ban`, `lien-he`) — route tĩnh cấp gốc sẽ che storefront của tenant đó. Lần quét 2026-10-24: ✅ Hiếu quét DB (chỉ đọc), báo qua Quốc 2026-10-24: DB có 1 tenant, không trùng 7 slug mới và `phap-ly`; quét lại nếu có tenant mới trước deploy.
 * Rollback code về trước ADR-054: cột mới bị bỏ qua; link `/{slug}` mới sẽ 404 (thư mục route không còn), `/phap-ly/{slug}` cũ hoạt động lại ✅ suy từ code.
 
+### 9.15. Migration ADR-074 (`email_send_log.tenantId`) — **migrate trước, deploy code sau**; thêm kiểm tra `PAYMENT_ENCRYPTION_KEY` và webhook
+
+* `20261127120000_adr074_email_send_log_tenant` — expand-only ✅ đọc SQL: `ALTER TABLE "email_send_log" ADD COLUMN "tenantId" TEXT` + `CREATE INDEX "email_send_log_tenantId_createdAt_idx"`. Không FK, không UPDATE; dòng cũ `NULL`. Bảng vẫn L1.
+* **Thứ tự bắt buộc:** `pnpm db:migrate` **trước** khi deploy code (code mới ghi/đọc cột `tenantId` — gửi email và hai trang đọc nhật ký sẽ lỗi nếu cột chưa có). Code cũ chạy được trên schema mới (chỉ thêm cột NULL). Rollback code: an toàn ✅ suy từ code.
+* **Trạng thái:** áp lên DB dùng chung — 🟡 Quốc báo đã áp (Long không chạy lệnh DB). Production VPS ❓ chưa xác minh. Mọi DB khác (restore, branch mới): `pnpm db:migrate` trước deploy.
+* **`PAYMENT_ENCRYPTION_KEY` phải là base64 đúng 32 byte** ✅ đọc `packages/config/src/env.ts` (`refine` kiểm `Buffer.from(value, "base64").length === 32`). Từ ADR-074 mục 8, khoá sai định dạng/độ dài làm **app dừng khi khởi động** (fail-fast) thay vì lỗi muộn khi giải mã secret cổng. **Trước deploy:** kiểm giá trị đang đặt trên môi trường (Vercel/VPS) — tạo khoá mới bằng `openssl rand -base64 32`. **Không đổi khoá đang dùng** nếu chỉ để vượt kiểm tra: đổi khoá làm mất khả năng giải mã secret cổng/thông tin hoàn tiền đã lưu (xem §9.9).
+* **Theo dõi webhook sau deploy (ADR-074 mục 7):** log `error` chứa "could not release webhook_events row" nghĩa là bước sau khi ghi sự kiện lỗi **và** việc xoá dòng sự kiện cũng lỗi → lần cổng gửi lại bị coi là trùng. **Đối soát tay theo `providerEventId`** (log kèm `scope`, `provider`, `tenantId`): kiểm `webhook_events` + `platform_payment_transactions` / `tenant_payment_transactions` / đơn / hoá đơn, rồi xác nhận tay nếu tiền đã về (SePay-Live-Test-Runbook). Log "step after recording the event failed — releasing…" là bình thường (đã xoá dòng, cổng sẽ gửi lại, response 5xx). Xem [[02-System-Specs/Payment-And-Billing|Payment-And-Billing]] §5T.
+
 ---
 
 ## 10. Liên kết

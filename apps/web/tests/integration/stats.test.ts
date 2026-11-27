@@ -4,6 +4,7 @@ import { getPrismaClient, withSystemJob, withTenant } from "@gieochu/db";
 import { createTenantForUser } from "../../lib/create-tenant";
 import { aggregateTenantDailyStats, addDays, vnDateString } from "../../lib/tenant-stats";
 import { getAdminStatsOverview } from "../../lib/admin-stats";
+import { escapeContainsValue } from "../../lib/prisma-contains";
 import type { CurrentUser } from "../../lib/session";
 
 // ADR-037 (M12b) — đặc tả M12 test integration #2. DB dùng chung (ADR-034): aggregate chỉ chạy cho tenant tạm của test
@@ -12,6 +13,10 @@ import type { CurrentUser } from "../../lib/session";
 
 const prisma = getPrismaClient();
 const RUN_PREFIX = `m12stats_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+// slugify() đổi "_" thành "-" → slug tenant tạm bắt đầu bằng SLUG_PREFIX (không phải RUN_PREFIX). Dọn dẹp trước đây khớp
+// được chỉ nhờ "_" trong LIKE là wildcard (Prisma không escape) — mong manh; nay dùng đúng tiền tố + escape wildcard.
+const SLUG_PREFIX = RUN_PREFIX.replace(/_/g, "-");
+const EMAIL_PREFIX = escapeContainsValue(RUN_PREFIX);
 let emailCounter = 0;
 
 function nextEmail(): string {
@@ -32,7 +37,11 @@ const ALLOWED_COLUMNS = ["date", "downloads", "gmvVnd", "id", "newCustomers", "o
 
 describe("M12 stats", () => {
   afterAll(async () => {
-    const tenants = await prisma.tenant.findMany({ where: { slug: { startsWith: RUN_PREFIX } }, select: { id: true } });
+    // Tenant tạm theo slug HOẶC theo chủ sở hữu có email tạm (phòng test lỗi giữa chừng sau khi tạo user).
+    const tenants = await prisma.tenant.findMany({
+      where: { OR: [{ slug: { startsWith: SLUG_PREFIX } }, { owner: { email: { startsWith: EMAIL_PREFIX } } }] },
+      select: { id: true },
+    });
     const tenantIds = tenants.map((t) => t.id);
     if (tenantIds.length > 0) {
       await withSystemJob(async (tx) => {
@@ -44,15 +53,15 @@ describe("M12 stats", () => {
         await tx.tenantMember.deleteMany({ where: { tenantId: { in: tenantIds } } });
       });
     }
-    await prisma.tenant.deleteMany({ where: { slug: { startsWith: RUN_PREFIX } } });
-    await prisma.user.deleteMany({ where: { email: { startsWith: RUN_PREFIX } } });
+    if (tenantIds.length > 0) await prisma.tenant.deleteMany({ where: { id: { in: tenantIds } } });
+    await prisma.user.deleteMany({ where: { email: { startsWith: EMAIL_PREFIX } } });
   });
 
   it("stats: daily aggregation writes tenant_daily_stats without personal data and admin dashboard can read it", async () => {
     const owner = await prisma.user.create({
       data: { email: nextEmail(), passwordHash: "not-used", status: "ACTIVE", emailVerifiedAt: new Date() },
     });
-    const created = await createTenantForUser(toCurrentUser(owner.id), { name: "Stats Tenant", slug: `${RUN_PREFIX}-shop` });
+    const created = await createTenantForUser(toCurrentUser(owner.id), { name: "Stats Tenant", slug: `${SLUG_PREFIX}-shop` });
     const tenantId = created.id;
     const buyerA = await prisma.user.create({
       data: { email: nextEmail(), passwordHash: "not-used", status: "ACTIVE", emailVerifiedAt: new Date() },

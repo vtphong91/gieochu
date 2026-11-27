@@ -86,7 +86,10 @@ export interface ManualQrConfig {
 export interface SepayConfig extends ManualQrConfig {
   authType: "API_KEY" | "HMAC_SHA256";
   secret: string;
-  /** matches the tenant's orderCodePrefix (or "SUB" for platform) — §"M7" */
+  /**
+   * ADR-065: tiền tố mã thanh toán đã cấu hình (2–5 chữ cái, vd. "SEVQR") — mã thanh toán = tiền tố + 8 chữ số, là nội dung chuyển
+   * khoản khách nhập. Tiền tố dự phòng (tiền tố mã đơn ở webhook tenant, "SUB" ở webhook platform) do route tự thêm khi đọc mã.
+   */
   paymentPrefix: string;
   /** SePay User API token — chỉ dùng cho testConnection (gọi danh sách tài khoản), không dùng xác thực webhook. */
   apiToken?: string;

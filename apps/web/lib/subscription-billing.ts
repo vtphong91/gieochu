@@ -224,6 +224,7 @@ export async function notifyAdminOfPendingManualInvoice(invoiceId: string): Prom
       where: { id: invoiceId },
       select: {
         code: true,
+        tenantId: true,
         provider: true,
         status: true,
         amountVnd: true,
@@ -244,7 +245,7 @@ export async function notifyAdminOfPendingManualInvoice(invoiceId: string): Prom
       dueAtDisplay: invoice.dueAt.toLocaleString("vi-VN", { timeZone: DISPLAY_TIME_ZONE }),
       invoicesUrl: `${getEnv().APP_URL.replace(/\/+$/, "")}/admin/billing/invoices`,
     });
-    const result = await sendEmailNow({ type: "invoice_pending_manual", to: supportEmail, ...rendered });
+    const result = await sendEmailNow({ type: "invoice_pending_manual", to: supportEmail, ...rendered }, { tenantId: invoice.tenantId });
     if (!result.ok) logger.warn({ invoiceId, error: result.error }, "invoice.pending_manual: gửi email báo admin thất bại");
   } catch (error) {
     logger.warn({ invoiceId, err: error }, "invoice.pending_manual: lỗi khi gửi email báo admin");
@@ -261,7 +262,7 @@ export async function notifyAdminOfPendingManualInvoice(invoiceId: string): Prom
  * without worrying about double-processing beyond the webhook_events guard.
  * ADR-059 (B2): chỉ áp hoá đơn đang PENDING, nguyên tử — một transaction khoá dòng `subscriptions`, đọc lại hoá đơn dưới khoá,
  * cập nhật có điều kiện `status = PENDING`. Webhook và admin chạy cùng lúc → lần sau no-op, chỉ 1 audit. Hoá đơn EXPIRED đi
- * `confirmExpiredManualInvoice` (admin, MANUAL_QR); trạng thái khác → no-op.
+ * `confirmExpiredManualInvoice` (admin xác nhận tay, mọi cổng — ADR-066); trạng thái khác → no-op.
  */
 export type InvoicePaidSource = "PLATFORM_WEBHOOK" | "ADMIN_MANUAL_CONFIRM";
 
@@ -1119,7 +1120,8 @@ export async function getAdminSubscriptionDetail(subscriptionId: string): Promis
       ? await prisma.emailSendLog.findMany({
           where: {
             type: { in: Object.keys(INVOICE_EMAIL_KIND_BY_TYPE) },
-            OR: invoiceRows.map((row) => ({ subject: { contains: row.code } })),
+            // ADR-074: dòng có nhãn gian hàng phải khớp gian hàng này; dòng cũ (tenantId NULL) giữ cách khớp cũ (mã hoá đơn trong tiêu đề).
+            AND: [{ OR: invoiceRows.map((row) => ({ subject: { contains: row.code } })) }, { OR: [{ tenantId }, { tenantId: null }] }],
           },
           orderBy: [{ createdAt: "desc" }, { id: "desc" }],
           take: ADMIN_DETAIL_ACTIVITY_LIMIT,

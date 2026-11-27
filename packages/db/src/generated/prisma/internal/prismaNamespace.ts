@@ -4842,6 +4842,7 @@ export const EmailSendLogScalarFieldEnum = {
   subject: 'subject',
   status: 'status',
   errorMessage: 'errorMessage',
+  tenantId: 'tenantId',
   createdAt: 'createdAt'
 } as const
 

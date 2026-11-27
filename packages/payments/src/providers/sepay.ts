@@ -212,8 +212,9 @@ export function sepayAccountMatches(body: unknown, accountNo: string): boolean {
 }
 
 // `parseWebhook` matches the shared PaymentProvider interface (body only —
-// no cfg), so it cannot know the tenant's paymentPrefix. Callers extract the
-// reference separately via extractSepayReference(body, cfg.paymentPrefix).
+// no cfg), so it cannot know the configured paymentPrefix. Callers extract the
+// codes separately: both webhook routes use extractSepayPaymentCodes(body, [cfg.paymentPrefix, …fallback prefixes])
+// (ADR-065); the tenant route additionally falls back to extractSepayReferences for order codes.
 /**
  * ADR-059 bổ sung lần 2: payload thiếu/sai trường bắt buộc → ném lỗi (route trả 400 + log), không để TypeError thành 500.
  * Số tiền nhận cả số lẫn chuỗi số nguyên không âm.

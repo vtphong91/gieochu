@@ -70,6 +70,7 @@ async function paymentLines(checkout: CheckoutResult | null, totalVnd: number): 
 
 const ORDER_EMAIL_SELECT = {
   id: true,
+  tenantId: true,
   code: true,
   status: true,
   totalVnd: true,
@@ -97,7 +98,7 @@ async function sendPaymentInstructions(order: OrderForEmail, type: "order_paymen
     reminder: type === "order_payment_reminder",
     manualConfirm: isManualConfirmProvider(order.provider),
   });
-  const result = await sendEmailNow({ type, to: order.customer.email, ...rendered });
+  const result = await sendEmailNow({ type, to: order.customer.email, ...rendered }, { tenantId: order.tenantId });
   if (!result.ok) logger.warn({ orderId: order.id, type, error: result.error }, "order.customer_email: gửi email cho khách thất bại");
   return result.ok;
 }
@@ -331,7 +332,7 @@ export async function notifyOwnerOfDeclaredPaid(tenantId: string, orderId: strin
       declaredAtDisplay: formatDisplayDateTime(order.customerDeclaredPaidAt),
       orderUrl: `${appUrl()}/studio/${tenant.slug}/orders/${order.id}`,
     });
-    const result = await sendEmailNow({ type: "order_customer_declared_paid", to: tenant.owner.email, ...rendered });
+    const result = await sendEmailNow({ type: "order_customer_declared_paid", to: tenant.owner.email, ...rendered }, { tenantId });
     if (!result.ok) logger.warn({ tenantId, orderId, error: result.error }, "order.declared_paid: gửi email báo người bán thất bại");
   } catch (error) {
     logger.warn({ tenantId, orderId, err: error }, "order.declared_paid: lỗi khi gửi email báo người bán");

@@ -57,7 +57,7 @@ const numberFormat = new Intl.NumberFormat("vi-VN");
 
 /** Bộ lọc mặc định = chỉ báo cáo chờ xử lý (status OPEN, không type/targetType). */
 function countActiveFilters(filters: AbuseReportListFilters): number {
-  return [filters.status !== "OPEN" ? "status" : "", filters.type, filters.targetType].filter(Boolean).length;
+  return [filters.status !== "OPEN" ? "status" : "", filters.type, filters.targetType, filters.tenant?.id].filter(Boolean).length;
 }
 
 /** Tham số giữ lại khi chuyển trang. `status` null = "Tất cả" → gửi `ALL` để không rơi về mặc định OPEN. */
@@ -66,6 +66,7 @@ function filterQuery(filters: AbuseReportListFilters, pageSize: number): Record<
     status: filters.status === "OPEN" ? "" : (filters.status ?? "ALL"),
     type: filters.type ?? "",
     targetType: filters.targetType ?? "",
+    tenantId: filters.tenant?.id ?? "",
     pageSize: pageSize === 20 ? "" : pageSize,
   };
 }
@@ -93,6 +94,8 @@ export function ReportFilterForm({ basePath, filters, pageSize }: { basePath: st
       <h2 id="report-filter-title" className="font-[family-name:var(--font-heading)] text-base font-semibold" style={{ color: INK }}>
         Bộ lọc
       </h2>
+      {/* Giữ lọc theo gian hàng khi bấm "Lọc" (ADR-074). */}
+      {filters.tenant ? <input type="hidden" name="tenantId" value={filters.tenant.id} /> : null}
       <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SelectField id="report-status" name="status" label="Trạng thái" defaultValue={filters.status ?? "ALL"}>
           {ABUSE_REPORT_STATUSES.map((s) => (
@@ -411,6 +414,20 @@ export function ReportResults({ result, basePath, page, pageSize }: { result: Ab
           </p>
         ) : null}
       </div>
+      {filters.tenant ? (
+        <p className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm" style={{ color: INK }}>
+          <span className={WRAP_ANY}>
+            Đang lọc theo gian hàng: <strong className="font-semibold">{filters.tenant.name}</strong>
+          </span>
+          <Link
+            href={hrefWith(basePath, { ...query, tenantId: "" })}
+            className={`font-semibold underline underline-offset-2 ${FOCUS}`}
+            style={{ color: brandColors.primary }}
+          >
+            Bỏ lọc
+          </Link>
+        </p>
+      ) : null}
       {body}
     </section>
   );

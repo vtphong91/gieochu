@@ -37,6 +37,7 @@ export type EmailSendLogMinAggregateOutputType = {
   subject: string | null
   status: string | null
   errorMessage: string | null
+  tenantId: string | null
   createdAt: Date | null
 }
 
@@ -47,6 +48,7 @@ export type EmailSendLogMaxAggregateOutputType = {
   subject: string | null
   status: string | null
   errorMessage: string | null
+  tenantId: string | null
   createdAt: Date | null
 }
 
@@ -57,6 +59,7 @@ export type EmailSendLogCountAggregateOutputType = {
   subject: number
   status: number
   errorMessage: number
+  tenantId: number
   createdAt: number
   _all: number
 }
@@ -69,6 +72,7 @@ export type EmailSendLogMinAggregateInputType = {
   subject?: true
   status?: true
   errorMessage?: true
+  tenantId?: true
   createdAt?: true
 }
 
@@ -79,6 +83,7 @@ export type EmailSendLogMaxAggregateInputType = {
   subject?: true
   status?: true
   errorMessage?: true
+  tenantId?: true
   createdAt?: true
 }
 
@@ -89,6 +94,7 @@ export type EmailSendLogCountAggregateInputType = {
   subject?: true
   status?: true
   errorMessage?: true
+  tenantId?: true
   createdAt?: true
   _all?: true
 }
@@ -172,6 +178,7 @@ export type EmailSendLogGroupByOutputType = {
   subject: string
   status: string
   errorMessage: string | null
+  tenantId: string | null
   createdAt: Date
   _count: EmailSendLogCountAggregateOutputType | null
   _min: EmailSendLogMinAggregateOutputType | null
@@ -203,6 +210,7 @@ export type EmailSendLogWhereInput = {
   subject?: Prisma.StringFilter<"EmailSendLog"> | string
   status?: Prisma.StringFilter<"EmailSendLog"> | string
   errorMessage?: Prisma.StringNullableFilter<"EmailSendLog"> | string | null
+  tenantId?: Prisma.StringNullableFilter<"EmailSendLog"> | string | null
   createdAt?: Prisma.DateTimeFilter<"EmailSendLog"> | Date | string
 }
 
@@ -213,6 +221,7 @@ export type EmailSendLogOrderByWithRelationInput = {
   subject?: Prisma.SortOrder
   status?: Prisma.SortOrder
   errorMessage?: Prisma.SortOrderInput | Prisma.SortOrder
+  tenantId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -226,6 +235,7 @@ export type EmailSendLogWhereUniqueInput = Prisma.AtLeast<{
   subject?: Prisma.StringFilter<"EmailSendLog"> | string
   status?: Prisma.StringFilter<"EmailSendLog"> | string
   errorMessage?: Prisma.StringNullableFilter<"EmailSendLog"> | string | null
+  tenantId?: Prisma.StringNullableFilter<"EmailSendLog"> | string | null
   createdAt?: Prisma.DateTimeFilter<"EmailSendLog"> | Date | string
 }, "id">
 
@@ -236,6 +246,7 @@ export type EmailSendLogOrderByWithAggregationInput = {
   subject?: Prisma.SortOrder
   status?: Prisma.SortOrder
   errorMessage?: Prisma.SortOrderInput | Prisma.SortOrder
+  tenantId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.EmailSendLogCountOrderByAggregateInput
   _max?: Prisma.EmailSendLogMaxOrderByAggregateInput
@@ -252,6 +263,7 @@ export type EmailSendLogScalarWhereWithAggregatesInput = {
   subject?: Prisma.StringWithAggregatesFilter<"EmailSendLog"> | string
   status?: Prisma.StringWithAggregatesFilter<"EmailSendLog"> | string
   errorMessage?: Prisma.StringNullableWithAggregatesFilter<"EmailSendLog"> | string | null
+  tenantId?: Prisma.StringNullableWithAggregatesFilter<"EmailSendLog"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"EmailSendLog"> | Date | string
 }
 
@@ -262,6 +274,7 @@ export type EmailSendLogCreateInput = {
   subject: string
   status: string
   errorMessage?: string | null
+  tenantId?: string | null
   createdAt?: Date | string
 }
 
@@ -272,6 +285,7 @@ export type EmailSendLogUncheckedCreateInput = {
   subject: string
   status: string
   errorMessage?: string | null
+  tenantId?: string | null
   createdAt?: Date | string
 }
 
@@ -282,6 +296,7 @@ export type EmailSendLogUpdateInput = {
   subject?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   errorMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tenantId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -292,6 +307,7 @@ export type EmailSendLogUncheckedUpdateInput = {
   subject?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   errorMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tenantId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -302,6 +318,7 @@ export type EmailSendLogCreateManyInput = {
   subject: string
   status: string
   errorMessage?: string | null
+  tenantId?: string | null
   createdAt?: Date | string
 }
 
@@ -312,6 +329,7 @@ export type EmailSendLogUpdateManyMutationInput = {
   subject?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   errorMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tenantId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -322,6 +340,7 @@ export type EmailSendLogUncheckedUpdateManyInput = {
   subject?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   errorMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tenantId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -332,6 +351,7 @@ export type EmailSendLogCountOrderByAggregateInput = {
   subject?: Prisma.SortOrder
   status?: Prisma.SortOrder
   errorMessage?: Prisma.SortOrder
+  tenantId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -342,6 +362,7 @@ export type EmailSendLogMaxOrderByAggregateInput = {
   subject?: Prisma.SortOrder
   status?: Prisma.SortOrder
   errorMessage?: Prisma.SortOrder
+  tenantId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -352,6 +373,7 @@ export type EmailSendLogMinOrderByAggregateInput = {
   subject?: Prisma.SortOrder
   status?: Prisma.SortOrder
   errorMessage?: Prisma.SortOrder
+  tenantId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -364,6 +386,7 @@ export type EmailSendLogSelect<ExtArgs extends runtime.Types.Extensions.Internal
   subject?: boolean
   status?: boolean
   errorMessage?: boolean
+  tenantId?: boolean
   createdAt?: boolean
 }, ExtArgs["result"]["emailSendLog"]>
 
@@ -374,6 +397,7 @@ export type EmailSendLogSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   subject?: boolean
   status?: boolean
   errorMessage?: boolean
+  tenantId?: boolean
   createdAt?: boolean
 }, ExtArgs["result"]["emailSendLog"]>
 
@@ -384,6 +408,7 @@ export type EmailSendLogSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   subject?: boolean
   status?: boolean
   errorMessage?: boolean
+  tenantId?: boolean
   createdAt?: boolean
 }, ExtArgs["result"]["emailSendLog"]>
 
@@ -394,10 +419,11 @@ export type EmailSendLogSelectScalar = {
   subject?: boolean
   status?: boolean
   errorMessage?: boolean
+  tenantId?: boolean
   createdAt?: boolean
 }
 
-export type EmailSendLogOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "type" | "recipient" | "subject" | "status" | "errorMessage" | "createdAt", ExtArgs["result"]["emailSendLog"]>
+export type EmailSendLogOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "type" | "recipient" | "subject" | "status" | "errorMessage" | "tenantId" | "createdAt", ExtArgs["result"]["emailSendLog"]>
 
 export type $EmailSendLogPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "EmailSendLog"
@@ -409,6 +435,11 @@ export type $EmailSendLogPayload<ExtArgs extends runtime.Types.Extensions.Intern
     subject: string
     status: string
     errorMessage: string | null
+    /**
+     * ADR-074: nhãn gian hàng của email (NULL = không thuộc gian hàng nào, hoặc dòng cũ trước migration). KHÔNG FK:
+     * bảng L1 chỉ ghi nhật ký — dòng log không được chặn xoá gian hàng; cột chỉ là nhãn lọc, không đổi lớp dữ liệu.
+     */
+    tenantId: string | null
     createdAt: Date
   }, ExtArgs["result"]["emailSendLog"]>
   composites: {}
@@ -839,6 +870,7 @@ export interface EmailSendLogFieldRefs {
   readonly subject: Prisma.FieldRef<"EmailSendLog", 'String'>
   readonly status: Prisma.FieldRef<"EmailSendLog", 'String'>
   readonly errorMessage: Prisma.FieldRef<"EmailSendLog", 'String'>
+  readonly tenantId: Prisma.FieldRef<"EmailSendLog", 'String'>
   readonly createdAt: Prisma.FieldRef<"EmailSendLog", 'DateTime'>
 }
     

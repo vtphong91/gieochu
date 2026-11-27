@@ -98,7 +98,8 @@ sequenceDiagram
   `momo.ts` — chống timing attack, không dùng `===` trên chuỗi bí mật.
 - **`webhook_events`** (`@@unique([scope, provider, providerEventId])`): cùng một event id từ provider không
   bao giờ được xử lý 2 lần cho cùng scope+provider — ghi qua `withSystemJob` (chưa có tenant session lúc
-  webhook thô vừa tới).
+  webhook thô vừa tới). **Từ ADR-074 mục 7 (2026-11-27) ✅:** chỉ lỗi trùng khoá P2002 là "đã xử lý" (200); lỗi khác → 5xx; bước sau
+  khi ghi mà lỗi → xoá đúng dòng vừa ghi rồi 5xx để cổng gửi lại — §5T.
 - **Ai xử lý job `payment.process` (ADR-036, chưa deploy) ✅:** trên Vercel không có worker thường trực — route webhook tenant gọi
   `scheduleQueueDrain([PAYMENT_PROCESS])` (`apps/web/lib/job-runner.ts`) **sau** khi đã enqueue, bọc `after()` của Next.js: response
   200 trả trước, rồi trong cùng function (`maxDuration = 60`) bộ xử lý lấy job bằng pg-boss `fetch`, gọi `processPaymentEvent`, đánh
@@ -681,7 +682,7 @@ Quyết định: [[01-Architecture-Decisions/ADR-055-Subscription-Activity-Log-D
 | `PAYMENT` | audit `SUBSCRIPTION_PAID` | Nguồn `paymentSource`: `metadata.source` `ADMIN_MANUAL_CONFIRM` → `ADMIN_MANUAL`; `ADMIN_TRANSACTION_CONFIRM` → `ADMIN_FROM_TRANSACTION`; còn lại theo cổng hoá đơn → `AUTO_SEPAY` / `AUTO_MOMO` / `AUTO_OTHER`. `lateConfirmation` = `metadata.lateConfirmation` hoặc `previousInvoiceStatus = EXPIRED`. `fromStatus` thiếu → suy ra `EXPIRED` (xác nhận trễ) / `PENDING`; `toStatus` → `PAID` |
 | `PAYMENT` — giao dịch ngân hàng | `platform_payment_transactions` có `matchedInvoiceId` = hoá đơn (+ giao dịch admin chọn `metadata.transactionId`, không trùng) | Chỉ 5 trường: cổng, mã GD (SePay `id` ?? `referenceCode`; MoMo `transId`), thời điểm (SePay `transactionDate` hiểu là giờ VN **+07:00**; MoMo `responseTime` ms), nội dung CK một dòng ≤ 80 ký tự, số tiền. **Không** trả `rawPayload`. `receivedVnd` = `metadata.receivedAmountVnd` ?? tổng giao dịch; `differenceVnd` = nhận − số tiền hoá đơn |
 | `INVOICE_VOIDED` / `INVOICE_REOPENED` | audit ADR-067 | `fromStatus`/`toStatus`/`note` |
-| `EMAIL` | `email_send_log` — **chỉ 5 loại** `subscription_invoice_*` (ADR-070), tiêu đề **chứa mã hoá đơn** của gian hàng (mã dài nhất khớp, tránh mã là tiền tố của mã khác) | id `email:{logId}`; `status` SENT/FAILED; người nhận = email chủ **hiện tại** → không hiện địa chỉ; khác → che `ng•••@domain`. **Không** gồm email nhắc hạn / ân hạn / hạ gói (Bổ sung 2026-11-26 — `email_send_log` không có cột gắn gian hàng) |
+| `EMAIL` | `email_send_log` — **chỉ 5 loại** `subscription_invoice_*` (ADR-070), tiêu đề **chứa mã hoá đơn** của gian hàng (mã dài nhất khớp, tránh mã là tiền tố của mã khác) | id `email:{logId}`; `status` SENT/FAILED; người nhận = email chủ **hiện tại** → không hiện địa chỉ; khác → che `ng•••@domain`. **Không** gồm email nhắc hạn / ân hạn / hạ gói (Bổ sung 2026-11-26 — lúc đó `email_send_log` chưa có cột gắn gian hàng). **Từ ADR-074 mục 4 (2026-11-27) ✅:** truy vấn lọc thêm `tenantId` = gian hàng này **hoặc** `NULL` (dòng cũ) — §5T |
 | `OTHER` | audit khác của hoá đơn / yêu cầu hoàn tiền gói | Hiện theo nhãn audit |
 
 - **Người làm:** `actor = { label: họ tên ?? email, role }` — `role` = `SYSTEM_ADMIN` (`users.systemRole`), `TENANT_OWNER` (là chủ gian hàng), `OTHER`; actor không còn → "Tài
@@ -706,6 +707,33 @@ Danh mục email thêm bởi Đợt 3 (không thuộc luồng thanh toán nhưng
 - **Một email mỗi lần đổi trạng thái.** Không gửi khi khoá từ báo cáo vi phạm — luồng đó dùng `content_moderated` có cờ `tenantLocked: true` ([[02-System-Specs/Abuse-Reports-Specs|Abuse-Reports-Specs]] §7). ✅ (`apps/web/lib/abuse-report.ts`)
 - Email chứa lý do quản trị viên nhập — vì vậy hộp xác nhận ghi rõ "lý do sẽ gửi cho chủ gian hàng" (ADR-072 mục 3). Không đưa ghi chú nội bộ vào lý do.
 - Chưa gửi thật qua SMTP ❓.
+
+---
+
+### 5T. Webhook an toàn khi đẩy job lỗi + nhãn gian hàng cho `email_send_log` (ADR-074 mục 4, 7, 8 — KB ADR-058) ✅ đọc code 2026-11-27
+
+Quyết định: [[01-Architecture-Decisions/ADR-058-Backlog-Preview-Rls-User-Search-Report-Filter-Email-Tenant|ADR-058 KB (≙ ADR-074)]].
+
+**Webhook hai phía** (`apps/web/lib/webhook-event.ts`, dùng bởi `/api/webhooks/platform/[provider]` và `/api/webhooks/tenants/[tenantId]/[provider]`):
+
+- `recordWebhookEvent({ scope, provider, providerEventId, tenantId? })` — ghi `webhook_events` qua `withSystemJob`. **Chỉ lỗi trùng khoá P2002 là "đã xử lý"** (trả `null`, route 200 idempotent). Lỗi khác (mất DB…) ném tiếp → route trả **5xx** dạng `{ error: { code, message, requestId } }` để cổng gửi lại. (Trước đây mọi lỗi khi ghi đều bị coi là trùng.)
+- `releaseWebhookEventOnFailure(event, step)` — bọc các bước **sau** khi ghi sự kiện. Bước lỗi → `deleteMany({ where: { id } })` đúng dòng vừa ghi rồi ném lại lỗi gốc (route 5xx) → lần gửi lại được xử lý như lần đầu.
+- **Phần được bảo vệ:** Tenant = tra tenant, trích mã, enqueue `payment.process`. Platform = dừng ở ghi `platform_payment_transactions` (giữ ADR-059 B2: ghi giao dịch trước rồi mới `markInvoicePaid`; `markInvoicePaid` **ngoài** vùng bảo vệ để không ghi giao dịch hai lần).
+- **Vận hành:** log `error` "could not release webhook_events row — the provider retry will be treated as a duplicate, reconcile manually" nghĩa là xoá dòng sự kiện cũng lỗi → lần gửi lại bị coi trùng, **phải đối soát tay theo `providerEventId`** (và `scope`/`provider`/`tenantId` trong log).
+- Khoảng lệch Tenant (qua job) ↔ Platform (đồng bộ) ở §3 vẫn đúng. Không migration.
+
+**`email_send_log.tenantId`** (`String?`, index `(tenantId, createdAt)`, không FK, bảng vẫn L1; migration `20261127120000_adr074_email_send_log_tenant` expand-only):
+
+- `sendEmailNow(message, { tenantId? })` và `logEmailSend(entry)` (`tenantId?: string | null`) — `apps/web/lib/email-dispatch.ts`. Không truyền → `NULL`.
+- **Gắn `tenantId`:** đơn, nhắc thanh toán, hoá đơn gói (A1–A5, `invoice_pending_manual`), sweep thuê bao, hoàn tiền, khoá/mở khoá gian hàng (§5S), `content_moderated`, remedy, file bị từ chối, review mới, tin nhắn gian hàng, `payment_mismatch`.
+- **Để `NULL`:** `abuse_report_resolved`, `guest_activation` (không nối người báo cáo/khách với gian hàng trên L1 — §7.9); email tài khoản (reset mật khẩu, xác minh email, khoá/mở khoá người dùng, thử SMTP).
+- **Trang đọc log** lọc `tenantId` khớp **hoặc** `NULL` (dòng cũ giữ cách khớp cũ): `getOrderDetailView` (`order.ts`) và nhật ký chi tiết đơn hàng gói (`subscription-billing.ts`, bảng §5R). Không thêm màn hình System Center đọc email theo gian hàng (email gửi khách là dữ liệu L3).
+- **Lỗi có sẵn → backlog:** timeline email của đơn Studio luôn rỗng vì `ORDER_EMAIL_TYPES` (`order_paid`, `remedy_refund_requested`) thuộc `TENANT_CUSTOMER_FACING_TYPES` — loại không ghi log (xem §5K và §5Q, cột "Ghi `email_send_log`").
+- **Thứ tự triển khai:** migrate trước, deploy code sau — [[04-Operations-Runbooks/Deploy-Vercel-Runbook|Deploy-Vercel-Runbook]].
+
+**`PAYMENT_ENCRYPTION_KEY`** (ADR-074 mục 8): bắt buộc là chuỗi base64 của **đúng 32 byte** (`openssl rand -base64 32`; `packages/config/src/env.ts` kiểm `Buffer.from(value, "base64").length === 32`) — cùng cách `encryptSecret/decryptSecret` đọc khoá. Sai → app dừng khi khởi động thay vì lỗi "Invalid key length" khi giải mã secret cổng.
+
+**Gỡ `confirmOrderManually`** (ADR-074 mục 8): xác nhận tay đơn gian hàng chỉ còn `changeOrderStatusBySeller` ([[Order-State-Machine]] §3.14). Metadata audit `lateDeclaredPaid` không còn được ghi; luồng mới ghi `lateConfirmation`.
 
 ---
 

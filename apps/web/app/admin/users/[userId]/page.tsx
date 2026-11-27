@@ -12,7 +12,7 @@ import { UserDetailActions } from "../_ui/user-detail-actions";
 import { UserAuditLog } from "./_ui/audit-log";
 import { LegalSection, OwnedTenantSection, ProfileSection, SecuritySection } from "./_ui/sections";
 // Mảnh trình bày dùng chung với trang chi tiết gian hàng.
-import { SectionHeading } from "../../tenants/[tenantId]/_ui/parts";
+import { SectionHeading } from "../../_ui/detail-kit";
 
 export const metadata: Metadata = { title: "Chi tiết người dùng" };
 

@@ -10,7 +10,7 @@ import { formatAdminDate, formatAdminDateTime } from "../../_ui/billing-labels";
 import { TENANT_STATUS_LABEL, TENANT_STATUS_TONE } from "../_ui/tenant-labels";
 import { TenantLockButton } from "../_ui/tenant-lock-dialog";
 import { TenantAuditLog } from "./_ui/audit-log";
-import { SectionHeading } from "./_ui/parts";
+import { SectionHeading } from "../../_ui/detail-kit";
 import {
   AbuseSection,
   ContentSection,
@@ -124,7 +124,7 @@ export default async function AdminTenantDetailPage({ params }: { params: Promis
 
         <div className="grid items-start gap-8 xl:grid-cols-2">
           <ContentSection content={detail.content} />
-          <AbuseSection abuse={detail.abuse} />
+          <AbuseSection tenantId={detail.id} abuse={detail.abuse} />
         </div>
 
         <section aria-labelledby="tenant-audit-title">

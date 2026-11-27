@@ -5,7 +5,7 @@ import { Badge } from "../../../_ui/kit";
 import { IconClock, IconEye, IconLock, IconMail, IconMonitor, IconShield, IconUnlock } from "../../../_ui/icons";
 import { formatAdminDateTime } from "../../../_ui/billing-labels";
 import { USER_STATUS_LABEL } from "../../_ui/user-labels";
-import { LINE } from "../../../tenants/[tenantId]/_ui/parts";
+import { LINE } from "../../../_ui/detail-kit";
 
 /*
  * ADR-073 — "Nhật ký" của người dùng (≤ 50 dòng, mới nhất trước — thứ tự do loader quyết). Server Component thuần, cùng khuôn với

@@ -37,7 +37,7 @@ author: Long (tài liệu)
   nghiệp vụ thật**: `createProduct` → `addProductExternalLink` → `publishProduct` (`canPublishProduct` + giới hạn gói, không bỏ
   qua), `markOrderPaid`, `upsertMyReview` (RLS customer), `replyToReview`/`hideReview` (RLS tenant + trigger
   `reviews_guard_columns`), `recomputeProductRatings` (`system_job`) ✅.
-- **Không gửi email nào** ✅: không gọi `createOrder`/`confirmOrderManually` (2 hàm này gửi email đơn hàng) và không đi qua
+- **Không gửi email nào** ✅: không gọi `createOrder`/`changeOrderStatusBySeller` (2 hàm này gửi email đơn hàng; `confirmOrderManually` đã xoá — ADR-074 mục 8) và không đi qua
   Server Action (email `review_new` chỉ được gửi trong `after()` của action, không phải trong `upsertMyReview`).
 
 ## 2. Chốt An Toàn ✅

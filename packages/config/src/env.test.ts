@@ -9,7 +9,8 @@ function validEnv(overrides: Record<string, string | undefined> = {}) {
     JWT_ACCESS_SECRET: "a".repeat(32),
     JWT_ISSUER: "gieochu",
     JWT_AUDIENCE: "gieochu-web",
-    PAYMENT_ENCRYPTION_KEY: "b".repeat(32),
+    // ADR-074 mục 8: base64 của đúng 32 byte (43 ký tự + "=").
+    PAYMENT_ENCRYPTION_KEY: `${"b".repeat(43)}=`,
     STORAGE_ENCRYPTION_KEY: "c".repeat(32),
     // ADR-032: only the 8 required runtime variables. No EMAIL_*/brand/TTL on purpose — those live in
     // System Center (DB); email env is only a dev fallback.
@@ -31,5 +32,7 @@ describe("M0 env schema", () => {
   it("throws EnvValidationError when a required variable is missing", () => {
     const withoutDatabaseUrl = validEnv({ DATABASE_URL: undefined });
     expect(() => parseEnv(withoutDatabaseUrl)).toThrow(EnvValidationError);
+    // ADR-074 mục 8: khoá thanh toán không giải ra đúng 32 byte → fail-fast.
+    expect(() => parseEnv(validEnv({ PAYMENT_ENCRYPTION_KEY: "b".repeat(32) }))).toThrow(/PAYMENT_ENCRYPTION_KEY/);
   });
 });

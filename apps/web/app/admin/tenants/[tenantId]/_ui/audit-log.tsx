@@ -6,7 +6,7 @@ import { IconCard, IconClock, IconFlag, IconLock, IconReceipt, IconRefresh, Icon
 import { formatVndFull } from "../../../_ui/stats-chart";
 import { INVOICE_PROVIDER_LABEL, INVOICE_STATUS_LABEL, formatAdminDateTime } from "../../../_ui/billing-labels";
 import { TENANT_STATUS_LABEL } from "../../_ui/tenant-labels";
-import { LINE } from "./parts";
+import { LINE } from "../../../_ui/detail-kit";
 
 /*
  * ADR-072 — "Nhật ký quản trị" của gian hàng (≤ 50 dòng, mới nhất trước — thứ tự do loader quyết). Server Component thuần, theo khuôn

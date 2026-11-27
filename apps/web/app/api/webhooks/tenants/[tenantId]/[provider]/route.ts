@@ -14,6 +14,8 @@ import { getPrismaClient, withSystemJob } from "@gieochu/db";
 import { QUEUE_NAMES } from "@gieochu/jobs";
 import { enqueuePaymentProcess } from "../../../../../../lib/jobs";
 import { scheduleQueueDrain } from "../../../../../../lib/job-runner";
+import { getRequestId, handleApiError } from "../../../../../../lib/api-response";
+import { recordWebhookEvent, releaseWebhookEventOnFailure } from "../../../../../../lib/webhook-event";
 
 // ADR-036: after() runs inside this function's lifetime — leave room for the ~20s queue drain.
 export const maxDuration = 60;
@@ -29,8 +31,21 @@ const VALID_PROVIDERS = new Set<PaymentProviderId>(["MANUAL_QR", "SEPAY", "MOMO"
  */
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ tenantId: string; provider: string }> },
+  context: { params: Promise<{ tenantId: string; provider: string }> },
 ) {
+  // ADR-074 mục 7: lỗi không lường trước (DB, giải mã, hàng đợi) → 5xx dạng `{ error: { code, message, requestId } }`, cổng gửi lại.
+  const requestId = getRequestId(request);
+  try {
+    return await handleTenantWebhook(request, context);
+  } catch (error) {
+    return handleApiError(error, requestId);
+  }
+}
+
+async function handleTenantWebhook(
+  request: Request,
+  { params }: { params: Promise<{ tenantId: string; provider: string }> },
+): Promise<NextResponse> {
   const { tenantId, provider: providerParam } = await params;
   const providerId = providerParam.toUpperCase() as PaymentProviderId;
 
@@ -84,43 +99,43 @@ export async function POST(
     return NextResponse.json({ success: true });
   }
 
-  try {
-    await withSystemJob((tx) =>
-      tx.webhookEvent.create({
-        data: { scope: "TENANT", provider: providerId, providerEventId: event.providerEventId, tenantId },
-      }),
-    );
-  } catch {
-    // Unique constraint violation => already processed this event (idempotent).
+  // ADR-074 mục 7: chỉ trùng khoá unique (P2002) mới là "đã xử lý" → 200; lỗi ghi khác ném ra → 5xx, cổng gửi lại.
+  const recorded = await recordWebhookEvent({ scope: "TENANT", provider: providerId, providerEventId: event.providerEventId, tenantId });
+  if (!recorded) {
     return NextResponse.json({ success: true });
   }
 
-  // SePay's parseWebhook can't know the tenant's paymentPrefix (no cfg param on the shared interface) — extract the reference
-  // here, with cfg already decrypted above. MoMo's own orderId already comes back as `event.reference` from parseWebhook.
-  // ADR-065: ưu tiên mã thanh toán (`orders.paymentRef` = tiền tố SePay + 8 chữ số — đúng tiền tố `tenantSepayPrefix` dùng lúc
-  // sinh, tức tiền tố cấu hình hoặc tiền tố mã đơn), sau đó mới tới mã đơn (khách tự gõ mã đơn vào nội dung CK).
-  let referenceCandidates: string[] = [];
-  if (providerId === "SEPAY") {
-    const tenant = await getPrismaClient().tenant.findUnique({ where: { id: tenantId }, select: { orderCodePrefix: true } });
-    const body = parsedBody as SepayWebhookBody;
-    const orderCodePrefix = tenant?.orderCodePrefix ?? "";
-    const paymentCodes = extractSepayPaymentCodes(body, [(cfg as { paymentPrefix?: unknown }).paymentPrefix, orderCodePrefix]);
-    const orderCodes = orderCodePrefix ? extractSepayReferences(body, [orderCodePrefix], { codeLength: ORDER_CODE_SUFFIX_LENGTH }) : [];
-    referenceCandidates = [...new Set([...paymentCodes, ...orderCodes])];
-  } else if (event.reference) {
-    referenceCandidates = [event.reference];
-  }
-  const reference = referenceCandidates[0];
+  // ADR-074 mục 7: mọi bước tới khi job được đẩy thành công — lỗi thì xoá đúng dòng webhook_events vừa ghi rồi trả 5xx, để lần
+  // gửi lại của cổng không bị coi là trùng (trước đây job mất hẳn).
+  const reference = await releaseWebhookEventOnFailure(recorded, async () => {
+    // SePay's parseWebhook can't know the tenant's paymentPrefix (no cfg param on the shared interface) — extract the reference
+    // here, with cfg already decrypted above. MoMo's own orderId already comes back as `event.reference` from parseWebhook.
+    // ADR-065: ưu tiên mã thanh toán (`orders.paymentRef` = tiền tố SePay + 8 chữ số — đúng tiền tố `tenantSepayPrefix` dùng lúc
+    // sinh, tức tiền tố cấu hình hoặc tiền tố mã đơn), sau đó mới tới mã đơn (khách tự gõ mã đơn vào nội dung CK).
+    let referenceCandidates: string[] = [];
+    if (providerId === "SEPAY") {
+      const tenant = await getPrismaClient().tenant.findUnique({ where: { id: tenantId }, select: { orderCodePrefix: true } });
+      const body = parsedBody as SepayWebhookBody;
+      const orderCodePrefix = tenant?.orderCodePrefix ?? "";
+      const paymentCodes = extractSepayPaymentCodes(body, [(cfg as { paymentPrefix?: unknown }).paymentPrefix, orderCodePrefix]);
+      const orderCodes = orderCodePrefix ? extractSepayReferences(body, [orderCodePrefix], { codeLength: ORDER_CODE_SUFFIX_LENGTH }) : [];
+      referenceCandidates = [...new Set([...paymentCodes, ...orderCodes])];
+    } else if (event.reference) {
+      referenceCandidates = [event.reference];
+    }
+    const firstReference = referenceCandidates[0];
 
-  await enqueuePaymentProcess({
-    tenantId,
-    provider: providerId,
-    providerEventId: event.providerEventId,
-    reference,
-    referenceCandidates,
-    amountVnd: event.amountVnd,
-    success: event.success,
-    rawPayload: parsedBody,
+    await enqueuePaymentProcess({
+      tenantId,
+      provider: providerId,
+      providerEventId: event.providerEventId,
+      reference: firstReference,
+      referenceCandidates,
+      amountVnd: event.amountVnd,
+      success: event.success,
+      rawPayload: parsedBody,
+    });
+    return firstReference;
   });
 
   logger.info({ tenantId, provider: providerId, providerEventId: event.providerEventId, reference }, "tenant payment webhook enqueued for processing");
